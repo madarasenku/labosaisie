@@ -132,7 +132,42 @@
   .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
   .empty-state svg { margin-bottom: 12px; opacity: .3; }
 
-  /* SCROLLABLE TABLE WRAPPER */
+  /* TABLEAU DE BORD — STATISTIQUES */
+  .stats-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .stats-kpi { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px 16px; text-align: center; box-shadow: var(--shadow-sm); }
+  .kpi-val { font-size: 36px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+  .kpi-label { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stats-card { min-height: 220px; }
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .bar-label { width: 120px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  .bar-track { flex: 1; background: var(--bg); border-radius: 99px; height: 14px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s ease; }
+  .bar-count { width: 28px; text-align: right; font-weight: 700; color: var(--text); font-size: 12px; }
+  .pie-chart { display: flex; gap: 16px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .pie-legend { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-width: 120px; }
+  .pie-legend-item { display: flex; align-items: center; gap: 8px; }
+  .pie-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .anomaly-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .anomaly-row:last-child { border-bottom: none; }
+  .anomaly-badge { font-weight: 700; padding: 3px 12px; border-radius: 99px; font-size: 12px; }
+  .monthly-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; margin-top: 12px; padding-bottom: 24px; position: relative; }
+  .monthly-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .monthly-bar { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; transition: height .4s ease; min-height: 2px; }
+  .monthly-month { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+  .monthly-count { font-size: 10px; font-weight: 700; color: var(--accent); }
+  .stats-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 30px 0; }
+
+  @media (max-width: 900px) {
+    .stats-kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .stats-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .stats-kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .kpi-val { font-size: 28px; }
+    .bar-label { width: 80px; }
+  }
   .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
 
   /* LOGIN SCREEN */
@@ -265,6 +300,7 @@
     <span id="user-badge" style="font-size:12px;opacity:.85;margin-right:6px;white-space:nowrap"></span>
     <button class="nav-btn active" data-view="saisie" onclick="showView('saisie')">Nouvelle saisie</button>
     <button class="nav-btn" data-view="historique" onclick="showView('historique')">Historique</button>
+    <button class="nav-btn" data-view="stats" onclick="showView('stats')">📊 Statistiques</button>
     <button id="btn-nav-users" class="nav-btn" data-view="comptes" onclick="showView('comptes')" style="display:none">👤 Comptes</button>
     <button class="nav-btn" onclick="exportAllExcel()">⬇ Exporter tout</button>
     <button class="nav-btn logout-btn" onclick="doLogout()" title="Se déconnecter">⎋ Déconnexion</button>
@@ -294,7 +330,7 @@
         <label>N° dossier</label>
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="p_dossier" readonly style="background:var(--bg);font-weight:600;color:var(--accent);cursor:default;flex:1">
-          <button type="button" onclick="regenDossier()" title="Générer un nouveau numéro" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px;line-height:1">↺</button>
+          <button type="button" onclick="regenDossier()" title="Générer un nouveau numéro de dossier (nouveau patient)" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px;line-height:1">↺</button>
         </div>
       </div>
       <div class="form-group">
@@ -339,6 +375,9 @@
         <label>Renseignements cliniques</label>
         <textarea id="p_clinique" placeholder="Signes cliniques, diagnostic présomptif, motif de la demande..."></textarea>
       </div>
+    </div>
+    <div style="margin-top:10px;text-align:right">
+      <button class="btn btn-outline" onclick="newPatient()" style="font-size:12.5px">👤 Nouveau patient</button>
     </div>
   </div>
 
@@ -792,6 +831,42 @@
   </div>
 </div>
 
+<div id="view-stats" style="display:none">
+  <!-- Compteurs principaux -->
+  <div class="stats-kpi-row" id="stats-kpi-row">
+    <div class="stats-kpi" id="kpi-total"><div class="kpi-val">—</div><div class="kpi-label">Fiches totales</div></div>
+    <div class="stats-kpi" id="kpi-month"><div class="kpi-val">—</div><div class="kpi-label">Ce mois-ci</div></div>
+    <div class="stats-kpi" id="kpi-anomalies"><div class="kpi-val">—</div><div class="kpi-label">Résultats anormaux</div></div>
+    <div class="stats-kpi" id="kpi-agents"><div class="kpi-val">—</div><div class="kpi-label">Agents actifs</div></div>
+  </div>
+
+  <div class="stats-grid">
+    <!-- Fiches par type -->
+    <div class="card stats-card">
+      <div class="card-title">📋 Fiches par type d'analyse</div>
+      <div id="chart-by-type"></div>
+    </div>
+
+    <!-- Évolution mensuelle -->
+    <div class="card stats-card">
+      <div class="card-title">📈 Évolution mensuelle (6 mois)</div>
+      <div id="chart-monthly"></div>
+    </div>
+
+    <!-- Répartition par agent -->
+    <div class="card stats-card">
+      <div class="card-title">👤 Répartition par agent</div>
+      <div id="chart-by-agent"></div>
+    </div>
+
+    <!-- Anomalies détectées -->
+    <div class="card stats-card">
+      <div class="card-title">⚠️ Anomalies détectées</div>
+      <div id="chart-anomalies"></div>
+    </div>
+  </div>
+</div>
+
 <div id="view-comptes" style="display:none">
   <div class="card">
     <div class="card-title">👤 Nouveau compte</div>
@@ -1167,11 +1242,14 @@ function autoInterp(id, lo, hiM, hiF) {
 function showView(v) {
   document.getElementById('view-saisie').style.display = v === 'saisie' ? '' : 'none';
   document.getElementById('view-historique').style.display = v === 'historique' ? '' : 'none';
+  const viewStats = document.getElementById('view-stats');
+  if (viewStats) viewStats.style.display = v === 'stats' ? '' : 'none';
   const viewComptes = document.getElementById('view-comptes');
   if (viewComptes) viewComptes.style.display = v === 'comptes' ? '' : 'none';
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v === 'historique') renderHistory();
   if (v === 'comptes') renderUsersList();
+  if (v === 'stats') renderStats();
 }
 
 function switchTab(name) {
@@ -1315,6 +1393,20 @@ function regenDossier() {
   document.getElementById('p_dossier').value = formatDossier(getNextNum());
 }
 
+function newPatient() {
+  if (!confirm('Effacer les informations du patient et tous les résultats en cours ? (Les fiches déjà enregistrées ne sont pas supprimées)')) return;
+  // Effacer les infos patient
+  ['p_nom','p_medecin','p_clinique'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['p_age'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['p_sexe','p_service'].forEach(id => { const el = document.getElementById(id); if(el) el.selectedIndex = 0; });
+  document.getElementById('p_date').value = new Date().toISOString().slice(0,10);
+  // Effacer tous les panneaux de résultats
+  ['hema','bio','bacterio','sero','parasito','bpn'].forEach(name => resetPanel(name));
+  // Générer un nouveau numéro de dossier
+  regenDossier();
+  toast('Nouveau patient prêt ✓', 'ok');
+}
+
 function collectResults(type) {
   const data = {};
   if (type === 'Hématologie') {
@@ -1398,7 +1490,8 @@ async function saveRecord(type) {
   const saved = await insertRecordRemote({ patient: p, type, resultats: collectResults(type) });
   if (saved) {
     toast('Fiche ' + type + ' enregistrée ✓', 'ok');
-    regenDossier();
+    // Le N° de dossier reste inchangé — le même patient peut enchaîner plusieurs analyses
+    // Le numéro ne se régénère que via le bouton ↺ ou "Effacer les résultats"
   }
 }
 
@@ -1679,6 +1772,9 @@ function buildProfessionalSheet(wb, r, sheetName) {
   }
 
   function paramRow(nom, valeur, unite, refNorm, interp, altBg) {
+    // Ne pas afficher les paramètres sans valeur saisie
+    if (!valeur || valeur.toString().trim() === '') return;
+
     const bg = altBg ? C_ALT_BG : C_PARAM_BG;
     let interpBg = bg, interpFg = C_MUTED;
     if (interp && interp.includes('Élevé'))  { interpBg = C_HIGH_BG; interpFg = C_HIGH_FG; }
@@ -1702,6 +1798,9 @@ function buildProfessionalSheet(wb, r, sheetName) {
   }
 
   function kvRow(lbl, val, altBg) {
+    // Ne pas afficher les champs sans valeur saisie
+    if (!val || val.toString().trim() === '' || val === '—') return;
+
     const bg = altBg ? C_ALT_BG : C_PARAM_BG;
     const rr = ws.getRow(row);
     rr.height = 17;
@@ -1732,6 +1831,9 @@ function buildProfessionalSheet(wb, r, sheetName) {
       'IONOGRAMME': ['Sodium (Na⁺)', 'Potassium (K⁺)', 'Chlore (Cl⁻)', 'Calcium (Ca²⁺)', 'Phosphore', 'Magnésium (Mg²⁺)', 'Bicarbonates (HCO₃⁻)'],
     };
     Object.entries(sections).forEach(([sec, keys]) => {
+      // N'afficher la section que s'il y a au moins un paramètre avec une valeur
+      const hasValues = keys.some(k => r.resultats[k] && r.resultats[k].valeur && r.resultats[k].valeur.toString().trim() !== '');
+      if (!hasValues) return;
       sectionHeader(sec);
       tableHeader(['Paramètre', 'Valeur', 'Unité', 'Valeurs normales', 'Interprétation']);
       let alt = false;
@@ -1776,6 +1878,8 @@ function buildProfessionalSheet(wb, r, sheetName) {
     Object.entries(r.resultats).forEach(([k, v]) => {
       if (k === 'Observations') return;
       if (typeof v === 'object') {
+        // Ne pas afficher si aucune valeur ni résultat
+        if (!v.resultat && !v.valeur) return;
         const bg = alt ? C_ALT_BG : C_PARAM_BG;
         const resFg = v.resultat === 'Positif' ? C_HIGH_FG : v.resultat === 'Négatif' ? C_NORM_FG : C_MUTED;
         const rr = ws.getRow(row);
@@ -1867,6 +1971,8 @@ function buildProfessionalSheet(wb, r, sheetName) {
     alt = false;
     Object.entries(r.resultats).forEach(([k, v]) => {
       if ([...obsectKeys, ...gsKeys, ...ecbuKeys, ...bioKeys, 'Observations'].indexOf(k) === -1 && typeof v === 'object' && !v.unite) {
+        // Ne pas afficher si aucune valeur ni résultat
+        if (!v.resultat && !v.valeur) return;
         const bg = alt ? C_ALT_BG : C_PARAM_BG;
         const resFg = v.resultat === 'Positif' ? C_HIGH_FG : v.resultat === 'Négatif' ? C_NORM_FG : C_MUTED;
         const rr = ws.getRow(row);
@@ -1969,12 +2075,24 @@ async function exportRecord(id) {
 async function exportSingle(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
-  const r = { id: 0, patient: p, type, resultats: collectResults(type) };
+
+  // Rafraîchit le cache depuis Supabase pour avoir les données à jour
+  await refreshDB();
+
+  // Vérifie que la fiche est bien enregistrée en base avant d'autoriser l'export
+  const db = getDB();
+  const saved = db.find(r => r.type === type && r.patient.dossier === p.dossier);
+  if (!saved) {
+    toast('Enregistrez la fiche avant de l\'exporter ✗', 'err');
+    return;
+  }
+
+  // Export depuis la fiche enregistrée (pas depuis le formulaire en cours)
   const wb = new ExcelJS.Workbook();
   wb.creator = CENTRE;
   wb.title = 'Résultat ' + type;
-  buildProfessionalSheet(wb, r, type.substring(0, 31));
-  await downloadWorkbook(wb, makeFilename(p.dossier, p.date, p.nom || 'PATIENT', type));
+  buildProfessionalSheet(wb, saved, type.substring(0, 31));
+  await downloadWorkbook(wb, makeFilename(saved.patient.dossier, saved.patient.date, saved.patient.nom || 'PATIENT', type));
   toast('Export Excel réussi ✓', 'ok');
 }
 
@@ -2001,6 +2119,183 @@ async function exportAllExcel() {
   const today = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
   await downloadWorkbook(wb, `LaboSaisie_Export_${today}.xlsx`);
   toast('Export complet réussi ✓', 'ok');
+}
+
+// ============================================================
+// TABLEAU DE BORD — STATISTIQUES
+// ============================================================
+
+const TYPES_ANALYSES = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Bilan prénatal'];
+const TYPE_COLORS = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#0891B2'];
+
+// Détecte les anomalies dans un enregistrement (résultats Élevé/Bas/Positif)
+function countAnomalies(resultats) {
+  let count = 0;
+  if (!resultats) return 0;
+  Object.values(resultats).forEach(v => {
+    if (typeof v === 'object' && v !== null) {
+      const interp = (v.interp || v.resultat || '').toLowerCase();
+      if (interp.includes('élevé') || interp.includes('eleve') || interp.includes('bas') || interp.includes('positif')) count++;
+    }
+  });
+  return count;
+}
+
+async function renderStats() {
+  // Indicateur de chargement dans les KPI
+  ['kpi-total','kpi-month','kpi-anomalies','kpi-agents'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.querySelector('.kpi-val').textContent = '…';
+  });
+
+  await refreshDB();
+  const db = getDB();
+
+  if (!db.length) {
+    document.getElementById('chart-by-type').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
+    document.getElementById('chart-monthly').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
+    document.getElementById('chart-by-agent').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
+    document.getElementById('chart-anomalies').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
+    ['kpi-total','kpi-month','kpi-anomalies','kpi-agents'].forEach(id => {
+      document.getElementById(id).querySelector('.kpi-val').textContent = '0';
+    });
+    return;
+  }
+
+  const now = new Date();
+  const thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+
+  // ── KPI ─────────────────────────────────────────────────────
+  const total = db.length;
+  const thisMonthCount = db.filter(r => (r.savedAt || '').startsWith(thisMonth)).length;
+  const totalAnomalies = db.reduce((sum, r) => sum + countAnomalies(r.resultats), 0);
+  const agents = new Set(db.map(r => r.createdBy).filter(Boolean));
+
+  document.getElementById('kpi-total').querySelector('.kpi-val').textContent = total;
+  document.getElementById('kpi-month').querySelector('.kpi-val').textContent = thisMonthCount;
+  document.getElementById('kpi-anomalies').querySelector('.kpi-val').textContent = totalAnomalies;
+  document.getElementById('kpi-agents').querySelector('.kpi-val').textContent = agents.size || '—';
+
+  // ── Fiches par type d'analyse (barres horizontales) ─────────
+  const byType = {};
+  TYPES_ANALYSES.forEach(t => byType[t] = 0);
+  db.forEach(r => { if (byType[r.type] !== undefined) byType[r.type]++; });
+  const maxType = Math.max(...Object.values(byType), 1);
+
+  document.getElementById('chart-by-type').innerHTML = `
+    <div class="bar-chart">
+      ${TYPES_ANALYSES.map((t, i) => `
+        <div class="bar-row">
+          <div class="bar-label" title="${t}">${t}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${Math.round(byType[t]/maxType*100)}%;background:${TYPE_COLORS[i]}"></div>
+          </div>
+          <div class="bar-count">${byType[t]}</div>
+        </div>
+      `).join('')}
+    </div>`;
+
+  // ── Évolution mensuelle (6 derniers mois) ───────────────────
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleDateString('fr-FR', { month: 'short' });
+    months.push({ key, label, count: db.filter(r => (r.savedAt||'').startsWith(key)).length });
+  }
+  const maxMonth = Math.max(...months.map(m => m.count), 1);
+
+  document.getElementById('chart-monthly').innerHTML = `
+    <div class="monthly-chart">
+      ${months.map(m => `
+        <div class="monthly-col">
+          <div class="monthly-count">${m.count || ''}</div>
+          <div class="monthly-bar" style="height:${Math.max(Math.round(m.count/maxMonth*110),2)}px"></div>
+          <div class="monthly-month">${m.label}</div>
+        </div>
+      `).join('')}
+    </div>`;
+
+  // ── Répartition par agent (barres + SVG camembert) ──────────
+  const byAgent = {};
+  db.forEach(r => {
+    const a = r.createdBy || 'Inconnu';
+    byAgent[a] = (byAgent[a] || 0) + 1;
+  });
+  const agentEntries = Object.entries(byAgent).sort((a,b) => b[1]-a[1]);
+  const maxAgent = Math.max(...agentEntries.map(e => e[1]), 1);
+  const agentColors = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#0891B2','#DC2626'];
+
+  // SVG camembert
+  let svgPaths = '';
+  let legendItems = '';
+  let startAngle = -Math.PI / 2;
+  agentEntries.forEach(([agent, count], i) => {
+    const pct = count / total;
+    const angle = pct * 2 * Math.PI;
+    const endAngle = startAngle + angle;
+    const x1 = Math.cos(startAngle) * 60 + 70;
+    const y1 = Math.sin(startAngle) * 60 + 70;
+    const x2 = Math.cos(endAngle) * 60 + 70;
+    const y2 = Math.sin(endAngle) * 60 + 70;
+    const largeArc = angle > Math.PI ? 1 : 0;
+    const color = agentColors[i % agentColors.length];
+    if (total > 1 || agentEntries.length === 1) {
+      svgPaths += `<path d="M70,70 L${x1},${y1} A60,60 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}" stroke="white" stroke-width="2"/>`;
+    }
+    legendItems += `<div class="pie-legend-item"><div class="pie-dot" style="background:${color}"></div><span><strong>${agent}</strong> — ${count} fiche${count>1?'s':''} (${Math.round(pct*100)}%)</span></div>`;
+    startAngle = endAngle;
+  });
+
+  document.getElementById('chart-by-agent').innerHTML = `
+    <div class="pie-chart">
+      <svg width="140" height="140" viewBox="0 0 140 140" style="flex-shrink:0">
+        ${agentEntries.length === 1
+          ? `<circle cx="70" cy="70" r="60" fill="${agentColors[0]}"/>`
+          : svgPaths}
+        <circle cx="70" cy="70" r="30" fill="white"/>
+        <text x="70" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#1E3A8A">${total}</text>
+      </svg>
+      <div class="pie-legend">${legendItems}</div>
+    </div>`;
+
+  // ── Anomalies détectées ──────────────────────────────────────
+  let countEleve = 0, countBas = 0, countPositif = 0, countNegatif = 0;
+  db.forEach(r => {
+    if (!r.resultats) return;
+    Object.values(r.resultats).forEach(v => {
+      if (typeof v !== 'object' || !v) return;
+      const interp = (v.interp || v.resultat || '').toLowerCase();
+      if (interp.includes('élevé') || interp.includes('eleve')) countEleve++;
+      else if (interp.includes('bas')) countBas++;
+      else if (interp.includes('positif')) countPositif++;
+      else if (interp.includes('négatif') || interp.includes('negatif')) countNegatif++;
+    });
+  });
+
+  document.getElementById('chart-anomalies').innerHTML = `
+    <div style="margin-top:8px">
+      <div class="anomaly-row">
+        <span>🔴 Valeurs élevées</span>
+        <span class="anomaly-badge" style="background:#FDE8E8;color:#B91C1C">${countEleve}</span>
+      </div>
+      <div class="anomaly-row">
+        <span>🔵 Valeurs basses</span>
+        <span class="anomaly-badge" style="background:#E5EEFD;color:#1D4ED8">${countBas}</span>
+      </div>
+      <div class="anomaly-row">
+        <span>🟠 Résultats positifs</span>
+        <span class="anomaly-badge" style="background:#FEF3C7;color:#B45309">${countPositif}</span>
+      </div>
+      <div class="anomaly-row">
+        <span>🟢 Résultats négatifs</span>
+        <span class="anomaly-badge" style="background:#E7F7EC;color:#15803D">${countNegatif}</span>
+      </div>
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">
+        Total résultats anormaux : <strong style="color:var(--danger)">${countEleve + countBas + countPositif}</strong>
+        sur <strong>${total}</strong> fiche${total>1?'s':''} analysée${total>1?'s':''}
+      </div>
+    </div>`;
 }
 
 // ============================================================
