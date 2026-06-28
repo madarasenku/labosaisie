@@ -3,309 +3,830 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LaboSaisie — Résultats d'analyses médicales</title>
+<title>CPMI — Centre de Protection Mère et Infantile · Laboratoire</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
-  :root {
-    --bg: #f7f8fa;
-    --surface: #ffffff;
-    --border: #e2e5eb;
-    --border-focus: #2563eb;
-    --text: #111827;
-    --text-muted: #6b7280;
-    --text-label: #374151;
-    --accent: #1d4ed8;
-    --accent-hover: #1e40af;
-    --accent-light: #eff6ff;
-    --danger: #dc2626;
-    --danger-light: #fef2f2;
-    --success: #16a34a;
-    --success-light: #f0fdf4;
-    --warning: #d97706;
-    --warning-light: #fffbeb;
-    --radius: 8px;
-    --radius-lg: 12px;
-    --shadow: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+/* ============================================================
+   CPMI — Centre de Protection Mère et Infantile
+   Thème visuel : douceur, protection, santé, soin
+   Palette : bleu maternité + rose doux + vert santé + or chaleureux
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+
+:root {
+  /* Palette CPMI */
+  --cpmi-deep:    #1a4480;   /* bleu profond institutionnel */
+  --cpmi-mid:     #2563eb;   /* bleu vif */
+  --cpmi-sky:     #3b82f6;   /* bleu ciel */
+  --cpmi-teal:    #0d9488;   /* vert teal (santé) */
+  --cpmi-rose:    #e11d76;   /* rose maternité */
+  --cpmi-pink:    #fbcfe8;   /* rose très doux */
+  --cpmi-gold:    #d97706;   /* or chaleureux */
+  --cpmi-gold-lt: #fef3c7;   /* or clair */
+
+  /* Aliases fonctionnels */
+  --bg:           #f0f5ff;
+  --surface:      #ffffff;
+  --border:       #c7d7f5;
+  --border-focus: #2563eb;
+  --text:         #0f1f40;
+  --text-muted:   #5a739f;
+  --text-label:   #253c6b;
+  --accent:       #1a4480;
+  --accent-hover: #153568;
+  --accent-light: #e0eaff;
+  --danger:       #dc2626;
+  --danger-light: #fef2f2;
+  --success:      #059669;
+  --success-light:#ecfdf5;
+  --warning:      #d97706;
+  --warning-light:#fffbeb;
+  --radius:       10px;
+  --radius-lg:    16px;
+  --shadow:       0 2px 8px rgba(26,68,128,.10), 0 1px 3px rgba(26,68,128,.06);
+  --shadow-lg:    0 8px 32px rgba(26,68,128,.16), 0 2px 8px rgba(26,68,128,.08);
+  --shadow-sm:    0 1px 3px rgba(26,68,128,.08);
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ================================================================
+   ARRIÈRE-PLAN ANIMÉ — Symboles doux de la protection mère-enfant
+   ================================================================ */
+body {
+  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  background-color: #e8f0fe;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Fond dégradé de base */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(219,234,254,.7) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(204,251,241,.5) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(251,207,232,.3) 0%, transparent 60%),
+    linear-gradient(145deg, #dbeafe 0%, #e0eaff 40%, #d1fae5 80%, #fce7f3 100%);
+  z-index: -2;
+}
+
+/* Canvas SVG animé — particules symboliques */
+#cpmi-bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .45;
+}
+
+/* ── Animations de base ── */
+@keyframes float-up {
+  0%   { transform: translateY(100vh) rotate(0deg);  opacity: 0; }
+  5%   { opacity: .6; }
+  95%  { opacity: .4; }
+  100% { transform: translateY(-120px) rotate(20deg); opacity: 0; }
+}
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: .7; }
+  50%       { transform: scale(1.08); opacity: 1; }
+}
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes glow-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,.3); }
+  50%       { box-shadow: 0 0 0 8px rgba(37,99,235,.0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Animation d'entrée sur les cartes ── */
+.card {
+  animation: slide-in-up .35s ease both;
+}
+.card:nth-child(2) { animation-delay: .05s; }
+.card:nth-child(3) { animation-delay: .10s; }
+.card:nth-child(4) { animation-delay: .15s; }
+
+/* ================================================================
+   HEADER — Bannière CPMI
+   ================================================================ */
+header {
+  background: linear-gradient(135deg, var(--cpmi-deep) 0%, #1e56a8 50%, var(--cpmi-sky) 100%);
+  color: #fff;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  height: 68px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(26,68,128,.35);
+  border-bottom: 3px solid rgba(255,255,255,.15);
+}
+/* Brillance animée sur le header */
+header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(255,255,255,.06) 40%,
+    rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 60%,
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 4s linear infinite;
+  pointer-events: none;
+}
+
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon {
+  width: 44px; height: 44px;
+  background: rgba(255,255,255,.18);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  border: 1px solid rgba(255,255,255,.25);
+  animation: pulse-soft 3s ease-in-out infinite;
+  backdrop-filter: blur(4px);
+}
+.logo-name {
+  font-size: 18px; font-weight: 800;
+  letter-spacing: .5px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.logo-sub { font-size: 10.5px; opacity: .75; margin-top: 1px; letter-spacing: .3px; }
+
+header nav { margin-left: auto; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.nav-btn {
+  background: rgba(255,255,255,.13);
+  border: 1px solid rgba(255,255,255,.2);
+  color: #fff;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all .2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.nav-btn:hover { background: rgba(255,255,255,.25); transform: translateY(-1px); }
+.nav-btn.active {
+  background: rgba(255,255,255,.28);
+  border-color: rgba(255,255,255,.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.logout-btn { background: rgba(225,29,118,.2); border-color: rgba(225,29,118,.35); }
+.logout-btn:hover { background: rgba(225,29,118,.35); }
+
+/* ================================================================
+   LAYOUT
+   ================================================================ */
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 20px 70px;
+}
+
+/* ================================================================
+   TABS — onglets d'analyses
+   ================================================================ */
+.tabs {
+  display: flex;
+  gap: 3px;
+  background: rgba(255,255,255,.75);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 5px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,.6) inset;
+  backdrop-filter: blur(8px);
+}
+.tab {
+  flex: 1; min-width: 110px;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all .2s;
+  text-align: center;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.tab:hover { color: var(--cpmi-deep); background: var(--accent-light); }
+.tab.active {
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(26,68,128,.3);
+  transform: translateY(-1px);
+}
+.tab-icon { display: block; font-size: 19px; margin-bottom: 3px; }
+
+/* ================================================================
+   PANELS
+   ================================================================ */
+.panel { display: none; }
+.panel.active { display: block; animation: fade-in .3s ease; }
+
+/* ================================================================
+   CARD — cartes de formulaire
+   ================================================================ */
+.card {
+  background: rgba(255,255,255,.88);
+  border: 1px solid rgba(199,215,245,.8);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+  transition: box-shadow .2s, transform .2s;
+}
+.card:hover { box-shadow: var(--shadow-lg); }
+.card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cpmi-deep);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--accent-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px; height: 16px;
+  background: linear-gradient(to bottom, var(--cpmi-mid), var(--cpmi-teal));
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   FORMULAIRES
+   ================================================================ */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 15px; }
+.form-grid.col-3 { grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1/-1; }
+label { font-size: 12px; font-weight: 600; color: var(--text-label); letter-spacing: .2px; }
+label span.req { color: var(--cpmi-rose); margin-left: 2px; }
+
+input[type=text], input[type=date], input[type=number],
+input[type=password], input[type=datetime-local],
+select, textarea {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  font-size: 13px;
+  color: var(--text);
+  background: rgba(255,255,255,.9);
+  width: 100%;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  outline: none;
+  font-family: inherit;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--cpmi-mid);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  background: #fff;
+}
+textarea { resize: vertical; min-height: 64px; }
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a739f' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  padding-right: 30px;
+}
+
+/* ================================================================
+   TABLEAUX DE RÉSULTATS
+   ================================================================ */
+.result-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.result-table th {
+  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .6px;
+  padding: 8px 11px; text-align: left;
+  background: linear-gradient(to right, #e8f0fe, #f0f5ff);
+  border-bottom: 2px solid var(--border);
+}
+.result-table th:first-child { border-radius: 8px 0 0 0; }
+.result-table th:last-child  { border-radius: 0 8px 0 0; }
+.result-table td { padding: 7px 8px; border-bottom: 1px solid #edf2fc; vertical-align: middle; }
+.result-table tr:last-child td { border-bottom: none; }
+.result-table tr:hover td { background: rgba(224,234,255,.4); }
+.result-table input[type=number], .result-table input[type=text] { padding: 6px 8px; font-size: 13px; }
+.ref-range { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.unit { font-size: 11px; color: var(--text-muted); }
+
+/* ================================================================
+   BADGES D'INTERPRÉTATION
+   ================================================================ */
+.interp {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px;
+  white-space: nowrap; display: inline-block;
+  letter-spacing: .3px;
+}
+.interp.ok  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.interp.hi  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.interp.lo  { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+
+/* ================================================================
+   BOUTONS
+   ================================================================ */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  letter-spacing: .2px;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.btn:active { transform: translateY(0); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(26,68,128,.3);
+}
+.btn-primary:hover { box-shadow: 0 6px 18px rgba(26,68,128,.4); }
+.btn-outline { background: rgba(255,255,255,.8); border: 1.5px solid var(--border); color: var(--text); }
+.btn-outline:hover { background: var(--accent-light); border-color: var(--cpmi-mid); color: var(--cpmi-deep); }
+.btn-danger { background: #fef2f2; color: #991b1b; border: 1.5px solid #fca5a5; }
+.btn-danger:hover { background: #fee2e2; }
+.btn-success { background: #f0fdf4; color: #065f46; border: 1.5px solid #6ee7b7; }
+.btn-success:hover { background: #d1fae5; }
+
+/* ================================================================
+   TOAST
+   ================================================================ */
+#toast {
+  position: fixed; bottom: 28px; right: 28px;
+  background: #0f172a;
+  color: #fff;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 13px; font-weight: 600;
+  opacity: 0; transform: translateY(12px) scale(.97);
+  transition: all .28s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: none; z-index: 999;
+  display: flex; align-items: center; gap: 9px;
+  max-width: 360px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  border-left: 4px solid rgba(255,255,255,.2);
+}
+#toast.show { opacity: 1; transform: translateY(0) scale(1); }
+#toast.ok  { background: #064e3b; border-left-color: #34d399; }
+#toast.err { background: #7f1d1d; border-left-color: #f87171; }
+
+/* ================================================================
+   SECTION LABEL
+   ================================================================ */
+.section-label {
+  font-size: 10.5px; font-weight: 800;
+  color: var(--cpmi-teal);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after {
+  content: ''; flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--cpmi-teal), transparent);
+  opacity: .4;
+}
+
+/* ================================================================
+   ANTIBIOGRAMME
+   ================================================================ */
+.abg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px,1fr)); gap: 8px; }
+.abg-row {
+  display: flex; align-items: center; gap: 9px;
+  background: rgba(255,255,255,.7);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 11px;
+  transition: border-color .15s, background .15s;
+}
+.abg-row:hover { background: rgba(255,255,255,.95); }
+.abg-name { flex: 1; font-size: 12px; color: var(--text-label); font-weight: 500; }
+.abg-row select { width: auto; padding: 4px 26px 4px 8px; font-size: 12px; min-width: 82px; }
+.S { border-left: 4px solid #059669; background: rgba(209,250,229,.3); }
+.I { border-left: 4px solid #d97706; background: rgba(254,243,199,.3); }
+.R { border-left: 4px solid #dc2626; background: rgba(254,226,226,.3); }
+.nd { border-left: 4px solid var(--border); }
+
+/* ================================================================
+   HISTORIQUE
+   ================================================================ */
+#history-table, #users-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+#history-table th, #users-table th {
+  background: linear-gradient(to right, #e8f0fe, #f0f5ff);
+  padding: 9px 11px; text-align: left;
+  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 2px solid var(--border); white-space: nowrap;
+}
+#history-table td, #users-table td { padding: 8px 11px; border-bottom: 1px solid #edf2fc; vertical-align: middle; }
+#history-table tr:hover td, #users-table tr:hover td { background: rgba(224,234,255,.5); }
+.badge-type {
+  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--accent-light), #dbeafe);
+  color: var(--cpmi-deep);
+  border: 1px solid rgba(37,99,235,.2);
+}
+.empty-state { text-align: center; padding: 52px 20px; color: var(--text-muted); }
+
+/* ================================================================
+   STATISTIQUES — KPI & GRAPHIQUES
+   ================================================================ */
+.stats-kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 22px; }
+.stats-kpi {
+  background: rgba(255,255,255,.85);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 22px 16px; text-align: center;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+  transition: transform .2s, box-shadow .2s;
+}
+.stats-kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.kpi-val { font-size: 38px; font-weight: 900; color: var(--cpmi-deep); line-height: 1.1; }
+.kpi-label { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.stats-card { min-height: 220px; }
+.bar-chart { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.bar-label { width: 120px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.bar-track { flex: 1; background: var(--accent-light); border-radius: 99px; height: 13px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+.bar-count { width: 28px; text-align: right; font-weight: 700; color: var(--text); font-size: 12px; }
+.pie-chart { display: flex; gap: 16px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.pie-legend { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-width: 120px; }
+.pie-legend-item { display: flex; align-items: center; gap: 8px; }
+.pie-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.anomaly-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.anomaly-row:last-child { border-bottom: none; }
+.anomaly-badge { font-weight: 700; padding: 3px 14px; border-radius: 99px; font-size: 12px; }
+.monthly-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; margin-top: 12px; padding-bottom: 24px; position: relative; }
+.monthly-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.monthly-bar { width: 100%; background: linear-gradient(to top, var(--cpmi-deep), var(--cpmi-sky)); border-radius: 5px 5px 0 0; transition: height .5s ease; min-height: 2px; }
+.monthly-month { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.monthly-count { font-size: 10px; font-weight: 700; color: var(--cpmi-deep); }
+.stats-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 30px 0; }
+
+/* ================================================================
+   TABLE WRAPPER
+   ================================================================ */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(26,68,128,.06);
+}
+
+/* ================================================================
+   ÉCRAN DE CONNEXION ANIMÉ
+   ================================================================ */
+#login-screen {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 20%, rgba(219,234,254,.8), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(204,251,241,.6), transparent 50%),
+    radial-gradient(ellipse 50% 60% at 50% 50%, rgba(251,207,232,.4), transparent 55%),
+    linear-gradient(145deg, #1a4480 0%, #2563eb 50%, #0d9488 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000; padding: 20px;
+  overflow: hidden;
+}
+/* Ondulations en arrière-plan du login */
+#login-screen::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(255,255,255,.06) 0%, transparent 40%),
+    radial-gradient(circle at 80% 30%, rgba(255,255,255,.06) 0%, transparent 40%);
+  animation: pulse-soft 6s ease-in-out infinite;
+}
+
+.login-card {
+  background: rgba(255,255,255,.95);
+  border-radius: 22px;
+  padding: 42px 36px;
+  width: 100%; max-width: 390px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.5) inset;
+  text-align: center;
+  animation: slide-in-up .5s cubic-bezier(.34,1.56,.64,1);
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+/* Bandeau de couleur en haut de la card */
+.login-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(to right, var(--cpmi-deep), var(--cpmi-teal), var(--cpmi-rose));
+  border-radius: 22px 22px 0 0;
+}
+.login-logo {
+  width: 76px; height: 76px;
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-sky));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; margin: 0 auto 18px;
+  box-shadow: 0 8px 24px rgba(26,68,128,.35);
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+.login-card h1 { font-size: 22px; font-weight: 900; color: var(--cpmi-deep); margin-bottom: 4px; }
+.login-card .login-subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 4px; }
+.login-card .login-tagline {
+  font-size: 11px; color: var(--cpmi-teal); font-style: italic;
+  margin-bottom: 24px; font-weight: 600;
+}
+.login-card input[type=password], .login-card input[type=text] {
+  text-align: center; letter-spacing: .5px;
+  font-size: 15px; margin-bottom: 12px;
+}
+.login-card .btn {
+  width: 100%; justify-content: center;
+  padding: 13px; font-size: 15px;
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
+  box-shadow: 0 4px 14px rgba(26,68,128,.35);
+}
+#login-error { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 16px; }
+#app-root { display: none; }
+
+/* ================================================================
+   STYLES SPÉCIAUX
+   ================================================================ */
+.sync-status { font-size: 11px; opacity: .85; margin-left: 4px; }
+.logout-btn { background: rgba(225,29,118,.18); border-color: rgba(225,29,118,.35); }
+
+#patient-tranche {
+  background: linear-gradient(135deg, var(--accent-light), #e0f2fe);
+  border: 1px solid var(--border);
+  color: var(--cpmi-deep);
+  font-weight: 700;
+  font-size: 11.5px;
+  padding: 3px 12px;
+  border-radius: 99px;
+}
+#montant-preview {
+  font-weight: 900; color: var(--cpmi-deep);
+  font-size: 15px;
+  text-shadow: 0 1px 2px rgba(26,68,128,.12);
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 768px) {
+  input[type=text], input[type=date], input[type=number],
+  input[type=password], select, textarea { font-size: 16px; }
+}
+@media (max-width: 900px) {
+  main { padding: 16px 14px 50px; }
+  .card { padding: 16px 14px; }
+  .form-grid { grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 10px; }
+  .stats-kpi-row { grid-template-columns: repeat(2,1fr); }
+  .stats-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  body { font-size: 13.5px; }
+  header { height: auto; flex-wrap: wrap; padding: 10px 12px; row-gap: 8px; }
+  .logo-sub { display: none; }
+  header nav { margin-left: 0; width: 100%; flex-wrap: wrap; gap: 6px; }
+  #user-badge { width: 100%; order: -1; }
+  .nav-btn { flex: 1 1 auto; padding: 8px 10px; font-size: 12px; text-align: center; }
+  main { padding: 12px 10px 50px; }
+  .tabs { gap: 2px; padding: 3px; margin-bottom: 16px; }
+  .tab { min-width: 86px; padding: 8px 6px; font-size: 11.5px; }
+  .tab-icon { font-size: 17px; }
+  .card { padding: 14px 12px; }
+  .form-grid, .form-grid.col-3 { grid-template-columns: 1fr; gap: 10px; }
+  .btn { width: 100%; justify-content: center; }
+  #history-table .btn, #users-table .btn { width: auto; }
+  .btn-row .btn { flex: 1 1 140px; width: auto; }
+  .abg-grid { grid-template-columns: 1fr; }
+  #view-historique .table-wrap, #view-comptes .table-wrap { border: none; overflow: visible; }
+  #history-table thead, #users-table thead { display: none; }
+  #history-table tbody, #users-table tbody { display: block; }
+  #history-table tr, #users-table tr { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; }
+  #history-table td, #users-table td { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #dde8ff; text-align: right; }
+  #history-table td:last-child, #users-table td:last-child { border-bottom: none; flex-wrap: wrap; justify-content: flex-end; }
+  #history-table td::before, #users-table td::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: left; }
+  .login-card { padding: 28px 22px; }
+  #toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  .stats-kpi-row { grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .kpi-val { font-size: 28px; }
+}
+@media (max-width: 380px) {
+  .nav-btn { font-size: 11px; padding: 7px 6px; }
+  .tab { min-width: 70px; font-size: 10.5px; }
+}
+
+/* ================================================================
+   IMPRESSION — Filigrane CPMI
+   ================================================================ */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  body { background: white !important; font-size: 10.5pt; font-family: 'Segoe UI', Arial, sans-serif; }
+  body::before, #cpmi-bg-canvas { display: none !important; }
+
+  header, nav, .tabs, .btn-row, #btn-clear-history, #toast,
+  #view-historique .btn-row, .nav-btn, .logout-btn, #login-screen,
+  #stats-filters-card, [onclick] { display: none !important; }
+
+  #app-root { display: block !important; }
+  .card { box-shadow: none !important; border: 1px solid #c7d7f5; margin-bottom: 10pt; break-inside: avoid; background: white !important; backdrop-filter: none !important; }
+  .card-title { color: #1a4480 !important; border-bottom-color: #c7d7f5; }
+  .card-title::before { display: none; }
+
+  #view-saisie, #view-historique, #view-stats, #view-comptes { display: block !important; }
+  .panel { display: none !important; }
+  .panel.print-target { display: block !important; }
+  main { padding: 0 !important; max-width: 100% !important; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+  th { background: #e8f0fe !important; color: #1a4480 !important; }
+  th, td { border: 1px solid #c7d7f5; padding: 4px 7px; }
+  .result-table input, .result-table select { border: none; background: transparent; padding: 0; font-size: 8.5pt; }
+  .badge-type { background: #e8f0fe !important; color: #1a4480 !important; border: 1px solid #93c5fd; }
+  .interp.ok { background: #d1fae5 !important; color: #065f46 !important; border: 1px solid #6ee7b7; }
+  .interp.hi { background: #fee2e2 !important; color: #991b1b !important; border: 1px solid #fca5a5; }
+  .interp.lo { background: #dbeafe !important; color: #1e40af !important; border: 1px solid #93c5fd; }
+
+  /* ── FILIGRANE CPMI ── */
+  @page { margin: 2cm; size: A4; }
+  body::after {
+    content: 'CPMI';
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 14cm;
+    font-weight: 900;
+    color: rgba(26, 68, 128, 0.04);
+    font-family: 'Playfair Display', serif;
+    letter-spacing: .1em;
+    pointer-events: none;
+    z-index: 0;
+    white-space: nowrap;
   }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
-
-  /* HEADER */
-  header { background: var(--accent); color: #fff; padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 16px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(29,78,216,.2); }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .logo-icon { width: 32px; height: 32px; background: rgba(255,255,255,.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
-  .logo-name { font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
-  .logo-sub { font-size: 11px; opacity: .7; margin-top: 1px; }
-  header nav { margin-left: auto; display: flex; gap: 4px; }
-  .nav-btn { background: rgba(255,255,255,.12); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background .15s; }
-  .nav-btn:hover { background: rgba(255,255,255,.22); }
-  .nav-btn.active { background: rgba(255,255,255,.25); }
-
-  /* LAYOUT */
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
-
-  /* TABS */
-  .tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 4px; margin-bottom: 24px; flex-wrap: wrap; box-shadow: var(--shadow); }
-  .tab { flex: 1; min-width: 110px; padding: 8px 12px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 8px; font-size: 13px; font-weight: 500; transition: all .15s; text-align: center; white-space: nowrap; }
-  .tab:hover { color: var(--text); background: var(--bg); }
-  .tab.active { background: var(--accent); color: #fff; box-shadow: 0 1px 4px rgba(29,78,216,.3); }
-  .tab-icon { display: block; font-size: 18px; margin-bottom: 2px; }
-
-  /* PANELS */
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  /* CARD */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 16px; box-shadow: var(--shadow); }
-  .card-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
-
-  /* FORM GRID */
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
-  .form-grid.col-3 { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-  .form-group { display: flex; flex-direction: column; gap: 5px; }
-  .form-group.full { grid-column: 1/-1; }
-  label { font-size: 12px; font-weight: 500; color: var(--text-label); }
-  label span.req { color: var(--danger); margin-left: 2px; }
-  input[type=text], input[type=date], input[type=number], input[type=password], select, textarea {
-    border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px;
-    font-size: 13px; color: var(--text); background: var(--surface); width: 100%;
-    transition: border-color .15s, box-shadow .15s; outline: none; font-family: inherit;
+  /* Filigrane secondaire (texte complet) */
+  main::before {
+    content: 'Centre de Protection Mère et Infantile · Grand-Bassam';
+    position: fixed;
+    bottom: 1.5cm; left: 0; right: 0;
+    text-align: center;
+    font-size: 8pt;
+    color: rgba(26,68,128,.25);
+    font-style: italic;
+    font-weight: 600;
+    letter-spacing: .5px;
+    pointer-events: none;
   }
-  input:focus, select:focus, textarea:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
-  textarea { resize: vertical; min-height: 60px; }
-  select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
-
-  /* RESULT ROWS */
-  .result-table { width: 100%; border-collapse: collapse; }
-  .result-table th { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; padding: 6px 10px; text-align: left; background: var(--bg); border-bottom: 1px solid var(--border); }
-  .result-table td { padding: 6px 6px; border-bottom: 1px solid #f1f3f6; vertical-align: middle; }
-  .result-table tr:last-child td { border-bottom: none; }
-  .result-table input[type=number], .result-table input[type=text] { padding: 6px 8px; font-size: 13px; }
-  .ref-range { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-  .unit { font-size: 11px; color: var(--text-muted); }
-
-  /* INTERP BADGE */
-  .interp { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
-  .interp-N { background: var(--success-light); color: var(--success); }
-  .interp-H { background: var(--danger-light); color: var(--danger); }
-  .interp-B { background: var(--accent-light); color: var(--accent); }
-  .interp-? { background: var(--bg); color: var(--text-muted); }
-
-  /* BUTTONS */
-  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; align-items: center; }
-  .btn { padding: 9px 18px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; display: inline-flex; align-items: center; gap: 7px; }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: var(--accent-hover); }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  .btn-outline:hover { background: var(--bg); }
-  .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #fca5a5; }
-  .btn-danger:hover { background: #fee2e2; }
-  .btn-success { background: var(--success-light); color: var(--success); border: 1px solid #86efac; }
-  .btn-success:hover { background: #dcfce7; }
-
-  /* TOAST */
-  #toast { position: fixed; bottom: 24px; right: 24px; background: #1f2937; color: #fff; padding: 12px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 999; display: flex; align-items: center; gap: 8px; max-width: 340px; }
-  #toast.show { opacity: 1; transform: translateY(0); }
-  #toast.ok { background: #166534; }
-  #toast.err { background: #991b1b; }
-
-  /* SECTION DIVIDER */
-  .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin: 20px 0 10px; padding-left: 2px; }
-
-  /* ANTIBIOGRAM */
-  .abg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-  .abg-row { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 10px; }
-  .abg-name { flex: 1; font-size: 12px; color: var(--text-label); }
-  .abg-row select { width: auto; padding: 4px 28px 4px 8px; font-size: 12px; min-width: 80px; }
-  .S { border-left: 3px solid var(--success); }
-  .I { border-left: 3px solid var(--warning); }
-  .R { border-left: 3px solid var(--danger); }
-  .nd { border-left: 3px solid var(--border); }
-
-  /* HISTORY TABLE */
-  #history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  #history-table th { background: var(--bg); padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  #history-table td { padding: 7px 10px; border-bottom: 1px solid #f1f3f6; vertical-align: middle; }
-  #history-table tr:hover td { background: var(--accent-light); }
-  .badge-type { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; background: var(--accent-light); color: var(--accent); }
-  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
-  .empty-state svg { margin-bottom: 12px; opacity: .3; }
-
-  /* TABLEAU DE BORD — STATISTIQUES */
-  .stats-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-  .stats-kpi { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px 16px; text-align: center; box-shadow: var(--shadow-sm); }
-  .kpi-val { font-size: 36px; font-weight: 800; color: var(--accent); line-height: 1.1; }
-  .kpi-label { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .stats-card { min-height: 220px; }
-  .bar-chart { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-  .bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
-  .bar-label { width: 120px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
-  .bar-track { flex: 1; background: var(--bg); border-radius: 99px; height: 14px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .4s ease; }
-  .bar-count { width: 28px; text-align: right; font-weight: 700; color: var(--text); font-size: 12px; }
-  .pie-chart { display: flex; gap: 16px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-  .pie-legend { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-width: 120px; }
-  .pie-legend-item { display: flex; align-items: center; gap: 8px; }
-  .pie-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-  .anomaly-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .anomaly-row:last-child { border-bottom: none; }
-  .anomaly-badge { font-weight: 700; padding: 3px 12px; border-radius: 99px; font-size: 12px; }
-  .monthly-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; margin-top: 12px; padding-bottom: 24px; position: relative; }
-  .monthly-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
-  .monthly-bar { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; transition: height .4s ease; min-height: 2px; }
-  .monthly-month { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
-  .monthly-count { font-size: 10px; font-weight: 700; color: var(--accent); }
-  .stats-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 30px 0; }
-
-  @media (max-width: 900px) {
-    .stats-kpi-row { grid-template-columns: repeat(2, 1fr); }
-    .stats-grid { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 480px) {
-    .stats-kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .kpi-val { font-size: 28px; }
-    .bar-label { width: 80px; }
-  }
-  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
-
-  /* LOGIN SCREEN */
-  #login-screen { position: fixed; inset: 0; background: linear-gradient(135deg,#1d4ed8,#1e3a8a); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
-  .login-card { background: #fff; border-radius: var(--radius-lg); padding: 36px 32px; width: 100%; max-width: 360px; box-shadow: 0 20px 50px rgba(0,0,0,.3); text-align: center; }
-  .login-icon { width: 56px; height: 56px; background: var(--accent-light); color: var(--accent); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 14px; }
-  .login-card h1 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
-  .login-card p { font-size: 12.5px; color: var(--text-muted); margin-bottom: 22px; }
-  .login-card input[type=password], .login-card input[type=text] { text-align: center; letter-spacing: .3px; font-size: 15px; margin-bottom: 12px; }
-  .login-card .btn { width: 100%; justify-content: center; padding: 11px; font-size: 14px; }
-  #login-error { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 16px; }
-  #app-root { display: none; }
-  .sync-status { font-size: 11px; opacity: .85; margin-left: 4px; }
-  .logout-btn { background: rgba(255,255,255,.12); }
-
-  /* ============================================================
-     RESPONSIVE — petits et moyens écrans
-     ============================================================ */
-
-  /* Empêche le zoom automatique iOS sur les champs (nécessite font-size >= 16px) */
-  @media (max-width: 768px) {
-    input[type=text], input[type=date], input[type=number], input[type=password],
-    select, textarea { font-size: 16px; }
-  }
-
-  /* TABLETTE / petit desktop (≤ 900px) */
-  @media (max-width: 900px) {
-    main { padding: 16px 14px 50px; }
-    .card { padding: 16px; }
-    .form-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-  }
-
-  /* MOBILE (≤ 640px) */
-  @media (max-width: 640px) {
-    body { font-size: 13.5px; }
-
-    header {
-      height: auto;
-      flex-wrap: wrap;
-      padding: 10px 12px;
-      row-gap: 8px;
-      position: sticky;
-    }
-    .logo-sub { display: none; }
-    header nav {
-      margin-left: 0;
-      width: 100%;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    #user-badge { width: 100%; order: -1; margin-bottom: 2px; }
-    .nav-btn { flex: 1 1 auto; padding: 8px 10px; font-size: 12.5px; text-align: center; }
-    .logout-btn { flex: 0 0 auto; }
-
-    main { padding: 12px 10px 50px; }
-
-    .tabs { gap: 2px; padding: 3px; margin-bottom: 16px; }
-    .tab { min-width: 86px; padding: 8px 6px; font-size: 11.5px; }
-    .tab-icon { font-size: 16px; }
-
-    .card { padding: 14px 12px; border-radius: var(--radius); }
-    .card-title { font-size: 12px; margin-bottom: 12px; }
-
-    .form-grid, .form-grid.col-3 { grid-template-columns: 1fr; gap: 10px; }
-
-    .btn-row { gap: 8px; }
-    .btn { width: 100%; justify-content: center; padding: 11px 16px; }
-    #history-table .btn, #users-table .btn { width: auto; flex: 1 1 auto; padding: 7px 10px; }
-    .btn-row .btn { width: auto; flex: 1 1 140px; }
-
-    .abg-grid { grid-template-columns: 1fr; }
-
-    /* Historique et Comptes : tables transformées en cartes empilées */
-    #history-table, #users-table { border: none; }
-    #view-historique .table-wrap, #view-comptes .table-wrap { border: none; overflow: visible; }
-    #history-table thead, #users-table thead { display: none; }
-    #history-table tbody, #users-table tbody { display: block; }
-    #history-table tr, #users-table tr {
-      display: block; background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px;
-    }
-    #history-table td, #users-table td {
-      display: flex; justify-content: space-between; align-items: center; gap: 10px;
-      padding: 6px 0; border-bottom: 1px dashed #eef0f3; text-align: right;
-    }
-    #history-table td:last-child, #users-table td:last-child { border-bottom: none; flex-wrap: wrap; justify-content: flex-end; }
-    #history-table td::before, #users-table td::before {
-      content: attr(data-label); font-size: 10.5px; font-weight: 700; color: var(--text-muted);
-      text-transform: uppercase; letter-spacing: .4px; text-align: left;
-    }
-    #history-table .empty-state, #users-table .empty-state { padding: 30px 10px; }
-
-    .login-card { padding: 28px 22px; }
-
-    #toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
-  }
-
-  /* TRÈS PETIT ÉCRAN (≤ 380px) */
-  @media (max-width: 380px) {
-    .nav-btn { font-size: 11.5px; padding: 7px 6px; }
-    .tab { min-width: 72px; font-size: 10.5px; }
-  }
-  /* ── IMPRESSION ──────────────────────────────────────────── */
-  @media print {
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { background: white; font-size: 11pt; }
-    header, nav, .tabs, .btn-row, #btn-clear-history, #toast,
-    #view-historique .btn-row, .nav-btn, .logout-btn,
-    #login-screen { display: none !important; }
-    #app-root { display: block !important; }
-    .card { box-shadow: none; border: 1px solid #ccc; margin-bottom: 12pt; page-break-inside: avoid; }
-    #view-saisie, #view-historique, #view-stats, #view-comptes { display: block !important; }
-    .panel { display: none !important; }
-    .panel.print-target { display: block !important; }
-    main { padding: 0; max-width: 100%; }
-    .print-header { display: block !important; }
-    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
-    th, td { border: 1px solid #ccc; padding: 4px 6px; }
-    .result-table input, .result-table select { border: none; background: transparent; padding: 0; font-size: 9pt; }
-    .badge-type { background: #e8f0fe !important; color: #1d4ed8 !important; padding: 2px 6px; border-radius: 4px; }
-    @page { margin: 1.5cm; size: A4; }
-  }
-  .print-header { display: none; }
-
+}
 </style>
 </head>
 <body>
 
+<!-- Canvas arrière-plan animé CPMI -->
+<canvas id="cpmi-bg-canvas"></canvas>
+
+<script>
+(function() {
+  const canvas = document.getElementById('cpmi-bg-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // Symboles de la protection mère-enfant
+  const SYMBOLS = ['♥','✦','✚','❋','◌','✿','⊕','◎','✶'];
+  const COLORS  = [
+    'rgba(26,68,128,',   // bleu CPMI
+    'rgba(13,148,136,',  // teal santé
+    'rgba(225,29,118,',  // rose maternité
+    'rgba(217,119,6,',   // or
+    'rgba(59,130,246,',  // bleu ciel
+  ];
+
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function createParticle() {
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return {
+      x:    Math.random() * W,
+      y:    H + 30,
+      size: 10 + Math.random() * 28,
+      speed: .25 + Math.random() * .55,
+      opacity: .12 + Math.random() * .22,
+      symbol: SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
+      color,
+      drift: (Math.random() - .5) * .4,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - .5) * .01,
+    };
+  }
+
+  function init() {
+    resize();
+    // Pré-peupler pour ne pas avoir d'écran vide
+    for (let i = 0; i < 25; i++) {
+      const p = createParticle();
+      p.y = Math.random() * H;
+      particles.push(p);
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+    // Ajouter de nouvelles particules
+    if (particles.length < 35 && Math.random() < .025) {
+      particles.push(createParticle());
+    }
+    particles.forEach((p, i) => {
+      p.y       -= p.speed;
+      p.x       += p.drift;
+      p.rotation += p.rotSpeed;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.font = `${p.size}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = p.color + p.opacity + ')';
+      ctx.fillText(p.symbol, 0, 0);
+      ctx.restore();
+
+      // Supprimer les particules sorties de l'écran
+      if (p.y < -50) particles.splice(i, 1);
+    });
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', resize);
+  init();
+  animate();
+})();
+</script>
+
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-icon">⚗</div>
-    <h1>LaboSaisie</h1>
-    <p>CPMI de Grand-Bassam — Accès protégé</p>
+    <div class="login-logo">🤱</div>
+    <h1>CPMI</h1>
+    <p class="login-subtitle">Centre de Protection Mère et Infantile</p>
+    <p class="login-tagline">Laboratoire d'analyses médicales · Grand-Bassam</p>
     <input type="text" id="login-username" placeholder="Nom d'utilisateur" autocomplete="username" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
     <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn btn-primary" onclick="doLogin()" style="width:100%;justify-content:center">Se connecter</button>
+    <button class="btn btn-primary" onclick="doLogin()">🔐 Se connecter</button>
     <div id="login-error"></div>
   </div>
 </div>
@@ -314,10 +835,10 @@
 
 <header>
   <div class="logo">
-    <div class="logo-icon">⚗</div>
+    <div class="logo-icon">🏥</div>
     <div>
-      <div class="logo-name">LaboSaisie</div>
-      <div class="logo-sub">Résultats d'analyses médicales</div>
+      <div class="logo-name">CPMI</div>
+      <div class="logo-sub">Centre de Protection Mère et Infantile · Grand-Bassam</div>
     </div>
   </div>
   <nav>
@@ -381,7 +902,14 @@
       </div>
       <div class="form-group">
         <label>Médecin prescripteur</label>
-        <input type="text" id="p_medecin" placeholder="Dr ...">
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="p_prescripteur_id" onchange="onPrescripteurChange()" style="flex:1">
+            <option value="">— Choisir un prescripteur —</option>
+          </select>
+          <button type="button" onclick="showAddPrescripteur()" title="Ajouter un nouveau prescripteur"
+            style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
+        </div>
+        <input type="text" id="p_medecin" placeholder="Ou saisir manuellement..." style="margin-top:6px;font-size:12px" oninput="updateMontantCurrent()">
       </div>
       <div class="form-group">
         <label>Service / provenance</label>
@@ -414,36 +942,195 @@
 
   <!-- ===== HÉMATOLOGIE ===== -->
   <div class="panel active" id="panel-hema">
+    <!-- NFS -->
     <div class="card">
       <div class="card-title">🩸 NFS — Numération formule sanguine</div>
       <div class="table-wrap">
         <table class="result-table">
-          <thead>
-            <tr>
-              <th>Paramètre</th>
-              <th>Valeur</th>
-              <th>Unité</th>
-              <th>Valeurs normales</th>
-              <th>Interprétation</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
           <tbody id="hema-body"></tbody>
         </table>
       </div>
-      <div class="section-label" style="margin-top:16px">Formule leucocytaire (%)</div>
+
+      <!-- Formule leucocytaire avec valeurs absolues -->
+      <div class="section-label" style="margin-top:16px">Formule leucocytaire</div>
       <div class="table-wrap">
         <table class="result-table">
-          <thead>
-            <tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr>
-          </thead>
+          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue (G/L)</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
           <tbody id="hema-fl-body"></tbody>
         </table>
       </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
+        💡 Les valeurs absolues (G/L) sont calculées automatiquement : % × GB / 100
+      </div>
+    </div>
+
+    <!-- Électrophorèse de l'hémoglobine -->
+    <div class="card">
+      <div class="card-title">🔬 Électrophorèse de l'hémoglobine</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Fraction</th><th>%</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
+          <tbody id="ephb-body"></tbody>
+        </table>
+      </div>
+      <div class="form-group" style="margin-top:10px">
+        <label>Profil / Conclusion électrophorèse</label>
+        <select id="ephb_profil" style="width:280px">
+          <option value="">— Choisir un profil —</option>
+          <option>Profil AA (Normal)</option>
+          <option>Profil AS (Drépanocytose trait)</option>
+          <option>Profil SS (Drépanocytose homozygote)</option>
+          <option>Profil AC (Trait HbC)</option>
+          <option>Profil SC (Drépanocytose SC)</option>
+          <option>Profil CC (HbC homozygote)</option>
+          <option>β-Thalassémie mineure</option>
+          <option>β-Thalassémie majeure</option>
+          <option>Profil AF (Hb fœtale élevée)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Commentaire électrophorèse</label>
+        <textarea id="ephb_commentaire" placeholder="Commentaire clinique..." rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- GE / Parasitologie -->
+    <div class="card">
+      <div class="card-title">🦟 Goutte épaisse / Parasitologie</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Résultat GE</label>
+          <select id="ge_result">
+            <option value="">—</option>
+            <option>Positif</option>
+            <option>Négatif</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Espèce plasmodiale</label>
+          <select id="ge_espece">
+            <option value="">—</option>
+            <option>Plasmodium falciparum</option>
+            <option>Plasmodium vivax</option>
+            <option>Plasmodium ovale</option>
+            <option>Plasmodium malariae</option>
+            <option>Plasmodium knowlesi</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Parasitémie (%)</label>
+          <input type="number" id="ge_para" step="0.01" min="0" max="100" placeholder="ex: 2.5">
+        </div>
+        <div class="form-group">
+          <label>Stade parasitaire</label>
+          <select id="ge_stade">
+            <option value="">—</option>
+            <option>Trophozoïtes</option>
+            <option>Gamétocytes</option>
+            <option>Schizontes</option>
+            <option>Formes mixtes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>TDR Paludisme</label>
+          <select id="ge_tdr">
+            <option value="">—</option>
+            <option>Positif</option>
+            <option>Négatif</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observation</label>
+          <input type="text" id="ge_obs" placeholder="Observation...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Groupe sanguin -->
+    <div class="card">
+      <div class="card-title">🩸 Groupe sanguin ABO / Rhésus</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Groupe ABO</label>
+          <select id="gs_abo_hema">
+            <option value="">—</option>
+            <option>A</option><option>B</option><option>AB</option><option>O</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rhésus</label>
+          <select id="gs_rh_hema">
+            <option value="">—</option>
+            <option>Positif (Rh+)</option>
+            <option>Négatif (Rh−)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>RAI</label>
+          <select id="gs_rai_hema">
+            <option value="">—</option>
+            <option>Négative</option>
+            <option>Positive</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Phénotype érythrocytaire</label>
+          <input type="text" id="gs_phenotype_hema" placeholder="ex: CCee, Kk...">
+        </div>
+      </div>
+    </div>
+
+    <!-- CRP -->
+    <div class="card">
+      <div class="card-title">🔥 CRP — Protéine C-réactive (Latex)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Valeur CRP (mg/L)</label>
+          <select id="crp_valeur" onchange="interpretCRP()">
+            <option value="">—</option>
+            <option value="neg">Négatif (&lt; 6 mg/L)</option>
+            <option value="6">6 mg/L</option>
+            <option value="12">12 mg/L</option>
+            <option value="24">24 mg/L</option>
+            <option value="48">48 mg/L</option>
+            <option value="96">96 mg/L</option>
+            <option value="192">192 mg/L</option>
+            <option value="384">≥ 384 mg/L</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Interprétation</label>
+          <div id="crp_interp" style="padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-weight:600;min-height:38px;display:flex;align-items:center">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Widal -->
+    <div class="card">
+      <div class="card-title">🦠 Sérodiagnostic de Widal et Félix (SWF)</div>
+      <div class="table-wrap">
+        <table class="result-table" id="widal-table">
+          <thead>
+            <tr>
+              <th>Antigène</th>
+              <th>Titre</th>
+              <th>Cinétique</th>
+              <th>Interprétation</th>
+            </tr>
+          </thead>
+          <tbody id="widal-body"></tbody>
+        </table>
+      </div>
+      <div id="widal-conclusion" style="margin-top:12px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;display:none"></div>
+    </div>
+
+    <div class="card">
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Hématologie')">💾 Enregistrer</button>
         <button class="btn btn-success" onclick="exportSingle('Hématologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Hématologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
-        <button class="btn btn-outline" onclick="resetPanel('hema')">↺ Effacer les résultats</button>
+        <button class="btn btn-outline" onclick="resetPanel('hema')">↺ Effacer</button>
       </div>
     </div>
   </div>
@@ -451,7 +1138,9 @@
   <!-- ===== BIOCHIMIE ===== -->
   <div class="panel" id="panel-bio">
     <div class="card">
-      <div class="card-title">🧪 Biochimie sanguine</div>
+      <div class="card-title">🧪 Biochimie sanguine
+        <button onclick="showBioConfig()" style="float:right;padding:4px 10px;font-size:11.5px;background:var(--accent-light);color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);cursor:pointer">⚙ Configurer unités & refs</button>
+      </div>
       <div class="section-label">Glucides</div>
       <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-glucides-body"></tbody></table></div>
       <div class="section-label">Fonction rénale</div>
@@ -471,59 +1160,268 @@
     </div>
   </div>
 
-  <!-- ===== BACTÉRIOLOGIE ===== -->
+  <!-- ===== BACTÉRIOLOGIE / ECBU ===== -->
   <div class="panel" id="panel-bacterio">
+
+    <!-- Type de prélèvement -->
     <div class="card">
-      <div class="card-title">🦠 Bactériologie — ECBU / Hémoculture / Coproculture</div>
-      <div class="form-grid col-3">
+      <div class="card-title">🦠 Bactériologie — ECBU / Prélèvements divers</div>
+      <div class="form-grid">
         <div class="form-group">
-          <label>Type de prélèvement</label>
-          <select id="bac_type">
-            <option>ECBU</option>
-            <option>Hémoculture</option>
-            <option>Coproculture</option>
-            <option>Prélèvement de gorge</option>
-            <option>Prélèvement génital</option>
-            <option>LCR</option>
-            <option>Autre</option>
+          <label>Type de prélèvement <span class="req">*</span></label>
+          <select id="bac_type" onchange="adaptBacterioForm()">
+            <option value="ECBU">ECBU (Examen Cytobactériologique des Urines)</option>
+            <option value="Hémoculture">Hémoculture</option>
+            <option value="Coproculture">Coproculture</option>
+            <option value="PG">Prélèvement de gorge</option>
+            <option value="PGU">Prélèvement génito-urinaire</option>
+            <option value="LCR">LCR (Liquide Céphalo-Rachidien)</option>
+            <option value="Pus">Pus / Suppuration</option>
+            <option value="Crachat">Crachat / Expectorations</option>
+            <option value="Plaie">Prélèvement de plaie</option>
+            <option value="Autre">Autre</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Examen direct</label>
-          <select id="bac_direct">
-            <option value="">— Résultat —</option>
-            <option>Positif</option>
-            <option>Négatif</option>
-          </select>
+          <label>Site anatomique / Précision</label>
+          <input type="text" id="bac_site" placeholder="ex. Urines du matin, plaie du pied gauche...">
         </div>
         <div class="form-group">
-          <label>Culture</label>
-          <select id="bac_culture">
-            <option value="">— Résultat —</option>
-            <option>Positive</option>
-            <option>Négative</option>
-            <option>Stérile</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Germe identifié</label>
-          <input type="text" id="bac_germe" placeholder="ex. E. coli, S. aureus...">
-        </div>
-        <div class="form-group">
-          <label>Leucocytes (/mm³)</label>
-          <input type="number" id="bac_leuco" placeholder="ex. 50000">
-        </div>
-        <div class="form-group">
-          <label>Hématies (/mm³)</label>
-          <input type="number" id="bac_hematies" placeholder="ex. 5000">
-        </div>
-        <div class="form-group full">
-          <label>Observations</label>
-          <textarea id="bac_obs" placeholder="Morphologie, coloration de Gram, commentaires..."></textarea>
+          <label>Date & heure de prélèvement</label>
+          <input type="datetime-local" id="bac_datetime">
         </div>
       </div>
-      <div class="section-label">Antibiogramme</div>
+    </div>
+
+    <!-- MACROSCOPIE -->
+    <div class="card" id="bac-macro-card">
+      <div class="card-title">🔍 Macroscopie</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Aspect</label>
+          <select id="bac_aspect">
+            <option value="">—</option>
+            <option>Limpide</option>
+            <option>Trouble</option>
+            <option>Légèrement trouble</option>
+            <option>Hématique</option>
+            <option>Purulent</option>
+            <option>Visqueux</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Couleur</label>
+          <select id="bac_couleur">
+            <option value="">—</option>
+            <option>Jaune claire</option>
+            <option>Jaune foncée</option>
+            <option>Ambrée</option>
+            <option>Rosée / Hématique</option>
+            <option>Incolore</option>
+            <option>Brun-verdâtre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Odeur</label>
+          <select id="bac_odeur">
+            <option value="">—</option>
+            <option>Normale</option>
+            <option>Nauséabonde / Putride</option>
+            <option>Ammoniacale</option>
+            <option>Sucrée</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>pH urinaire</label>
+          <select id="bac_ph">
+            <option value="">—</option>
+            <option>4.5</option><option>5.0</option><option>5.5</option>
+            <option>6.0</option><option>6.5</option><option>7.0</option>
+            <option>7.5</option><option>8.0</option><option>8.5</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÉTAT FRAIS / CYTOLOGIE -->
+    <div class="card">
+      <div class="card-title">🔬 État frais — Cytologie</div>
+      <div class="table-wrap">
+        <table class="result-table" id="etat-frais-table">
+          <thead><tr><th>Élément</th><th>Quantité / Résultat</th><th>Unité</th><th>Interprétation</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Leucocytes</td>
+              <td><input type="number" id="ef_leuco" placeholder="ex. 50000" style="width:110px" oninput="interpretEtatFrais('leuco')"></td>
+              <td>/mm³</td>
+              <td><span id="ef_i_leuco" style="font-weight:600"></span></td>
+            </tr>
+            <tr>
+              <td>Hématies</td>
+              <td><input type="number" id="ef_hematies" placeholder="ex. 5000" style="width:110px" oninput="interpretEtatFrais('hematies')"></td>
+              <td>/mm³</td>
+              <td><span id="ef_i_hematies" style="font-weight:600"></span></td>
+            </tr>
+            <tr>
+              <td>Cellules épithéliales</td>
+              <td><select id="ef_epitheliales" style="width:140px">
+                <option value="">—</option>
+                <option>Absentes</option><option>Rares</option>
+                <option>Modérées</option><option>Nombreuses</option>
+              </select></td>
+              <td></td>
+              <td><span id="ef_i_epi" style="font-size:11px;color:var(--text-muted)"></span></td>
+            </tr>
+            <tr>
+              <td>Cylindres</td>
+              <td><select id="ef_cylindres" style="width:140px">
+                <option value="">Absents</option>
+                <option>Cylindres hyalins</option><option>Cylindres granuleux</option>
+                <option>Cylindres leucocytaires</option><option>Cylindres érythrocytaires</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Cristaux</td>
+              <td><select id="ef_cristaux" style="width:140px">
+                <option value="">Absents</option>
+                <option>Oxalate de calcium</option><option>Acide urique</option>
+                <option>Phosphates</option><option>Cystine</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Bactéries</td>
+              <td><select id="ef_bacteries" style="width:140px">
+                <option value="">—</option>
+                <option>Absentes</option><option>Rares</option>
+                <option>Modérées</option><option>Nombreuses (+)</option>
+                <option>Très nombreuses (++)</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Levures / Champignons</td>
+              <td><select id="ef_levures" style="width:140px">
+                <option value="">—</option>
+                <option>Absentes</option><option>Présentes</option>
+                <option>Nombreuses</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Parasites</td>
+              <td><input type="text" id="ef_parasites" placeholder="ex. Trichomonas..." style="width:200px"></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Spermatozoïdes</td>
+              <td><select id="ef_sperma" style="width:140px">
+                <option value="">—</option>
+                <option>Absents</option><option>Présents</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="bacteriurie-alert" style="display:none;margin-top:8px;padding:8px 12px;border-radius:var(--radius);font-size:12.5px;font-weight:600"></div>
+    </div>
+
+    <!-- COLORATION DE GRAM -->
+    <div class="card">
+      <div class="card-title">🎨 Coloration de Gram</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Résultat Gram</label>
+          <select id="bac_gram" onchange="updateGramDetail()">
+            <option value="">— Non réalisée —</option>
+            <option value="neg">Négatif — Non réalisé / Pas de germe</option>
+            <option value="coc_G+">Cocci Gram + en amas (Staphylocoques)</option>
+            <option value="coc_G+_ch">Cocci Gram + en chaînettes (Streptocoques)</option>
+            <option value="coc_G+_dp">Cocci Gram + en diplocoque (Pneumocoque)</option>
+            <option value="coc_G-">Cocci Gram − en diplocoque (Méningocoque/Gonocoque)</option>
+            <option value="bac_G+">Bacilles Gram +</option>
+            <option value="bac_G-">Bacilles Gram −</option>
+            <option value="bac_G-_e">Bacilles Gram − entérobactéries</option>
+            <option value="lev">Levures / Filaments</option>
+            <option value="poly">Flore polymorphe</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Abondance</label>
+          <select id="bac_gram_abond">
+            <option value="">—</option>
+            <option>Rares</option><option>Modérés</option>
+            <option>Nombreux (+)</option><option>Très nombreux (++)</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Commentaire Gram</label>
+          <input type="text" id="bac_gram_comment" placeholder="Détail morphologique...">
+        </div>
+      </div>
+    </div>
+
+    <!-- CULTURE -->
+    <div class="card">
+      <div class="card-title">🧫 Culture & Identification</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Résultat culture</label>
+          <select id="bac_culture" onchange="updateCultureFields()">
+            <option value="">—</option>
+            <option value="pos">Positive</option>
+            <option value="neg">Négative / Stérile</option>
+            <option value="contam">Contamination (> 3 germes)</option>
+          </select>
+        </div>
+        <div class="form-group" id="bac-count-field">
+          <label>Numération bactérienne</label>
+          <select id="bac_numeration">
+            <option value="">—</option>
+            <option>&lt; 10³ UFC/mL</option>
+            <option>10³ – 10⁴ UFC/mL</option>
+            <option>10⁴ – 10⁵ UFC/mL</option>
+            <option>≥ 10⁵ UFC/mL (Bactériurie significative)</option>
+          </select>
+        </div>
+        <div class="form-group" id="bac-germe-field">
+          <label>Germe(s) identifié(s)</label>
+          <input type="text" id="bac_germe" placeholder="ex. Escherichia coli, Staphylococcus aureus...">
+        </div>
+        <div class="form-group" id="bac-germe2-field">
+          <label>2ème germe (si poly-microbien)</label>
+          <input type="text" id="bac_germe2" placeholder="2ème germe éventuel...">
+        </div>
+        <div class="form-group" id="bac-milieu-field">
+          <label>Milieux de culture utilisés</label>
+          <input type="text" id="bac_milieux" placeholder="ex. CNA, MacConkey, Sabouraud...">
+        </div>
+        <div class="form-group full">
+          <label>Observations culture</label>
+          <textarea id="bac_obs" rows="2" placeholder="Aspect des colonies, morphologie, résistance naturelle..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANTIBIOGRAMME / ANTIFONGIGRAMME -->
+    <div class="card" id="bac-abg-card">
+      <div class="card-title" id="abg-title-label">💊 Antibiogramme</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button type="button" onclick="setAbgMode('abg')" id="btn-abg-mode" class="btn btn-primary" style="padding:5px 12px;font-size:12px">Antibiogramme</button>
+        <button type="button" onclick="setAbgMode('afg')" id="btn-afg-mode" class="btn btn-outline" style="padding:5px 12px;font-size:12px">Antifongigramme</button>
+        <span style="font-size:11.5px;color:var(--text-muted);align-self:center">S = Sensible · I = Intermédiaire · R = Résistant · N/D = Non déterminé</span>
+      </div>
       <div class="abg-grid" id="abg-grid"></div>
+      <div class="abg-grid" id="afg-grid" style="display:none"></div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Commentaire antibiogramme</label>
+        <textarea id="bac_abg_comment" rows="2" placeholder="Mécanismes de résistance, antibiotiques de choix recommandés..."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Bactériologie')">💾 Enregistrer</button>
         <button class="btn btn-success" onclick="exportSingle('Bactériologie')">⬇ Excel</button>
@@ -668,6 +1566,25 @@
   <!-- ===== BILAN PRÉNATAL ===== -->
   <!-- ===== BILAN DE ROUTINE ===== -->
   <div class="panel" id="panel-routine">
+    <!-- FACTURATION TEMPS RÉEL -->
+    <div class="card" style="border:2px solid var(--accent)">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>🧾 Sélection des examens & Facturation</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="selectAllRoutine(true)" style="padding:4px 10px;font-size:12px">✓ Tout sélectionner</button>
+          <button class="btn btn-outline" onclick="selectAllRoutine(false)" style="padding:4px 10px;font-size:12px">✗ Tout désélectionner</button>
+        </div>
+      </div>
+      <div id="routine-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin:10px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--accent-light);border-radius:var(--radius);margin-top:10px">
+        <span id="routine-count" style="font-size:13px;color:var(--text-muted)">0 examen sélectionné</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:13px;color:var(--accent);font-weight:600">Total :</span>
+          <span id="routine-total" style="font-size:20px;font-weight:800;color:var(--accent)">0 FCFA</span>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">🦟 Goutte épaisse / Paludisme</div>
       <div class="table-wrap">
@@ -949,13 +1866,33 @@
 
 
 <div id="view-stats" style="display:none">
-  <!-- Compteurs principaux -->
+
+  <!-- Filtres temporels -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🔍 Filtres & Période</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-outline" id="stats-btn-jour" onclick="setStatsPeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
+      <button class="btn btn-outline" id="stats-btn-semaine" onclick="setStatsPeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
+      <button class="btn btn-outline active" id="stats-btn-mois" onclick="setStatsPeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
+      <button class="btn btn-outline" id="stats-btn-tout" onclick="setStatsPeriode('tout')" style="padding:6px 14px;font-size:12.5px">Tout</button>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
+        <label style="font-size:12px;color:var(--text-muted)">Du</label>
+        <input type="date" id="stats-date-from" style="width:auto">
+        <label style="font-size:12px;color:var(--text-muted)">Au</label>
+        <input type="date" id="stats-date-to" style="width:auto">
+        <button class="btn btn-primary" onclick="setStatsPeriode('custom')" style="padding:6px 12px;font-size:12px">Appliquer</button>
+      </div>
+      <span id="stats-periode-label" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
+    </div>
+  </div>
+
+  <!-- KPI -->
   <div class="stats-kpi-row" id="stats-kpi-row">
     <div class="stats-kpi" id="kpi-total"><div class="kpi-val">—</div><div class="kpi-label">Fiches totales</div></div>
-    <div class="stats-kpi" id="kpi-month"><div class="kpi-val">—</div><div class="kpi-label">Ce mois-ci</div></div>
+    <div class="stats-kpi" id="kpi-month"><div class="kpi-val">—</div><div class="kpi-label">Période sélectionnée</div></div>
     <div class="stats-kpi" id="kpi-anomalies"><div class="kpi-val">—</div><div class="kpi-label">Résultats anormaux</div></div>
     <div class="stats-kpi" id="kpi-agents"><div class="kpi-val">—</div><div class="kpi-label">Agents actifs</div></div>
-    <div class="stats-kpi" id="kpi-recettes-month" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes ce mois (FCFA)</div></div>
+    <div class="stats-kpi" id="kpi-recettes-month" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes période (FCFA)</div></div>
     <div class="stats-kpi" id="kpi-recettes-total" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes totales (FCFA)</div></div>
   </div>
 
@@ -984,6 +1921,41 @@
       <div class="card-title">📅 Recettes mensuelles (6 mois)</div>
       <div id="chart-recettes-monthly"></div>
     </div>
+  </div>
+
+  <!-- Ristournes prescripteurs -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">💊 Ristournes prescripteurs</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Règle : <strong>0% de ristourne sur les BPN</strong> (seul le nombre est comptabilisé).
+      Les ristournes s'appliquent uniquement sur les examens hors-BPN.
+    </p>
+    <div id="ristournes-table"></div>
+  </div>
+
+  <!-- Gestion des prescripteurs -->
+  <div class="card" style="margin-top:16px" id="prescripteurs-admin-card">
+    <div class="card-title">👨‍⚕️ Gestion des prescripteurs</div>
+    <div class="form-grid" style="margin-bottom:12px">
+      <div class="form-group">
+        <label>Nom complet</label>
+        <input type="text" id="presc_nom" placeholder="Dr Nom Prénom">
+      </div>
+      <div class="form-group">
+        <label>Spécialité</label>
+        <input type="text" id="presc_spec" placeholder="Médecine générale...">
+      </div>
+      <div class="form-group">
+        <label>Structure / Cabinet</label>
+        <input type="text" id="presc_struct" placeholder="Hôpital, clinique...">
+      </div>
+      <div class="form-group">
+        <label>Taux de ristourne extra-BPN (%)</label>
+        <input type="number" id="presc_taux" min="0" max="100" step="0.5" value="0">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="savePrescripteur()" style="margin-bottom:16px">➕ Ajouter le prescripteur</button>
+    <div id="prescripteurs-list"></div>
   </div>
 </div>
 
@@ -1411,6 +2383,18 @@ const HEMA_FL = [
   { id:'mono', name:'Monocytes',                         unit:'%', ref:'2–10',  lo:2,  hi:10 },
 ];
 
+// Électrophorèse de l'hémoglobine
+const EPHB_FRACTIONS = [
+  { id:'ephb_a',   name:'Hb A',   unit:'%',  ref:'95–97', lo:95,  hi:97  },
+  { id:'ephb_a2',  name:'Hb A2',  unit:'%',  ref:'1.5–3.5', lo:1.5, hi:3.5 },
+  { id:'ephb_f',   name:'Hb F',   unit:'%',  ref:'< 2',   lo:0,   hi:2   },
+  { id:'ephb_s',   name:'Hb S',   unit:'%',  ref:'0',     lo:0,   hi:0   },
+  { id:'ephb_c',   name:'Hb C',   unit:'%',  ref:'0',     lo:0,   hi:0   },
+  { id:'ephb_d',   name:'Hb D',   unit:'%',  ref:'0',     lo:0,   hi:0   },
+  { id:'ephb_e',   name:'Hb E',   unit:'%',  ref:'0',     lo:0,   hi:0   },
+];
+
+
 const BIO_GLUCIDES = [
   { id:'gly', name:'Glycémie à jeun',           unit:'g/L',   ref:'0.70–1.10', lo:0.70, hi:1.10 },
   { id:'hba', name:'HbA1c',                     unit:'%',     ref:'< 5.7',     lo:0,    hi:5.7  },
@@ -1472,6 +2456,24 @@ const ABG_ANTIBIOS = [
   'Clarithromycine','Azithromycine','Clindamycine','Métronidazole','Vancomycine',
   'Linézolide','Nitrofurantoïne','Fosfomycine','Colistine','Chloramphénicol',
 ];
+
+const AFG_ANTIFONGIQUES = [
+  'Fluconazole','Itraconazole','Voriconazole','Kétoconazole',
+  'Amphotéricine B','Flucytosine (5-FC)','Caspofongine','Micafongine',
+  'Anidulafongine','Nystatin','Terbinafine','Clotrimazole',
+];
+
+let _abgMode = 'abg'; // 'abg' | 'afg'
+
+function setAbgMode(mode) {
+  _abgMode = mode;
+  document.getElementById('abg-grid').style.display = mode === 'abg' ? '' : 'none';
+  document.getElementById('afg-grid').style.display = mode === 'afg' ? '' : 'none';
+  document.getElementById('btn-abg-mode').className = 'btn ' + (mode === 'abg' ? 'btn-primary' : 'btn-outline');
+  document.getElementById('btn-afg-mode').className = 'btn ' + (mode === 'afg' ? 'btn-primary' : 'btn-outline');
+  const label = document.getElementById('abg-title-label');
+  if (label) label.textContent = '💊 ' + (mode === 'abg' ? 'Antibiogramme' : 'Antifongigramme');
+}
 
 const PARA_EPS = [
   'Ascaris lumbricoides','Trichuris trichiura','Ankylostoma / Necator',
@@ -1663,18 +2665,217 @@ function calcLDL() {
   }
 }
 
+// Données Widal
+const WIDAL_ANTIGENES = [
+  { id:'to',  name:'Salmonella typhi O (TO)',       seuil: 160 },
+  { id:'th',  name:'Salmonella typhi H (TH)',        seuil: 160 },
+  { id:'ao',  name:'Salmonella paratyphi A O (AO)', seuil: 80  },
+  { id:'bo',  name:'Salmonella paratyphi B O (BO)', seuil: 80  },
+];
+const WIDAL_DILUTIONS = ['Négatif','1/40','1/80','1/160','1/320','1/640','1/1280'];
+
 function buildHema() {
   const b1 = document.getElementById('hema-body');
   const b2 = document.getElementById('hema-fl-body');
   b1.innerHTML = ''; b2.innerHTML = '';
+
+  // NFS standard
   HEMA_PARAMS.forEach(p => makeParamRow(p, b1));
-  HEMA_FL.forEach(p => makeParamRow(p, b2));
-  // Brancher calcul auto des constantes sur hb, ht, gr
+
+  // Formule leucocytaire avec valeurs absolues
+  HEMA_FL.forEach(p => {
+    const tr = document.createElement('tr');
+    const profile = getPatientProfile();
+    const dynRef = getRef(p.id, profile);
+    const refDisplay = dynRef ? dynRef.ref : (p.ref || '');
+    tr.innerHTML = `
+      <td style="font-size:13px">${p.name}</td>
+      <td><input type="number" id="v_${p.id}" step="any" min="0" max="100" style="width:75px"
+          oninput="onParamInput('${p.id}'); calcFLAbsolues()"></td>
+      <td>
+        <span class="unit">%</span>
+        <span style="display:inline-block;margin-left:6px;min-width:60px;font-size:11px;color:var(--accent);font-weight:600" id="abs_${p.id}"></span>
+        <span style="font-size:10px;color:var(--text-muted)">G/L</span>
+      </td>
+      <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
+      <td><span class="interp" id="i_${p.id}">—</span></td>`;
+    b2.appendChild(tr);
+  });
+
+  // Électrophorèse Hb
+  const b3 = document.getElementById('ephb-body');
+  if (b3) {
+    b3.innerHTML = '';
+    EPHB_FRACTIONS.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-size:13px">${p.name}</td>
+        <td><input type="number" id="${p.id}" step="0.1" min="0" max="100" style="width:80px"
+            oninput="checkEphbTotal()"></td>
+        <td><span class="ref-range">${p.ref}</span></td>
+        <td><span class="interp" id="i_${p.id}">—</span></td>`;
+      b3.appendChild(tr);
+    });
+    // Ligne total
+    const trTotal = document.createElement('tr');
+    trTotal.innerHTML = `<td style="font-weight:700">Total</td>
+      <td><span id="ephb_total" style="font-weight:700;color:var(--accent)">0</span> %</td>
+      <td colspan="2" style="font-size:11.5px;color:var(--text-muted)">Doit être égal à 100%</td>`;
+    b3.appendChild(trTotal);
+  }
+
+  // Widal
+  buildWidal();
+
+  // Brancher calculs auto
   ['v_hb','v_ht','v_gr'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', calcConstantes);
   });
+  // Brancher calcul FL absolues sur GB
+  const gbEl = document.getElementById('v_gbc');
+  if (gbEl) gbEl.addEventListener('input', calcFLAbsolues);
 }
+
+function calcFLAbsolues() {
+  const gb = parseFloat(document.getElementById('v_gbc')?.value || '0');
+  HEMA_FL.forEach(p => {
+    const pct = parseFloat(document.getElementById('v_' + p.id)?.value || '');
+    const absEl = document.getElementById('abs_' + p.id);
+    if (absEl) {
+      if (!isNaN(pct) && !isNaN(gb) && gb > 0) {
+        absEl.textContent = (pct * gb / 100).toFixed(2);
+      } else {
+        absEl.textContent = '';
+      }
+    }
+  });
+}
+
+function checkEphbTotal() {
+  let total = 0;
+  EPHB_FRACTIONS.forEach(p => {
+    const v = parseFloat(document.getElementById(p.id)?.value || '0');
+    if (!isNaN(v)) total += v;
+    // Interprétation simple
+    const interpEl = document.getElementById('i_' + p.id);
+    if (interpEl) {
+      const val = parseFloat(document.getElementById(p.id)?.value || '');
+      if (isNaN(val) || document.getElementById(p.id)?.value === '') { interpEl.textContent = '—'; interpEl.className='interp'; return; }
+      if (val < p.lo || val > p.hi) { interpEl.textContent = 'Anormal'; interpEl.className='interp hi'; }
+      else { interpEl.textContent = 'Normal'; interpEl.className='interp ok'; }
+    }
+  });
+  const totalEl = document.getElementById('ephb_total');
+  if (totalEl) {
+    totalEl.textContent = total.toFixed(1);
+    totalEl.style.color = Math.abs(total - 100) < 0.5 ? 'var(--success)' : 'var(--danger)';
+  }
+}
+
+// ── CRP par paliers ────────────────────────────────────────
+function interpretCRP() {
+  const sel = document.getElementById('crp_valeur');
+  const interpEl = document.getElementById('crp_interp');
+  if (!sel || !interpEl) return;
+  const v = sel.value;
+  if (!v) { interpEl.textContent = '—'; interpEl.style.background = 'var(--bg)'; interpEl.style.color = 'inherit'; return; }
+  if (v === 'neg') {
+    interpEl.textContent = '✓ NÉGATIF — Absence de syndrome inflammatoire (CRP < 6 mg/L)';
+    interpEl.style.background = '#e7f7ec'; interpEl.style.color = '#15803d';
+  } else {
+    const n = parseInt(v);
+    let comment = '';
+    if (n <= 24)  comment = 'Syndrome inflammatoire modéré';
+    else if (n <= 96)  comment = 'Syndrome inflammatoire important';
+    else comment = 'Syndrome inflammatoire majeur — Infection bactérienne sévère probable';
+    interpEl.textContent = `⚠ POSITIF — ${n} mg/L — ${comment}`;
+    interpEl.style.background = '#fde8e8'; interpEl.style.color = '#b91c1c';
+  }
+}
+
+// ── Widal ──────────────────────────────────────────────────
+function buildWidal() {
+  const b = document.getElementById('widal-body');
+  if (!b) return;
+  b.innerHTML = '';
+  WIDAL_ANTIGENES.forEach(ag => {
+    const tr = document.createElement('tr');
+    const opts = WIDAL_DILUTIONS.map(d => `<option value="${d}">${d}</option>`).join('');
+    const cinetOpts = '<option value="">—</option><option value="montant">↗ Montant</option><option value="stable">→ Stable</option><option value="descendant">↘ Descendant</option>';
+    tr.innerHTML = `
+      <td style="font-size:12.5px;white-space:nowrap">${ag.name}<br><span style="font-size:10.5px;color:var(--text-muted)">Seuil significatif : 1/${ag.seuil}</span></td>
+      <td><select id="widal_${ag.id}" onchange="interpretWidal()" style="width:100px">${opts}</select></td>
+      <td><select id="widal_cin_${ag.id}" onchange="interpretWidal()" style="width:130px">${cinetOpts}</select></td>
+      <td><span id="widal_i_${ag.id}" style="font-size:12px;font-weight:600">—</span></td>`;
+    b.appendChild(tr);
+  });
+}
+
+function widalTitre(val) {
+  if (!val || val === 'Négatif') return 0;
+  const m = val.match(/1\/(\d+)/);
+  return m ? parseInt(m[1]) : 0;
+}
+
+function interpretWidal() {
+  const conclusionEl = document.getElementById('widal-conclusion');
+
+  WIDAL_ANTIGENES.forEach(ag => {
+    const titre = widalTitre(document.getElementById('widal_' + ag.id)?.value);
+    const cin = document.getElementById('widal_cin_' + ag.id)?.value || '';
+    const interpEl = document.getElementById('widal_i_' + ag.id);
+    if (!interpEl) return;
+    if (titre === 0) { interpEl.textContent = '—'; interpEl.style.color = 'inherit'; return; }
+    if (titre < ag.seuil) {
+      interpEl.textContent = 'Non significatif';
+      interpEl.style.color = 'var(--text-muted)';
+    } else {
+      interpEl.textContent = '⚠ Significatif';
+      interpEl.style.color = '#b91c1c';
+    }
+  });
+
+  // Interprétation globale automatique basée sur TO et TH
+  const to = widalTitre(document.getElementById('widal_to')?.value);
+  const th = widalTitre(document.getElementById('widal_th')?.value);
+  const cinTO = document.getElementById('widal_cin_to')?.value || '';
+  const cinTH = document.getElementById('widal_cin_th')?.value || '';
+
+  if (to === 0 && th === 0) { if (conclusionEl) conclusionEl.style.display = 'none'; return; }
+
+  let conclusion = '';
+  let color = '#b91c1c'; let bg = '#fde8e8';
+
+  if (to >= 160 && th >= 160 && cinTO === 'montant') {
+    conclusion = '🔴 PHASE D\'ÉTAT — Titres TO ≥ 1/160 et TH ≥ 1/160 avec anticorps montants. Forte suspicion de fièvre typhoïde en phase d\'état.';
+  } else if ((to >= 160 || th >= 160) && (cinTO === 'montant' || cinTH === 'montant')) {
+    conclusion = '🟠 INFECTION À L\'ÉTAT DE DÉBUT — Titres en ascension au-dessus du seuil significatif. Contrôle sérique à 10-15 jours recommandé.';
+    color = '#b45309'; bg = '#fef3c7';
+  } else if ((to >= 160 || th >= 160) && cinTO === 'descendant') {
+    conclusion = '🟡 TRACES CICATRICIELLES — Titres significatifs mais anticorps descendants. Infection ancienne probable, guérison en cours.';
+    color = '#854d0e'; bg = '#fefce8';
+  } else if (to > 0 && to < 160 && th > 0 && th < 160) {
+    conclusion = '⚪ TITRES NON SIGNIFICATIFS — Valeurs sous le seuil diagnostique. Répéter le test si suspicion clinique persistante.';
+    color = '#374151'; bg = 'var(--bg)';
+  } else if (to >= 80 && cinTO === 'stable') {
+    conclusion = '🟡 TRACES CICATRICIELLES POSSIBLES — Cinétique stable, infection ancienne non exclue.';
+    color = '#854d0e'; bg = '#fefce8';
+  } else {
+    conclusion = '⚠ Données insuffisantes pour une interprétation automatique — Corrélation clinique indispensable.';
+    color = '#374151'; bg = 'var(--bg)';
+  }
+
+  if (conclusionEl) {
+    conclusionEl.style.display = 'block';
+    conclusionEl.textContent = conclusion;
+    conclusionEl.style.background = bg;
+    conclusionEl.style.color = color;
+    conclusionEl.style.borderColor = color;
+  }
+}
+
+
 
 function buildBio() {
   [['bio-glucides-body', BIO_GLUCIDES],['bio-rein-body', BIO_REIN],
@@ -1696,12 +2897,14 @@ function buildBio() {
   });
 }
 
-function buildAbg() {
-  const g = document.getElementById('abg-grid'); g.innerHTML = '';
-  ABG_ANTIBIOS.forEach(ab => {
+function buildAbgGrid(containerId, antibioList) {
+  const g = document.getElementById(containerId);
+  if (!g) return;
+  g.innerHTML = '';
+  antibioList.forEach(ab => {
     const d = document.createElement('div');
     d.className = 'abg-row nd';
-    d.id = 'abg_' + ab.replace(/[^a-z]/gi,'_');
+    d.id = (containerId === 'abg-grid' ? 'abg_' : 'afg_') + ab.replace(/[^a-z]/gi,'_');
     d.innerHTML = `<span class="abg-name">${ab}</span>
       <select onchange="updateAbgColor(this,'${ab}')">
         <option value="nd">N/D</option>
@@ -1713,10 +2916,94 @@ function buildAbg() {
   });
 }
 
+function buildAbg() {
+  buildAbgGrid('abg-grid', ABG_ANTIBIOS);
+  buildAbgGrid('afg-grid', AFG_ANTIFONGIQUES);
+}
+
 function updateAbgColor(sel, ab) {
   const row = sel.closest('.abg-row');
   row.className = 'abg-row ' + sel.value;
 }
+
+// ── Fonctions ECBU ─────────────────────────────────────────
+function adaptBacterioForm() {
+  const type = document.getElementById('bac_type')?.value || '';
+  const isECBU = type === 'ECBU';
+  // Macroscopie surtout utile pour ECBU
+  const macroCard = document.getElementById('bac-macro-card');
+  if (macroCard) macroCard.style.display = isECBU ? '' : 'none';
+}
+
+function interpretEtatFrais(type) {
+  if (type === 'leuco') {
+    const val = parseInt(document.getElementById('ef_leuco')?.value || '0');
+    const el = document.getElementById('ef_i_leuco');
+    if (!el) return;
+    if (!val || isNaN(val)) { el.textContent = ''; el.style.color = ''; return; }
+    if (val >= 10000) { el.textContent = '⚠ Pyurie significative (≥10 000/mm³)'; el.style.color = '#b91c1c'; }
+    else if (val >= 5000) { el.textContent = '⚠ Pyurie modérée'; el.style.color = '#d97706'; }
+    else { el.textContent = '✓ Normal (< 5 000/mm³)'; el.style.color = '#15803d'; }
+    checkBacteriurie();
+  } else if (type === 'hematies') {
+    const val = parseInt(document.getElementById('ef_hematies')?.value || '0');
+    const el = document.getElementById('ef_i_hematies');
+    if (!el) return;
+    if (!val || isNaN(val)) { el.textContent = ''; el.style.color = ''; return; }
+    if (val >= 10000) { el.textContent = '⚠ Hématurie significative'; el.style.color = '#b91c1c'; }
+    else if (val >= 3000) { el.textContent = 'Hématurie modérée'; el.style.color = '#d97706'; }
+    else { el.textContent = '✓ Normal'; el.style.color = '#15803d'; }
+  }
+}
+
+function checkBacteriurie() {
+  const alertEl = document.getElementById('bacteriurie-alert');
+  if (!alertEl) return;
+  const leuco = parseInt(document.getElementById('ef_leuco')?.value || '0');
+  const bacteries = document.getElementById('ef_bacteries')?.value || '';
+  const numeration = document.getElementById('bac_numeration')?.value || '';
+
+  if (leuco >= 10000 && (bacteries.includes('Nombreuses') || numeration.includes('≥ 10⁵'))) {
+    alertEl.style.display = 'block';
+    alertEl.style.background = '#fde8e8'; alertEl.style.color = '#b91c1c'; alertEl.style.border = '1px solid #b91c1c';
+    alertEl.textContent = '⚠ INFECTION URINAIRE PROBABLE — Pyurie significative + bactériurie importante. Identification et antibiogramme recommandés.';
+  } else if (leuco >= 10000) {
+    alertEl.style.display = 'block';
+    alertEl.style.background = '#fef3c7'; alertEl.style.color = '#b45309'; alertEl.style.border = '1px solid #d97706';
+    alertEl.textContent = '⚠ Pyurie significative sans bactériurie évidente — Tuberculose urinaire ou urétrite à éliminer.';
+  } else {
+    alertEl.style.display = 'none';
+  }
+}
+
+function updateCultureFields() {
+  const val = document.getElementById('bac_culture')?.value;
+  const showFields = val === 'pos';
+  ['bac-count-field','bac-germe-field','bac-germe2-field','bac-milieu-field','bac-abg-card'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = showFields ? '' : 'none';
+  });
+}
+
+function updateGramDetail() {
+  const val = document.getElementById('bac_gram')?.value || '';
+  const commentEl = document.getElementById('bac_gram_comment');
+  if (!commentEl) return;
+  const comments = {
+    'coc_G+': 'Cocci Gram positif en amas — Morphologie évocatrice de Staphylococcus sp.',
+    'coc_G+_ch': 'Cocci Gram positif en chaînettes — Morphologie évocatrice de Streptococcus sp.',
+    'coc_G+_dp': 'Cocci Gram positif encapsulés en diplocoque — Évocateur de Streptococcus pneumoniae',
+    'coc_G-': 'Cocci Gram négatif en diplocoque intra-leucocytaires — Gonocoque / Méningocoque à suspecter',
+    'bac_G-': 'Bacilles Gram négatif — Famille des Entérobactéries ou BGN non fermentants',
+    'bac_G-_e': 'Bacilles Gram négatif entérobactéries — E. coli, Klebsiella, Proteus...à identifier',
+    'bac_G+': 'Bacilles Gram positif — Listeria, Bacillus, Clostridium à suspecter selon contexte',
+    'lev': 'Levures / Filaments mycéliens visibles — Infection fongique à confirmer (Candida, Aspergillus...)',
+    'poly': 'Flore polymorphe — Possible contamination au prélèvement, interpréter avec précaution',
+  };
+  if (!commentEl.value && comments[val]) commentEl.value = comments[val];
+}
+
+
 
 function buildSero() {
   const b = document.getElementById('sero-body'); b.innerHTML = '';
@@ -1923,7 +3210,7 @@ function getDB() { return _dbCache; }
 async function refreshDB() {
   const { data, error } = await _sb
     .from('labo_resultats')
-    .select('id, type, patient, resultats, created_at, created_by, montant')
+    .select('id, type, patient, resultats, created_at, created_by, montant, prescripteur_id, est_bpn')
     .order('created_at', { ascending: true });
   if (error) {
     console.error('Erreur de chargement Supabase:', error);
@@ -1934,6 +3221,8 @@ async function refreshDB() {
     id: row.id, type: row.type, patient: row.patient,
     resultats: row.resultats, savedAt: row.created_at,
     createdBy: row.created_by, montant: row.montant || 0,
+    prescripteur_id: row.prescripteur_id,
+    est_bpn: row.est_bpn || false,
   }));
   return _dbCache;
 }
@@ -1947,6 +3236,8 @@ async function insertRecordRemote(record) {
       resultats: record.resultats,
       created_by: _currentUser ? _currentUser.username : null,
       montant: record.montant || 0,
+      prescripteur_id: record.prescripteur_id || null,
+      est_bpn: record.type === 'Bilan prénatal',
     })
     .select()
     .single();
@@ -2026,25 +3317,93 @@ function newPatient() {
 function collectResults(type) {
   const data = {};
   if (type === 'Hématologie') {
+    // NFS
     [...HEMA_PARAMS, ...HEMA_FL].forEach(p => {
-      data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: document.getElementById('i_'+p.id)?.textContent || '' };
+      const valeur = document.getElementById('v_'+p.id)?.value || '';
+      const absEl  = document.getElementById('abs_'+p.id);
+      data[p.name] = {
+        valeur, unite: p.unit,
+        interp: document.getElementById('i_'+p.id)?.textContent || '',
+        absolu: absEl ? absEl.textContent : '',
+      };
     });
+    // Électrophorèse Hb
+    EPHB_FRACTIONS.forEach(p => {
+      const v = document.getElementById(p.id)?.value || '';
+      if (v) data[p.name] = { valeur: v, unite: '%', interp: document.getElementById('i_'+p.id)?.textContent || '' };
+    });
+    data['Profil Hb'] = document.getElementById('ephb_profil')?.value || '';
+    data['Commentaire Hb'] = document.getElementById('ephb_commentaire')?.value || '';
+    // GE / Parasitologie
+    data['GE - Résultat'] = document.getElementById('ge_result')?.value || '';
+    data['GE - Espèce'] = document.getElementById('ge_espece')?.value || '';
+    data['GE - Parasitémie (%)'] = document.getElementById('ge_para')?.value || '';
+    data['GE - Stade'] = document.getElementById('ge_stade')?.value || '';
+    data['GE - TDR'] = document.getElementById('ge_tdr')?.value || '';
+    data['GE - Observation'] = document.getElementById('ge_obs')?.value || '';
+    // Groupe sanguin
+    data['GS - ABO'] = document.getElementById('gs_abo_hema')?.value || '';
+    data['GS - Rhésus'] = document.getElementById('gs_rh_hema')?.value || '';
+    data['GS - RAI'] = document.getElementById('gs_rai_hema')?.value || '';
+    data['GS - Phénotype'] = document.getElementById('gs_phenotype_hema')?.value || '';
+    // CRP
+    data['CRP - Valeur'] = document.getElementById('crp_valeur')?.value || '';
+    data['CRP - Interprétation'] = document.getElementById('crp_interp')?.textContent || '';
+    // Widal
+    WIDAL_ANTIGENES.forEach(ag => {
+      data['Widal - ' + ag.name] = {
+        titre: document.getElementById('widal_'+ag.id)?.value || '',
+        cinetique: document.getElementById('widal_cin_'+ag.id)?.value || '',
+        interp: document.getElementById('widal_i_'+ag.id)?.textContent || '',
+      };
+    });
+    data['Widal - Conclusion'] = document.getElementById('widal-conclusion')?.textContent || '';
+
   } else if (type === 'Biochimie') {
     [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO].forEach(p => {
       data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: document.getElementById('i_'+p.id)?.textContent || '' };
     });
   } else if (type === 'Bactériologie') {
-    data['Type de prélèvement'] = document.getElementById('bac_type').value;
-    data['Examen direct'] = document.getElementById('bac_direct').value;
-    data['Culture'] = document.getElementById('bac_culture').value;
-    data['Germe identifié'] = document.getElementById('bac_germe').value;
-    data['Leucocytes /mm³'] = document.getElementById('bac_leuco').value;
-    data['Hématies /mm³'] = document.getElementById('bac_hematies').value;
-    data['Observations'] = document.getElementById('bac_obs').value;
-    ABG_ANTIBIOS.forEach(ab => {
-      const id = 'abg_' + ab.replace(/[^a-z]/gi,'_');
+    // Infos générales
+    data['Type de prélèvement'] = document.getElementById('bac_type')?.value || '';
+    data['Site / Précision'] = document.getElementById('bac_site')?.value || '';
+    data['Date de prélèvement'] = document.getElementById('bac_datetime')?.value || '';
+    // Macroscopie
+    data['Aspect'] = document.getElementById('bac_aspect')?.value || '';
+    data['Couleur'] = document.getElementById('bac_couleur')?.value || '';
+    data['Odeur'] = document.getElementById('bac_odeur')?.value || '';
+    data['pH'] = document.getElementById('bac_ph')?.value || '';
+    // État frais
+    data['Leucocytes (/mm³)'] = document.getElementById('ef_leuco')?.value || '';
+    data['Hématies (/mm³)'] = document.getElementById('ef_hematies')?.value || '';
+    data['Cellules épithéliales'] = document.getElementById('ef_epitheliales')?.value || '';
+    data['Cylindres'] = document.getElementById('ef_cylindres')?.value || '';
+    data['Cristaux'] = document.getElementById('ef_cristaux')?.value || '';
+    data['Bactéries (état frais)'] = document.getElementById('ef_bacteries')?.value || '';
+    data['Levures'] = document.getElementById('ef_levures')?.value || '';
+    data['Parasites'] = document.getElementById('ef_parasites')?.value || '';
+    data['Spermatozoïdes'] = document.getElementById('ef_sperma')?.value || '';
+    // Gram
+    data['Coloration de Gram'] = document.getElementById('bac_gram')?.value || '';
+    data['Gram - Abondance'] = document.getElementById('bac_gram_abond')?.value || '';
+    data['Gram - Commentaire'] = document.getElementById('bac_gram_comment')?.value || '';
+    // Culture
+    data['Culture'] = document.getElementById('bac_culture')?.value || '';
+    data['Numération bactérienne'] = document.getElementById('bac_numeration')?.value || '';
+    data['Germe identifié'] = document.getElementById('bac_germe')?.value || '';
+    data['2ème germe'] = document.getElementById('bac_germe2')?.value || '';
+    data['Milieux de culture'] = document.getElementById('bac_milieux')?.value || '';
+    data['Observations'] = document.getElementById('bac_obs')?.value || '';
+    data['Mode: ABG/AFG'] = _abgMode;
+    data['Commentaire antibiogramme'] = document.getElementById('bac_abg_comment')?.value || '';
+    // Antibiogramme / Antifongigramme
+    const grid = _abgMode === 'abg' ? ABG_ANTIBIOS : AFG_ANTIFONGIQUES;
+    const prefix = _abgMode === 'abg' ? 'abg_' : 'afg_';
+    const keyPrefix = _abgMode === 'abg' ? 'ABG_' : 'AFG_';
+    grid.forEach(ab => {
+      const id = prefix + ab.replace(/[^a-z]/gi,'_');
       const sel = document.querySelector('#' + id + ' select');
-      data['ABG_' + ab] = sel ? sel.value : '';
+      data[keyPrefix + ab] = sel ? sel.value : 'nd';
     });
   } else if (type === 'Sérologie') {
     SERO_TESTS.forEach(t => {
@@ -2136,7 +3495,8 @@ async function saveRecord(type) {
   toast('Enregistrement en cours…');
   const resultats = collectResults(type);
   const montant = calculateMontant(type, resultats);
-  const saved = await insertRecordRemote({ patient: p, type, resultats, montant });
+  const prescripteurId = document.getElementById('p_prescripteur_id')?.value || null;
+  const saved = await insertRecordRemote({ patient: p, type, resultats, montant, prescripteur_id: prescripteurId || null });
   if (saved) {
     toast('Fiche ' + type + ' enregistrée — ' + montant.toLocaleString('fr-FR') + ' FCFA ✓', 'ok');
   }
@@ -2956,8 +4316,7 @@ function countAnomalies(resultats) {
 }
 
 async function renderStats() {
-  // Indicateur de chargement dans les KPI
-  ['kpi-total','kpi-month','kpi-anomalies','kpi-agents'].forEach(id => {
+  ['kpi-total','kpi-month','kpi-anomalies','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.querySelector('.kpi-val').textContent = '…';
   });
@@ -2965,14 +4324,19 @@ async function renderStats() {
   await refreshDB();
   const db = getDB();
 
+  // Appliquer le filtre de période
+  const dbPeriode = filterDbByPeriode(db);
+
   if (!db.length) {
-    document.getElementById('chart-by-type').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
-    document.getElementById('chart-monthly').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
-    document.getElementById('chart-by-agent').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
-    document.getElementById('chart-anomalies').innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
-    ['kpi-total','kpi-month','kpi-anomalies','kpi-agents'].forEach(id => {
-      document.getElementById(id).querySelector('.kpi-val').textContent = '0';
+    ['chart-by-type','chart-monthly','chart-by-agent','chart-anomalies','chart-recettes-type','chart-recettes-monthly'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
     });
+    ['kpi-total','kpi-month','kpi-anomalies','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.querySelector('.kpi-val').textContent = '0';
+    });
+    renderRistournes([]);
     return;
   }
 
@@ -2981,12 +4345,12 @@ async function renderStats() {
 
   // ── KPI ─────────────────────────────────────────────────────
   const total = db.length;
-  const thisMonthCount = db.filter(r => (r.savedAt || '').startsWith(thisMonth)).length;
-  const totalAnomalies = db.reduce((sum, r) => sum + countAnomalies(r.resultats), 0);
-  const agents = new Set(db.map(r => r.createdBy).filter(Boolean));
+  const periodeCount = dbPeriode.length;
+  const totalAnomalies = dbPeriode.reduce((sum, r) => sum + countAnomalies(r.resultats), 0);
+  const agents = new Set(dbPeriode.map(r => r.createdBy).filter(Boolean));
 
   document.getElementById('kpi-total').querySelector('.kpi-val').textContent = total;
-  document.getElementById('kpi-month').querySelector('.kpi-val').textContent = thisMonthCount;
+  document.getElementById('kpi-month').querySelector('.kpi-val').textContent = periodeCount;
   document.getElementById('kpi-anomalies').querySelector('.kpi-val').textContent = totalAnomalies;
   document.getElementById('kpi-agents').querySelector('.kpi-val').textContent = agents.size || '—';
 
@@ -3015,7 +4379,7 @@ async function renderStats() {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
     const label = d.toLocaleDateString('fr-FR', { month: 'short' });
-    months.push({ key, label, count: db.filter(r => (r.savedAt||'').startsWith(key)).length });
+    months.push({ key, label, count: dbPeriode.filter(r => (r.savedAt||'').startsWith(key) || (r.patient?.date||'').startsWith(key)).length });
   }
   const maxMonth = Math.max(...months.map(m => m.count), 1);
 
@@ -3032,7 +4396,7 @@ async function renderStats() {
 
   // ── Répartition par agent (barres + SVG camembert) ──────────
   const byAgent = {};
-  db.forEach(r => {
+  dbPeriode.forEach(r => {
     const a = r.createdBy || 'Inconnu';
     byAgent[a] = (byAgent[a] || 0) + 1;
   });
@@ -3166,6 +4530,12 @@ async function renderStats() {
     <div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-align:center">
       Total 6 mois : <strong>${recMonths.reduce((s,m)=>s+m.montant,0).toLocaleString('fr-FR')} FCFA</strong>
     </div>`;
+
+  // Ristournes sur la période filtrée
+  await renderRistournes(dbPeriode);
+  // Section admin prescripteurs
+  const adminCard = document.getElementById('prescripteurs-admin-card');
+  if (adminCard) adminCard.style.display = isAdmin() ? '' : 'none';
 }
 
 // ============================================================
@@ -3441,6 +4811,371 @@ function resetTarifsConfig() {
 }
 
 // ============================================================
+// PRESCRIPTEURS
+// ============================================================
+
+let _prescripteurs = [];
+
+async function loadPrescripteurs() {
+  const { data, error } = await _sb
+    .from('labo_prescripteurs')
+    .select('*')
+    .eq('actif', true)
+    .order('nom');
+  if (!error) {
+    _prescripteurs = data || [];
+    refreshPrescripteurSelects();
+    renderPrescripteursList();
+  }
+}
+
+function refreshPrescripteurSelects() {
+  const opts = '<option value="">— Choisir un prescripteur —</option>'
+    + _prescripteurs.map(p =>
+        `<option value="${p.id}">${p.nom}${p.specialite ? ' · ' + p.specialite : ''}</option>`
+      ).join('');
+  document.querySelectorAll('select[id="p_prescripteur_id"]').forEach(el => {
+    const cur = el.value;
+    el.innerHTML = opts;
+    el.value = cur;
+  });
+}
+
+function onPrescripteurChange() {
+  const sel = document.getElementById('p_prescripteur_id');
+  const id = sel?.value;
+  const presc = _prescripteurs.find(p => p.id == id);
+  if (presc) {
+    const medEl = document.getElementById('p_medecin');
+    if (medEl && !medEl.value) medEl.value = presc.nom;
+  }
+}
+
+function showAddPrescripteur() {
+  showView('stats');
+  document.getElementById('prescripteurs-admin-card')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function savePrescripteur() {
+  const nom = document.getElementById('presc_nom')?.value?.trim();
+  if (!nom) { toast('Nom du prescripteur obligatoire', 'err'); return; }
+  const payload = {
+    nom,
+    specialite: document.getElementById('presc_spec')?.value || '',
+    structure:  document.getElementById('presc_struct')?.value || '',
+    taux_ristourne: parseFloat(document.getElementById('presc_taux')?.value || '0'),
+  };
+  const { error } = await _sb.from('labo_prescripteurs').insert(payload);
+  if (error) { toast('Erreur : ' + error.message, 'err'); return; }
+  toast('Prescripteur ajouté ✓', 'ok');
+  ['presc_nom','presc_spec','presc_struct'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('presc_taux').value = '0';
+  await loadPrescripteurs();
+}
+
+async function deletePrescripteur(id) {
+  if (!confirm('Désactiver ce prescripteur ?')) return;
+  await _sb.from('labo_prescripteurs').update({ actif: false }).eq('id', id);
+  await loadPrescripteurs();
+  toast('Prescripteur désactivé', 'ok');
+}
+
+function renderPrescripteursList() {
+  const el = document.getElementById('prescripteurs-list');
+  if (!el) return;
+  if (!_prescripteurs.length) { el.innerHTML = '<p style="font-size:12.5px;color:var(--text-muted)">Aucun prescripteur enregistré.</p>'; return; }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr style="background:var(--bg)">
+      <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">Nom</th>
+      <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">Spécialité</th>
+      <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">Structure</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border)">Ristourne %</th>
+      <th style="padding:8px;border-bottom:1px solid var(--border)"></th>
+    </tr></thead>
+    <tbody>
+      ${_prescripteurs.map(p => `<tr>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border)">${p.nom}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.specialite||'—'}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.structure||'—'}</td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--accent)">${p.taux_ristourne||0} %</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border)">
+          <button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deletePrescripteur(${p.id})">✕</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ============================================================
+// FILTRES TEMPORELS DES STATS
+// ============================================================
+
+let _statsPeriode = 'mois'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
+
+function setStatsPeriode(periode) {
+  _statsPeriode = periode;
+  // Mettre en évidence le bouton actif
+  ['jour','semaine','mois','tout'].forEach(p => {
+    const btn = document.getElementById('stats-btn-' + p);
+    if (btn) btn.classList.toggle('active', p === periode);
+  });
+  renderStats();
+}
+
+function getStatsDateRange() {
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  let from = null, to = today, label = '';
+
+  if (_statsPeriode === 'jour') {
+    from = today; label = "Aujourd'hui (" + today.split('-').reverse().join('/') + ')';
+  } else if (_statsPeriode === 'semaine') {
+    const d = new Date(now); d.setDate(d.getDate() - d.getDay() + 1);
+    from = d.toISOString().slice(0,10);
+    label = 'Semaine du ' + from.split('-').reverse().join('/');
+  } else if (_statsPeriode === 'mois') {
+    from = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+    label = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
+  } else if (_statsPeriode === 'tout') {
+    from = null; label = 'Toute la période';
+  } else if (_statsPeriode === 'custom') {
+    from = document.getElementById('stats-date-from')?.value || null;
+    to   = document.getElementById('stats-date-to')?.value || today;
+    label = (from ? from.split('-').reverse().join('/') : '...') + ' → ' + to.split('-').reverse().join('/');
+  }
+
+  const labelEl = document.getElementById('stats-periode-label');
+  if (labelEl) labelEl.textContent = label;
+  return { from, to };
+}
+
+function filterDbByPeriode(db) {
+  const { from, to } = getStatsDateRange();
+  return db.filter(r => {
+    const date = (r.patient?.date || r.savedAt || '').slice(0,10);
+    if (from && date < from) return false;
+    if (to   && date > to)   return false;
+    return true;
+  });
+}
+
+// ============================================================
+// RISTOURNES PRESCRIPTEURS
+// ============================================================
+
+async function renderRistournes(db) {
+  const el = document.getElementById('ristournes-table');
+  if (!el || !_prescripteurs.length) {
+    if (el) el.innerHTML = '<p style="font-size:12.5px;color:var(--text-muted)">Aucun prescripteur enregistré. Ajoutez des prescripteurs ci-dessous.</p>';
+    return;
+  }
+
+  // Pour chaque prescripteur, calculer BPN + extra-BPN
+  const rows = _prescripteurs.map(presc => {
+    const fiches = db.filter(r => r.prescripteur_id == presc.id || (r.patient?.medecin || '').includes(presc.nom));
+    const bpn = fiches.filter(r => r.type === 'Bilan prénatal');
+    const extraBPN = fiches.filter(r => r.type !== 'Bilan prénatal');
+    const montantExtraBPN = extraBPN.reduce((s, r) => s + (r.montant || 0), 0);
+    const ristourne = Math.round(montantExtraBPN * (presc.taux_ristourne || 0) / 100);
+    return { presc, bpn: bpn.length, extraBPN: extraBPN.length, montantExtraBPN, ristourne };
+  }).filter(r => r.bpn + r.extraBPN > 0);
+
+  if (!rows.length) {
+    el.innerHTML = '<p style="font-size:12.5px;color:var(--text-muted)">Aucune activité prescripteur sur cette période.</p>';
+    return;
+  }
+
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr style="background:var(--bg)">
+      <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">Prescripteur</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border)">BPN (nb)</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border)">Ristourne BPN</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border)">Examens extra-BPN</th>
+      <th style="padding:8px;text-align:right;border-bottom:1px solid var(--border)">Montant extra-BPN</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border)">Taux</th>
+      <th style="padding:8px;text-align:right;border-bottom:1px solid var(--border);color:#15803d;font-weight:700">Ristourne due</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map(r => `<tr>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${r.presc.nom}<br><span style="font-size:11px;color:var(--text-muted);font-weight:400">${r.presc.specialite||''}</span></td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)">${r.bpn}</td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);color:var(--text-muted);font-style:italic;font-size:11px">0 FCFA<br>(règle : pas de ristourne BPN)</td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)">${r.extraBPN}</td>
+        <td style="padding:7px 8px;text-align:right;border-bottom:1px solid var(--border)">${r.montantExtraBPN.toLocaleString('fr-FR')} F</td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--accent)">${r.presc.taux_ristourne||0} %</td>
+        <td style="padding:7px 8px;text-align:right;border-bottom:1px solid var(--border);font-weight:700;color:#15803d;font-size:13px">${r.ristourne.toLocaleString('fr-FR')} F</td>
+      </tr>`).join('')}
+      <tr style="background:var(--bg)">
+        <td colspan="6" style="padding:8px;font-weight:700;text-align:right">Total ristournes dues :</td>
+        <td style="padding:8px;font-weight:800;color:#15803d;font-size:14px;text-align:right">${rows.reduce((s,r)=>s+r.ristourne,0).toLocaleString('fr-FR')} FCFA</td>
+      </tr>
+    </tbody>
+  </table>`;
+}
+
+// ============================================================
+// BIOCHIMIE PARAMÉTRABLE (unités et refs modifiables)
+// ============================================================
+
+// Charge les préférences utilisateur pour les refs bio
+function getBioConfig() {
+  try {
+    return JSON.parse(localStorage.getItem('bio_config') || 'null') || {};
+  } catch(e) { return {}; }
+}
+function saveBioConfig(cfg) {
+  localStorage.setItem('bio_config', JSON.stringify(cfg));
+}
+
+// Applique les configs personnalisées aux inputs d'une ligne
+function applyBioConfig(paramId) {
+  const cfg = getBioConfig();
+  if (!cfg[paramId]) return;
+  const refEl = document.getElementById('ref_' + paramId);
+  const unitEl = document.querySelector(`#panel-bio .unit[data-id="${paramId}"]`);
+  if (refEl && cfg[paramId].ref) refEl.textContent = cfg[paramId].ref;
+}
+
+function showBioConfig() {
+  const cfg = getBioConfig();
+  const allParams = [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO];
+  const modal = document.getElementById('bio-config-modal');
+  if (!modal) return;
+
+  const rows = allParams.map(p => {
+    const cur = cfg[p.id] || {};
+    return `<tr>
+      <td style="padding:5px 8px;font-size:12.5px">${p.name}</td>
+      <td style="padding:5px 8px"><input type="text" id="cfg_unit_${p.id}" value="${cur.unit||p.unit}" style="width:80px;font-size:12px"></td>
+      <td style="padding:5px 8px"><input type="text" id="cfg_ref_${p.id}" value="${cur.ref||p.ref||''}" style="width:120px;font-size:12px" placeholder="ex: 0.70–1.10"></td>
+      <td style="padding:5px 8px"><input type="number" id="cfg_lo_${p.id}" value="${cur.lo||p.lo||''}" style="width:70px;font-size:12px" step="any"></td>
+      <td style="padding:5px 8px"><input type="number" id="cfg_hi_${p.id}" value="${cur.hi||p.hi||''}" style="width:70px;font-size:12px" step="any"></td>
+    </tr>`;
+  }).join('');
+
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+      <div style="background:white;border-radius:var(--radius-lg);padding:24px;width:100%;max-width:700px;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <h2 style="font-size:16px;font-weight:700">⚙ Configuration des paramètres biochimiques</h2>
+          <button onclick="closeBioConfig()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted)">✕</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Modifiez les unités et plages de référence selon les valeurs de votre laboratoire. Ces paramètres s'appliqueront à tous les nouveaux bilans.</p>
+        <div style="overflow-x:auto;max-height:60vh;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead style="position:sticky;top:0;background:var(--bg)"><tr>
+              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Paramètre</th>
+              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Unité</th>
+              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Référence (texte)</th>
+              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Borne basse</th>
+              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Borne haute</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-primary" onclick="saveBioConfigUI()">💾 Enregistrer</button>
+          <button class="btn btn-outline" onclick="resetBioConfig()">↺ Remettre les défauts</button>
+          <button class="btn btn-outline" onclick="closeBioConfig()">Annuler</button>
+        </div>
+      </div>
+    </div>`;
+  modal.style.display = 'block';
+}
+
+function saveBioConfigUI() {
+  const allParams = [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO];
+  const cfg = {};
+  allParams.forEach(p => {
+    cfg[p.id] = {
+      unit: document.getElementById('cfg_unit_'+p.id)?.value || p.unit,
+      ref:  document.getElementById('cfg_ref_'+p.id)?.value || '',
+      lo:   parseFloat(document.getElementById('cfg_lo_'+p.id)?.value || p.lo || '0'),
+      hi:   parseFloat(document.getElementById('cfg_hi_'+p.id)?.value || p.hi || '999'),
+    };
+  });
+  saveBioConfig(cfg);
+  closeBioConfig();
+  updateAllRefs();
+  toast('Configuration biochimie enregistrée ✓', 'ok');
+}
+
+function resetBioConfig() {
+  if (!confirm('Remettre toutes les références aux valeurs par défaut ?')) return;
+  localStorage.removeItem('bio_config');
+  closeBioConfig();
+  updateAllRefs();
+  toast('Références biochimiques réinitialisées', 'ok');
+}
+
+function closeBioConfig() {
+  const modal = document.getElementById('bio-config-modal');
+  if (modal) { modal.innerHTML = ''; modal.style.display = 'none'; }
+}
+
+// ============================================================
+// BILAN DE ROUTINE — CHECKBOXES & FACTURATION TEMPS RÉEL
+// ============================================================
+
+const ROUTINE_PACK = [
+  { id:'rt_nfs',     label:'NFS complète',           prix: 3500 },
+  { id:'rt_ge',      label:'Goutte épaisse (GE)',    prix: 2500 },
+  { id:'rt_crp',     label:'CRP (Latex)',             prix: 2000 },
+  { id:'rt_swf',     label:'Widal & Félix (SWF)',    prix: 3000 },
+  { id:'rt_gly',     label:'Glycémie à jeun',         prix: 1000 },
+  { id:'rt_gs',      label:'Groupe sanguin ABO/Rh',  prix: 3000 },
+  { id:'rt_uree',    label:'Urée',                    prix: 1500 },
+  { id:'rt_crea',    label:'Créatinine',              prix: 1500 },
+  { id:'rt_chol',    label:'Cholestérol total',       prix: 2000 },
+  { id:'rt_trig',    label:'Triglycérides',           prix: 2000 },
+  { id:'rt_transam', label:'Transaminases (ASAT/ALAT)',prix: 3000 },
+];
+
+function buildRoutineCheckboxes() {
+  const container = document.getElementById('routine-checkboxes');
+  if (!container) return;
+  const tarifsBase = getTarifsBase();
+  container.innerHTML = ROUTINE_PACK.map(item => {
+    const prix = tarifsBase[item.label] || item.prix;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)">
+      <input type="checkbox" id="chk_${item.id}" onchange="calcRoutineTotal()"
+        style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer">
+      <label for="chk_${item.id}" style="flex:1;cursor:pointer;font-size:13px">${item.label}</label>
+      <input type="number" id="prix_${item.id}" value="${prix}" min="0" step="100"
+        style="width:85px;text-align:right;font-weight:600;color:var(--accent);font-size:12.5px"
+        oninput="calcRoutineTotal()">
+      <span style="font-size:11.5px;color:var(--text-muted)">FCFA</span>
+    </div>`;
+  }).join('');
+  calcRoutineTotal();
+}
+
+function calcRoutineTotal() {
+  let total = 0;
+  let count = 0;
+  ROUTINE_PACK.forEach(item => {
+    const chk = document.getElementById('chk_' + item.id);
+    const prix = parseInt(document.getElementById('prix_' + item.id)?.value || '0');
+    if (chk && chk.checked) { total += prix; count++; }
+  });
+  const totalEl = document.getElementById('routine-total');
+  const countEl = document.getElementById('routine-count');
+  if (totalEl) totalEl.textContent = total.toLocaleString('fr-FR') + ' FCFA';
+  if (countEl) countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
+  // Mettre à jour le montant estimé global
+  const mpEl = document.getElementById('montant-preview');
+  if (mpEl) { mpEl.textContent = total.toLocaleString('fr-FR') + ' FCFA'; mpEl.dataset.montant = total; }
+}
+
+function selectAllRoutine(checked) {
+  ROUTINE_PACK.forEach(item => {
+    const chk = document.getElementById('chk_' + item.id);
+    if (chk) chk.checked = checked;
+  });
+  calcRoutineTotal();
+}
+
+// ============================================================
 // TOAST
 // ============================================================
 
@@ -3705,11 +5440,13 @@ function initApp() {
   buildSero();
   buildParaEPS();
   buildRoutine();
+  buildRoutineCheckboxes();
   buildGS();
   buildBpnNfs();
   buildBpnBio();
   buildBpnSero();
   updateUserBadge();
+  loadPrescripteurs(); // charge les prescripteurs en arrière-plan
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -3722,5 +5459,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 </div><!-- /#app-root -->
+<!-- Modal configuration biochimie -->
+<div id="bio-config-modal" style="display:none"></div>
 </body>
 </html>
