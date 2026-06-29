@@ -1699,6 +1699,17 @@ select {
         </table>
       </div>
 
+      <div class="section-label">Formule leucocytaire</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue (G/L)</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
+          <tbody id="bpn-fl-body"></tbody>
+        </table>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
+        💡 Les valeurs absolues (G/L) sont calculées automatiquement : % × GB / 100
+      </div>
+
       <div class="section-label">Biochimie</div>
       <div class="table-wrap">
         <table class="result-table">
@@ -1806,7 +1817,7 @@ select {
         <option value="">Toutes les analyses</option>
         <option>Hématologie</option><option>Biochimie</option><option>Bactériologie</option>
         <option>Sérologie</option><option>Parasitologie</option>
-        <option>Bilan de routine</option><option>Groupe sanguin</option><option>Bilan prénatal</option>
+        <option>Groupe sanguin</option><option>Bilan prénatal</option>
       </select>
       <select id="filter-sort" onchange="renderHistory()" style="width:auto">
         <option value="desc">Plus récent</option>
@@ -1979,21 +1990,53 @@ select {
     </div>
   </div>
 
-  <!-- Configuration des tarifs -->
+  <!-- Examens & Tarification (identique à la page d'accueil, prix synchronisés) -->
   <div class="card" id="tarifs-config-card">
-    <div class="card-title">💰 Configuration des tarifs (FCFA)</div>
-    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">Ces tarifs sont appliqués automatiquement à chaque enregistrement. Pour Biochimie et Sérologie, le prix par paramètre s'ajoute au tarif de base.</p>
+    <div class="card-title" style="justify-content:space-between">
+      <span>📋 Examens demandés & Tarification par défaut</span>
+      <button onclick="showAddExamenModal()" class="btn btn-primary" style="padding:5px 12px;font-size:12px">➕ Ajouter un examen</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+      Modifiez les prix par défaut ou ajoutez vos propres examens. Les changements s'appliquent immédiatement sur la fiche d'accueil.
+    </p>
 
-    <div class="card-title" style="font-size:12px;margin-bottom:8px">📋 Tarifs de base par type d'analyse</div>
-    <div id="tarifs-base-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px"></div>
-
-    <div class="card-title" style="font-size:12px;margin-bottom:8px">🔬 Tarifs par paramètre individuel</div>
-    <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">S'appliquent uniquement si le paramètre a une valeur saisie (Biochimie et Sérologie)</div>
-    <div id="tarifs-params-list" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;max-height:320px;overflow-y:auto;padding-right:4px"></div>
+    <div id="admin-examens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px"></div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-      <button class="btn btn-primary" onclick="saveTarifsConfig()">💾 Enregistrer</button>
-      <button class="btn btn-outline" onclick="resetTarifsConfig()">↺ Remettre les défauts</button>
+      <button class="btn btn-primary" onclick="saveAdminTarifs()">💾 Enregistrer les prix</button>
+      <button class="btn btn-outline" onclick="resetAdminTarifs()">↺ Remettre les prix par défaut</button>
+    </div>
+  </div>
+
+  <!-- Modal ajout d'examen -->
+  <div id="add-examen-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px">
+    <div style="background:white;border-radius:var(--radius-lg);padding:28px 32px;width:100%;max-width:480px;box-shadow:var(--shadow-lg)">
+      <h3 style="font-size:15px;font-weight:700;color:var(--cpmi-deep);margin-bottom:18px">➕ Ajouter un examen personnalisé</h3>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Nom de l'examen <span class="req">*</span></label>
+        <input type="text" id="new_ex_label" placeholder="ex. Scanner thoracique, Ferritinémie...">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Groupe / Catégorie</label>
+        <select id="new_ex_groupe">
+          <option value="🩸 Hématologie">🩸 Hématologie</option>
+          <option value="🧪 Biochimie">🧪 Biochimie</option>
+          <option value="💉 Sérologie">💉 Sérologie</option>
+          <option value="🦠 Bactériologie">🦠 Bactériologie</option>
+          <option value="🦟 Parasitologie">🦟 Parasitologie</option>
+          <option value="🩸 Groupe sanguin">🩸 Groupe sanguin</option>
+          <option value="🤰 Bilan prénatal">🤰 Bilan prénatal</option>
+          <option value="🔬 Autres">🔬 Autres</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:18px">
+        <label>Prix (FCFA)</label>
+        <input type="number" id="new_ex_prix" value="0" min="0" step="100">
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="addExamenPersonnalise()">Ajouter</button>
+        <button class="btn btn-outline" onclick="document.getElementById('add-examen-modal').style.display='none'">Annuler</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2239,8 +2282,8 @@ function updateAllRefs() {
       interpEl.className = 'interp ' + (interp === 'Élevé' ? 'hi' : interp === 'Bas' ? 'lo' : interp === 'Normal' ? 'ok' : '');
     }
   });
-  // BPN NFS
-  [...BPN_NFS, ...BPN_BIO].forEach(p => {
+  // BPN NFS + FL
+  [...BPN_NFS, ...BPN_BIO, ...BPN_FL].forEach(p => {
     const ref = getRef(p.id, profile);
     if (!ref) return;
     const refEl = document.getElementById('ref_' + p.id);
@@ -2269,11 +2312,10 @@ function updateAllRefs() {
 // Tarifs de base par type d'analyse (modifiables dans la page config)
 const TARIFS_BASE_DEFAULT = {
   'Hématologie':      3500,
-  'Biochimie':        0,    // variable selon paramètres
+  'Biochimie':        0,
   'Bactériologie':    5000,
-  'Sérologie':        0,    // variable selon tests
+  'Sérologie':        0,
   'Parasitologie':    2500,
-  'Bilan de routine': 8000,
   'Groupe sanguin':   3000,
   'Bilan prénatal':   25000,
 };
@@ -2343,16 +2385,16 @@ function updateMontant(type) {
 }
 
 const HEMA_PARAMS = [
-  { id:'hb',   name:'Hémoglobine (Hb)',       unit:'g/dL',  refM:'13–17',   refF:'12–16',  lo:12, hi:17  },
-  { id:'ht',   name:'Hématocrite (Ht)',        unit:'%',     refM:'40–54',   refF:'37–47',  lo:37, hi:54  },
-  { id:'gbc',  name:'Globules blancs (GB)',    unit:'10³/µL',refM:'4–10',    refF:'4–10',   lo:4,  hi:10  },
-  { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL',refM:'4.5–5.5', refF:'4.0–5.0',lo:4.0,hi:5.5 },
-  { id:'plt',  name:'Plaquettes',             unit:'10³/µL',refM:'150–400', refF:'150–400',lo:150,hi:400 },
-  { id:'vgm',  name:'VGM ⚙',                 unit:'fL',    refM:'80–100',  refF:'80–100', lo:80, hi:100, calc:true },
-  { id:'tcmh', name:'TCMH ⚙',                unit:'pg',    refM:'27–32',   refF:'27–32',  lo:27, hi:32,  calc:true },
-  { id:'ccmh', name:'CCMH ⚙',               unit:'g/dL',  refM:'32–36',   refF:'32–36',  lo:32, hi:36,  calc:true },
-  { id:'ret',  name:'Réticulocytes',          unit:'%',     refM:'0.5–1.5', refF:'0.5–1.5',lo:0.5,hi:1.5 },
-  { id:'vs',   name:'VS (1ère heure)',        unit:'mm/h',  refM:'< 15',    refF:'< 20',   lo:0,  hiM:15, hiF:20 },
+  { id:'gbc',  name:'Globules blancs (GB)',    unit:'10³/µL',refM:'4–10',    refF:'4–10',    lo:4,   hi:10  },
+  { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL',refM:'4.5–5.5', refF:'4.0–5.0', lo:4.0, hi:5.5 },
+  { id:'hb',   name:'Hémoglobine (Hb)',        unit:'g/dL',  refM:'13–17',   refF:'12–16',   lo:12,  hi:17  },
+  { id:'ht',   name:'Hématocrite (Ht)',         unit:'%',     refM:'40–54',   refF:'37–47',   lo:37,  hi:54  },
+  { id:'vgm',  name:'VGM ⚙',                  unit:'fL',    refM:'80–100',  refF:'80–100',  lo:80,  hi:100, calc:true },
+  { id:'tcmh', name:'TCMH ⚙',                 unit:'pg',    refM:'27–32',   refF:'27–32',   lo:27,  hi:32,  calc:true },
+  { id:'ccmh', name:'CCMH ⚙',                unit:'g/dL',  refM:'32–36',   refF:'32–36',   lo:32,  hi:36,  calc:true },
+  { id:'plt',  name:'Plaquettes',              unit:'10³/µL',refM:'150–400', refF:'150–400', lo:150, hi:400 },
+  { id:'ret',  name:'Réticulocytes',           unit:'%',     refM:'0.5–1.5', refF:'0.5–1.5', lo:0.5, hi:1.5 },
+  { id:'vs',   name:'VS (1ère heure)',         unit:'mm/h',  refM:'< 15',    refF:'< 20',    lo:0,   hiM:15, hiF:20 },
 ];
 
 const HEMA_FL = [
@@ -2502,13 +2544,23 @@ function onParamInput(id) {
 
 
 const BPN_NFS = [
-  { id:'bpn_hb',   name:'Hémoglobine (Hb)',    unit:'g/dL',   ref:'≥ 11.0',    lo:11.0, hi:16.0 },
-  { id:'bpn_ht',   name:'Hématocrite (Ht)',     unit:'%',      ref:'≥ 33',      lo:33,   hi:47   },
   { id:'bpn_gb',   name:'Globules blancs (GB)', unit:'10³/µL', ref:'6–16',      lo:6,    hi:16   },
   { id:'bpn_gr',   name:'Globules rouges (GR)', unit:'10⁶/µL', ref:'3.5–5.0',   lo:3.5,  hi:5.0  },
+  { id:'bpn_hb',   name:'Hémoglobine (Hb)',     unit:'g/dL',   ref:'≥ 11.0',    lo:11.0, hi:16.0 },
+  { id:'bpn_ht',   name:'Hématocrite (Ht)',      unit:'%',      ref:'≥ 33',      lo:33,   hi:47   },
+  { id:'bpn_vgm',  name:'VGM ⚙',               unit:'fL',     ref:'80–100',    lo:80,   hi:100, calc:true },
+  { id:'bpn_tcmh', name:'TCMH ⚙',              unit:'pg',     ref:'27–32',     lo:27,   hi:32,  calc:true },
+  { id:'bpn_ccmh', name:'CCMH ⚙',             unit:'g/dL',   ref:'32–36',     lo:32,   hi:36,  calc:true },
   { id:'bpn_plt',  name:'Plaquettes',           unit:'10³/µL', ref:'150–400',   lo:150,  hi:400  },
-  { id:'bpn_vgm',  name:'VGM',                  unit:'fL',     ref:'80–100',    lo:80,   hi:100  },
-  { id:'bpn_tcmh', name:'TCMH',                 unit:'pg',     ref:'27–32',     lo:27,   hi:32   },
+];
+
+// Formule leucocytaire BPN — identique à l'hémato
+const BPN_FL = [
+  { id:'bpn_pnn',  name:'Polynucléaires neutrophiles (PNN)', unit:'%', ref:'50–70', lo:50, hi:70 },
+  { id:'bpn_pne',  name:'Polynucléaires éosinophiles (PNE)', unit:'%', ref:'1–5',   lo:1,  hi:5  },
+  { id:'bpn_pnb',  name:'Polynucléaires basophiles (PNB)',   unit:'%', ref:'0–1',   lo:0,  hi:1  },
+  { id:'bpn_lymp', name:'Lymphocytes',                       unit:'%', ref:'20–40', lo:20, hi:40 },
+  { id:'bpn_mono', name:'Monocytes',                         unit:'%', ref:'2–10',  lo:2,  hi:10 },
 ];
 
 const BPN_BIO = [
@@ -2570,9 +2622,77 @@ const GS_PARAMS = [
 ];
 
 function buildBpnNfs() {
-  const b = document.getElementById('bpn-nfs-body'); b.innerHTML = '';
+  // NFS
+  const b = document.getElementById('bpn-nfs-body');
+  b.innerHTML = '';
   BPN_NFS.forEach(p => makeParamRow(p, b));
+
+  // Brancher le calcul des constantes sur Hb, Ht, GR du BPN
+  ['bpn_hb','bpn_ht','bpn_gr'].forEach(id => {
+    const el = document.getElementById('v_' + id);
+    if (el) el.addEventListener('input', calcConstantesBPN);
+  });
+
+  // FL du BPN — identique à hémato avec valeurs absolues
+  const bfl = document.getElementById('bpn-fl-body');
+  if (bfl) {
+    bfl.innerHTML = '';
+    BPN_FL.forEach(p => {
+      const tr = document.createElement('tr');
+      const profile = getPatientProfile();
+      const dynRef  = getRef(p.id, profile) || { ref: p.ref };
+      tr.innerHTML = `
+        <td style="font-size:13px">${p.name}</td>
+        <td><input type="number" id="v_${p.id}" step="any" min="0" max="100" style="width:75px"
+            oninput="onParamInput('${p.id}'); calcBpnFLAbsolues()"></td>
+        <td>
+          <span class="unit">%</span>
+          <span style="display:inline-block;margin-left:6px;min-width:60px;font-size:11px;color:var(--accent);font-weight:600" id="bpn_abs_${p.id}"></span>
+          <span id="bpn_abs_unit_${p.id}" style="font-size:10px;color:var(--text-muted);display:none">G/L</span>
+        </td>
+        <td><span class="ref-range" id="ref_${p.id}">${dynRef.ref || p.ref}</span></td>
+        <td><span class="interp" id="i_${p.id}">—</span></td>`;
+      bfl.appendChild(tr);
+    });
+
+    // Brancher le calcul FL absolues sur GB du BPN
+    const gbBpn = document.getElementById('v_bpn_gb');
+    if (gbBpn) gbBpn.addEventListener('input', calcBpnFLAbsolues);
+  }
 }
+
+function calcConstantesBPN() {
+  const hb  = parseFloat(document.getElementById('v_bpn_hb')?.value  || '');
+  const ht  = parseFloat(document.getElementById('v_bpn_ht')?.value  || '');
+  const gr  = parseFloat(document.getElementById('v_bpn_gr')?.value  || '');
+  if (!isNaN(hb) && !isNaN(gr) && gr > 0) {
+    const vgmEl = document.getElementById('v_bpn_vgm');
+    if (vgmEl) { vgmEl.value = (ht / gr * 10).toFixed(1); onParamInput('bpn_vgm'); }
+    const tcmhEl = document.getElementById('v_bpn_tcmh');
+    if (tcmhEl) { tcmhEl.value = (hb / gr * 10).toFixed(1); onParamInput('bpn_tcmh'); }
+    const ccmhEl = document.getElementById('v_bpn_ccmh');
+    if (ccmhEl) { ccmhEl.value = (hb / ht * 100).toFixed(1); onParamInput('bpn_ccmh'); }
+  }
+}
+
+function calcBpnFLAbsolues() {
+  const gb = parseFloat(document.getElementById('v_bpn_gb')?.value || '0');
+  BPN_FL.forEach(p => {
+    const pct    = parseFloat(document.getElementById('v_' + p.id)?.value || '');
+    const absEl  = document.getElementById('bpn_abs_' + p.id);
+    const unitEl = document.getElementById('bpn_abs_unit_' + p.id);
+    if (absEl) {
+      if (!isNaN(pct) && !isNaN(gb) && gb > 0) {
+        absEl.textContent = (pct * gb / 100).toFixed(2);
+        if (unitEl) unitEl.style.display = '';
+      } else {
+        absEl.textContent = '';
+        if (unitEl) unitEl.style.display = 'none';
+      }
+    }
+  });
+}
+
 
 function buildBpnBio() {
   const b = document.getElementById('bpn-bio-body'); b.innerHTML = '';
@@ -2647,10 +2767,10 @@ function calcLDL() {
 
 // Données Widal
 const WIDAL_ANTIGENES = [
-  { id:'to',  name:'Salmonella typhi O (TO)',       seuil: 160 },
-  { id:'th',  name:'Salmonella typhi H (TH)',        seuil: 160 },
-  { id:'ao',  name:'Salmonella paratyphi A O (AO)', seuil: 80  },
-  { id:'bo',  name:'Salmonella paratyphi B O (BO)', seuil: 80  },
+  { id:'to',  name:'Salmonella typhi O (TO)',        seuil: 80 },
+  { id:'th',  name:'Salmonella typhi H (TH)',         seuil: 80 },
+  { id:'ao',  name:'Salmonella paratyphi A O (AO)',  seuil: 80 },
+  { id:'bo',  name:'Salmonella paratyphi B O (BO)',  seuil: 80 },
 ];
 const WIDAL_DILUTIONS = ['Négatif','1/40','1/80','1/160','1/320','1/640','1/1280'];
 
@@ -2675,7 +2795,7 @@ function buildHema() {
       <td>
         <span class="unit">%</span>
         <span style="display:inline-block;margin-left:6px;min-width:60px;font-size:11px;color:var(--accent);font-weight:600" id="abs_${p.id}"></span>
-        <span style="font-size:10px;color:var(--text-muted)">G/L</span>
+        <span id="abs_unit_${p.id}" style="font-size:10px;color:var(--text-muted);display:none">G/L</span>
       </td>
       <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
       <td><span class="interp" id="i_${p.id}">—</span></td>`;
@@ -2720,13 +2840,16 @@ function buildHema() {
 function calcFLAbsolues() {
   const gb = parseFloat(document.getElementById('v_gbc')?.value || '0');
   HEMA_FL.forEach(p => {
-    const pct = parseFloat(document.getElementById('v_' + p.id)?.value || '');
-    const absEl = document.getElementById('abs_' + p.id);
+    const pct    = parseFloat(document.getElementById('v_' + p.id)?.value || '');
+    const absEl  = document.getElementById('abs_' + p.id);
+    const unitEl = document.getElementById('abs_unit_' + p.id);
     if (absEl) {
       if (!isNaN(pct) && !isNaN(gb) && gb > 0) {
         absEl.textContent = (pct * gb / 100).toFixed(2);
+        if (unitEl) unitEl.style.display = '';
       } else {
         absEl.textContent = '';
+        if (unitEl) unitEl.style.display = 'none';
       }
     }
   });
@@ -2801,57 +2924,80 @@ function widalTitre(val) {
 function interpretWidal() {
   const conclusionEl = document.getElementById('widal-conclusion');
 
+  // Interprétation individuelle par antigène
   WIDAL_ANTIGENES.forEach(ag => {
-    const titre = widalTitre(document.getElementById('widal_' + ag.id)?.value);
-    const cin = document.getElementById('widal_cin_' + ag.id)?.value || '';
+    const titre  = widalTitre(document.getElementById('widal_' + ag.id)?.value);
     const interpEl = document.getElementById('widal_i_' + ag.id);
     if (!interpEl) return;
-    if (titre === 0) { interpEl.textContent = '—'; interpEl.style.color = 'inherit'; return; }
-    if (titre < ag.seuil) {
-      interpEl.textContent = 'Non significatif';
-      interpEl.style.color = 'var(--text-muted)';
-    } else {
-      interpEl.textContent = '⚠ Significatif';
+    if (titre === 0) {
+      interpEl.textContent = '—'; interpEl.style.color = 'inherit'; return;
+    }
+    if (titre >= ag.seuil) {
+      interpEl.textContent = '⚠ Significatif (≥ 1/' + ag.seuil + ')';
       interpEl.style.color = '#b91c1c';
+    } else {
+      interpEl.textContent = 'Non significatif (< 1/' + ag.seuil + ')';
+      interpEl.style.color = 'var(--text-muted)';
     }
   });
 
-  // Interprétation globale automatique basée sur TO et TH
+  // ── Conclusion globale basée sur TO et TH ─────────────────────
   const to = widalTitre(document.getElementById('widal_to')?.value);
   const th = widalTitre(document.getElementById('widal_th')?.value);
-  const cinTO = document.getElementById('widal_cin_to')?.value || '';
-  const cinTH = document.getElementById('widal_cin_th')?.value || '';
 
-  if (to === 0 && th === 0) { if (conclusionEl) conclusionEl.style.display = 'none'; return; }
+  if (to === 0 && th === 0) {
+    if (conclusionEl) conclusionEl.style.display = 'none';
+    return;
+  }
+
+  const toSignif = to >= 80;
+  const thSignif = th >= 80;
 
   let conclusion = '';
-  let color = '#b91c1c'; let bg = '#fde8e8';
+  let color = '', bg = '';
 
-  if (to >= 160 && th >= 160 && cinTO === 'montant') {
-    conclusion = '🔴 PHASE D\'ÉTAT — Titres TO ≥ 1/160 et TH ≥ 1/160 avec anticorps montants. Forte suspicion de fièvre typhoïde en phase d\'état.';
-  } else if ((to >= 160 || th >= 160) && (cinTO === 'montant' || cinTH === 'montant')) {
-    conclusion = '🟠 INFECTION À L\'ÉTAT DE DÉBUT — Titres en ascension au-dessus du seuil significatif. Contrôle sérique à 10-15 jours recommandé.';
+  if (toSignif && thSignif) {
+    // Les deux significatifs → Phase d'état
+    conclusion = '🔴 PHASE D\'ÉTAT — TO ≥ 1/80 ET TH ≥ 1/80. '
+      + 'Forte présomption de fièvre typhoïde en phase d\'état. '
+      + 'Corréler avec la clinique et instaurer un traitement.';
+    color = '#991b1b'; bg = '#fde8e8';
+
+  } else if (toSignif && !thSignif) {
+    // Seulement TO significatif → Début d'infection
+    conclusion = '🟠 INFECTION À L\'ÉTAT DE DÉBUT — TO ≥ 1/80 mais TH < 1/80. '
+      + 'Les anticorps O apparaissent en premier : infection récente probable. '
+      + 'Répéter le sérodiagnostic dans 8–10 jours pour confirmer l\'ascension des titres.';
     color = '#b45309'; bg = '#fef3c7';
-  } else if ((to >= 160 || th >= 160) && cinTO === 'descendant') {
-    conclusion = '🟡 TRACES CICATRICIELLES — Titres significatifs mais anticorps descendants. Infection ancienne probable, guérison en cours.';
+
+  } else if (!toSignif && thSignif) {
+    // Seulement TH significatif → Traces cicatricielles
+    conclusion = '🟡 TRACES CICATRICIELLES — TH ≥ 1/80 mais TO < 1/80. '
+      + 'Les anticorps H persistent longtemps après guérison : infection ancienne probable ou vaccination. '
+      + 'Pas d\'argument pour une infection évolutive actuelle.';
     color = '#854d0e'; bg = '#fefce8';
-  } else if (to > 0 && to < 160 && th > 0 && th < 160) {
-    conclusion = '⚪ TITRES NON SIGNIFICATIFS — Valeurs sous le seuil diagnostique. Répéter le test si suspicion clinique persistante.';
-    color = '#374151'; bg = 'var(--bg)';
-  } else if (to >= 80 && cinTO === 'stable') {
-    conclusion = '🟡 TRACES CICATRICIELLES POSSIBLES — Cinétique stable, infection ancienne non exclue.';
-    color = '#854d0e'; bg = '#fefce8';
+
   } else {
-    conclusion = '⚠ Données insuffisantes pour une interprétation automatique — Corrélation clinique indispensable.';
+    // Titres présents mais sous le seuil pour les deux
+    conclusion = '⚪ TITRES NON SIGNIFICATIFS — TO et TH < 1/80. '
+      + 'Pas d\'argument sérologique pour une fièvre typhoïde. '
+      + 'Répéter si suspicion clinique persistante.';
     color = '#374151'; bg = 'var(--bg)';
   }
 
   if (conclusionEl) {
-    conclusionEl.style.display = 'block';
-    conclusionEl.textContent = conclusion;
-    conclusionEl.style.background = bg;
-    conclusionEl.style.color = color;
-    conclusionEl.style.borderColor = color;
+    conclusionEl.style.display  = 'block';
+    conclusionEl.textContent    = conclusion;
+    conclusionEl.style.background   = bg;
+    conclusionEl.style.color        = color;
+    conclusionEl.style.borderColor  = color;
+    conclusionEl.style.borderWidth  = '1.5px';
+    conclusionEl.style.borderStyle  = 'solid';
+    conclusionEl.style.padding      = '10px 14px';
+    conclusionEl.style.borderRadius = 'var(--radius)';
+    conclusionEl.style.fontWeight   = '600';
+    conclusionEl.style.fontSize     = '13px';
+    conclusionEl.style.lineHeight   = '1.55';
   }
 }
 
@@ -3133,7 +3279,7 @@ function showView(v) {
   if (viewComptes) viewComptes.style.display = v === 'comptes' ? '' : 'none';
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v === 'historique') renderHistory();
-  if (v === 'comptes') { renderUsersList(); if (isAdmin()) renderTarifsConfig(); }
+  if (v === 'comptes') { renderUsersList(); if (isAdmin()) buildAdminExamensGrid(); }
   if (v === 'stats') renderStats();
 }
 
@@ -3291,6 +3437,19 @@ function newPatient() {
   ['hema','bio','bacterio','sero','parasito','bpn'].forEach(name => resetPanel(name));
   // Générer un nouveau numéro de dossier
   regenDossier();
+  // Remettre les prix de référence (les prix modifiés manuellement sont effacés)
+  rechargeFichePrix();
+  // Décocher tous les examens
+  CATALOGUE_EXAMENS.forEach(ex => {
+    const chk = document.getElementById(ex.id);
+    if (chk) chk.checked = false;
+  });
+  calcFicheTotal();
+  // Revenir à la fiche d'identification si on est en zone saisie
+  const zoneSaisie = document.getElementById('zone-saisie');
+  const ficheIdentif = document.getElementById('fiche-identification');
+  if (zoneSaisie) zoneSaisie.style.display = 'none';
+  if (ficheIdentif) ficheIdentif.style.display = '';
   toast('Nouveau patient prêt ✓', 'ok');
 }
 
@@ -3402,6 +3561,16 @@ function collectResults(type) {
     data['Phénotype érythrocytaire'] = document.getElementById('bpn_phenotype')?.value || '';
     BPN_NFS.forEach(p => {
       data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: document.getElementById('i_'+p.id)?.textContent || '' };
+    });
+    // Formule leucocytaire BPN avec valeurs absolues
+    BPN_FL.forEach(p => {
+      const absEl = document.getElementById('bpn_abs_' + p.id);
+      data[p.name] = {
+        valeur: document.getElementById('v_'+p.id)?.value || '',
+        unite: p.unit,
+        interp: document.getElementById('i_'+p.id)?.textContent || '',
+        absolu: absEl ? absEl.textContent : '',
+      };
     });
     BPN_BIO.forEach(p => {
       data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: document.getElementById('i_'+p.id)?.textContent || '' };
@@ -4212,7 +4381,7 @@ async function exportPatientComplet(dossier) {
   wb.title = 'Dossier ' + dossier;
 
   // Trie par ordre logique d'analyse
-  const ordreTypes = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Bilan de routine','Groupe sanguin','Bilan prénatal'];
+  const ordreTypes = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Groupe sanguin','Bilan prénatal'];
   const fichesSorted = [...fiches].sort((a,b) => ordreTypes.indexOf(a.type) - ordreTypes.indexOf(b.type));
 
   // Une feuille par type d'analyse dans le même classeur
@@ -4279,8 +4448,8 @@ async function exportAllExcel() {
 // TABLEAU DE BORD — STATISTIQUES
 // ============================================================
 
-const TYPES_ANALYSES = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Bilan de routine','Groupe sanguin','Bilan prénatal'];
-const TYPE_COLORS = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#DC2626','#0891B2','#EA580C'];
+const TYPES_ANALYSES = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Groupe sanguin','Bilan prénatal'];
+const TYPE_COLORS = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#DC2626','#EA580C'];
 
 // Détecte les anomalies dans un enregistrement (résultats Élevé/Bas/Positif)
 function countAnomalies(resultats) {
@@ -4731,68 +4900,160 @@ function buildPDF(r) {
 // CONFIGURATION DES TARIFS
 // ============================================================
 
-function renderTarifsConfig() {
-  const base   = getTarifsBase();
-  const params = getTarifsParams();
+// ──────────────────────────────────────────────────────────────
+// TARIFICATION — Architecture claire :
+//
+//  localStorage 'tarifs_ref'  = prix de RÉFÉRENCE (gérés par admin dans Comptes)
+//  localStorage 'examens_custom' = examens ajoutés par l'admin
+//  px_{id} sur la fiche       = prix SESSION (modifiable par agent, réinitialisé
+//                               au Nouveau patient via rechargeFichePrix())
+//
+// Règle : modifier la fiche → ne touche PAS aux tarifs de référence
+//         modifier Comptes  → modifie les tarifs de référence ET recharge la fiche
+// ──────────────────────────────────────────────────────────────
 
-  // Tarifs de base
-  const baseList = document.getElementById('tarifs-base-list');
-  if (baseList) {
-    baseList.innerHTML = Object.entries(base).map(([type, prix]) => `
-      <div style="display:flex;align-items:center;gap:8px;background:var(--bg);padding:7px 10px;border-radius:var(--radius);border:1px solid var(--border)">
-        <span style="flex:1;font-size:12.5px;font-weight:600">${type}</span>
-        <input type="number" id="tb_${type.replace(/\s/g,'_')}" value="${prix}" min="0" step="100"
-          style="width:90px;text-align:right;font-weight:700;color:var(--accent)">
-        <span style="font-size:11px;color:var(--text-muted)">FCFA</span>
-      </div>`).join('');
+function getTarifsRef() {
+  try { return JSON.parse(localStorage.getItem('tarifs_ref') || 'null') || buildTarifsRefDefault(); }
+  catch(e) { return buildTarifsRefDefault(); }
+}
+function saveTarifsRef(t) { localStorage.setItem('tarifs_ref', JSON.stringify(t)); }
+
+function buildTarifsRefDefault() {
+  const ref = {};
+  CATALOGUE_EXAMENS.forEach(ex => { ref[ex.id] = ex.prix; });
+  return ref;
+}
+
+// Examens personnalisés ajoutés par l'admin
+function getExamensCustom() {
+  try { return JSON.parse(localStorage.getItem('examens_custom') || '[]'); }
+  catch(e) { return []; }
+}
+function saveExamensCustom(list) { localStorage.setItem('examens_custom', JSON.stringify(list)); }
+
+// Catalogue complet = défauts + personnalisés
+function getCatalogueComplet() {
+  return [...CATALOGUE_EXAMENS, ...getExamensCustom()];
+}
+
+function showAddExamenModal() {
+  const modal = document.getElementById('add-examen-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('new_ex_label').value = '';
+    document.getElementById('new_ex_prix').value = '0';
   }
-
-  // Tarifs par paramètre
-  const paramList = document.getElementById('tarifs-params-list');
-  if (paramList) {
-    paramList.innerHTML = Object.entries(params).map(([nom, prix]) => `
-      <div style="display:flex;align-items:center;gap:6px;background:var(--bg);padding:5px 8px;border-radius:var(--radius);border:1px solid var(--border)">
-        <span style="flex:1;font-size:11.5px">${nom}</span>
-        <input type="number" id="tp_${nom.replace(/[^a-zA-Z0-9]/g,'_')}" value="${prix}" min="0" step="100"
-          style="width:80px;text-align:right;color:var(--accent);font-weight:600">
-        <span style="font-size:10px;color:var(--text-muted)">F</span>
-      </div>`).join('');
-  }
 }
 
-function saveTarifsConfig() {
-  const base = getTarifsBase();
-  const params = getTarifsParams();
+function addExamenPersonnalise() {
+  const label = document.getElementById('new_ex_label')?.value?.trim();
+  if (!label) { toast('Le nom de l\'examen est obligatoire', 'err'); return; }
 
-  // Lire les valeurs saisies pour les tarifs de base
-  Object.keys(base).forEach(type => {
-    const el = document.getElementById('tb_' + type.replace(/\s/g,'_'));
-    if (el) base[type] = parseInt(el.value) || 0;
+  const groupe = document.getElementById('new_ex_groupe')?.value || '🔬 Autres';
+  const prix   = parseInt(document.getElementById('new_ex_prix')?.value || '0');
+  const id     = 'custom_' + Date.now();
+
+  const custom = getExamensCustom();
+  custom.push({ id, label, groupe, prix, tab: 'hema', custom: true });
+  saveExamensCustom(custom);
+
+  // Mettre à jour les prix de référence
+  const ref = getTarifsRef();
+  ref[id] = prix;
+  saveTarifsRef(ref);
+
+  document.getElementById('add-examen-modal').style.display = 'none';
+  buildAdminExamensGrid();
+  buildFicheExamens(); // Recharger la fiche avec le nouvel examen
+  toast('Examen "' + label + '" ajouté ✓', 'ok');
+}
+
+function removeExamenCustom(id) {
+  if (!confirm('Supprimer cet examen personnalisé ?')) return;
+  const custom = getExamensCustom().filter(ex => ex.id !== id);
+  saveExamensCustom(custom);
+  const ref = getTarifsRef();
+  delete ref[id];
+  saveTarifsRef(ref);
+  buildAdminExamensGrid();
+  buildFicheExamens();
+  toast('Examen supprimé', 'ok');
+}
+
+// Recharge les prix de la fiche d'accueil depuis les tarifs de référence
+function rechargeFichePrix() {
+  const ref = getTarifsRef();
+  getCatalogueComplet().forEach(ex => {
+    const el = document.getElementById('px_' + ex.id);
+    if (el) el.value = ref[ex.id] !== undefined ? ref[ex.id] : ex.prix;
   });
-  saveTarifsBase(base);
+  calcFicheTotal();
+}
 
-  // Lire les valeurs saisies pour les tarifs par paramètre
-  Object.keys(params).forEach(nom => {
-    const el = document.getElementById('tp_' + nom.replace(/[^a-zA-Z0-9]/g,'_'));
-    if (el) params[nom] = parseInt(el.value) || 0;
+// ── Grille admin (Comptes) ─────────────────────────────────────
+function buildAdminExamensGrid() {
+  const grid = document.getElementById('admin-examens-grid');
+  if (!grid) return;
+  const ref     = getTarifsRef();
+  const custom  = getExamensCustom();
+
+  // Grouper par catégorie (catalogue complet)
+  const groupes = {};
+  getCatalogueComplet().forEach(ex => {
+    if (!groupes[ex.groupe]) groupes[ex.groupe] = [];
+    groupes[ex.groupe].push(ex);
   });
-  saveTarifsParams(params);
 
-  toast('Tarifs enregistrés ✓', 'ok');
-  updateMontantCurrent();
+  grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+      <div style="font-size:10.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${groupe}</div>
+      ${examens.map(ex => {
+        const prix       = ref[ex.id] !== undefined ? ref[ex.id] : ex.prix;
+        const isCustom   = !!ex.custom;
+        const removeBtn  = isCustom
+          ? `<button onclick="removeExamenCustom('${ex.id}')" title="Supprimer cet examen" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;padding:0 2px;line-height:1">✕</button>`
+          : '';
+        return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px dashed rgba(199,215,245,.5)">
+          <label style="flex:1;font-size:12.5px;font-weight:${isCustom?'600':'500'};color:var(--text)">
+            ${ex.label}${isCustom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
+            ${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
+          </label>
+          <input type="number" id="adm_px_${ex.id}" value="${prix}" min="0" step="100"
+            style="width:80px;text-align:right;font-weight:700;color:var(--cpmi-deep);font-size:12.5px;padding:4px 6px">
+          <span style="font-size:10.5px;color:var(--text-muted);flex-shrink:0">F</span>
+          ${removeBtn}
+        </div>`;
+      }).join('')}
+    </div>`).join('');
 }
 
-function resetTarifsConfig() {
-  if (!confirm('Remettre tous les tarifs aux valeurs par défaut ?')) return;
-  localStorage.removeItem('tarifs_base');
-  localStorage.removeItem('tarifs_params');
-  renderTarifsConfig();
-  toast('Tarifs réinitialisés', 'ok');
+function saveAdminTarifs() {
+  const ref = getTarifsRef();
+  getCatalogueComplet().forEach(ex => {
+    const el = document.getElementById('adm_px_' + ex.id);
+    if (el) ref[ex.id] = parseInt(el.value) || 0;
+  });
+  saveTarifsRef(ref);
+  rechargeFichePrix();
+  toast('Prix de référence enregistrés ✓ — Fiche d\'accueil mise à jour', 'ok');
 }
 
-// ============================================================
+function resetAdminTarifs() {
+  if (!confirm('Remettre tous les prix aux valeurs par défaut ? Les examens personnalisés seront conservés.')) return;
+  localStorage.removeItem('tarifs_ref');
+  buildAdminExamensGrid();
+  rechargeFichePrix();
+  toast('Prix réinitialisés aux valeurs par défaut', 'ok');
+}
+
+// Compatibilité
+function renderTarifsConfig() { buildAdminExamensGrid(); }
+function saveTarifsConfig()   { saveAdminTarifs(); }
+function resetTarifsConfig()  { resetAdminTarifs(); }
+
+// ──────────────────────────────────────────────────────────────
 // PRESCRIPTEURS
-// ============================================================
+// ──────────────────────────────────────────────────────────────
 
 let _prescripteurs = [];
 
@@ -5210,30 +5471,33 @@ const CATALOGUE_EXAMENS = [
 function buildFicheExamens() {
   const grid = document.getElementById('fiche-examens-grid');
   if (!grid) return;
-  const tarifsBase = (typeof getTarifsBase === 'function') ? getTarifsBase() : {};
-  // Regrouper par groupe
+
+  // Grouper par catégorie (catalogue complet = défauts + personnalisés)
   const groupes = {};
-  CATALOGUE_EXAMENS.forEach(ex => {
+  getCatalogueComplet().forEach(ex => {
     if (!groupes[ex.groupe]) groupes[ex.groupe] = [];
     groupes[ex.groupe].push(ex);
   });
+
   grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => `
     <div style="background:rgba(255,255,255,.8);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;backdrop-filter:blur(4px)">
       <div style="font-size:10.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${groupe}</div>
-      ${examens.map(ex => {
-        const prix = tarifsBase[ex.label] || ex.prix;
-        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(199,215,245,.5)">
+      ${examens.map(ex => `
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(199,215,245,.5)">
           <input type="checkbox" id="${ex.id}" onchange="calcFicheTotal()"
             style="width:16px;height:16px;accent-color:var(--cpmi-mid);cursor:pointer;flex-shrink:0">
-          <label for="${ex.id}" style="flex:1;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--text)">${ex.label}${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}</label>
-          <input type="number" id="px_${ex.id}" value="${prix}" min="0" step="100"
+          <label for="${ex.id}" style="flex:1;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--text)">
+            ${ex.label}${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
+            ${ex.custom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
+          </label>
+          <input type="number" id="px_${ex.id}" value="0" min="0" step="100"
             style="width:78px;text-align:right;font-weight:700;color:var(--cpmi-deep);font-size:12px;padding:3px 6px"
             oninput="calcFicheTotal()">
           <span style="font-size:10px;color:var(--text-muted);flex-shrink:0">F</span>
-        </div>`;
-      }).join('')}
+        </div>`).join('')}
     </div>`).join('');
-  calcFicheTotal();
+
+  rechargeFichePrix();
 }
 
 function calcFicheTotal() {
@@ -5398,6 +5662,7 @@ function updateUserBadge() {
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
   const tarifsCard = document.getElementById('tarifs-config-card');
   if (tarifsCard) tarifsCard.style.display = isAdmin() ? '' : 'none';
+  if (isAdmin()) buildAdminExamensGrid();
 }
 
 // ============================================================
@@ -5553,8 +5818,6 @@ function initApp() {
   buildAbg();
   buildSero();
   buildParaEPS();
-  buildRoutine();
-  buildRoutineCheckboxes();
   buildGS();
   buildBpnNfs();
   buildBpnBio();
