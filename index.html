@@ -857,27 +857,22 @@ select {
 <!-- VIEWS -->
 <div id="view-saisie">
 
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('hema')" id="tab-hema"><span class="tab-icon">🩸</span>Hématologie</button>
-    <button class="tab" onclick="switchTab('bio')" id="tab-bio"><span class="tab-icon">🧪</span>Biochimie</button>
-    <button class="tab" onclick="switchTab('bacterio')" id="tab-bacterio"><span class="tab-icon">🦠</span>Bactériologie</button>
-    <button class="tab" onclick="switchTab('sero')" id="tab-sero"><span class="tab-icon">💉</span>Sérologie</button>
-    <button class="tab" onclick="switchTab('parasito')" id="tab-parasito"><span class="tab-icon">🔬</span>Parasitologie</button>
-    <button class="tab" onclick="switchTab('routine')" id="tab-routine"><span class="tab-icon">📋</span>Bilan routine</button>
-    <button class="tab" onclick="switchTab('gs')" id="tab-gs"><span class="tab-icon">🩸</span>Groupe sanguin</button>
-    <button class="tab" onclick="switchTab('bpn')" id="tab-bpn"><span class="tab-icon">🤰</span>Bilan prénatal</button>
-  </div>
+  <!-- ═══════════════════════════════════════════════════
+       FICHE D'IDENTIFICATION PATIENT & PRESCRIPTION
+       ═══════════════════════════════════════════════════ -->
+  <div class="card" id="fiche-identification" style="border:2px solid var(--cpmi-mid);background:rgba(255,255,255,.95)">
+    <div class="card-title" style="font-size:13px">
+      🗂 FICHE D'IDENTIFICATION PATIENT & DEMANDE D'ANALYSES
+      <button class="btn btn-outline" onclick="newPatient()" style="margin-left:auto;padding:4px 12px;font-size:12px">👤 Nouveau patient</button>
+    </div>
 
-  <!-- PATIENT HEADER — shared -->
-  <div class="card">
-    <div class="card-title">📋 Identification du patient</div>
+    <!-- Infos patient -->
     <div class="form-grid">
       <div class="form-group">
         <label>N° dossier</label>
         <div style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="p_dossier" readonly style="background:var(--bg);font-weight:600;color:var(--accent);cursor:default;flex:1">
-          <button type="button" onclick="regenDossier()" title="Générer un nouveau numéro de dossier (nouveau patient)" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px;line-height:1">↺</button>
+          <input type="text" id="p_dossier" readonly style="background:var(--bg);font-weight:700;color:var(--cpmi-deep);cursor:default;flex:1;font-size:15px">
+          <button type="button" onclick="regenDossier()" title="Nouveau N° de dossier" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px">↺</button>
         </div>
       </div>
       <div class="form-group">
@@ -890,7 +885,7 @@ select {
       </div>
       <div class="form-group">
         <label>Âge</label>
-        <input type="number" id="p_age" placeholder="ex. 34" min="0" max="120" oninput="updateAllRefs();updateMontantCurrent()"  >
+        <input type="number" id="p_age" placeholder="ex. 34" min="0" max="120" oninput="updateAllRefs();updateMontantCurrent()">
       </div>
       <div class="form-group">
         <label>Sexe</label>
@@ -906,8 +901,7 @@ select {
           <select id="p_prescripteur_id" onchange="onPrescripteurChange()" style="flex:1">
             <option value="">— Choisir un prescripteur —</option>
           </select>
-          <button type="button" onclick="showAddPrescripteur()" title="Ajouter un nouveau prescripteur"
-            style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
+          <button type="button" onclick="showAddPrescripteur()" title="Ajouter un prescripteur" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
         </div>
         <input type="text" id="p_medecin" placeholder="Ou saisir manuellement..." style="margin-top:6px;font-size:12px" oninput="updateMontantCurrent()">
       </div>
@@ -927,17 +921,65 @@ select {
       </div>
       <div class="form-group full">
         <label>Renseignements cliniques</label>
-        <textarea id="p_clinique" placeholder="Signes cliniques, diagnostic présomptif, motif de la demande..."></textarea>
+        <textarea id="p_clinique" placeholder="Signes cliniques, diagnostic présomptif, motif de la demande..." rows="2"></textarea>
       </div>
     </div>
-    <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <button class="btn btn-outline" onclick="newPatient()" style="font-size:12.5px">👤 Nouveau patient</button>
-      <div style="display:flex;align-items:center;gap:14px">
-        <span id="patient-tranche" style="font-size:12px;color:var(--text-muted);background:var(--bg);padding:3px 10px;border-radius:99px;border:1px solid var(--border)"></span>
-        <span style="font-size:12px;color:var(--text-muted)">Montant estimé :</span>
-        <span id="montant-preview" style="font-weight:700;color:var(--accent);font-size:14px" data-montant="0">— FCFA</span>
+
+    <!-- Séparateur -->
+    <div style="margin:18px -24px 18px;border-top:2px dashed var(--border)"></div>
+
+    <!-- Examens commandés avec prix -->
+    <div style="font-size:11.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">
+      📋 Examens demandés & Facturation
+    </div>
+    <div id="fiche-examens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px"></div>
+
+    <!-- Total facture -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:14px 18px;background:linear-gradient(135deg,var(--accent-light),#e0f2fe);border-radius:var(--radius);border:1.5px solid var(--cpmi-mid)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="patient-tranche" style="font-size:12px;background:rgba(255,255,255,.8);padding:3px 12px;border-radius:99px;border:1px solid var(--border);color:var(--cpmi-deep);font-weight:700"></span>
+        <span id="fiche-examens-count" style="font-size:12.5px;color:var(--text-muted)">0 examen sélectionné</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Total facture :</span>
+        <span id="montant-preview" style="font-weight:900;color:var(--cpmi-deep);font-size:22px;letter-spacing:-.5px" data-montant="0">0 FCFA</span>
       </div>
     </div>
+
+    <!-- Bouton démarrer saisie -->
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="demarrerSaisie()" style="font-size:14px;padding:11px 24px">
+        ✏️ Démarrer la saisie des résultats
+      </button>
+      <button class="btn btn-outline" onclick="enregistrerFicheIdentif()" style="font-size:13px">
+        💾 Enregistrer sans saisie
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       ZONE DE SAISIE DES RÉSULTATS (masquée au départ)
+       ═══════════════════════════════════════════════════ -->
+  <div id="zone-saisie" style="display:none">
+
+    <!-- Rappel patient compact -->
+    <div id="rappel-patient" style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,.85);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;flex-wrap:wrap;backdrop-filter:blur(4px)">
+      <span style="font-size:12px;color:var(--text-muted)">Patient :</span>
+      <strong id="rappel-nom" style="color:var(--cpmi-deep)"></strong>
+      <span id="rappel-dossier" style="font-size:11.5px;background:var(--accent-light);color:var(--cpmi-deep);padding:2px 10px;border-radius:99px;font-weight:700"></span>
+      <span id="rappel-examens" style="font-size:11.5px;color:var(--text-muted)"></span>
+      <button onclick="document.getElementById('zone-saisie').style.display='none';document.getElementById('fiche-identification').style.display=''" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:12.5px;color:var(--cpmi-mid);font-weight:600;font-family:inherit">← Retour à la fiche</button>
+    </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('hema')" id="tab-hema"><span class="tab-icon">🩸</span>Hématologie</button>
+    <button class="tab" onclick="switchTab('bio')" id="tab-bio"><span class="tab-icon">🧪</span>Biochimie</button>
+    <button class="tab" onclick="switchTab('bacterio')" id="tab-bacterio"><span class="tab-icon">🦠</span>Bactériologie</button>
+    <button class="tab" onclick="switchTab('sero')" id="tab-sero"><span class="tab-icon">💉</span>Sérologie</button>
+    <button class="tab" onclick="switchTab('parasito')" id="tab-parasito"><span class="tab-icon">🔬</span>Parasitologie</button>
+    <button class="tab" onclick="switchTab('gs')" id="tab-gs"><span class="tab-icon">🩸</span>Groupe sanguin</button>
+    <button class="tab" onclick="switchTab('bpn')" id="tab-bpn"><span class="tab-icon">🤰</span>Bilan prénatal</button>
   </div>
 
   <!-- ===== HÉMATOLOGIE ===== -->
@@ -1565,70 +1607,6 @@ select {
 
   <!-- ===== BILAN PRÉNATAL ===== -->
   <!-- ===== BILAN DE ROUTINE ===== -->
-  <div class="panel" id="panel-routine">
-    <!-- FACTURATION TEMPS RÉEL -->
-    <div class="card" style="border:2px solid var(--accent)">
-      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>🧾 Sélection des examens & Facturation</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-outline" onclick="selectAllRoutine(true)" style="padding:4px 10px;font-size:12px">✓ Tout sélectionner</button>
-          <button class="btn btn-outline" onclick="selectAllRoutine(false)" style="padding:4px 10px;font-size:12px">✗ Tout désélectionner</button>
-        </div>
-      </div>
-      <div id="routine-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin:10px 0"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--accent-light);border-radius:var(--radius);margin-top:10px">
-        <span id="routine-count" style="font-size:13px;color:var(--text-muted)">0 examen sélectionné</span>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:13px;color:var(--accent);font-weight:600">Total :</span>
-          <span id="routine-total" style="font-size:20px;font-weight:800;color:var(--accent)">0 FCFA</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🦟 Goutte épaisse / Paludisme</div>
-      <div class="table-wrap">
-        <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>Résultat</th><th>Unité</th><th>Observation</th></tr></thead>
-          <tbody id="routine-goutte-body"></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">🩸 Groupe sanguin</div>
-      <div class="table-wrap">
-        <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>Résultat</th><th colspan="2">Observation</th></tr></thead>
-          <tbody id="routine-gs-body"></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">🔥 CRP — Protéine C-réactive</div>
-      <div class="table-wrap">
-        <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th></tr></thead>
-          <tbody id="routine-crp-body"></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">🦠 Sérodiagnostic de Widal</div>
-      <div class="table-wrap">
-        <table class="result-table">
-          <thead><tr><th>Antigène</th><th>Titre (dilution)</th><th colspan="2">Observation</th></tr></thead>
-          <tbody id="routine-widal-body"></tbody>
-        </table>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Bilan de routine')">💾 Enregistrer</button>
-        <button class="btn btn-success" onclick="exportSingle('Bilan de routine')">⬇ Excel</button>
-        <button class="btn" onclick="exportPDFFromForm('Bilan de routine')" style="background:#dc2626;color:#fff">📄 PDF</button>
-        <button class="btn btn-outline" onclick="resetPanel('routine')">↺ Effacer</button>
-      </div>
-    </div>
-  </div>
-
   <!-- ===== GROUPE SANGUIN ===== -->
   <div class="panel" id="panel-gs">
     <div class="card">
@@ -1813,6 +1791,8 @@ select {
       </div>
     </div>
   </div>
+
+  </div><!-- /zone-saisie -->
 
 </div><!-- /view-saisie -->
 
@@ -5176,6 +5156,140 @@ function selectAllRoutine(checked) {
 }
 
 // ============================================================
+// FICHE D'IDENTIFICATION — EXAMENS & FACTURATION
+// ============================================================
+
+// Catalogue complet des examens avec prix et type associé
+const CATALOGUE_EXAMENS = [
+  // ── Hématologie ──
+  { id:'ex_nfs',   label:'NFS — Numération Formule Sanguine', groupe:'🩸 Hématologie', tab:'hema', prix:3500 },
+  { id:'ex_fl',    label:'Formule leucocytaire',               groupe:'🩸 Hématologie', tab:'hema', prix:0, note:'inclus NFS' },
+  { id:'ex_ephb',  label:'Électrophorèse de l\'hémoglobine',  groupe:'🩸 Hématologie', tab:'hema', prix:7500 },
+  { id:'ex_vs',    label:'VS — Vitesse de sédimentation',     groupe:'🩸 Hématologie', tab:'hema', prix:1500 },
+  // ── Parasitologie ──
+  { id:'ex_ge',    label:'Goutte épaisse / TDR Paludisme',    groupe:'🦟 Parasitologie', tab:'hema', prix:2500 },
+  { id:'ex_eps',   label:'EPS — Examen parasitologique des selles', groupe:'🦟 Parasitologie', tab:'parasito', prix:3000 },
+  // ── Groupe sanguin ──
+  { id:'ex_gs',    label:'Groupe sanguin ABO / Rhésus',       groupe:'🩸 Groupe sanguin', tab:'gs', prix:3000 },
+  { id:'ex_rai',   label:'RAI + Phénotypage érythrocytaire',  groupe:'🩸 Groupe sanguin', tab:'gs', prix:5000 },
+  // ── Sérologie ──
+  { id:'ex_crp',   label:'CRP — Protéine C-réactive',        groupe:'💉 Sérologie', tab:'hema', prix:2000 },
+  { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Sérologie', tab:'hema', prix:3000 },
+  { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Sérologie', tab:'sero', prix:3500 },
+  { id:'ex_hbs',   label:'Ag HBs (Hépatite B)',              groupe:'💉 Sérologie', tab:'sero', prix:2500 },
+  { id:'ex_hcv',   label:'Ac anti-VHC (Hépatite C)',         groupe:'💉 Sérologie', tab:'sero', prix:2500 },
+  { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Sérologie', tab:'sero', prix:2000 },
+  { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Sérologie', tab:'sero', prix:3500 },
+  { id:'ex_rube',  label:'Rubéole IgG / IgM',                groupe:'💉 Sérologie', tab:'sero', prix:3500 },
+  // ── Biochimie ──
+  { id:'ex_gly',   label:'Glycémie à jeun',                  groupe:'🧪 Biochimie', tab:'bio', prix:1000 },
+  { id:'ex_hba1c', label:'HbA1c',                             groupe:'🧪 Biochimie', tab:'bio', prix:7500 },
+  { id:'ex_uree',  label:'Urée',                              groupe:'🧪 Biochimie', tab:'bio', prix:1500 },
+  { id:'ex_crea',  label:'Créatinine',                        groupe:'🧪 Biochimie', tab:'bio', prix:1500 },
+  { id:'ex_ua',    label:'Acide urique',                      groupe:'🧪 Biochimie', tab:'bio', prix:1500 },
+  { id:'ex_asat',  label:'ASAT / ALAT (Transaminases)',       groupe:'🧪 Biochimie', tab:'bio', prix:3000 },
+  { id:'ex_ggt',   label:'Gamma GT',                          groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
+  { id:'ex_pal',   label:'Phosphatases alcalines',            groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
+  { id:'ex_bili',  label:'Bilirubine totale & directe',       groupe:'🧪 Biochimie', tab:'bio', prix:3000 },
+  { id:'ex_prot',  label:'Protéines totales / Albumine',      groupe:'🧪 Biochimie', tab:'bio', prix:2500 },
+  { id:'ex_chol',  label:'Cholestérol total',                 groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
+  { id:'ex_trig',  label:'Triglycérides',                     groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
+  { id:'ex_hdl',   label:'HDL-cholestérol',                   groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
+  { id:'ex_iono',  label:'Ionogramme (Na, K, Cl)',            groupe:'🧪 Biochimie', tab:'bio', prix:4500 },
+  { id:'ex_ca',    label:'Calcium / Phosphore',               groupe:'🧪 Biochimie', tab:'bio', prix:2500 },
+  // ── Bactériologie ──
+  { id:'ex_ecbu',  label:'ECBU',                              groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000 },
+  { id:'ex_hemo',  label:'Hémoculture',                       groupe:'🦠 Bactériologie', tab:'bacterio', prix:8000 },
+  { id:'ex_copro', label:'Coproculture',                      groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000 },
+  { id:'ex_pg',    label:'Prélèvement de gorge',              groupe:'🦠 Bactériologie', tab:'bacterio', prix:4000 },
+  { id:'ex_pus',   label:'Prélèvement de pus / plaie',        groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000 },
+  // ── Bilan prénatal ──
+  { id:'ex_bpn',   label:'Bilan prénatal complet',            groupe:'🤰 Bilan prénatal', tab:'bpn', prix:25000 },
+];
+
+function buildFicheExamens() {
+  const grid = document.getElementById('fiche-examens-grid');
+  if (!grid) return;
+  const tarifsBase = (typeof getTarifsBase === 'function') ? getTarifsBase() : {};
+  // Regrouper par groupe
+  const groupes = {};
+  CATALOGUE_EXAMENS.forEach(ex => {
+    if (!groupes[ex.groupe]) groupes[ex.groupe] = [];
+    groupes[ex.groupe].push(ex);
+  });
+  grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => `
+    <div style="background:rgba(255,255,255,.8);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;backdrop-filter:blur(4px)">
+      <div style="font-size:10.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${groupe}</div>
+      ${examens.map(ex => {
+        const prix = tarifsBase[ex.label] || ex.prix;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(199,215,245,.5)">
+          <input type="checkbox" id="${ex.id}" onchange="calcFicheTotal()"
+            style="width:16px;height:16px;accent-color:var(--cpmi-mid);cursor:pointer;flex-shrink:0">
+          <label for="${ex.id}" style="flex:1;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--text)">${ex.label}${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}</label>
+          <input type="number" id="px_${ex.id}" value="${prix}" min="0" step="100"
+            style="width:78px;text-align:right;font-weight:700;color:var(--cpmi-deep);font-size:12px;padding:3px 6px"
+            oninput="calcFicheTotal()">
+          <span style="font-size:10px;color:var(--text-muted);flex-shrink:0">F</span>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+  calcFicheTotal();
+}
+
+function calcFicheTotal() {
+  let total = 0, count = 0;
+  CATALOGUE_EXAMENS.forEach(ex => {
+    const chk = document.getElementById(ex.id);
+    const pxEl = document.getElementById('px_' + ex.id);
+    if (chk && chk.checked) {
+      total += parseInt(pxEl?.value || '0');
+      count++;
+    }
+  });
+  const montantEl = document.getElementById('montant-preview');
+  const countEl   = document.getElementById('fiche-examens-count');
+  if (montantEl) { montantEl.textContent = total.toLocaleString('fr-FR') + ' FCFA'; montantEl.dataset.montant = total; }
+  if (countEl)   countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
+}
+
+function demarrerSaisie() {
+  // Vérification minimale
+  const nom = document.getElementById('p_nom')?.value?.trim();
+  if (!nom) { toast('Veuillez saisir le nom du patient', 'err'); return; }
+
+  // Déterminer l'onglet à activer selon le premier examen coché
+  const premierEx = CATALOGUE_EXAMENS.find(ex => document.getElementById(ex.id)?.checked);
+  const tabCible  = premierEx ? premierEx.tab : 'hema';
+
+  // Mettre à jour le rappel patient
+  const rappelNom  = document.getElementById('rappel-nom');
+  const rappelDoss = document.getElementById('rappel-dossier');
+  const rappelEx   = document.getElementById('rappel-examens');
+  if (rappelNom)  rappelNom.textContent  = nom;
+  if (rappelDoss) rappelDoss.textContent = 'N° ' + (document.getElementById('p_dossier')?.value || '');
+  if (rappelEx) {
+    const examensCoches = CATALOGUE_EXAMENS.filter(ex => document.getElementById(ex.id)?.checked).map(ex => ex.label);
+    rappelEx.textContent = examensCoches.length
+      ? 'Examens : ' + examensCoches.join(' · ')
+      : 'Aucun examen sélectionné';
+  }
+
+  // Afficher la zone de saisie, masquer la fiche
+  document.getElementById('fiche-identification').style.display = 'none';
+  document.getElementById('zone-saisie').style.display = '';
+
+  // Activer le bon onglet
+  switchTab(tabCible);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function enregistrerFicheIdentif() {
+  const nom = document.getElementById('p_nom')?.value?.trim();
+  if (!nom) { toast('Veuillez saisir le nom du patient', 'err'); return; }
+  toast('Fiche patient enregistrée localement ✓', 'ok');
+}
+
+// ============================================================
 // TOAST
 // ============================================================
 
@@ -5446,7 +5560,8 @@ function initApp() {
   buildBpnBio();
   buildBpnSero();
   updateUserBadge();
-  loadPrescripteurs(); // charge les prescripteurs en arrière-plan
+  loadPrescripteurs();
+  buildFicheExamens(); // fiche d'identification avec examens
 }
 
 document.addEventListener('DOMContentLoaded', () => {
