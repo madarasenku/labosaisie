@@ -2142,6 +2142,23 @@ select {
     </div>
   </div>
 
+
+  <!-- Valeurs de référence (admin uniquement) -->
+  <div class="card" id="refs-config-card" style="display:none">
+    <div class="card-title" style="justify-content:space-between">
+      <span>📐 Valeurs de référence du laboratoire</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="saveRefsConfig()" style="padding:5px 12px;font-size:12px">💾 Enregistrer comme base</button>
+        <button class="btn btn-outline" onclick="resetRefsConfig()" style="padding:5px 12px;font-size:12px">↺ Remettre défauts</button>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px">
+      Modifiez les bornes de référence selon les valeurs de votre laboratoire. 
+      Ces valeurs s'appliquent à toute l'application (interprétation, coloration Excel, affichage).
+    </p>
+    <div id="refs-editor-grid"></div>
+  </div>
+
   <!-- Modal ajout d'examen -->
   <div id="add-examen-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px">
     <div style="background:white;border-radius:var(--radius-lg);padding:28px 32px;width:100%;max-width:480px;box-shadow:var(--shadow-lg)">
@@ -2375,6 +2392,33 @@ function buildRefObj(entry, profile) {
   const lo   = isMale ? (entry.loM ?? entry.lo ?? 0)  : (entry.loF ?? entry.lo ?? 0);
   const hi   = isMale ? (entry.hiM ?? entry.hi ?? 999) : (entry.hiF ?? entry.hi ?? 999);
   return { ref: ref || entry.ref || '', lo, hi };
+}
+
+
+// ──────────────────────────────────────────────────────────────────────
+// VALEURS DE RÉFÉRENCE PERSONNALISÉES (admin)
+// Stockées dans localStorage 'labosaisie_refs_v1'
+// Format : { paramId: { lo, hi, ref, unit } }
+// ──────────────────────────────────────────────────────────────────────
+const LABO_REFS_KEY = 'labosaisie_refs_v1';
+
+function getCustomRefs() {
+  try { return JSON.parse(localStorage.getItem(LABO_REFS_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function saveCustomRefs(obj) {
+  localStorage.setItem(LABO_REFS_KEY, JSON.stringify(obj));
+}
+
+// getRef avec surcharge custom (priorité aux valeurs admin)
+const _getRefOriginal = getRef;
+function getRef(paramId, profile) {
+  const custom = getCustomRefs();
+  if (custom[paramId]) {
+    const c = custom[paramId];
+    return { ref: c.ref || '', lo: parseFloat(c.lo) || 0, hi: parseFloat(c.hi) || 999 };
+  }
+  return _getRefOriginal(paramId, profile);
 }
 
 function interprete(val, lo, hi) {
@@ -3506,7 +3550,7 @@ function showView(v) {
   if (viewComptes) viewComptes.style.display = v === 'comptes' ? '' : 'none';
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v === 'historique') renderHistory(true);
-  if (v === 'comptes') { renderUsersList(); if (isAdmin()) buildAdminExamensGrid(); }
+  if (v === 'comptes') { renderUsersList(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); } }
   if (v === 'stats') renderStats();
 }
 
@@ -4703,12 +4747,15 @@ function buildProfessionalSheet(wb, r, sheetName) {
     alt = false;
   }
 
-  function tblHdr(cols) {
+  // tblHdr : mêmes fusions que pRow pour éviter tout conflit ExcelJS
+  function tblHdr(label, valeur, unite, ref) {
     const rr = ws.getRow(row); rr.height = 15;
-    cols.forEach((col,i) => {
-      sC(rr.getCell(i+1), {bg:TH_BG, fg:TH_FG, bold:true, size:9, ha:i===0?'left':'center', wt:false});
-      rr.getCell(i+1).value = col;
-    });
+    const th = {bg:TH_BG, fg:TH_FG, bold:true, size:9, wt:false};
+    sC(rr.getCell(1), {...th, ha:'left'});   rr.getCell(1).value = label  || 'Paramètre';
+    sC(rr.getCell(2), {...th, ha:'center'}); rr.getCell(2).value = valeur || 'Valeur';
+    sC(rr.getCell(3), {...th, ha:'center'}); rr.getCell(3).value = unite  || 'Unité';
+    mg(row,4,row,NC);
+    sC(rr.getCell(4), {...th, ha:'center'}); rr.getCell(4).value = ref    || 'Valeurs normales';
     row++;
   }
 
@@ -4776,7 +4823,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const nfsVals = [...HEMA_PARAMS,...HEMA_FL].filter(q=>res[q.name]&&res[q.name].valeur);
     if (nfsVals.length) {
       secHdr('NFS — Numération Formule Sanguine');
-      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
+      tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
       nfsVals.forEach(q => {
         const v=res[q.name];
         const val = v.absolu ? v.valeur+' ('+v.absolu+' G/L)' : v.valeur;
@@ -4787,7 +4834,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const ephbNames=['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].filter(n=>res[n]&&res[n].valeur);
     if (ephbNames.length||res['Profil Hb']) {
       secHdr("Electrophorese de l'Hemoglobine");
-      tblHdr(['Fraction','%','','Valeur normale (ref.)','','']);
+      tblHdr('Fraction', '%', '', 'Valeur normale');
       ephbNames.forEach(n=>{const v=res[n]; pRow(n,v.valeur,'%','',v.interp||'');});
       if (res['Profil Hb'])       fRow('Profil',res['Profil Hb']);
       if (res['Commentaire Hb'])  nRow(res['Commentaire Hb']);
@@ -4795,7 +4842,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     }
     if (res['GE - Résultat']||res['GE - TDR']) {
       secHdr('Goutte Epaisse / Parasitologie');
-      tblHdr(['Paramètre','Résultat','','','','']);
+      tblHdr('Paramètre', 'Résultat', '', '');
       if (res['GE - Résultat'])   pRow('Résultat GE',res['GE - Résultat'],'','','');
       if (res['GE - TDR'])        pRow('TDR Paludisme',res['GE - TDR'],'','','');
       if (res['GE - Espèce'])     pRow('Espèce plasmodiale',res['GE - Espèce'],'','','');
@@ -4807,7 +4854,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     }
     if (res['GS - ABO']||res['GS - Rhésus']) {
       secHdr('Groupe Sanguin ABO / Rhesus');
-      tblHdr(['Paramètre','Résultat','','','','']);
+      tblHdr('Paramètre', 'Résultat', '', '');
       if (res['GS - ABO'])       pRow('Groupe ABO',res['GS - ABO'],'','','');
       if (res['GS - Rhésus'])    pRow('Rhésus',res['GS - Rhésus'],'','','');
       if (res['GS - RAI'])       pRow('RAI',res['GS - RAI'],'','','');
@@ -4816,7 +4863,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     }
     if (res['CRP - Valeur']) {
       secHdr('CRP — Protéine C-réactive (Latex)');
-      tblHdr(['Test','Résultat','','','','']);
+      tblHdr('Test', 'Résultat', '', '');
       const crpL = res['CRP - Valeur']==='neg'?'Négatif (< 6 mg/L)':res['CRP - Valeur']+' mg/L';
       const crpI = (res['CRP - Interprétation']||'').replace(/^[^\w]+/,'');
       pRow('CRP Latex',crpL,'','',crpI);
@@ -4826,7 +4873,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const widalConcl = res['Widal - Conclusion']||'';
     if (widalData.length||widalConcl) {
       secHdr('Sérodiagnostic de Widal & Felix');
-      tblHdr(['Antigène','Titre','Cinétique','Seuil significatif','','']);
+      tblHdr('Antigène', 'Titre', 'Cinétique', 'Seuil significatif');
       widalData.forEach(ag=>{const w=res['Widal - '+ag.name];pRow(ag.name,w.titre,'','1/'+ag.seuil,w.interp||'');});
       if (widalConcl) nRow(widalConcl.replace(/^[^\w]+/,''), widalConcl.includes('ÉTAT')||widalConcl.includes('DÉBUT')?'FFFFF1F1':'FFFFFDE7');
       row++;
@@ -4844,7 +4891,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       const vals = sec.params.filter(q=>res[q.name]&&res[q.name].valeur);
       if (!vals.length) return;
       secHdr('Biochimie — ' + sec.label);
-      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
+      tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
       vals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,v.unite||q.unit,'',v.interp||'');});
       row++;
     });
@@ -4857,7 +4904,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const macroVals = macroFields.filter(k=>res[k]&&res[k]!=='—');
     if (macroVals.length) {
       secHdr('Macroscopie');
-      tblHdr(['Paramètre','Résultat','','','','']);
+      tblHdr('Paramètre', 'Résultat', '', '');
       macroVals.forEach(k=>pRow(k,res[k],'','',''));
       row++;
     }
@@ -4866,7 +4913,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const efVals = efFields.filter(k=>res[k]&&res[k]!=='—'&&res[k]!=='Absents'&&res[k]!=='Absentes');
     if (efVals.length) {
       secHdr('État frais — Cytologie');
-      tblHdr(['Élément','Résultat','Unité','','','']);
+      tblHdr('Élément', 'Résultat', 'Unité', '');
       if (res['Leucocytes (/mm³)']) pRow('Leucocytes',res['Leucocytes (/mm³)'],'/mm³','','');
       if (res['Hématies (/mm³)'])   pRow('Hématies',res['Hématies (/mm³)'],'/mm³','','');
       efVals.filter(k=>!k.startsWith('Leuco')&&!k.startsWith('Héma')).forEach(k=>pRow(k,res[k],'','',''));
@@ -4875,7 +4922,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     // Gram
     if (res['Coloration de Gram']&&res['Coloration de Gram']!=='neg') {
       secHdr('Coloration de Gram');
-      tblHdr(['Résultat Gram','Abondance','','','','']);
+      tblHdr('Résultat Gram', 'Abondance', '', '');
       pRow(res['Coloration de Gram'], res['Gram - Abondance']||'—','','','');
       if (res['Gram - Commentaire']) nRow(res['Gram - Commentaire']);
       row++;
@@ -4883,7 +4930,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     // Culture
     if (res['Culture']||res['Germe identifié']) {
       secHdr('Culture & Identification');
-      tblHdr(['Paramètre','Résultat','','','','']);
+      tblHdr('Paramètre', 'Résultat', '', '');
       if (res['Culture'])            pRow('Culture',res['Culture'],'','','');
       if (res['Numération bactérienne']) pRow('Numération',res['Numération bactérienne'],'','','');
       if (res['Germe identifié'])    pRow('Germe identifié',res['Germe identifié'],'','','');
@@ -4894,7 +4941,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const abgD = ABG_ANTIBIOS.filter(ab=>res['ABG_'+ab]&&res['ABG_'+ab]!=='nd');
     if (abgD.length) {
       secHdr('Antibiogramme');
-      tblHdr(['Antibiotique','Résultat','','','','']);
+      tblHdr('Antibiotique', 'Résultat', '', '');
       abgD.forEach(ab=>abgRow(ab,res['ABG_'+ab]));
       if (res['Commentaire antibiogramme']) nRow(res['Commentaire antibiogramme']);
       row++;
@@ -4902,7 +4949,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const afgD = AFG_ANTIFONGIQUES.filter(af=>res['AFG_'+af]&&res['AFG_'+af]!=='nd');
     if (afgD.length) {
       secHdr('Antifongigramme');
-      tblHdr(['Antifongique','Résultat','','','','']);
+      tblHdr('Antifongique', 'Résultat', '', '');
       afgD.forEach(af=>abgRow(af,res['AFG_'+af]));
       row++;
     }
@@ -4911,7 +4958,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const seroVals = (typeof SERO_TESTS!=='undefined') ? SERO_TESTS.filter(t=>{const v=res[t.name];return v&&(v.resultat||v.valeur);}) : [];
     if (seroVals.length) {
       secHdr('Sérologies');
-      tblHdr(['Test','Résultat','Valeur','','','']);
+      tblHdr('Test', 'Résultat', 'Valeur', '');
       seroVals.forEach(t=>{
         const v=res[t.name];
         const interp = v.resultat==='Positif'?'Positif' : v.resultat==='Négatif'?'Négatif' : v.resultat||'';
@@ -4922,7 +4969,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
 
   } else if (r.type === 'Groupe sanguin') {
     secHdr('Groupe Sanguin ABO / Rhesus');
-    tblHdr(['Paramètre','Résultat','','','','']);
+      tblHdr('Paramètre', 'Résultat', '', '');
     const gsFields=[{k:'Groupe ABO',id:'gs_abo'},{k:'Rhésus',id:'gs_rh'},{k:'RAI',id:'gs_rai'},{k:'Phénotype',id:'gs_phen'}];
     gsFields.forEach(f=>{ if(res[f.k]) pRow(f.k,res[f.k],'','',''); });
     if (res['Observations / Notes']) nRow(res['Observations / Notes']);
@@ -4930,7 +4977,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
 
   } else if (r.type === 'Parasitologie') {
     secHdr('Examen Parasitologique des Selles');
-    tblHdr(['Paramètre','Résultat','','','','']);
+      tblHdr('Paramètre', 'Résultat', '', '');
     if (res['Aspect des selles'])  pRow('Aspect',res['Aspect des selles'],'','','');
     if (res['Consistance'])        pRow('Consistance',res['Consistance'],'','','');
     if (res['Observation'])        nRow(res['Observation']);
@@ -4943,7 +4990,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const bpnNfsVals = BPN_NFS.filter(q=>res[q.name]&&res[q.name].valeur);
     if (bpnNfsVals.length) {
       secHdr('Bilan prénatal — NFS (normes femme enceinte)');
-      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
+      tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
       bpnNfsVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,q.unit,'',v.interp||'');});
       row++;
     }
@@ -4951,7 +4998,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const bpnFlVals = BPN_FL.filter(q=>res[q.name]&&res[q.name].valeur);
     if (bpnFlVals.length) {
       secHdr('Bilan prénatal — Formule Leucocytaire');
-      tblHdr(['Paramètre','%','Absolu (G/L)','Valeurs normales (ref.)','','']);
+      tblHdr('Paramètre', '%', 'Absolu (G/L)', 'Valeurs normales');
       bpnFlVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,v.absolu?v.absolu+' G/L':'',q.ref||'',v.interp||'');});
       row++;
     }
@@ -4966,7 +5013,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       if (!vals.length) return;
       if (!hasBio){ hasBio=true; }
       secHdr('Bilan prénatal — Biochimie : '+sec.label);
-      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
+      tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
       vals.forEach(q=>{const v=res['BIO_'+q.name]; pRow(q.name,v.valeur,v.unite||q.unit,'',v.interp||'');});
       row++;
     });
@@ -4974,7 +5021,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const bpnSeroVals = BPN_SERO.filter(t=>res['BPNSERO_'+t.name]&&(res['BPNSERO_'+t.name].resultat||res['BPNSERO_'+t.name].valeur));
     if (bpnSeroVals.length) {
       secHdr('Bilan prénatal — Sérologies');
-      tblHdr(['Test','Résultat','Valeur','','','']);
+      tblHdr('Test', 'Résultat', 'Valeur', '');
       bpnSeroVals.forEach(t=>{
         const v=res['BPNSERO_'+t.name];
         pRow(t.name, v.resultat||v.valeur||'', t.unit||'', '', v.resultat||'');
@@ -4983,7 +5030,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     }
     if (res['BAC - Germe']||res['BAC - Culture']) {
       secHdr('Bilan prénatal — ECBU / Bactériologie');
-      tblHdr(['Paramètre','Résultat','','','','']);
+      tblHdr('Paramètre', 'Résultat', '', '');
       if (res['BAC - Type'])    fRow('Type de prélèvement',res['BAC - Type']);
       if (res['BAC - Culture']) pRow('Culture',res['BAC - Culture'],'','','');
       if (res['BAC - Germe'])   pRow('Germe identifié',res['BAC - Germe'],'','','');
@@ -5005,18 +5052,18 @@ function buildProfessionalSheet(wb, r, sheetName) {
     });
     if (gRows.length) {
       secHdr(r.type + ' — Résultats');
-      tblHdr(['Paramètre','Résultat','Unité','','','']);
+      tblHdr('Paramètre', 'Résultat', 'Unité', '');
       gRows.forEach(q=>pRow(q.n,q.v,q.u,'',q.i));
       row++;
     }
     const abgD=ABG_ANTIBIOS.filter(ab=>res['ABG_'+ab]&&res['ABG_'+ab]!=='nd');
     if (abgD.length) {
-      secHdr('Antibiogramme'); tblHdr(['Antibiotique','Résultat','','','','']);
+      secHdr('Antibiogramme'); tblHdr('Antibiotique', 'Résultat', '', '');
       abgD.forEach(ab=>abgRow(ab,res['ABG_'+ab])); row++;
     }
     const afgD=AFG_ANTIFONGIQUES.filter(af=>res['AFG_'+af]&&res['AFG_'+af]!=='nd');
     if (afgD.length) {
-      secHdr('Antifongigramme'); tblHdr(['Antifongique','Résultat','','','','']);
+      secHdr('Antifongigramme'); tblHdr('Antifongique', 'Résultat', '', '');
       afgD.forEach(af=>abgRow(af,res['AFG_'+af])); row++;
     }
   }
@@ -6964,7 +7011,7 @@ function updateUserBadge() {
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
   const tarifsCard = document.getElementById('tarifs-config-card');
   if (tarifsCard) tarifsCard.style.display = isAdmin() ? '' : 'none';
-  if (isAdmin()) buildAdminExamensGrid();
+  if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); }
 }
 
 // ============================================================
@@ -7122,6 +7169,233 @@ async function initApp() {
   updateUserBadge();
   loadPrescripteurs();
   buildFicheExamens(); // fiche d'identification avec examens
+}
+
+
+// ============================================================
+// ÉDITEUR DE VALEURS DE RÉFÉRENCE (admin)
+// ============================================================
+
+function buildRefsEditor() {
+  const card = document.getElementById('refs-config-card');
+  if (!card) return;
+  card.style.display = isAdmin() ? '' : 'none';
+  if (!isAdmin()) return;
+
+  const custom = getCustomRefs();
+
+  // Tous les paramètres éditables, groupés
+  const SECTIONS = [
+    {
+      label: '🩸 Hématologie — NFS',
+      params: [
+        { id:'gbc',  name:'Globules blancs (GB)',    unit:'10³/µL' },
+        { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL' },
+        { id:'hb',   name:'Hémoglobine (Hb)',        unit:'g/dL'   },
+        { id:'ht',   name:'Hématocrite (Ht)',         unit:'%'      },
+        { id:'vgm',  name:'VGM',                     unit:'fL'     },
+        { id:'tcmh', name:'TCMH',                    unit:'pg'     },
+        { id:'ccmh', name:'CCMH',                    unit:'g/dL'   },
+        { id:'plt',  name:'Plaquettes',               unit:'10³/µL' },
+        { id:'ret',  name:'Réticulocytes',            unit:'%'      },
+        { id:'vs',   name:'VS (1ère heure)',          unit:'mm/h'   },
+      ]
+    },
+    {
+      label: '🩸 Formule leucocytaire',
+      params: [
+        { id:'pnn',  name:'Polynucléaires neutrophiles (PNN)', unit:'%' },
+        { id:'pne',  name:'Polynucléaires éosinophiles (PNE)', unit:'%' },
+        { id:'pnb',  name:'Polynucléaires basophiles (PNB)',   unit:'%' },
+        { id:'lymp', name:'Lymphocytes',                       unit:'%' },
+        { id:'mono', name:'Monocytes',                         unit:'%' },
+      ]
+    },
+    {
+      label: '🧪 Biochimie — Glucides',
+      params: [
+        { id:'gly', name:'Glycémie à jeun', unit:'g/L'   },
+        { id:'hba', name:'HbA1c',           unit:'%'     },
+      ]
+    },
+    {
+      label: '🧪 Biochimie — Fonction rénale',
+      params: [
+        { id:'crea', name:'Créatinine',  unit:'µmol/L' },
+        { id:'uree', name:'Urée',        unit:'mmol/L' },
+        { id:'ua',   name:'Acide urique',unit:'µmol/L' },
+      ]
+    },
+    {
+      label: '🧪 Biochimie — Fonction hépatique',
+      params: [
+        { id:'asat', name:'ASAT (TGO)',               unit:'UI/L'   },
+        { id:'alat', name:'ALAT (TGP)',               unit:'UI/L'   },
+        { id:'ggt',  name:'Gamma GT',                 unit:'UI/L'   },
+        { id:'pal',  name:'Phosphatases alcalines',   unit:'UI/L'   },
+        { id:'bili', name:'Bilirubine totale',        unit:'µmol/L' },
+        { id:'bilid',name:'Bilirubine directe',       unit:'µmol/L' },
+        { id:'prot', name:'Protéines totales',        unit:'g/L'    },
+        { id:'alb',  name:'Albumine',                 unit:'g/L'    },
+      ]
+    },
+    {
+      label: '🧪 Biochimie — Lipides',
+      params: [
+        { id:'chol', name:'Cholestérol total',   unit:'g/L' },
+        { id:'trig', name:'Triglycérides',       unit:'g/L' },
+        { id:'hdl',  name:'HDL-cholestérol',     unit:'g/L' },
+        { id:'ldl',  name:'LDL-cholestérol',     unit:'g/L' },
+      ]
+    },
+    {
+      label: '🧪 Biochimie — Ionogramme',
+      params: [
+        { id:'na',   name:'Sodium (Na⁺)',          unit:'mEq/L'  },
+        { id:'k',    name:'Potassium (K⁺)',         unit:'mEq/L'  },
+        { id:'cl',   name:'Chlore (Cl⁻)',           unit:'mEq/L'  },
+        { id:'ca',   name:'Calcium (Ca²⁺)',         unit:'mmol/L' },
+        { id:'phos', name:'Phosphore',              unit:'mmol/L' },
+        { id:'mg',   name:'Magnésium (Mg²⁺)',       unit:'mmol/L' },
+        { id:'bic',  name:'Bicarbonates (HCO₃⁻)',  unit:'mEq/L'  },
+      ]
+    },
+    {
+      label: '🤰 Bilan prénatal — NFS',
+      params: [
+        { id:'bpn_gb',   name:'Globules blancs (GB)',  unit:'10³/µL' },
+        { id:'bpn_gr',   name:'Globules rouges (GR)',  unit:'10⁶/µL' },
+        { id:'bpn_hb',   name:'Hémoglobine (Hb)',      unit:'g/dL'   },
+        { id:'bpn_ht',   name:'Hématocrite (Ht)',       unit:'%'      },
+        { id:'bpn_plt',  name:'Plaquettes',             unit:'10³/µL' },
+        { id:'bpn_gly',  name:'Glycémie',               unit:'g/L'    },
+        { id:'bpn_crea', name:'Créatinine',              unit:'µmol/L' },
+        { id:'bpn_uree', name:'Urée',                   unit:'mmol/L' },
+      ]
+    },
+  ];
+
+  const defaultRefs = {
+    // NFS adulte (valeurs de référence les plus courantes)
+    gbc:'4–10',  gr:'4.0–5.5', hb:'12–17', ht:'37–54',
+    vgm:'80–100', tcmh:'27–32', ccmh:'32–36', plt:'150–400',
+    ret:'0.5–1.5', vs:'< 20',
+    pnn:'50–70', pne:'1–5', pnb:'0–1', lymp:'20–40', mono:'2–10',
+    // Bio
+    gly:'0.70–1.10', hba:'< 5.7',
+    crea:'50–115', uree:'2.5–7.5', ua:'150–420',
+    asat:'< 40', alat:'< 40', ggt:'< 55', pal:'40–130',
+    bili:'< 20', bilid:'< 5', prot:'65–80', alb:'35–50',
+    chol:'< 2.0', trig:'< 1.5', hdl:'> 0.40', ldl:'< 1.60',
+    na:'136–145', k:'3.5–5.0', cl:'98–107', ca:'2.2–2.6',
+    phos:'0.8–1.5', mg:'0.75–1.0', bic:'22–28',
+    // BPN
+    bpn_gb:'6–16', bpn_gr:'3.5–5.0', bpn_hb:'≥ 11.0',
+    bpn_ht:'≥ 33', bpn_plt:'150–400',
+    bpn_gly:'0.70–0.92', bpn_crea:'35–90', bpn_uree:'2.0–6.5',
+  };
+
+  const defaultLo = {
+    gbc:4, gr:4.0, hb:12, ht:37, vgm:80, tcmh:27, ccmh:32, plt:150, ret:0.5, vs:0,
+    pnn:50, pne:1, pnb:0, lymp:20, mono:2,
+    gly:0.70, hba:0, crea:50, uree:2.5, ua:150, asat:0, alat:0, ggt:0, pal:40,
+    bili:0, bilid:0, prot:65, alb:35, chol:0, trig:0, hdl:0.40, ldl:0,
+    na:136, k:3.5, cl:98, ca:2.2, phos:0.8, mg:0.75, bic:22,
+    bpn_gb:6, bpn_gr:3.5, bpn_hb:11.0, bpn_ht:33, bpn_plt:150,
+    bpn_gly:0.70, bpn_crea:35, bpn_uree:2.0,
+  };
+
+  const defaultHi = {
+    gbc:10, gr:5.5, hb:17, ht:54, vgm:100, tcmh:32, ccmh:36, plt:400, ret:1.5, vs:20,
+    pnn:70, pne:5, pnb:1, lymp:40, mono:10,
+    gly:1.10, hba:5.7, crea:115, uree:7.5, ua:420, asat:40, alat:40, ggt:55, pal:130,
+    bili:20, bilid:5, prot:80, alb:50, chol:2.0, trig:1.5, hdl:99, ldl:1.60,
+    na:145, k:5.0, cl:107, ca:2.6, phos:1.5, mg:1.0, bic:28,
+    bpn_gb:16, bpn_gr:5.0, bpn_hb:16.0, bpn_ht:47, bpn_plt:400,
+    bpn_gly:0.92, bpn_crea:90, bpn_uree:6.5,
+  };
+
+  let html = '';
+  SECTIONS.forEach(sec => {
+    html += `<div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.6px;padding:6px 10px;background:var(--accent-light);border-radius:var(--radius);margin-bottom:8px">${sec.label}</div>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr style="background:var(--bg)">
+          <th style="padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);min-width:200px">Paramètre</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:80px">Unité</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:120px">Affichage (texte)</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:90px">Borne basse</th>
+          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:90px">Borne haute</th>
+          <th style="padding:7px 10px;border-bottom:2px solid var(--border);min-width:60px"></th>
+        </tr></thead>
+        <tbody>`;
+
+    sec.params.forEach(p => {
+      const cur = custom[p.id] || {};
+      const curRef = cur.ref !== undefined ? cur.ref : (defaultRefs[p.id] || '');
+      const curLo  = cur.lo  !== undefined ? cur.lo  : (defaultLo[p.id]  ?? '');
+      const curHi  = cur.hi  !== undefined ? cur.hi  : (defaultHi[p.id]  ?? '');
+      const isModified = !!custom[p.id];
+      html += `<tr style="${isModified ? 'background:#fffbeb' : ''}">
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border)">${p.name}${isModified ? ' <span style="color:var(--warning);font-size:10px;font-weight:700">✎</span>' : ''}</td>
+        <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.unit}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border)"><input type="text" id="rref_${p.id}" value="${curRef}" placeholder="ex: 12–17" style="width:110px;font-size:12px;text-align:center"></td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border)"><input type="number" id="rlo_${p.id}" value="${curLo}" step="any" style="width:80px;font-size:12px;text-align:center"></td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border)"><input type="number" id="rhi_${p.id}" value="${curHi}" step="any" style="width:80px;font-size:12px;text-align:center"></td>
+        <td style="padding:6px 10px;border-bottom:1px solid var(--border)">${isModified ? `<button onclick="resetOneRef('${p.id}')" class="btn btn-outline" style="padding:2px 7px;font-size:11px" title="Remettre valeur par défaut">↺</button>` : ''}</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table></div></div>`;
+  });
+
+  document.getElementById('refs-editor-grid').innerHTML = html;
+}
+
+function saveRefsConfig() {
+  const custom = getCustomRefs();
+  const allIds = [
+    'gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret','vs',
+    'pnn','pne','pnb','lymp','mono',
+    'gly','hba','crea','uree','ua','asat','alat','ggt','pal',
+    'bili','bilid','prot','alb','chol','trig','hdl','ldl',
+    'na','k','cl','ca','phos','mg','bic',
+    'bpn_gb','bpn_gr','bpn_hb','bpn_ht','bpn_plt',
+    'bpn_gly','bpn_crea','bpn_uree',
+  ];
+  allIds.forEach(id => {
+    const refEl = document.getElementById('rref_' + id);
+    const loEl  = document.getElementById('rlo_'  + id);
+    const hiEl  = document.getElementById('rhi_'  + id);
+    if (!refEl) return;
+    custom[id] = {
+      ref: refEl.value.trim(),
+      lo:  parseFloat(loEl?.value) || 0,
+      hi:  parseFloat(hiEl?.value) || 999,
+    };
+  });
+  saveCustomRefs(custom);
+  updateAllRefs();
+  buildRefsEditor(); // Rafraîchir pour afficher les indicateurs ✎
+  toast('Valeurs de référence enregistrées ✓ — appliquées sur tout le site', 'ok');
+}
+
+function resetRefsConfig() {
+  if (!confirm('Remettre toutes les valeurs de référence aux défauts du système ?')) return;
+  localStorage.removeItem(LABO_REFS_KEY);
+  updateAllRefs();
+  buildRefsEditor();
+  toast('Valeurs de référence réinitialisées', 'ok');
+}
+
+function resetOneRef(id) {
+  const custom = getCustomRefs();
+  delete custom[id];
+  saveCustomRefs(custom);
+  updateAllRefs();
+  buildRefsEditor();
+  toast('Valeur réinitialisée pour ce paramètre', 'ok');
 }
 
 document.addEventListener('DOMContentLoaded', () => {
