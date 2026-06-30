@@ -1829,7 +1829,6 @@ select {
   <div class="stats-kpi-row" id="stats-kpi-row">
     <div class="stats-kpi" id="kpi-total"><div class="kpi-val">—</div><div class="kpi-label">Fiches totales</div></div>
     <div class="stats-kpi" id="kpi-month"><div class="kpi-val">—</div><div class="kpi-label">Période sélectionnée</div></div>
-    <div class="stats-kpi" id="kpi-anomalies"><div class="kpi-val">—</div><div class="kpi-label">Résultats anormaux</div></div>
     <div class="stats-kpi" id="kpi-agents"><div class="kpi-val">—</div><div class="kpi-label">Agents actifs</div></div>
     <div class="stats-kpi" id="kpi-recettes-month" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes période (FCFA)</div></div>
     <div class="stats-kpi" id="kpi-recettes-total" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes totales (FCFA)</div></div>
@@ -1848,10 +1847,7 @@ select {
       <div class="card-title">👤 Répartition par agent</div>
       <div id="chart-by-agent"></div>
     </div>
-    <div class="card stats-card">
-      <div class="card-title">⚠️ Anomalies détectées</div>
-      <div id="chart-anomalies"></div>
-    </div>
+
     <div class="card stats-card">
       <div class="card-title">💰 Recettes par type d'analyse (FCFA)</div>
       <div id="chart-recettes-type"></div>
@@ -3700,7 +3696,27 @@ async function saveRecord(type) {
   if (!validatePatient(p)) return;
   toast('Enregistrement en cours…');
   const resultats = collectResults(type);
-  const montant = calculateMontant(type, resultats);
+
+  // Mapping type d'analyse → tab de la fiche d'accueil
+  const TYPE_TO_TAB = {
+    'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
+    'Sérologie': 'sero', 'Parasitologie': 'parasito',
+    'Groupe sanguin': 'gs', 'Bilan prénatal': 'bpn',
+  };
+  const tabKey = TYPE_TO_TAB[type] || 'hema';
+
+  // Lire le montant du tab concerné (prix cochés sur la fiche d'accueil)
+  let montant = 0;
+  try {
+    const montantEl = document.getElementById('montant-preview');
+    const parTab = JSON.parse(montantEl?.dataset?.montantParTab || '{}');
+    montant = parTab[tabKey] || 0;
+    // Si rien n'est coché pour ce tab, fallback sur calculateMontant
+    if (!montant) montant = calculateMontant(type, resultats);
+  } catch(e) {
+    montant = calculateMontant(type, resultats);
+  }
+
   const prescripteurId = document.getElementById('p_prescripteur_id')?.value || null;
   const saved = await insertRecordRemote({ patient: p, type, resultats, montant, prescripteur_id: prescripteurId || null });
   if (saved) {
@@ -3848,38 +3864,35 @@ async function clearHistory() {
 // EXCEL EXPORT — RENDU PROFESSIONNEL (ExcelJS)
 // ============================================================
 
-const CENTRE = 'CPMI DE GRAND BASSAM';
-const CENTRE_SUB = "Laboratoire d'analyses médicales";
-const CENTRE_ADRESSE = 'Grand-Bassam — Côte d\'Ivoire';
-const CENTRE_CONTACT = 'Tél : — · Email : —';
+// ============================================================
+// EXCEL EXPORT — RENDU PROFESSIONNEL (ExcelJS)
+// ============================================================
 
-// Logo (PNG base64, intégré directement — emblème médical générique)
-const LOGO_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAeAAAAHgCAYAAAB91L6VAAAgtklEQVR4nO3dedBdZ33Y8d+rV9biRZZlY7ANMrYDonYaShjWUhLSCTt1IA1TwpISSgnTkGlKaWCGDum0CZkhTJg0TWdKixvC1mRKY3CJnYTJ4rB3KMOAqVgsEDY2xotkWbYlS3r7h/Si19J73/fec89znuV8Pn+CfHV1z7nne3/POefeCAAAAAAAAAAAAAAAAAAAoDQLuZ8AjN3S0tJSrr97YWHBMQAy8eaDBHJGNRWxhn55Q0FHLUa2K3GG2XnTwBpEdn7iDKvzxoATxHY4ogwCzEiJbXlEmbGxwzMKJQd359W7s/3de6/dle3vXo8g0zo7OE3KHdycUU0ld6wFmdbYoWlCjuC2GNmucsRZkKmdHZhqDRVdoe1uqDCLMTWy01KNIYIrtukNEWVBpgZ2UoqWMrpiW46UURZjSmXHpDipoiu49UgVZDGmJHZGitF3eAW3HX0HWYgpgZ2QrPqMruCOR59BFmNyseMxONGlT2JMrexsDKaP8Aou6+kjyELMEOxkJCW65CTGlMyORRLzhnds0d177a63Df137rx69zuH/jtzmjfGQkzf7FD0RnQfLkdUU2kt1mJMCexEzG3M4e0rsjkCV/Nz74sQk5Odh87mCW9t0e0Sq5rDdKox/PvnibEQ04Wdhpm1Ht5ZYlNbZFJo7fUSYoZiZ2FqXcNbcnSnjUcN4ShNC69t1xgLMdOwk7CulsI7TRRKDkLtan39hZgU7BxM1CW8pUV3vQN+iQf7saltG3WJsRCzGjsFp6k9vGsd0Es7mHO6WrafEDMvOwM/VGt4azlg003p21eI6cpOQJXhLf2gTBolb3chZlY2/ojVFt6SD74Mr9T9QYiZlo0+UrPGN1d4Jx1kBZdTlbavzBpiER4fG3xkag6v6DKtkvYfIWYSG3okaghvaRMM9StpnxJiTmUDN67W8IoufStlPxNiltmwDZslvkOHt5SDIeNUwv43S4hFuE02aoNKnnpLOPDBstz7o2l43GzMxpQ49eY+yME0cu6npuFxsiEbIbzQDyFmKDZgA6aNr/DC9GoIsQjXzcarWGlT76kHLNGlFTn2bdNw+2y0SpU09QovY1FyiEW4PjZYZUqaeoWXsRp63zcNt8mGqkgpU6/wwnGlhliE62AjVaCUqVd4YXVDvjdMw+2wcQpXwtQrvDCdEkMswuWyYQpWWnyFF6Yz1PtGhOtmoxSotPCe+LvEF2ZgGmY9NkZhcsdXeKFfQ72nRLg+NkRBpomv8EKdSgqxCJfBRihASVOv8EJaQ7zfTMN18OJnljO+pl7IY4j3ngiXzwufUSlLzsILeZQyDYtwHl70THLFV3ihPKnflyJcJi/4wHItOVtuhrKlfo9aki6PF3pApl5gPabh8fAiDyRHfE29UKcSpmERTs8LPIDc8RVeqFPK97EI57ch9xNonfgCXa18/546Fffw2Ov+mVl+iY3Z+XSTiPACfTINt8cEnID4An0zDbdHgHsmvkAqItwWSwo9Gjq+wgvjler9bzl6OCbgnogvMKRU07BJeDgC3APxBXIQ4bpZRpjTejuh8AJDyLUkbTm6OxPwHMQXKEWuadgk3J0AdyS+QGlEuC6WDjrIEV/hBWaR4thhObpfXqwZDRVfUy8wrxTHERHujyXoGYgvUJMUS9KWo/sjwFMSX6BGIlwuAZ6C+AI1E+EyWatfx9DxFV4gpb6PNc4Jd2cCXoP4Aq1ZPs6YhPMT4AnEF2iVCJdBgFchvkDrRDg/a/OnGCK+LrZq0zQ/49aKvn/Tmnz6Ph45Jzw9L8QK4ksXYwrvqYS4DSKchyXoE8SXLsYc3wj//lb0fZuS5ejpCPAUxJfViM9xXoc2DB1hBDgi1v40Jr6sRnQezuvRhiEjbAoW4OQ7gfi2R2xW53VpQ6qfNFzN2CM86gCnPu8rvkCN+oyw88GTjTbA4ksXpry1eX3aIcLpjTLA4guwPhFOa5QBXov4Apw0ZITHZnQBTn3F84rHEl+gCX0ez1wZfdKoAjzU7UbiC7Smz++OFuHjRhPgoW43El+gVX3/gMMkY4nwKAI81EVX4gu0rq8IuyhrJAFei/gCzGaoCLeu+QCnPO8rvsBYDRHh1qfgpgMsvgDpiPB8mg1wyo2W+gIEgNqkPC62GuFmA7yWeaZfX7QBcFJfX9QxxvPBTQZ4iC/bEF+A4/o6Ho5tKbq5ADvvCzA854Nn11SAhzjvK74AqxviizpainBTAV5LH+d9xRdgbX1EeCzng5sJcKqlZ1c8A3STKsKtTMFNBNhFVwDlcFHWdJoIcCqWngG6GeqHG2pWfYBTLz2LL0A3qc8H1z4FVx1g530B6iDCp6s6wKmZfgHm4zg6WbUBtvQMUAdL0aurMsDiC1AXET5dlQFOwXlfgGE43h5XXYBT3/Nr+gVIo4/ja0tTcFUBtvQMUDdL0SdVFeAUxBdgWL6k47hqApxi+h37xgfIretxuIUpuIoAO+8L0BbngysJcAqWngHyGvtSdPEBtvQM0L4xLkUXH+BJLD0D1C/1UnTJig5wik8vlp4BypJyKbrkKbjoAE9S66cdANKosQvFBtj0CzAeY5yCiwxwyguvxBegTPNGuLYLsooMMAC0rrgAm34BxmtMU3BxAZ7EPb8A45IiwiUpKsApP52YfgHqkPJ4XdIUXFSAJ7H0DDAuKZeiS1FMgEv6VAJAu0rpTTEBnsT0CzBOrU/BRQS4lE8jAIxDCd0pIsCTmH4Bxq3lKTh7gPv+FOK2I4A29X18zz0FZw/wJPN+ajH9ArRh3uN5qVNw1gCnmn7FF6AtqX6sIecUXOQEXOqnFQDqVGJXsgXY9AvALFqbgoubgEv8lAJA/UrrS5YAm34B6KKlKbioCbi0TycAtKWkzgweYNMvAPNoZQouZgIu6VMJAO0qpTeDBtj0C0AfWpiCi5iAS/k0AsA4lNCdIgLchekXYNxSTcFDGSzAub/0GgCmMVSvsk/AXZYBTL8ARMw3Bedehh4kwKZfAGoyRLeyTsDzTL8AsFJtU3D2JeiuLD8DEFFvD5IH2PIzADVK3a+FlA8eMfkf4OKr+uy9dlfupwBVyH1xz1jN04hJx7eFhYVkndyY6oEjTL+tEF6YzfJ7Rojrt7S0tJQqwlnOAZt+6yG+0J33z7BquyWp2ouwSM/BA+bnfcQkyQJs+bluDhrQH++nuqXq2eATsOXn8jlYQP+8r4ZR0zK0JWgAyCBJgN16VC+f0iEd769hpJiCUyxDm4ABIIPeA+ziKwBa1HffBpuALT8DMJQaLsayBA0AGfQa4D7Hcz87CEAf+uxJn50bZAKeZ5y3/AxAF/P0Y4hlaEvQAJBBbwFOsfxs+gVgHvNcjDVJX71LPgH7OS4AapS6X5agASCD4gJs+RmAPqVYhu5DLwH27VcAjEkf3Us6ATv/C0DNUnasqCXo0pYHAGhLSZ2ZO8Aplp+d/wWgTym6Mm//kk3Alp8BaEGqnhW1BA0AY1FMgN1+BEBKpd2ONFeA3X4EwJjN08EkE7DzvwC0JEXXiliCtvwMwBBKWoYuIsAAMDadA+z8LwB072HvE7DzvwC0qO++ZV+Cdv4XgCGVch44e4ABYIw6Bdj5XwA4qUsXe52Anf8FoGV9di7rErTzvwDkUMJ5YOeAASADAQaADGYOsAuwAOB0s/axtwnYBVgAjEFfvcu2BO0CLAByyn0hlnPAAJCBAANABjMF2AVYADDZLJ3sZQJ2ARYAY9JH97IsQbsAC4AS5LwQyzlgAMhAgAEgAwEGgAwEGAAymDrAky6tdgU0AGM0qX/T3oo0+ATsCmgASpLrSmhL0ACQgQADQAYCDAAZCDAAZCDAAJDBVAF2CxIAnG6eW5EGnYDdggRAiXLcimQJGgAyEGAAyECAASADAQaADAQYADIQYADIQIB5GPd2QzreX6wkwACQgQBzGp/SoX/eV5xq3QD7Gspxsn2hP95Pbev6dZSDTcC+hrI+DhowP++jegz9dZSWoFmTgwd05/3DWjbmfgKUb/kgsvfaXZmfCdRBeJmGADM1BxUfQqZhP4HpWIIGgAwEGAAyEGAAyECAASADAQaADAQYADIQYADIQIABIAMBBoAMBBgAMhBgAMhAgAEgAwEGgAwEGAAyEGAAyECAASADAQaADAQYADIQYADIQIABIAMBBoAMBBgAMhBgAMhAgAEgAwEGgAwGC/DOq3e/MyJi77W73jbU3wkA01ru03KvUls3wAsLCwur/e97r93V/7MBgMpM6uGkfi6zBA0AGQgwAGQgwACQgQADQAYCDAAZCDAAZCDAAJCBAANABgIMABkMGmBfRwlAiYb+GsqIKQPs6ygB4HRdv4YywhI0AGQhwACQgQADQAYCDAAZCDAAZDB4gN2KBEBJctyCFDFDgN2KBAAnzXMLUoQlaADIQoABIAMBBoAMBBgAMsgSYFdCA1CCXFdAR/QUYFdCAzAmfXRvpgBPe2k1AIzRLJ10DhgAMhBgAMggW4BdiAVATjkvwIroMcAuxAJgDPrq3cwBdiEWAJxu1j46BwwAGQgwAGSQNcAuxAIgh9wXYEX0HGAXYgHQsj471ynALsQCgJO6dNE5YADIIHuAnQcGYEglnP+NSBBg54Fp2c6rd+d+CkXz+tCyvvvWOcDOAwNA9x5mX4KG2pjyVud1gdkUEWDngamN2Dyc14NalHL+NyJRgJ0HZgxE5zivA2OQomtzBdh5YMZu7PEZ+78f5ulgEUvQEZahqdfOq3ePLkRj/DdTv5KWnyMiNuZ+AtAKQQJmkWwCdh4YgBak6tncAU5xHtgyNAB9StGVeftXzDngiHLW5QFoU0mdSRpgy9AA1Cxlx3oJsNuRABiTPrpX1BJ0hNuRAOhXabcfLSsuwAAwBskD7DwwADVK3a/eAtzneWDL0AD0IcXyc1+9swQNABkMEuB5xnhTMABdzNOPIU6f9hrgFMvQADCPEpefIyxBA0AWgwW4yzjvYiwAupjn4quh7t7pPcC+FQuAFvXdN0vQAJBBkgBP+pRgGRqA1FIsP6dY3TUBA0AGgwfYFAxAKjVcfLUsWYBdjAVAC1L1zBI0AGSQJcCWoQHoW03LzxGJA2wZGoCapexYtiVoUzAAfalt+o0YIMCmYABqlLpf1V6EZQoGIKLeHmQN8DzL0ACwUk3LzxEDBdgyNAA1GaJb2ZegXYwFQFc1Xny1bLAAm4IBqMFQvco+AXdlCgYYt3mm3xIUEeDcywAAjEsJ3Rk0wH2P9aZggHFKNf0Oebq0iAk4ooxPIwC0r5TeDB5gUzAA82hh+o0oaAKOKOdTCQBtKqkzWQJsCgagi1am34jCJuCIsj6dANCO0vqSLcCmYABm0dL0G1HgBBxR3qcUAOpWYleyBtgUDMA0Wpt+IwqdgCPm/7QiwgBtmPd4XuL0G1FAgFNNwQC0paXpN6KAAK+l66cWS9EAbZh36bnU6TeikADn/hQCwLiU0J0iArwWUzDAOLU8/UYUFOASPo0A0L5SelNMgNdiCgYYl9an34jCApzyU4kIA9Qh5fG6lOk3orAAr2XeKRiAurQ8/UYUGOC1Pp1YigZoW8ql55Km34gCAwwAY1BkgE3BAOMzpuk3otAAR6R5sUQYoEypfmwhosz4RhQc4LXUcoIdgGHU2IWiA2wKBmjfGKffiMIDvJY+Pu2IMEBefRyHa5x+IyoIcMoLsgAow1guvFqp6Ce3bGlpaWnS/7fz6t2dHzflsgdluOziTfH0q7bGjz1uS1x28aa4+IKNsWPbxtiyaSE2bIg4cP+xOHDwWPxg35G4ac+huGnPofj8TffHN757OPdTh+b1cQwW4AGkiPDKpQ8RbscF2zfGK3763HjZc7bFFZds6vQYN3/vcNzwmfviQ3+2L75z+0Pr/vlXPX97/OYbH9np74qIOHJ0Ke49eCwO3H8s7tp//MPAl7/5YHz2Kw/Et2+b/cPArM/n8zc9EP/4bXtn/nuWnXPmhvjCNVfEmVumX1R79i/tWfffNs2/4+ixiMte2v2DOHn0cfytOb4RERtzP4FpLSwsLEyK8N5rd3WK8M6rd7/TeeB2bD97Md708vPjF164PTadMd977/KLN8Ubf3ZHvOFlO+L6zxyId3/ozqRT8cbFhdixbTF2bFuMSx91Rvz4rq0//P8+99UH4oPX74uP3XhvHJv4MXQ+T71ya1x1+eb46s2HOv33r3ju9pniC8vGGt+ICs4Bp+aq6Db81JPPik/+3mPj9VefN3d8V9qwEPHCZ54TL37Wtt4ec1ZPu2pr/O6bL4o//s2dcdnF3Sb6abzuJed1+u82LET80xdt7/fJ0DSn/46rKsApLsiKEOHa/fLPnR/X/NtHxyPOq2ZBp5OnXLk1rn/PpfH0Hz0zyeP/o3+wLc4/d3Hm/+65Tzs7Hn3hGQmeES0a+3nflaoKcES6CK94DBGuyNtf+4j4N6+6IOp5y81n6+YN8b63XxJPfNyW3h970xkL8arnb5/5v/vFjpMz45P6lqOa4htRYYBTGftSSI1+6aU74p//zI7cT2NwZ2/dEO/51Yti42L/x5pXv2D7TI975WWbk03ktMvx9rgq1+xSXJAVcfKirL3X7nqbHaRsT7lya/zaax4x03/z9b2H4s8+d1/c+KX745YfPBR37jsaS0tLce7Zi7H9nMXYtXNTPOnxW+OpV22Nv3tF/xNmn664ZFO8+gXb45rr7un1cS88b2O85FnnxP/663un+vOmX6Zl6fl0VQY4QoTHbOPiQrzrTY+KxSnXb279wUPxW++/Mz52472x2h7z4N1H4vt3H4nd3zkUH7vxQEQcD9zLnrMtXvm87bFj2+znRVcz6XaZjYsLcf65i/Gkx2+JVz5/e/zEk86a6vFSBDjieFSnCfD55y7Gzzw738Vp1EN8V2cJeg3OB5fpNS/cHpdPeTXwl77xYLz4zd+Ja/9m9fhO8q1bD8e7PnBn/P3X3xy//cE7Y/99Rzs+2/UdOboU37/7SFz/2fvi1b9+S/z6f71jqv/uRx69KR7zyP4vfnri47Y87DaoSV71/Plv96J9jqOTVR3g1FdFU56Niwvx+qunW/b8+t5D8U/e/t24a3/3eB588Fj87h/dFe/7eP+T5iTv+/g98YlPH5jqzz71yvVDOcnhhyZ/IllvaXnj4kK8+gXbOz0242T6PV3VAY5wa9LY/MSPnxWXPGL9qe/Q4aX45d++Le5/8NgAz6p/f/QX+6f6cxfu6H4W6bpPHZj4xR4vfObZ8ajzJz/2S551Tlw44bav737/ofjSNx7s/Lxoh6XntVUf4JREuDwveubZU/25j/zF/vh/3+n2rU4l+Oat033r1gXndg/wd25/KD75hftW/f/Wm3DXmpCvue6eOJbqK7uohi/bWF8TAU59b/CJxxHhAjzrietfoLS0FIMuGacw7cf6Nb4ifSr/bY3X6ZXP2x6bN53+TJ78hK0T70M++OCx+B9TTu+0q6/jZcvTb0QjAY5wPngMHrlj45rLostu2nMo9nyv7l8z+pHHbJ7qz81zfjsi4tNfvn/iSsGObatf5bzW9PvHn9wfB+6vc9mf/ll6XlszAV6P88H1e9xjprvy+Qtfuz/xM0nv5f9wutt77rjnyNx/1zVrTMGvffHDY3vR+RvjBc9Y/TTA0lLEf79u39zPh7qlPu/bkqYCnPJTkQjnN+33DX/lW/We+404Hr0XPOOcqf7s5776wNx/30f/+t6458Dqk/Sp33T1Cy86b+I3Zf3lFw/GzZWvPDCfIc77tjL9RjQW4Ii054NFOK/zzpnuCzHuvjfdPbspbFxciAvP2xjPe/rZ8f53PDr+3esvnOq/+8Z3D8ctd6z/W8XrOXR4KT50w76J///ykvOWTQvxiueeO/HP1X7enfn0Fd8xLD0vq/absNaS6luyTnkc35Q1sC2rXBC0mv0Hywzw4oZ+l9Y+cP2+3h7rDz6xL97w0h2rTrc//dTjv3b07L935sQPQd+85XDc+KWDvT0f6uKiq26am4Cn0ddFWSZhcvnWrYfjD/90X2+Pd/tdR+ITn179lqTFDcd/7/fU88Erve/j98z0TWO0Y+Vx0Hnf2TQb4CHOBzOsBw9Pd4Q/96x+vru5VAcfPBb/6j23xZGj/RZvrSXkX3zJebHr0tWvzN5/39H46F9N9+MNtMt539k1G+AI54NbM+lCoVP19eMJJTp0eCle9xu3xv/9ev/fNPXF3Q9M/AartX6i8MN/vr/abxxjPs77zqfpAEeIcEumveDoqsunu4e2Nl/c/UA8/1e/HZ/+crrbrN73sdkupDp67Pj5Y8ZHfOfXfIDXI8L1+NYt093i8pS/0/0HCkr0f772QPzL99wWL/u1vVO/Bl1d96kD8f27p7+3+IbPHohbe7gSm7oMEd8xGEWA1/sUJcJ1uO2uI3H7XevH4crLt8RjL5ruSztKceToUtxz4Gjsvf34Dxl86IZ98db/dHv85Bv3xMveujc++pf3TvzhhL6fx/tnmGjdejQ+Q8W39ek3otHbkFaz1q1Jfdh59e537r1219vcnpTWp758f/zsc9b+lqgNCxGvffH2eMd7p/td3aEcPRZx2UvnvwUutQ/esC9+5eXnr/o90Ct99eZD8fmb5v8iEOox1A8sjCG+ESOZgJel/tEGk3B6//tT0/1O7s8/d3s8fmeb54JTu/veo/Enf7P+Vc1r/ZAD7ekzvmM+77vSqAIcMcwvJ514LBFO4K++eDBum2IZevOmhfi9f33R1F/ewcOtt7R81/6j8bEb3Xo0Fn0ez8T3pNEFeD19nQ8+8Vgi3LMjR5fivX9y91R/9gmXbo4P//vHzHVb0llbNsSbfu78NX8BqEVf+/ah+MxXJl9t/YfX74vDD/nmjTHo64s2TjzW/E+oIaMM8FAXZZ14LBHu2R98Yl98+7bprgZ+8hO2xnXvvjRe/KxzYpbP1o+9aFO8+ecviL/9L5fHW151QZx7drv3Fk8yaQo+cnQpPtDjt3BRriHjO7bpN2JEF2Gdar2Lsub9zujli7JOPJYLs3r00JGleMt/vD0+8h92xuIUHyEffeEZ8ftvuTh2v/xQ3PC5++LGLx2MW35wJO7efzSOLS3FtrMWY/vZG+LxOzfHEx+3JZ521ZnxpMev/oPzY3LDZ+/r5XvTqZP4pjfaAEeIcM0+99UH4l0f+EG89TWPmPq/2XXp5th16eb4lZefn/CZQf3EdxijXIJeKfXGtxydzu//z7vjmutciQt96jO+6xlzfCMEOCKGuz3pxOOJcI/e8d474nc+fGfupwFN6Du+rnhemwBPQYTL9jsfuSte9xu3xl37y/wdYKjBkPHlOAE+IfWV0REinNKff/6++Kl/sSeuue6eeOhIf7fHHFuK+NPPHIjr/tY9r7Rr6Piafo8T4BVEuG73HDga73jvHfGMf3ZzvPtDd8ae73X/4YI93zsc//mjd8dPvnFPvOG3vhff+G7aH0GAXMQ3Hy/EKtb7zui+bs0Y6ntVx+yKSzbF0370zPixKzbH5ZdsiosvOCPO27YYWzYtxMJCxH0PHIsDB4/FHfccia99+1DctOf49xt/fe+h3E8dkuv7GCS+s/FiTCDCQMvENz9L0BMMsRwd4QccgOGJbxkEeA0iDLRGfMvhhZnC0MvRJx7TkjTQmxTHF/Gdjwl4CkNPwice0zQM9EJ8yyTAUxJhoEbiWy4BnoEIAzUR37J5oToY6pxwhNuUgG5SHDvEt19erI5yRPjE4woxMFGq44X49s8SdEdDLUdHWJIGpiO+dRHgOYgwUArxrY8XrgfrLUdHWJIG0sgV3gjxnZcJuAfT7ISmYaBv4ls3Ae6JCANDEt/6eRF7NvRydIQlaRiTlO938R2WCbhnQ0/CEaZhGAvxbYsAJyDCQN/Etz1e0MQsSQPzEN52mYATMw0DXYlv27y4A8k9CZ94fNMwVCD1e1d8y+AFHlCOCEdYkoaapH6/im85vMgDmybCEaZhGJsSpt4I8R2SFzoT0zCwzNQ7Tl7wjHJFOEKIoQRDvA/Ft1xe9MxyLUlHWJaGXIZ471lyLp8XvgA5IxxhGoYhlTL1Rohvbl78gpSyJH3i7xFi6NFQ7zFLzvWwEQpT0jR84u8RYphDSeGNEN+S2BAFyh3hCCGGeQ35HhLfOtkYBSstxCIM0xnqfSO8dbNRCldahE/8XUIMqzD1MgsbpgLTRjhCiCGHEsMbIb6ls3EqUsI0HCHEsGzo94Kpty02UmVKmYYjhJjxKjW8EeJbExuqUqVMwxFCzHjk2NdNve2ywSpW0jQcIcS0q+TwRohvrWy0BpQ0DUecfrA68XeLMVXJuR+besfBxmtEadNwhBBTpxrCGyG+LbABGyPE0I3wMjQbskGzRDhiuBBHiDFlyb0/zhLeCPFtjY3ZsBKn4WW5D3yMWwn7n6kXG7VxJU/Dy0o4GNK+UvYzUy/LbNiRqDXEEWJMdyXtU8LLqWzgkakhxBHlTCvUqaT9R3iZxIYeqZpDHCHGnK60fUV4WY8NPmKzRjgiX4gjJh9gIwR5jErdH2YNb4T4jpWNTnUhjij34EtaJW934WVWNj4/VGOII8o+KDO/0rev8NKVnYDT1BriZaUfsFlbLdtPeJmXnYGJag9xxNoH84iyDuhjVds2El76YqdgXV1CHFFejCPWP9hHlHfAb0mtr3+X6EYIL2uzczC1lkK8bJogRJQZhdK18NoKLynZSZhZ1xBHlB3jZdOGI6LseAyltdera3QjhJfZ2FnorPUQrzRLZJbVEJtpjeHfL7wMzU7D3OYJcUR9MV6pS5hWk+m7iat97n2ZJ7oRwst87Dz0ZswhXk1fgStBzZFdjfBSAjsRSYjxbHLEurWorkd0KY0diqTmDXHE+GJMf+aNboTwko4di8GIMUMQXWphJ2NwfYR4mSDTR3CXCS9DsrORlRjThejSAjsexegzxhGC3JI+gxshupTBTkhx+g7xMkGuR9/BXSa8lMTOSNFSxThCkEuSKrgRoku57JhUI2WMl4lyeilju0x0qYGdlGoNEeQIUZ7HELGNEFzqZKelCUPFeCVhPmmo0K4kutTODkyTcgR5pRbjnCOyKwkurbFDMwq5g7yWnLHOHdW1CC6ts4MzSiUHeawEl7Gxw8MJojwcsQUBhjWJ8vzEFlbnjQEdifNJIguz86aBBFqMs8hCv7yhILOcsRZVAAAAAAAAAAAAAAAAACjW/wd6S6qCQ5B/MAAAAABJRU5ErkJggg==';
+const CENTRE         = 'CPMI DE GRAND-BASSAM';
+const CENTRE_SUB     = "Centre de Protection Mère et Infantile";
+const CENTRE_ADRESSE = "Laboratoire d'analyses médicales · Grand-Bassam, Côte d'Ivoire";
 
-// Couleurs (ARGB, sans préfixe "FF" séparé — ExcelJS veut "FFRRGGBB")
-const C_HEADER_BG  = 'FF1E3A8A'; // bleu profond (indigo nuit)
-const C_HEADER_BG2 = 'FF2563EB'; // bleu vif (bande d'accent dégradée)
-const C_HEADER_BG3 = 'FF60A5FA'; // bleu clair (liseré final du dégradé)
-const C_HEADER_FG  = 'FFFFFFFF'; // blanc
-const C_SECTION_BG = 'FF1E3A8A'; // section : même bleu profond que l'en-tête
-const C_SECTION_FG = 'FFFFFFFF';
-const C_PAT_BG      = 'FFF1F5FE'; // fond bleu très pâle pour la fiche patient
-const C_PAT_LABEL_BG= 'FFDCE8FB'; // étiquette légèrement plus soutenue
-const C_PARAM_BG   = 'FFFAFBFD'; // gris-bleu quasi blanc
-const C_ALT_BG     = 'FFFFFFFF';
-const C_BORDER     = 'FFE2E8F0';
-const C_BORDER_DARK= 'FF1E3A8A';
-const C_HIGH_BG    = 'FFFDE8E8'; // rouge clair anomalie
-const C_HIGH_FG    = 'FFB91C1C';
-const C_LOW_BG     = 'FFE5EEFD'; // bleu clair bas
-const C_LOW_FG     = 'FF1D4ED8';
-const C_NORM_BG    = 'FFE7F7EC';
-const C_NORM_FG    = 'FF15803D';
-const C_LABEL_FG   = 'FF334155';
-const C_MUTED      = 'FF64748B';
-const C_TABLE_HEAD_BG = 'FF1E3A8A';
-const C_TABLE_HEAD_FG = 'FFFFFFFF';
-const C_GOLD       = 'FFCBA135'; // liseré doré discret pour une touche "officielle"
+// Palette sobre — économique en encre
+const C_HEADER_BG   = 'FF1E3A8A'; // bleu profond en-tête (seul fond coloré foncé)
+const C_HEADER_FG   = 'FFFFFFFF';
+const C_SECTION_BG  = 'FFE8F0FE'; // bleu très pâle pour les sections
+const C_SECTION_FG  = 'FF1E3A8A';
+const C_PAT_BG      = 'FFFAFCFF';
+const C_PAT_LABEL_BG= 'FFE8F0FE';
+const C_PARAM_BG    = 'FFFFFFFF'; // blanc pur
+const C_ALT_BG      = 'FFF5F8FF'; // alternance très légère
+const C_BORDER      = 'FFD1D9E6'; // gris clair
+const C_HIGH_BG     = 'FFFFF1F1'; // rouge ultra-pâle
+const C_HIGH_FG     = 'FFB91C1C';
+const C_LOW_BG      = 'FFF0F5FF'; // bleu ultra-pâle
+const C_LOW_FG      = 'FF1D4ED8';
+const C_NORM_BG     = 'FFF0FDF4'; // vert ultra-pâle
+const C_NORM_FG     = 'FF15803D';
+const C_LABEL_FG    = 'FF374151';
+const C_MUTED       = 'FF6B7280';
+const C_TH_BG       = 'FF1E3A8A';
+const C_TH_FG       = 'FFFFFFFF';
+const C_GOLD        = 'FFCBA135';
 
 function thinBorder(color) {
   const b = { style: 'thin', color: { argb: color || C_BORDER } };
@@ -3887,570 +3900,316 @@ function thinBorder(color) {
 }
 
 function styleCell(cell, { bg, fg, bold, size, halign, border, italic } = {}) {
-  cell.font = { name: 'Calibri', size: size || 10, bold: !!bold, italic: !!italic, color: { argb: fg || 'FF111827' } };
+  cell.font = { name: 'Calibri', size: size || 10, bold: !!bold, italic: !!italic,
+    color: { argb: fg || 'FF111827' } };
   cell.alignment = { horizontal: halign || 'left', vertical: 'middle', wrapText: true };
   if (bg) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
   if (border) cell.border = thinBorder(border === true ? C_BORDER : border);
 }
 
 function makeFilename(dossier, date, nom, type) {
-  const safe = (s) => (s || '').toString().trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '_');
+  const safe = s => (s||'').toString().trim().replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,'_');
   const d = date ? date.split('-').reverse().join('-') : '';
-  const parts = [safe(type), safe(nom) || 'PATIENT', safe(dossier), d].filter(Boolean);
-  return parts.join('_') + '.xlsx';
+  return [safe(type), safe(nom)||'PATIENT', safe(dossier), d].filter(Boolean).join('_') + '.xlsx';
 }
 
-/**
- * Construit une feuille de résultat professionnelle pour un enregistrement `r`
- * dans le classeur `wb` (ExcelJS Workbook), avec le nom d'onglet `sheetName`.
- */
 function buildProfessionalSheet(wb, r, sheetName) {
   const ws = wb.addWorksheet(sheetName || r.type.substring(0, 31), {
-    pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4, header: 0, footer: 0 } },
+    pageSetup: {
+      paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1,
+      margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.2, footer: 0.2 }
+    },
     views: [{ showGridLines: false }],
   });
-  const p = r.patient;
 
-  // ── Largeurs de colonnes ──────────────────────────────────────
+  const p = r.patient;
+  let row = 1;
+  const NC = 6;
+
   ws.columns = [
-    { width: 32 }, // A — paramètre / logo
-    { width: 17 }, // B — valeur
-    { width: 14 }, // C — unité
-    { width: 24 }, // D — ref
-    { width: 19 }, // E — interprétation
-    { width: 15 }, // F — spare
+    { width: 34 }, { width: 16 }, { width: 13 },
+    { width: 22 }, { width: 18 }, { width: 12 },
   ];
 
-  let row = 1;
-  const LAST_COL = 'F';
+  function merge(r1,c1,r2,c2) { ws.mergeCells(r1,c1,r2,c2); }
 
-  function mergeRow(r1, c1, r2, c2) {
-    ws.mergeCells(r1, c1, r2, c2);
-  }
-
-  // ── BANDEAU EN-TÊTE (logo + nom centre, effet dégradé) ─────────
-  const HEADER_ROWS = 5;
-  for (let i = 0; i < HEADER_ROWS; i++) {
-    const rr = ws.getRow(row + i);
-    rr.height = i === 0 ? 10 : (i === 1 ? 34 : 19);
-    for (let c = 1; c <= 6; c++) {
-      styleCell(rr.getCell(c), { bg: C_HEADER_BG, fg: C_HEADER_FG });
-    }
-  }
-  // Liseré doré tout en haut (touche officielle/institutionnelle)
-  ws.getRow(row).height = 5;
-  for (let c = 1; c <= 6; c++) styleCell(ws.getCell(row, c), { bg: C_GOLD });
-
-  const headerTextStart = row + 1;
-
-  // Logo : centré verticalement sur les lignes de texte (pas le liseré doré)
-  mergeRow(headerTextStart, 1, row + HEADER_ROWS - 1, 1);
-  let imgId = null;
-  try {
-    imgId = wb.addImage({ base64: LOGO_BASE64, extension: 'png' });
-  } catch (e) { imgId = null; }
-  if (imgId !== null) {
-    ws.addImage(imgId, {
-      tl: { col: 0.22, row: headerTextStart - 1 + 0.18 },
-      ext: { width: 92, height: 92 },
-      editAs: 'oneCell',
-    });
-  }
-
-  // Nom centre + sous-titre + adresse + type d'analyse, colonnes B→F
-  mergeRow(headerTextStart, 2, headerTextStart, 6);
-  const cName = ws.getCell(headerTextStart, 2);
-  cName.value = CENTRE;
-  styleCell(cName, { bg: C_HEADER_BG, fg: C_HEADER_FG, bold: true, size: 20, halign: 'left' });
-  row = headerTextStart + 1;
-
-  mergeRow(row, 2, row, 6);
-  const cSub = ws.getCell(row, 2);
-  cSub.value = CENTRE_SUB;
-  styleCell(cSub, { bg: C_HEADER_BG, fg: 'FFBFDBFE', bold: false, size: 11.5, halign: 'left', italic: true });
+  // ── EN-TÊTE ────────────────────────────────────────────────
+  // Liseré doré
+  ws.getRow(row).height = 4;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:C_GOLD}};
   row++;
 
-  mergeRow(row, 2, row, 6);
-  const cAdr = ws.getCell(row, 2);
-  cAdr.value = CENTRE_ADRESSE + '   ·   ' + CENTRE_CONTACT;
-  styleCell(cAdr, { bg: C_HEADER_BG, fg: 'FF93C5FD', bold: false, size: 9.5, halign: 'left' });
+  // Nom du centre
+  ws.getRow(row).height = 22;
+  merge(row,1,row,NC);
+  const cN = ws.getCell(row,1);
+  cN.value = CENTRE + '  —  ' + CENTRE_SUB;
+  styleCell(cN, {bg:C_HEADER_BG, fg:C_HEADER_FG, bold:true, size:12, halign:'center'});
   row++;
 
-  mergeRow(row, 2, row, 6);
-  const cType = ws.getCell(row, 2);
-  cType.value = "RÉSULTAT D'ANALYSE  ·  " + r.type.toUpperCase();
-  styleCell(cType, { bg: C_HEADER_BG, fg: C_HEADER_FG, bold: true, size: 12, halign: 'left' });
+  // Sous-titre + type d'analyse
+  ws.getRow(row).height = 16;
+  merge(row,1,row,3);
+  const cS = ws.getCell(row,1);
+  cS.value = CENTRE_ADRESSE;
+  styleCell(cS, {bg:C_HEADER_BG, fg:'FFBFDBFE', size:9, italic:true});
+  merge(row,4,row,NC);
+  const cT = ws.getCell(row,4);
+  cT.value = 'RÉSULTAT : ' + r.type.toUpperCase();
+  styleCell(cT, {bg:C_HEADER_BG, fg:'FFFBBF24', bold:true, size:10, halign:'right'});
   row++;
 
-  // Dégradé de fermeture du bandeau : 3 fines bandes de bleu de plus en plus clair
-  [C_HEADER_BG2, C_HEADER_BG2, C_HEADER_BG3].forEach((color, idx) => {
-    const sepRow = ws.getRow(row);
-    sepRow.height = idx === 2 ? 3 : 4;
-    for (let c = 1; c <= 6; c++) styleCell(sepRow.getCell(c), { bg: color });
-    row++;
-  });
-  row++; // espace blanc
-  row++; // espace blanc
-
-  // ── Fiche patient (encadrée, fond bleu pâle) ────────────────────
-  mergeRow(row, 1, row, 6);
-  const patTitleCell = ws.getCell(row, 1);
-  patTitleCell.value = '🗂  IDENTIFICATION DU PATIENT';
-  styleCell(patTitleCell, { bg: C_PAT_LABEL_BG, fg: C_HEADER_BG, bold: true, size: 10.5, halign: 'left' });
-  ws.getRow(row).height = 19;
+  // Liseré doré bas
+  ws.getRow(row).height = 4;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:C_GOLD}};
   row++;
-
-  const patBoxStart = row;
-  const patStyle = { bg: C_PAT_LABEL_BG, fg: C_HEADER_BG, bold: true, size: 10, halign: 'left', border: C_BORDER };
-  const patVal   = { bg: C_PAT_BG, fg: 'FF111827', bold: false, size: 10, halign: 'left', border: C_BORDER };
-
-  function patRow(lbl1, val1, lbl2, val2) {
-    const rr = ws.getRow(row);
-    rr.height = 19;
-    styleCell(rr.getCell(1), patStyle);
-    rr.getCell(1).value = lbl1;
-    styleCell(rr.getCell(2), patVal);
-    rr.getCell(2).value = val1 || '—';
-    styleCell(rr.getCell(3), { bg: C_PAT_BG, border: C_BORDER });
-    if (lbl2 !== undefined) {
-      styleCell(rr.getCell(4), patStyle);
-      rr.getCell(4).value = lbl2;
-      styleCell(rr.getCell(5), patVal);
-      rr.getCell(5).value = val2 || '—';
-      mergeRow(row, 5, row, 6);
-    } else {
-      styleCell(rr.getCell(4), { bg: C_PAT_BG, border: C_BORDER });
-      mergeRow(row, 4, row, 6);
-    }
-    row++;
-  }
-
-  patRow('N° Dossier', p.dossier, 'Date', p.date ? p.date.split('-').reverse().join('/') : '');
-  patRow('Patient', p.nom, 'Âge / Sexe', (p.age ? p.age + ' ans' : '') + (p.sexe ? ' — ' + p.sexe : ''));
-  patRow('Médecin', p.medecin, 'Service', p.service);
-  if (p.clinique) {
-    const rr = ws.getRow(row);
-    rr.height = 24;
-    styleCell(rr.getCell(1), patStyle);
-    rr.getCell(1).value = 'Renseignements cliniques';
-    styleCell(rr.getCell(2), { ...patVal, halign: 'left' });
-    rr.getCell(2).value = p.clinique;
-    mergeRow(row, 2, row, 6);
-    row++;
-  }
   row++; // espace
 
-  // ── Helpers résultats ────────────────────────────────────────────
-  function sectionHeader(title) {
-    const rr = ws.getRow(row);
-    rr.height = 22;
-    const cell = rr.getCell(1);
-    cell.value = '▎ ' + title;
-    styleCell(cell, { bg: C_SECTION_BG, fg: C_SECTION_FG, bold: true, size: 11, halign: 'left' });
-    mergeRow(row, 1, row, 6);
+  // ── FICHE PATIENT ──────────────────────────────────────────
+  ws.getRow(row).height = 14;
+  merge(row,1,row,NC);
+  const pt = ws.getCell(row,1);
+  pt.value = 'IDENTIFICATION DU PATIENT';
+  styleCell(pt, {bg:C_SECTION_BG, fg:C_SECTION_FG, bold:true, size:9});
+  pt.border = { bottom:{style:'medium',color:{argb:C_HEADER_BG}} };
+  row++;
+
+  const lS = {bg:C_PAT_LABEL_BG, fg:C_SECTION_FG, bold:true, size:9.5, border:true};
+  const vS = {bg:C_PAT_BG, fg:'FF111827', size:9.5, border:true};
+
+  function patRow(l1,v1,l2,v2) {
+    const rr=ws.getRow(row); rr.height=16;
+    styleCell(rr.getCell(1),lS); rr.getCell(1).value=l1;
+    merge(row,2,row,l2!==undefined?3:NC);
+    styleCell(rr.getCell(2),vS); rr.getCell(2).value=v1||'—';
+    if (l2!==undefined) {
+      styleCell(rr.getCell(4),lS); rr.getCell(4).value=l2;
+      merge(row,5,row,NC);
+      styleCell(rr.getCell(5),vS); rr.getCell(5).value=v2||'—';
+    }
     row++;
   }
 
-  function tableHeader(cols) {
-    const rr = ws.getRow(row);
-    rr.height = 18;
-    cols.forEach((c, i) => {
-      const cell = rr.getCell(i + 1);
-      styleCell(cell, { bg: C_TABLE_HEAD_BG, fg: C_TABLE_HEAD_FG, bold: true, size: 9.5, halign: i === 0 ? 'left' : 'center', border: C_HEADER_BG });
-      cell.value = c;
+  const dateF = p.date ? p.date.split('-').reverse().join('/') : '—';
+  const ageSexeF = [p.age?p.age+' ans':'', p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':''].filter(Boolean).join(' / ');
+  patRow('N° Dossier', p.dossier, 'Date de prélèvement', dateF);
+  patRow('Nom du patient', p.nom, 'Âge / Sexe', ageSexeF);
+  patRow('Médecin prescripteur', p.medecin, 'Service', p.service);
+  if (p.clinique) {
+    const rr=ws.getRow(row); rr.height=18;
+    styleCell(rr.getCell(1),lS); rr.getCell(1).value='Renseignements cliniques';
+    merge(row,2,row,NC);
+    styleCell(rr.getCell(2),{...vS,italic:true}); rr.getCell(2).value=p.clinique;
+    row++;
+  }
+  row++;
+
+  // ── HELPERS RÉSULTATS ──────────────────────────────────────
+  function secHdr(title) {
+    const rr=ws.getRow(row); rr.height=14;
+    merge(row,1,row,NC);
+    const c=rr.getCell(1);
+    c.value=title;
+    styleCell(c, {bg:C_SECTION_BG, fg:C_SECTION_FG, bold:true, size:9.5});
+    c.border={top:{style:'thin',color:{argb:C_HEADER_BG}},bottom:{style:'thin',color:{argb:C_HEADER_BG}}};
+    row++;
+  }
+
+  function tblHdr(cols) {
+    const rr=ws.getRow(row); rr.height=14;
+    cols.forEach((col,i) => {
+      const c=rr.getCell(i+1);
+      styleCell(c, {bg:C_TH_BG, fg:C_TH_FG, bold:true, size:9, halign:i===0?'left':'center'});
+      c.value=col;
     });
     row++;
   }
 
-  function paramRow(nom, valeur, unite, refNorm, interp, altBg) {
-    // Ne pas afficher les paramètres sans valeur saisie
-    if (!valeur || valeur.toString().trim() === '') return;
-
-    const bg = altBg ? C_ALT_BG : C_PARAM_BG;
-    let interpBg = bg, interpFg = C_MUTED;
-    if (interp && interp.includes('Élevé'))  { interpBg = C_HIGH_BG; interpFg = C_HIGH_FG; }
-    else if (interp && interp.includes('Bas'))    { interpBg = C_LOW_BG;  interpFg = C_LOW_FG;  }
-    else if (interp && interp.includes('Normal')) { interpBg = C_NORM_BG; interpFg = C_NORM_FG; }
-
-    const rr = ws.getRow(row);
-    rr.height = 17;
-    styleCell(rr.getCell(1), { bg, fg: C_LABEL_FG, size: 10, halign: 'left', border: C_BORDER });
-    rr.getCell(1).value = '   ' + nom;
-    styleCell(rr.getCell(2), { bg, fg: 'FF0F172A', bold: true, size: 10.5, halign: 'center', border: C_BORDER });
-    rr.getCell(2).value = valeur || '';
-    styleCell(rr.getCell(3), { bg, fg: C_MUTED, size: 9, halign: 'center', border: C_BORDER });
-    rr.getCell(3).value = unite || '';
-    styleCell(rr.getCell(4), { bg, fg: C_MUTED, size: 9, halign: 'center', border: C_BORDER });
-    rr.getCell(4).value = refNorm || '';
-    styleCell(rr.getCell(5), { bg: interpBg, fg: interpFg, bold: true, size: 9, halign: 'center', border: C_BORDER });
-    rr.getCell(5).value = interp || '—';
-    styleCell(rr.getCell(6), { bg, border: C_BORDER });
+  let alt=false;
+  function pRow(nom, valeur, unite, ref, interp) {
+    if (!valeur || valeur.toString().trim()==='') return;
+    alt=!alt;
+    const bg=alt?C_ALT_BG:C_PARAM_BG;
+    let iBg=bg, iFg=C_MUTED;
+    const il=(interp||'').toLowerCase();
+    if (il.includes('élevé')||il.includes('eleve')||il.includes('positif')) {iBg=C_HIGH_BG;iFg=C_HIGH_FG;}
+    else if (il.includes('bas')) {iBg=C_LOW_BG;iFg=C_LOW_FG;}
+    else if (il.includes('normal')||il.includes('négatif')) {iBg=C_NORM_BG;iFg=C_NORM_FG;}
+    const rr=ws.getRow(row); rr.height=15;
+    styleCell(rr.getCell(1),{bg,fg:C_LABEL_FG,size:9.5,border:true}); rr.getCell(1).value=nom;
+    styleCell(rr.getCell(2),{bg,fg:'FF0F172A',bold:true,size:10,halign:'center',border:true}); rr.getCell(2).value=valeur;
+    styleCell(rr.getCell(3),{bg,fg:C_MUTED,size:9,halign:'center',border:true}); rr.getCell(3).value=unite||'';
+    styleCell(rr.getCell(4),{bg,fg:C_MUTED,size:9,halign:'center',border:true}); rr.getCell(4).value=ref||'';
+    merge(row,5,row,NC);
+    styleCell(rr.getCell(5),{bg:iBg,fg:iFg,bold:!!(interp&&interp.trim()),size:9,halign:'center',border:true});
+    rr.getCell(5).value=(interp&&interp!=='—')?interp:'';
     row++;
   }
 
-  function kvRow(lbl, val, altBg) {
-    // Ne pas afficher les champs sans valeur saisie
-    if (!val || val.toString().trim() === '' || val === '—') return;
-
-    const bg = altBg ? C_ALT_BG : C_PARAM_BG;
-    const rr = ws.getRow(row);
-    rr.height = 17;
-    styleCell(rr.getCell(1), { bg, fg: C_LABEL_FG, size: 10, halign: 'left', border: C_BORDER });
-    rr.getCell(1).value = '   ' + lbl;
-    styleCell(rr.getCell(2), { bg, fg: 'FF0F172A', bold: true, size: 10, halign: 'left', border: C_BORDER });
-    rr.getCell(2).value = val || '—';
-    mergeRow(row, 2, row, 6);
+  function fRow(label, value) {
+    if (!value) return;
+    const rr=ws.getRow(row); rr.height=14;
+    styleCell(rr.getCell(1),{bg:C_PAT_LABEL_BG,fg:C_SECTION_FG,bold:true,size:9,border:true}); rr.getCell(1).value=label;
+    merge(row,2,row,NC);
+    styleCell(rr.getCell(2),{bg:C_PAT_BG,fg:'FF111827',size:9.5,border:true}); rr.getCell(2).value=value;
     row++;
   }
 
-  // ─── HÉMATOLOGIE ───
+  function nRow(text, bgColor) {
+    if (!text||text==='—') return;
+    const rr=ws.getRow(row); rr.height=18;
+    merge(row,1,row,NC);
+    const c=rr.getCell(1);
+    styleCell(c,{bg:bgColor||'FFFFFDE7',fg:'FF78350F',italic:true,size:9,border:true});
+    c.value=text;
+    row++;
+  }
+
+  // ── CONTENU PAR TYPE ───────────────────────────────────────
+  const res = r.resultats || {};
+
   if (r.type === 'Hématologie') {
-    sectionHeader('NUMÉRATION FORMULE SANGUINE');
-    tableHeader(['Paramètre', 'Valeur', 'Unité', 'Valeurs normales', 'Interprétation']);
-    let alt = false;
-    Object.entries(r.resultats).forEach(([k, v]) => {
-      if (typeof v === 'object') { paramRow(k, v.valeur, v.unite, '', v.interp, alt); alt = !alt; }
-    });
-
-  // ─── BIOCHIMIE ───
-  } else if (r.type === 'Biochimie') {
-    const sections = {
-      'GLUCIDES': ['Glycémie à jeun', 'HbA1c'],
-      'FONCTION RÉNALE': ['Créatinine', 'Urée', 'Acide urique'],
-      'FONCTION HÉPATIQUE': ['ASAT (TGO)', 'ALAT (TGP)', 'Gamma GT', 'Phosphatases alcalines', 'Bilirubine totale', 'Bilirubine directe', 'Protéines totales', 'Albumine'],
-      'LIPIDES': ['Cholestérol total', 'Triglycérides', 'HDL-cholestérol', 'LDL-cholestérol'],
-      'IONOGRAMME': ['Sodium (Na⁺)', 'Potassium (K⁺)', 'Chlore (Cl⁻)', 'Calcium (Ca²⁺)', 'Phosphore', 'Magnésium (Mg²⁺)', 'Bicarbonates (HCO₃⁻)'],
-    };
-    Object.entries(sections).forEach(([sec, keys]) => {
-      // N'afficher la section que s'il y a au moins un paramètre avec une valeur
-      const hasValues = keys.some(k => r.resultats[k] && r.resultats[k].valeur && r.resultats[k].valeur.toString().trim() !== '');
-      if (!hasValues) return;
-      sectionHeader(sec);
-      tableHeader(['Paramètre', 'Valeur', 'Unité', 'Valeurs normales', 'Interprétation']);
-      let alt = false;
-      keys.forEach(k => {
-        const v = r.resultats[k];
-        if (v) { paramRow(k, v.valeur, v.unite, '', v.interp, alt); alt = !alt; }
+    // NFS + FL
+    const nfsVals = [...HEMA_PARAMS,...HEMA_FL].filter(q=>res[q.name]&&res[q.name].valeur);
+    if (nfsVals.length) {
+      alt=false;
+      secHdr('🩸  NFS — Numération Formule Sanguine');
+      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales','Interprétation']);
+      nfsVals.forEach(q => {
+        const v=res[q.name];
+        const val=v.absolu ? v.valeur+' ('+v.absolu+' G/L)' : v.valeur;
+        pRow(q.name, val, q.unit, '', v.interp);
       });
       row++;
-    });
-
-  // ─── BACTÉRIOLOGIE ───
-  } else if (r.type === 'Bactériologie') {
-    sectionHeader('RÉSULTATS MICROBIOLOGIQUES');
-    const infoKeys = ['Type de prélèvement', 'Examen direct', 'Culture', 'Germe identifié', 'Leucocytes /mm³', 'Hématies /mm³', 'Observations'];
-    let alt = false;
-    infoKeys.forEach(k => { kvRow(k, r.resultats[k], alt); alt = !alt; });
-    row++;
-    sectionHeader('ANTIBIOGRAMME');
-    tableHeader(['Antibiotique', 'S/I/R', '', '', '']);
-    alt = false;
-    Object.entries(r.resultats).forEach(([k, v]) => {
-      if (k.startsWith('ABG_') && v && v !== 'nd') {
-        const bg = alt ? C_ALT_BG : C_PARAM_BG;
-        const badgeBg = v === 'S' ? C_NORM_BG : v === 'R' ? C_HIGH_BG : 'FFFEF3C7';
-        const fg = v === 'S' ? C_NORM_FG : v === 'R' ? C_HIGH_FG : 'FFB45309';
-        const rr = ws.getRow(row);
-        rr.height = 17;
-        styleCell(rr.getCell(1), { bg, fg: C_LABEL_FG, size: 10, halign: 'left', border: C_BORDER });
-        rr.getCell(1).value = '   ' + k.replace('ABG_', '');
-        styleCell(rr.getCell(2), { bg: badgeBg, fg, bold: true, size: 11, halign: 'center', border: C_BORDER });
-        rr.getCell(2).value = v;
-        mergeRow(row, 2, row, 5);
-        row++; alt = !alt;
-      }
-    });
-
-  // ─── SÉROLOGIE ───
-  } else if (r.type === 'Sérologie') {
-    sectionHeader('RÉSULTATS SÉROLOGIQUES');
-    tableHeader(['Test', 'Résultat', 'Valeur quantitative', 'Unité', 'Commentaire']);
-    let alt = false;
-    Object.entries(r.resultats).forEach(([k, v]) => {
-      if (k === 'Observations') return;
-      if (typeof v === 'object') {
-        // Ne pas afficher si aucune valeur ni résultat
-        if (!v.resultat && !v.valeur) return;
-        const bg = alt ? C_ALT_BG : C_PARAM_BG;
-        const resFg = v.resultat === 'Positif' ? C_HIGH_FG : v.resultat === 'Négatif' ? C_NORM_FG : C_MUTED;
-        const rr = ws.getRow(row);
-        rr.height = 16;
-        styleCell(rr.getCell(1), { bg, fg: C_LABEL_FG, size: 10, halign: 'left', border: true });
-        rr.getCell(1).value = k;
-        styleCell(rr.getCell(2), { bg, fg: resFg, bold: true, size: 10, halign: 'center', border: true });
-        rr.getCell(2).value = v.resultat || '—';
-        styleCell(rr.getCell(3), { bg, fg: 'FF111827', size: 10, halign: 'center', border: true });
-        rr.getCell(3).value = v.valeur || '—';
-        styleCell(rr.getCell(4), { bg, fg: C_MUTED, size: 9, halign: 'center', border: true });
-        rr.getCell(4).value = '';
-        styleCell(rr.getCell(5), { bg, fg: C_MUTED, size: 9, halign: 'left', border: true });
-        rr.getCell(5).value = v.obs || '';
-        row++; alt = !alt;
-      }
-    });
-    if (r.resultats['Observations']) { row++; kvRow('Observations', r.resultats['Observations']); }
-
-  // ─── PARASITOLOGIE ───
-  } else if (r.type === 'Parasitologie') {
-    sectionHeader('EXAMEN PARASITOLOGIQUE');
-    const mainKeys = ["Type d'examen", 'Résultat global', 'Coloration', 'Espèce plasmodiale', 'Parasitémie (%)', 'Densité parasitaire /µL', 'Stade parasitaire', 'Indice érythrocytaire', 'TDR paludisme'];
-    let alt = false;
-    mainKeys.forEach(k => { if (r.resultats[k]) { kvRow(k, r.resultats[k], alt); alt = !alt; } });
-    row++;
-    sectionHeader('EXAMEN PARASITOLOGIQUE DES SELLES');
-    alt = false;
-    Object.entries(r.resultats).forEach(([k, v]) => {
-      if (!mainKeys.includes(k) && k !== 'Observations' && v) {
-        const bg = alt ? C_ALT_BG : C_PARAM_BG;
-        const fg = v === 'Positif' ? C_HIGH_FG : v === 'Négatif' ? C_NORM_FG : C_MUTED;
-        const rr = ws.getRow(row);
-        rr.height = 16;
-        styleCell(rr.getCell(1), { bg, fg: C_LABEL_FG, size: 10, halign: 'left', border: true });
-        rr.getCell(1).value = k;
-        styleCell(rr.getCell(2), { bg, fg, bold: true, size: 10, halign: 'center', border: true });
-        rr.getCell(2).value = v;
-        mergeRow(row, 2, row, 5);
-        row++; alt = !alt;
-      }
-    });
-    if (r.resultats['Observations']) { row++; kvRow('Observations', r.resultats['Observations']); }
-
-  // ─── BILAN DE ROUTINE ───
-  } else if (r.type === 'Bilan de routine') {
-    // Goutte épaisse
-    sectionHeader('🦟 GOUTTE ÉPAISSE / PALUDISME');
-    tableHeader(['Paramètre', 'Résultat', 'Unité', 'Observation', '']);
-    let alt = false;
-    ROUTINE_GOUTTE.forEach(p => {
-      const v = r.resultats[p.name];
-      if (!v || !v.valeur) return;
-      const rr = ws.getRow(row); rr.height = 17;
-      styleCell(rr.getCell(1), { bg: alt?C_ALT_BG:C_PARAM_BG, fg:C_LABEL_FG, size:10, border:C_BORDER });
-      rr.getCell(1).value = '   ' + p.name;
-      styleCell(rr.getCell(2), { bg: alt?C_ALT_BG:C_PARAM_BG, fg:'FF0F172A', bold:true, size:10.5, halign:'center', border:C_BORDER });
-      rr.getCell(2).value = v.valeur;
-      styleCell(rr.getCell(3), { bg: alt?C_ALT_BG:C_PARAM_BG, fg:C_MUTED, size:9, halign:'center', border:C_BORDER });
-      rr.getCell(3).value = v.unite || '';
-      styleCell(rr.getCell(4), { bg: alt?C_ALT_BG:C_PARAM_BG, fg:C_MUTED, size:9, border:C_BORDER });
-      rr.getCell(4).value = v.obs || '';
-      mergeRow(row,4,row,6); row++; alt=!alt;
-    });
-
+    }
+    // Électrophorèse Hb
+    const ephbNames=['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].filter(n=>res[n]&&res[n].valeur);
+    if (ephbNames.length||res['Profil Hb']) {
+      alt=false;
+      secHdr("🔬  Électrophorèse de l'Hémoglobine");
+      tblHdr(['Fraction','%','','Valeur normale','Interprétation']);
+      ephbNames.forEach(n=>{const v=res[n];pRow(n,v.valeur,'%','',v.interp);});
+      if (res['Profil Hb'])    fRow('Profil',res['Profil Hb']);
+      if (res['Commentaire Hb']) nRow(res['Commentaire Hb']);
+      row++;
+    }
+    // GE
+    if (res['GE - Résultat']||res['GE - TDR']) {
+      alt=false;
+      secHdr('🦟  Goutte Épaisse / Parasitologie');
+      tblHdr(['Paramètre','Résultat','','','Observation']);
+      if (res['GE - Résultat'])      pRow('Résultat GE',res['GE - Résultat'],'','','');
+      if (res['GE - TDR'])           pRow('TDR Paludisme',res['GE - TDR'],'','','');
+      if (res['GE - Espèce'])        pRow('Espèce plasmodiale',res['GE - Espèce'],'','','');
+      if (res['GE - Parasitémie (%)']) pRow('Parasitémie',res['GE - Parasitémie (%)'],'%','','');
+      if (res['GE - Stade'])         pRow('Stade parasitaire',res['GE - Stade'],'','','');
+      if (res['GE - Observation'])   nRow(res['GE - Observation']);
+      row++;
+    }
     // Groupe sanguin
-    row++;
-    sectionHeader('🩸 GROUPE SANGUIN');
-    tableHeader(['Paramètre', 'Résultat', '', '', '']);
-    alt = false;
-    ROUTINE_GS.forEach(p => {
-      const v = r.resultats[p.name];
-      if (!v || !v.valeur) return;
-      kvRow(p.name, v.valeur, alt); alt=!alt;
-    });
-
+    if (res['GS - ABO']||res['GS - Rhésus']) {
+      alt=false;
+      secHdr('🩸  Groupe Sanguin ABO / Rhésus');
+      tblHdr(['Paramètre','Résultat','','','']);
+      if (res['GS - ABO'])       pRow('Groupe ABO',res['GS - ABO'],'','','');
+      if (res['GS - Rhésus'])    pRow('Rhésus',res['GS - Rhésus'],'','','');
+      if (res['GS - RAI'])       pRow('RAI',res['GS - RAI'],'','','');
+      if (res['GS - Phénotype']) pRow('Phénotype érythrocytaire',res['GS - Phénotype'],'','','');
+      row++;
+    }
     // CRP
-    row++;
-    sectionHeader('🔥 CRP — PROTÉINE C-RÉACTIVE');
-    tableHeader(['Paramètre', 'Valeur', 'Unité', 'Valeurs normales', '']);
-    alt = false;
-    ROUTINE_CRP.forEach(p => {
-      const v = r.resultats[p.name];
-      if (!v || !v.valeur) return;
-      paramRow(p.name, v.valeur, v.unite||'', v.ref||'', '', alt); alt=!alt;
-    });
-
+    if (res['CRP - Valeur']) {
+      alt=false;
+      secHdr('🔥  CRP — Protéine C-réactive (Latex)');
+      tblHdr(['Test','Résultat','','','Interprétation']);
+      const crpLabel = res['CRP - Valeur']==='neg'?'Négatif (< 6 mg/L)':res['CRP - Valeur']+' mg/L';
+      const crpInterp= (res['CRP - Interprétation']||'').replace(/^[🔥✓⚠]\s*/,'');
+      pRow('CRP Latex', crpLabel, '', '', crpInterp);
+      row++;
+    }
     // Widal
-    row++;
-    sectionHeader('🦠 SÉRODIAGNOSTIC DE WIDAL');
-    tableHeader(['Antigène', 'Titre (dilution)', '', '', '']);
-    alt = false;
-    ROUTINE_WIDAL.forEach(p => {
-      const v = r.resultats[p.name];
-      if (!v || !v.valeur) return;
-      kvRow(p.name, v.valeur, alt); alt=!alt;
-    });
+    const widalData = WIDAL_ANTIGENES.filter(ag=>{const w=res['Widal - '+ag.name];return w&&w.titre&&w.titre!=='Négatif';});
+    const widalConcl= res['Widal - Conclusion']||'';
+    if (widalData.length||widalConcl) {
+      alt=false;
+      secHdr('🦠  Sérodiagnostic de Widal & Félix');
+      tblHdr(['Antigène','Titre','Cinétique','Seuil significatif','Interprétation']);
+      widalData.forEach(ag=>{const w=res['Widal - '+ag.name];pRow(ag.name,w.titre,'','1/'+ag.seuil,w.interp);});
+      if (widalConcl) {
+        const bad=widalConcl.includes('ÉTAT')||widalConcl.includes('DÉBUT');
+        nRow(widalConcl.replace(/^[🔴🟠🟡⚪]\s*/,''), bad?'FFFFF1F1':'FFFFFDE7');
+      }
+      row++;
+    }
 
-  // ─── GROUPE SANGUIN ───
-  } else if (r.type === 'Groupe sanguin') {
-    sectionHeader('🩸 DÉTERMINATION DU GROUPE SANGUIN');
-    tableHeader(['Paramètre', 'Résultat', '', '', '']);
-    let alt = false;
-    GS_PARAMS.forEach(p => {
-      const v = r.resultats[p.name];
-      if (!v || !v.valeur) return;
-      kvRow(p.name, v.valeur, alt); alt=!alt;
-    });
-
-  // ─── BILAN PRÉNATAL ───
-  } else if (r.type === 'Bilan prénatal') {
-    const obs = r.resultats['Observations'];
-    const obsectKeys = ['Terme (SA)', 'Gestité', 'Parité', 'DDR', 'Trimestre'];
-    const gsKeys     = ['Groupe sanguin ABO', 'Rhésus', 'RAI', 'Phénotype érythrocytaire'];
-    const ecbuKeys   = ['ECBU - Aspect', 'ECBU - pH', 'ECBU - Protéinurie', 'ECBU - Glucosurie', 'ECBU - Leucocytes /mm³', 'ECBU - Hématies /mm³', 'ECBU - Nitrites', 'ECBU - Culture', 'ECBU - Germe'];
-    const bioKeys    = ['Glycémie à jeun', 'Créatinine', 'Urée'];
-
-    sectionHeader('INFORMATIONS OBSTÉTRICALES');
-    let alt = false;
-    obsectKeys.forEach(k => { kvRow(k, r.resultats[k], alt); alt = !alt; });
-    row++;
-
-    sectionHeader('GROUPE SANGUIN & RHÉSUS');
-    alt = false;
-    gsKeys.forEach(k => { kvRow(k, r.resultats[k], alt); alt = !alt; });
-    row++;
-
-    sectionHeader('NFS — NUMÉRATION FORMULE SANGUINE');
-    tableHeader(['Paramètre', 'Valeur', 'Unité', 'Valeurs normales (grossesse)', 'Interprétation']);
-    alt = false;
-    Object.entries(r.resultats).forEach(([k, v]) => {
-      if (typeof v === 'object' && v.unite && bioKeys.indexOf(k) === -1) {
-        paramRow(k, v.valeur, v.unite, '', v.interp, alt); alt = !alt;
+  } else {
+    // Rendu générique
+    const gRows=[];
+    Object.entries(res).forEach(([k,v])=>{
+      if (!v) return;
+      if (typeof v==='object') {
+        const val=v.valeur||v.resultat||v.titre||'';
+        if (val) gRows.push({n:k,v:val,u:v.unite||'',r:'',i:v.interp||v.obs||''});
+      } else if (typeof v==='string'&&v&&v!=='—'&&!k.startsWith('ABG_')&&!k.startsWith('AFG_')&&!k.startsWith('BPNSERO_')) {
+        gRows.push({n:k,v,u:'',r:'',i:''});
       }
     });
-    row++;
-
-    sectionHeader('BIOCHIMIE');
-    tableHeader(['Paramètre', 'Valeur', 'Unité', 'Valeurs normales', 'Interprétation']);
-    alt = false;
-    bioKeys.forEach(k => {
-      const v = r.resultats[k];
-      if (v && typeof v === 'object') { paramRow(k, v.valeur, v.unite, '', v.interp, alt); alt = !alt; }
-    });
-    row++;
-
-    sectionHeader('ECBU');
-    alt = false;
-    ecbuKeys.forEach(k => { kvRow(k, r.resultats[k], alt); alt = !alt; });
-    row++;
-
-    sectionHeader('SÉROLOGIES PRÉNATALES');
-    tableHeader(['Test', 'Résultat', 'Valeur', 'Unité', 'Ref / Commentaire']);
-    alt = false;
-    Object.entries(r.resultats).forEach(([k, v]) => {
-      if ([...obsectKeys, ...gsKeys, ...ecbuKeys, ...bioKeys, 'Observations'].indexOf(k) === -1 && typeof v === 'object' && !v.unite) {
-        // Ne pas afficher si aucune valeur ni résultat
-        if (!v.resultat && !v.valeur) return;
-        const bg = alt ? C_ALT_BG : C_PARAM_BG;
-        const resFg = v.resultat === 'Positif' ? C_HIGH_FG : v.resultat === 'Négatif' ? C_NORM_FG : C_MUTED;
-        const rr = ws.getRow(row);
-        rr.height = 16;
-        styleCell(rr.getCell(1), { bg, fg: C_LABEL_FG, size: 10, halign: 'left', border: true });
-        rr.getCell(1).value = k;
-        styleCell(rr.getCell(2), { bg, fg: resFg, bold: true, size: 10, halign: 'center', border: true });
-        rr.getCell(2).value = v.resultat || '—';
-        styleCell(rr.getCell(3), { bg, fg: 'FF111827', size: 10, halign: 'center', border: true });
-        rr.getCell(3).value = v.valeur || '—';
-        styleCell(rr.getCell(4), { bg, fg: C_MUTED, size: 9, halign: 'center', border: true });
-        rr.getCell(4).value = '';
-        styleCell(rr.getCell(5), { bg, fg: C_MUTED, size: 9, halign: 'left', border: true });
-        rr.getCell(5).value = '';
-        row++; alt = !alt;
-      }
-    });
-    if (obs) { row++; kvRow('Observations', obs); }
+    if (gRows.length) {
+      alt=false;
+      secHdr('📋  '+r.type+' — Résultats');
+      tblHdr(['Paramètre','Résultat','Unité','Valeur normale','Interprétation']);
+      gRows.forEach(q=>pRow(q.n,q.v,q.u,q.r,q.i));
+      row++;
+    }
+    // Antibiogramme
+    const abgD=ABG_ANTIBIOS.filter(ab=>res['ABG_'+ab]&&res['ABG_'+ab]!=='nd');
+    if (abgD.length) {
+      alt=false;
+      secHdr('💊  Antibiogramme');
+      tblHdr(['Antibiotique','S/I/R','','','']);
+      abgD.forEach(ab=>{const v=res['ABG_'+ab];const i=v==='S'?'Sensible':v==='I'?'Intermédiaire':v==='R'?'Résistant':v;pRow(ab,v,'','',i);});
+      row++;
+    }
+    const afgD=AFG_ANTIFONGIQUES.filter(af=>res['AFG_'+af]&&res['AFG_'+af]!=='nd');
+    if (afgD.length) {
+      alt=false;
+      secHdr('💊  Antifongigramme');
+      tblHdr(['Antifongique','S/I/R','','','']);
+      afgD.forEach(af=>{const v=res['AFG_'+af];const i=v==='S'?'Sensible':v==='I'?'Intermédiaire':v==='R'?'Résistant':v;pRow(af,v,'','',i);});
+      row++;
+    }
   }
 
-  // ── Pied de page ──────────────────────────────────────────────
+  // ── PIED DE PAGE ───────────────────────────────────────────
+  ws.getRow(row).height=4;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:C_GOLD}};
   row++;
-  // Fine ligne de séparation dorée (écho du liseré de l'en-tête)
-  const footSep = ws.getRow(row);
-  footSep.height = 3;
-  for (let c = 1; c <= 6; c++) styleCell(footSep.getCell(c), { bg: C_GOLD });
-  row++;
-  row++; // espace
 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  mergeRow(row, 1, row, 6);
-  const footCell = ws.getCell(row, 1);
-  footCell.value = 'Résultat édité le ' + dateStr + '  ·  ' + CENTRE;
-  styleCell(footCell, { fg: C_MUTED, size: 9, halign: 'left', italic: true });
-  row += 2;
-
-  // Zone de signature : encadré dédié avec libellé en étiquette
-  mergeRow(row, 1, row, 3);
-  const sigLabelCell = ws.getCell(row, 1);
-  sigLabelCell.value = 'Cachet et signature du biologiste responsable';
-  styleCell(sigLabelCell, { bg: C_PAT_LABEL_BG, fg: C_HEADER_BG, bold: true, size: 9.5, halign: 'left', border: C_BORDER });
-  ws.getRow(row).height = 18;
-  mergeRow(row, 4, row, 6);
-  const sigLabelCell2 = ws.getCell(row, 4);
-  styleCell(sigLabelCell2, { bg: C_PAT_LABEL_BG, fg: C_HEADER_BG, bold: true, size: 9.5, halign: 'left', border: C_BORDER });
+  ws.getRow(row).height=12;
+  merge(row,1,row,3);
+  const cFt=ws.getCell(row,1);
+  cFt.value='Édité le '+new Date().toLocaleDateString('fr-FR')+' — CPMI de Grand-Bassam';
+  styleCell(cFt,{fg:C_MUTED,size:8,italic:true});
   row++;
-  // Cases vides pour la signature physique (encadrées, fond blanc)
-  for (let i = 0; i < 3; i++) {
-    mergeRow(row, 1, row, 3);
-    styleCell(ws.getCell(row, 1), { bg: 'FFFFFFFF', border: C_BORDER });
-    ws.getRow(row).height = 16;
-    mergeRow(row, 4, row, 6);
-    styleCell(ws.getCell(row, 4), { bg: 'FFFFFFFF', border: C_BORDER });
+  row++;
+
+  // Zones signature
+  ws.getRow(row).height=13;
+  merge(row,1,row,3);
+  styleCell(ws.getCell(row,1),{bg:C_PAT_LABEL_BG,fg:C_SECTION_FG,bold:true,size:9});
+  ws.getCell(row,1).value='Cachet du biologiste responsable';
+  merge(row,4,row,NC);
+  styleCell(ws.getCell(row,4),{bg:C_PAT_LABEL_BG,fg:C_SECTION_FG,bold:true,size:9});
+  ws.getCell(row,4).value='Signature';
+  row++;
+  for (let i=0;i<3;i++) {
+    ws.getRow(row).height=15;
+    merge(row,1,row,3); ws.getCell(row,1).border=thinBorder(C_BORDER);
+    merge(row,4,row,NC); ws.getCell(row,4).border=thinBorder(C_BORDER);
     row++;
   }
-  row++;
-
-  // Cadre extérieur global (du bandeau au pied de page)
-  for (let cc = 1; cc <= 6; cc++) {
-    const top = ws.getCell(1, cc);
-    const bottom = ws.getCell(row - 1, cc);
-    top.border = Object.assign({}, top.border, { top: { style: 'medium', color: { argb: C_BORDER_DARK } } });
-    bottom.border = Object.assign({}, bottom.border, { bottom: { style: 'medium', color: { argb: C_BORDER_DARK } } });
-  }
-  for (let rr = 1; rr <= row - 1; rr++) {
-    const left = ws.getCell(rr, 1);
-    const right = ws.getCell(rr, 6);
-    left.border = Object.assign({}, left.border, { left: { style: 'medium', color: { argb: C_BORDER_DARK } } });
-    right.border = Object.assign({}, right.border, { right: { style: 'medium', color: { argb: C_BORDER_DARK } } });
-  }
-
-  return ws;
 }
 
-async function downloadWorkbook(wb, filename) {
-  const buf = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buf], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-async function exportRecord(id) {
-  const r = getDB().find(x => x.id === id);
-  if (!r) return;
-  const wb = new ExcelJS.Workbook();
-  wb.creator = CENTRE;
-  wb.title = 'Résultat ' + r.type;
-  buildProfessionalSheet(wb, r, r.type.substring(0, 31));
-  await downloadWorkbook(wb, makeFilename(r.patient.dossier, r.patient.date, r.patient.nom, r.type));
-  toast('Export Excel réussi ✓', 'ok');
-}
-
-async function exportPatientComplet(dossier) {
-  const db = getDB();
-  const fiches = db.filter(r => r.patient.dossier === dossier);
-  if (!fiches.length) { toast('Aucune fiche trouvée pour ce dossier', 'err'); return; }
-
-  const wb = new ExcelJS.Workbook();
-  wb.creator = CENTRE;
-  wb.title = 'Dossier ' + dossier;
-
-  // Trie par ordre logique d'analyse
-  const ordreTypes = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Groupe sanguin','Bilan prénatal'];
-  const fichesSorted = [...fiches].sort((a,b) => ordreTypes.indexOf(a.type) - ordreTypes.indexOf(b.type));
-
-  // Une feuille par type d'analyse dans le même classeur
-  fichesSorted.forEach((fiche, i) => {
-    const sheetName = fiche.type.substring(0, 31);
-    buildProfessionalSheet(wb, fiche, sheetName);
-  });
-
-  const p = fiches[0].patient;
-  await downloadWorkbook(wb, makeFilename(p.dossier, p.date, p.nom, 'Dossier-complet'));
-  toast(`Dossier complet exporté (${fichesSorted.length} fiche${fichesSorted.length>1?'s':''}) ✓`, 'ok');
-}
 
 async function exportSingle(type) {
   const p = getPatient();
@@ -4522,7 +4281,7 @@ function countAnomalies(resultats) {
 }
 
 async function renderStats() {
-  ['kpi-total','kpi-month','kpi-anomalies','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
+  ['kpi-total','kpi-month','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.querySelector('.kpi-val').textContent = '…';
   });
@@ -4534,11 +4293,11 @@ async function renderStats() {
   const dbPeriode = filterDbByPeriode(db);
 
   if (!db.length) {
-    ['chart-by-type','chart-monthly','chart-by-agent','chart-anomalies','chart-recettes-type','chart-recettes-monthly'].forEach(id => {
+    ['chart-by-type','chart-monthly','chart-by-agent','chart-recettes-type','chart-recettes-monthly'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '<div class="stats-empty">Aucune donnée disponible</div>';
     });
-    ['kpi-total','kpi-month','kpi-anomalies','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
+    ['kpi-total','kpi-month','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.querySelector('.kpi-val').textContent = '0';
     });
@@ -4552,12 +4311,10 @@ async function renderStats() {
   // ── KPI ─────────────────────────────────────────────────────
   const total = db.length;
   const periodeCount = dbPeriode.length;
-  const totalAnomalies = dbPeriode.reduce((sum, r) => sum + countAnomalies(r.resultats), 0);
   const agents = new Set(dbPeriode.map(r => r.createdBy).filter(Boolean));
 
   document.getElementById('kpi-total').querySelector('.kpi-val').textContent = total;
   document.getElementById('kpi-month').querySelector('.kpi-val').textContent = periodeCount;
-  document.getElementById('kpi-anomalies').querySelector('.kpi-val').textContent = totalAnomalies;
   document.getElementById('kpi-agents').querySelector('.kpi-val').textContent = agents.size || '—';
 
   // ── Fiches par type d'analyse (barres horizontales) ─────────
@@ -4641,44 +4398,6 @@ async function renderStats() {
         <text x="70" y="74" text-anchor="middle" font-size="14" font-weight="700" fill="#1E3A8A">${total}</text>
       </svg>
       <div class="pie-legend">${legendItems}</div>
-    </div>`;
-
-  // ── Anomalies détectées ──────────────────────────────────────
-  let countEleve = 0, countBas = 0, countPositif = 0, countNegatif = 0;
-  db.forEach(r => {
-    if (!r.resultats) return;
-    Object.values(r.resultats).forEach(v => {
-      if (typeof v !== 'object' || !v) return;
-      const interp = (v.interp || v.resultat || '').toLowerCase();
-      if (interp.includes('élevé') || interp.includes('eleve')) countEleve++;
-      else if (interp.includes('bas')) countBas++;
-      else if (interp.includes('positif')) countPositif++;
-      else if (interp.includes('négatif') || interp.includes('negatif')) countNegatif++;
-    });
-  });
-
-  document.getElementById('chart-anomalies').innerHTML = `
-    <div style="margin-top:8px">
-      <div class="anomaly-row">
-        <span>🔴 Valeurs élevées</span>
-        <span class="anomaly-badge" style="background:#FDE8E8;color:#B91C1C">${countEleve}</span>
-      </div>
-      <div class="anomaly-row">
-        <span>🔵 Valeurs basses</span>
-        <span class="anomaly-badge" style="background:#E5EEFD;color:#1D4ED8">${countBas}</span>
-      </div>
-      <div class="anomaly-row">
-        <span>🟠 Résultats positifs</span>
-        <span class="anomaly-badge" style="background:#FEF3C7;color:#B45309">${countPositif}</span>
-      </div>
-      <div class="anomaly-row">
-        <span>🟢 Résultats négatifs</span>
-        <span class="anomaly-badge" style="background:#E7F7EC;color:#15803D">${countNegatif}</span>
-      </div>
-      <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">
-        Total résultats anormaux : <strong style="color:var(--danger)">${countEleve + countBas + countPositif}</strong>
-        sur <strong>${total}</strong> fiche${total>1?'s':''} analysée${total>1?'s':''}
-      </div>
     </div>`;
 
   // ── KPI Financiers ────────────────────────────────────────────
@@ -5878,18 +5597,30 @@ function buildFicheExamens() {
 
 function calcFicheTotal() {
   let total = 0, count = 0;
-  CATALOGUE_EXAMENS.forEach(ex => {
-    const chk = document.getElementById(ex.id);
+  const montantParTab = {}; // ex: { hema: 5500, bio: 1000, ... }
+
+  getCatalogueComplet().forEach(ex => {
+    const chk  = document.getElementById(ex.id);
     const pxEl = document.getElementById('px_' + ex.id);
     if (chk && chk.checked) {
-      total += parseInt(pxEl?.value || '0');
+      const prix = parseInt(pxEl?.value || '0');
+      total += prix;
       count++;
+      // Accumuler par tab
+      const tab = ex.tab || 'hema';
+      montantParTab[tab] = (montantParTab[tab] || 0) + prix;
     }
   });
+
   const montantEl = document.getElementById('montant-preview');
   const countEl   = document.getElementById('fiche-examens-count');
-  if (montantEl) { montantEl.textContent = total.toLocaleString('fr-FR') + ' FCFA'; montantEl.dataset.montant = total; }
-  if (countEl)   countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
+  if (montantEl) {
+    montantEl.textContent = total.toLocaleString('fr-FR') + ' FCFA';
+    montantEl.dataset.montant = total;
+    // Stocker le détail par tab pour saveRecord
+    montantEl.dataset.montantParTab = JSON.stringify(montantParTab);
+  }
+  if (countEl) countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
 }
 
 function demarrerSaisie() {
