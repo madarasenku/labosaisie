@@ -902,7 +902,14 @@ select {
     }
   }
 
+  let _animPaused = false;
+  document.addEventListener('visibilitychange', () => {
+    _animPaused = document.hidden;
+    if (!_animPaused) animate(); // reprendre si l'onglet redevient visible
+  });
+
   function animate() {
+    if (_animPaused) return; // ✅ v2: pause animation onglet inactif (économie CPU)
     ctx.clearRect(0, 0, W, H);
     // Ajouter de nouvelles particules
     if (particles.length < 35 && Math.random() < .025) {
@@ -4855,7 +4862,7 @@ async function exportAllExcel() {
   const wb = new ExcelJS.Workbook();
   wb.creator = CENTRE;
   wb.title = 'Export LaboSaisie';
-  const types = ['Hématologie', 'Biochimie', 'Bactériologie', 'Sérologie', 'Parasitologie', 'Bilan prénatal'];
+  const types = ['Hématologie', 'Biochimie', 'Bactériologie', 'Sérologie', 'Parasitologie', 'Groupe sanguin', 'Bilan prénatal']; // ✅ v2: Groupe sanguin ajouté
   let sheetCount = 0;
   types.forEach(type => {
     const recs = db.filter(r => r.type === type);
@@ -5948,6 +5955,7 @@ async function deletePrescripteur(id) {
   toast('Prescripteur désactivé', 'ok');
 }
 
+// ✅ v2: ajout bouton ✏ modification + fonction editPrescripteur
 function renderPrescripteursList() {
   const el = document.getElementById('prescripteurs-list');
   if (!el) return;
@@ -5962,16 +5970,56 @@ function renderPrescripteursList() {
     </tr></thead>
     <tbody>
       ${_prescripteurs.map(p => `<tr>
-        <td style="padding:7px 8px;border-bottom:1px solid var(--border)">${p.nom}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${p.nom}</td>
         <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.specialite||'—'}</td>
         <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.structure||'—'}</td>
         <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--accent)">${p.taux_ristourne||0} %</td>
-        <td style="padding:7px 8px;border-bottom:1px solid var(--border)">
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);display:flex;gap:4px">
+          ${isAdmin() ? `<button class="btn" style="padding:3px 8px;font-size:11px" onclick="editPrescripteur(${p.id})">✏</button>` : ''}
           <button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deletePrescripteur(${p.id})">✕</button>
         </td>
       </tr>`).join('')}
     </tbody>
   </table>`;
+}
+
+async function editPrescripteur(id) {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  const presc = _prescripteurs.find(p => p.id === id);
+  if (!presc) { toast('Prescripteur introuvable', 'err'); return; }
+
+  const nouveauNom = prompt('Nom du prescripteur :', presc.nom);
+  if (nouveauNom === null) return;
+  const nouvelleSpec = prompt('Spécialité :', presc.specialite || '');
+  if (nouvelleSpec === null) return;
+  const nouvelleStruct = prompt('Structure :', presc.structure || '');
+  if (nouvelleStruct === null) return;
+  const nouveauTaux = prompt('Taux de ristourne (%) :', String(presc.taux_ristourne || 0));
+  if (nouveauTaux === null) return;
+
+  const taux = parseFloat(nouveauTaux);
+  if (isNaN(taux) || taux < 0 || taux > 100) {
+    toast('Taux invalide (doit être entre 0 et 100)', 'err'); return;
+  }
+
+  const { data, error } = await _sb.rpc('update_prescripteur_admin', {
+    p_user_id:        _currentUser.id,
+    p_prescr_id:      id,
+    p_nom:            nouveauNom.trim(),
+    p_specialite:     nouvelleSpec,
+    p_structure:      nouvelleStruct,
+    p_taux_ristourne: taux,
+  });
+
+  if (error)                    { toast('Erreur serveur : ' + error.message, 'err'); return; }
+  if (data === 'forbidden')     { toast('Action réservée aux administrateurs', 'err'); return; }
+  if (data === 'not_found')     { toast('Prescripteur introuvable', 'err'); return; }
+  if (data === 'nom_required')  { toast('Le nom est obligatoire', 'err'); return; }
+  if (data === 'taux_invalid')  { toast('Taux invalide (0–100)', 'err'); return; }
+  if (data !== 'ok')            { toast('Erreur : ' + data, 'err'); return; }
+
+  toast('Prescripteur mis à jour ✓', 'ok');
+  await loadPrescripteurs();
 }
 
 // ============================================================
@@ -6057,7 +6105,7 @@ async function renderRistournes(db) {
 
   // Pour chaque prescripteur, calculer BPN + extra-BPN
   const rows = _prescripteurs.map(presc => {
-    const fiches = db.filter(r => r.prescripteur_id == presc.id || (r.patient?.medecin || '').includes(presc.nom));
+    const fiches = db.filter(r => Number(r.prescripteur_id) === Number(presc.id)); // ✅ v2: comparaison stricte ID uniquement
     const bpn = fiches.filter(r => r.type === 'Bilan prénatal');
     const extraBPN = fiches.filter(r => r.type !== 'Bilan prénatal');
     const montantExtraBPN = extraBPN.reduce((s, r) => s + (r.montant || 0), 0);
@@ -6560,7 +6608,7 @@ function toast(msg, type='') {
 // ============================================================
 
 const SESSION_KEY = 'labo_session_user';
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // ✅ v2: 24 heures (recommandé système médical)
 
 // Utilisateur actuellement connecté : { id, username, role, expiresAt }
 let _currentUser = null;
