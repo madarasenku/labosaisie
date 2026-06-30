@@ -439,6 +439,54 @@ select {
 }
 
 /* ================================================================
+   LIGNES D'EXAMENS — fiche d'accueil et grille tarifaire admin
+   Confort visuel : zone cliquable élargie, checkbox agrandie, survol net
+   ================================================================ */
+.exam-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px; margin: 0 -8px;
+  border-radius: 8px;
+  border-bottom: 1px dashed rgba(199,215,245,.5);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.exam-row:last-child { border-bottom: none; }
+.exam-row:hover { background: rgba(224,234,255,.55); }
+.exam-row.checked { background: rgba(209,250,229,.35); }
+.exam-row input[type=checkbox] {
+  width: 19px; height: 19px;
+  accent-color: var(--cpmi-mid);
+  cursor: pointer; flex-shrink: 0;
+}
+.exam-row label {
+  flex: 1; cursor: pointer;
+  font-size: 12.5px; font-weight: 500; color: var(--text);
+  line-height: 1.3;
+}
+.exam-row input[type=number] {
+  width: 80px; text-align: right;
+  font-weight: 700; color: var(--cpmi-deep);
+  font-size: 12.5px; padding: 4px 7px;
+  flex-shrink: 0;
+}
+.exam-row .exam-unit { font-size: 10px; color: var(--text-muted); flex-shrink: 0; width: 14px; }
+.exam-group-card {
+  background: rgba(255,255,255,.82);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  backdrop-filter: blur(4px);
+  transition: box-shadow .2s;
+}
+.exam-group-card:hover { box-shadow: 0 2px 10px rgba(26,68,128,.07); }
+.exam-group-title {
+  font-size: 10.5px; font-weight: 800; color: var(--cpmi-deep);
+  text-transform: uppercase; letter-spacing: .6px;
+  margin-bottom: 6px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ================================================================
    ANTIBIOGRAMME
    ================================================================ */
 .abg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px,1fr)); gap: 8px; }
@@ -508,9 +556,6 @@ select {
 .pie-legend { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-width: 120px; }
 .pie-legend-item { display: flex; align-items: center; gap: 8px; }
 .pie-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.anomaly-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-.anomaly-row:last-child { border-bottom: none; }
-.anomaly-badge { font-weight: 700; padding: 3px 14px; border-radius: 99px; font-size: 12px; }
 .monthly-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; margin-top: 12px; padding-bottom: 24px; position: relative; }
 .monthly-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
 .monthly-bar { width: 100%; background: linear-gradient(to top, var(--cpmi-deep), var(--cpmi-sky)); border-radius: 5px 5px 0 0; transition: height .5s ease; min-height: 2px; }
@@ -526,6 +571,32 @@ select {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   box-shadow: 0 1px 4px rgba(26,68,128,.06);
+  position: relative;
+}
+/* Sur petit écran, indiquer visuellement qu'il y a plus de colonnes à voir
+   en scrollant horizontalement (sinon "Valeurs normales" / "Interprétation"
+   restent invisibles sans que l'utilisateur sache qu'il peut les faire défiler) */
+@media (max-width: 640px) {
+  .table-wrap {
+    background:
+      linear-gradient(to right, var(--surface) 30%, rgba(255,255,255,0)),
+      linear-gradient(to right, rgba(255,255,255,0), var(--surface) 70%) 100% 0,
+      linear-gradient(to right, rgba(26,68,128,.18), rgba(255,255,255,0)),
+      linear-gradient(to right, rgba(255,255,255,0), rgba(26,68,128,.18)) 100% 0;
+    background-repeat: no-repeat;
+    background-size: 24px 100%, 24px 100%, 10px 100%, 10px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+  .table-wrap::after {
+    content: '⇆ Faites glisser pour voir plus';
+    display: block;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--bg);
+    padding: 3px 0;
+    border-top: 1px solid var(--border);
+  }
 }
 
 /* ================================================================
@@ -633,6 +704,19 @@ select {
   .stats-kpi-row { grid-template-columns: repeat(2,1fr); }
   .stats-grid { grid-template-columns: 1fr; }
 }
+/* Zone tablette / petit laptop : le header peut wrapper sur 2 lignes
+   sans être tronqué (avant, seule la hauteur fixe de 68px s'appliquait ici,
+   ce qui coupait la 2e ligne de boutons quand ils ne tenaient pas sur une seule ligne) */
+@media (max-width: 900px) and (min-width: 641px) {
+  header {
+    height: auto;
+    min-height: 68px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    row-gap: 8px;
+  }
+  header nav { flex-wrap: wrap; row-gap: 8px; }
+}
 @media (max-width: 640px) {
   body { font-size: 13.5px; }
   header { height: auto; flex-wrap: wrap; padding: 10px 12px; row-gap: 8px; }
@@ -661,6 +745,9 @@ select {
   #toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
   .stats-kpi-row { grid-template-columns: repeat(2,1fr); gap: 10px; }
   .kpi-val { font-size: 28px; }
+  /* Titre de la fiche d'identification : empiler titre + bouton proprement */
+  #fiche-identif-title { flex-wrap: wrap; font-size: 11.5px; line-height: 1.4; gap: 6px 8px; }
+  #fiche-identif-title button { margin-left: 0 !important; width: 100%; }
 }
 @media (max-width: 380px) {
   .nav-btn { font-size: 11px; padding: 7px 6px; }
@@ -682,7 +769,7 @@ select {
   /* En-tête */
   .print-header-bar { height: 3px; background: linear-gradient(to right, #1a4480, #2563eb, #0d9488); margin-bottom: 0; }
   .print-header-content { display: flex; align-items: center; gap: 12px; padding: 8px 0 6px; border-bottom: 1px solid #c7d7f5; margin-bottom: 6px; }
-  .print-logo { font-size: 28px; }
+  .print-logo { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; }
   .print-center-name { font-size: 14pt; font-weight: 800; color: #1a4480; letter-spacing: .3px; }
   .print-center-sub { font-size: 8pt; color: #5a739f; }
   .print-type-badge { margin-left: auto; background: #1a4480; color: white; padding: 5px 14px; border-radius: 20px; font-size: 9pt; font-weight: 700; letter-spacing: .5px; white-space: nowrap; }
@@ -838,7 +925,17 @@ select {
 
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-logo">🤱</div>
+    <div class="login-logo">
+      <svg viewBox="0 0 64 64" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+        <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
+        <circle cx="32" cy="14" r="3.4" fill="#fff"/>
+        <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.9"/>
+        <g>
+          <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
+          <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+        </g>
+      </svg>
+    </div>
     <h1>CPMI</h1>
     <p class="login-subtitle">Centre de Protection Mère et Infantile</p>
     <p class="login-tagline">Laboratoire d'analyses médicales · Grand-Bassam</p>
@@ -853,7 +950,18 @@ select {
 
 <header>
   <div class="logo">
-    <div class="logo-icon">🏥</div>
+    <div class="logo-icon">
+      <svg viewBox="0 0 64 64" width="26" height="26" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="30" fill="rgba(255,255,255,0.12)"/>
+        <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff" opacity="0.95"/>
+        <circle cx="32" cy="14" r="3.4" fill="#fff" opacity="0.95"/>
+        <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85"/>
+        <g opacity="0.9">
+          <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
+          <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+        </g>
+      </svg>
+    </div>
     <div>
       <div class="logo-name">CPMI</div>
       <div class="logo-sub">Centre de Protection Mère et Infantile · Grand-Bassam</div>
@@ -879,9 +987,9 @@ select {
        FICHE D'IDENTIFICATION PATIENT & PRESCRIPTION
        ═══════════════════════════════════════════════════ -->
   <div class="card" id="fiche-identification" style="border:2px solid var(--cpmi-mid);background:rgba(255,255,255,.95)">
-    <div class="card-title" style="font-size:13px">
+    <div class="card-title" id="fiche-identif-title" style="font-size:13px">
       🗂 FICHE D'IDENTIFICATION PATIENT & DEMANDE D'ANALYSES
-      <button class="btn btn-outline" onclick="newPatient()" style="margin-left:auto;padding:4px 12px;font-size:12px">👤 Nouveau patient</button>
+      <button class="btn btn-outline" onclick="newPatient()" style="margin-left:auto;padding:4px 12px;font-size:12px;flex-shrink:0">👤 Nouveau patient</button>
     </div>
 
     <!-- Infos patient -->
@@ -1003,7 +1111,7 @@ select {
   <!-- ===== HÉMATOLOGIE ===== -->
   <div class="panel active" id="panel-hema">
     <!-- NFS -->
-    <div class="card">
+    <div class="card" id="sec-nfs">
       <div class="card-title">🩸 NFS — Numération formule sanguine</div>
       <div class="table-wrap">
         <table class="result-table">
@@ -1026,7 +1134,7 @@ select {
     </div>
 
     <!-- Électrophorèse de l'hémoglobine -->
-    <div class="card">
+    <div class="card" id="sec-ephb">
       <div class="card-title">🔬 Électrophorèse de l'hémoglobine</div>
       <div class="table-wrap">
         <table class="result-table">
@@ -1056,7 +1164,7 @@ select {
     </div>
 
     <!-- GE / Parasitologie -->
-    <div class="card">
+    <div class="card" id="sec-ge">
       <div class="card-title">🦟 Goutte épaisse / Parasitologie</div>
       <div class="form-grid">
         <div class="form-group">
@@ -1108,7 +1216,7 @@ select {
     </div>
 
     <!-- Groupe sanguin -->
-    <div class="card">
+    <div class="card" id="sec-gs-hema">
       <div class="card-title">🩸 Groupe sanguin ABO / Rhésus</div>
       <div class="form-grid">
         <div class="form-group">
@@ -1142,7 +1250,7 @@ select {
     </div>
 
     <!-- CRP -->
-    <div class="card">
+    <div class="card" id="sec-crp">
       <div class="card-title">🔥 CRP — Protéine C-réactive (Latex)</div>
       <div class="form-grid">
         <div class="form-group">
@@ -1167,7 +1275,7 @@ select {
     </div>
 
     <!-- Widal -->
-    <div class="card">
+    <div class="card" id="sec-widal">
       <div class="card-title">🦠 Sérodiagnostic de Widal et Félix (SWF)</div>
       <div class="table-wrap">
         <table class="result-table" id="widal-table">
@@ -1201,16 +1309,26 @@ select {
       <div class="card-title">🧪 Biochimie sanguine
         <button onclick="showBioConfig()" style="float:right;padding:4px 10px;font-size:11.5px;background:var(--accent-light);color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);cursor:pointer">⚙ Configurer unités & refs</button>
       </div>
-      <div class="section-label">Glucides</div>
-      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-glucides-body"></tbody></table></div>
-      <div class="section-label">Fonction rénale</div>
-      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-rein-body"></tbody></table></div>
-      <div class="section-label">Fonction hépatique</div>
-      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-foie-body"></tbody></table></div>
-      <div class="section-label">Lipides</div>
-      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-lipides-body"></tbody></table></div>
-      <div class="section-label">Ionogramme</div>
-      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-iono-body"></tbody></table></div>
+      <div id="sec-bio-glucides-wrap">
+        <div class="section-label" id="sec-bio-glucides">Glucides</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-glucides-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-rein-wrap">
+        <div class="section-label" id="sec-bio-rein">Fonction rénale</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-rein-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-foie-wrap">
+        <div class="section-label" id="sec-bio-foie">Fonction hépatique</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-foie-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-lipides-wrap">
+        <div class="section-label" id="sec-bio-lipides">Lipides</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-lipides-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-iono-wrap">
+        <div class="section-label" id="sec-bio-iono">Ionogramme</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-iono-body"></tbody></table></div>
+      </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Biochimie')">💾 Enregistrer</button>
         <button class="btn btn-success" onclick="exportSingle('Biochimie')">⬇ Excel</button>
@@ -1225,7 +1343,7 @@ select {
 
     <!-- Type de prélèvement -->
     <div class="card">
-      <div class="card-title">🦠 Bactériologie — ECBU / Prélèvements divers</div>
+      <div class="card-title" id="sec-bacterio-title">🦠 Bactériologie — ECBU / Prélèvements divers</div>
       <div class="form-grid">
         <div class="form-group">
           <label>Type de prélèvement <span class="req">*</span></label>
@@ -1517,7 +1635,7 @@ select {
   <!-- ===== PARASITOLOGIE ===== -->
   <div class="panel" id="panel-parasito">
     <div class="card">
-      <div class="card-title">🔬 Parasitologie — Goutte épaisse / Frottis / Coproparasitologie</div>
+      <div class="card-title" id="sec-eps-title">🔬 Parasitologie — Goutte épaisse / Frottis / Coproparasitologie</div>
       <div class="form-grid col-3">
         <div class="form-group">
           <label>Type d'examen</label>
@@ -1628,7 +1746,7 @@ select {
   <!-- ===== GROUPE SANGUIN ===== -->
   <div class="panel" id="panel-gs">
     <div class="card">
-      <div class="card-title">🩸 Détermination du groupe sanguin</div>
+      <div class="card-title" id="sec-gs-standalone">🩸 Détermination du groupe sanguin</div>
       <div class="table-wrap">
         <table class="result-table">
           <thead><tr><th>Paramètre</th><th>Résultat</th><th colspan="2">Observation</th></tr></thead>
@@ -3299,11 +3417,42 @@ function showView(v) {
   if (v === 'stats') renderStats();
 }
 
+// ── Construction paresseuse des panneaux ──────────────────────
+// Au lieu de construire tous les formulaires (NFS, Biochimie, Bactério,
+// Sérologie, Parasito, GS, BPN — soit ~3000 éléments DOM) dès le chargement
+// de la page, chaque panneau n'est construit que la première fois que
+// l'utilisateur clique réellement sur son onglet. Cela réduit fortement
+// le temps de connexion initial, surtout sur connexion lente ou mobile.
+const PANEL_BUILDERS = {
+  hema:     () => { buildHema(); },
+  bio:      () => { buildBio(); buildAbg(); },
+  bacterio: () => { if (!document.getElementById('abg-grid')?.children.length) buildAbg(); },
+  sero:     () => { buildSero(); },
+  parasito: () => { buildParaEPS(); },
+  gs:       () => { buildGS(); },
+  bpn:      () => { buildBpnNfs(); buildBpnBio(); buildBpnBacterio(); buildBpnSero(); },
+};
+const _panelsBuilt = new Set();
+
+function ensurePanelBuilt(name) {
+  if (_panelsBuilt.has(name)) return;
+  const builder = PANEL_BUILDERS[name];
+  if (builder) builder();
+  _panelsBuilt.add(name);
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.getElementById('panel-' + name).classList.add('active');
+  // Construire le panneau au premier affichage seulement (perf)
+  ensurePanelBuilt(name);
+  // Ré-appliquer le filtrage/marquage des sections sur le nouvel onglet actif
+  // (seulement si on est déjà en zone de saisie, pas lors de l'init de page)
+  if (document.getElementById('zone-saisie')?.style.display !== 'none') {
+    markRequiredSections();
+  }
 }
 
 function resetPanel(name) {
@@ -3393,6 +3542,31 @@ async function insertRecordRemote(record) {
   return saved;
 }
 
+// Met à jour une fiche existante (édition depuis l'historique)
+async function updateRecordRemote(id, record) {
+  const { data, error } = await _sb
+    .from('labo_resultats')
+    .update({
+      patient: record.patient,
+      resultats: record.resultats,
+      montant: record.montant || 0,
+      prescripteur_id: record.prescripteur_id || null,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) {
+    console.error('Erreur mise à jour Supabase:', error);
+    toast('Échec de la mise à jour', 'err');
+    return null;
+  }
+  // Mettre à jour le cache local
+  const idx = _dbCache.findIndex(r => r.id === id);
+  const updated = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
+  if (idx >= 0) _dbCache[idx] = updated; else _dbCache.push(updated);
+  return updated;
+}
+
 async function deleteRecordRemote(id) {
   if (!_currentUser) { toast('Session expirée, reconnectez-vous', 'err'); return false; }
   const { data, error } = await _sb.rpc('delete_resultat_admin', { p_user_id: _currentUser.id, p_resultat_id: id });
@@ -3425,12 +3599,6 @@ async function clearAllRemote() {
   return true;
 }
 
-function getNextNum() {
-  const n = parseInt(localStorage.getItem('labo_counter') || '0') + 1;
-  localStorage.setItem('labo_counter', n);
-  return n;
-}
-
 function formatDossier(n) {
   const now = new Date();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -3438,12 +3606,60 @@ function formatDossier(n) {
   return String(n).padStart(4, '0') + '-' + mm + yy;
 }
 
-function regenDossier() {
-  document.getElementById('p_dossier').value = formatDossier(getNextNum());
+// Génère le prochain numéro de dossier en vérifiant l'historique réel (Supabase) :
+// on part du dernier numéro connu localement, et on incrémente UNIQUEMENT
+// tant que ce numéro existe déjà dans l'historique pour le mois en cours.
+// S'il n'existe pas encore, on le réutilise (pas de saut artificiel).
+async function getNextDossierNum() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yy = String(now.getFullYear()).slice(-2);
+  const suffix = '-' + mm + yy;
+
+  // Rafraîchir le cache pour avoir l'historique à jour
+  await refreshDB();
+  const db = getDB();
+
+  // Construire l'ensemble des numéros déjà utilisés ce mois-ci dans l'historique
+  const numerosExistants = new Set();
+  db.forEach(r => {
+    const dossier = r.patient && r.patient.dossier;
+    if (dossier && dossier.endsWith(suffix)) {
+      const num = parseInt(dossier.split('-')[0]);
+      if (!isNaN(num)) numerosExistants.add(num);
+    }
+  });
+
+  // Partir du compteur local (mémoire de la dernière position connue),
+  // mais ne jamais sauter un numéro qui n'existe pas réellement dans l'historique
+  let n = parseInt(localStorage.getItem('labo_counter') || '0');
+  if (n === 0 || !numerosExistants.has(n)) {
+    // Si le numéro courant n'est même pas dans l'historique, on peut le réutiliser tel quel
+    n = n || 1;
+  }
+  // Incrémenter tant que le numéro existe déjà dans l'historique
+  while (numerosExistants.has(n)) {
+    n++;
+  }
+
+  localStorage.setItem('labo_counter', n);
+  return n;
 }
 
-function newPatient() {
+async function regenDossier() {
+  const dossierEl = document.getElementById('p_dossier');
+  if (dossierEl) dossierEl.value = '…';
+  const n = await getNextDossierNum();
+  if (dossierEl) dossierEl.value = formatDossier(n);
+}
+
+async function newPatient() {
   if (!confirm('Effacer les informations du patient et tous les résultats en cours ? (Les fiches déjà enregistrées ne sont pas supprimées)')) return;
+  // Repartir sur une session propre : mode filtré réactivé, plus en mode édition
+  _showAllExams = false;
+  _editingRecordId = null;
+  const banner = document.getElementById('edit-mode-banner');
+  if (banner) banner.style.display = 'none';
   // Effacer les infos patient
   ['p_nom','p_medecin','p_clinique'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['p_age'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
@@ -3451,8 +3667,8 @@ function newPatient() {
   document.getElementById('p_date').value = new Date().toISOString().slice(0,10);
   // Effacer tous les panneaux de résultats
   ['hema','bio','bacterio','sero','parasito','bpn'].forEach(name => resetPanel(name));
-  // Générer un nouveau numéro de dossier
-  regenDossier();
+  // Générer un nouveau numéro de dossier (vérifié contre l'historique réel)
+  await regenDossier();
   // Remettre les prix de référence (les prix modifiés manuellement sont effacés)
   rechargeFichePrix();
   // Décocher tous les examens (catalogue + custom)
@@ -3717,10 +3933,250 @@ async function saveRecord(type) {
     montant = calculateMontant(type, resultats);
   }
 
+  // Capturer la liste des examens cochés pour ce tab (sert d'intitulé précis sur les exports)
+  const examensCochesTab = getCatalogueComplet()
+    .filter(ex => ex.tab === tabKey && document.getElementById(ex.id)?.checked)
+    .map(ex => ex.label);
+  if (examensCochesTab.length) {
+    resultats['_examens_coches'] = examensCochesTab;
+  }
+
   const prescripteurId = document.getElementById('p_prescripteur_id')?.value || null;
-  const saved = await insertRecordRemote({ patient: p, type, resultats, montant, prescripteur_id: prescripteurId || null });
-  if (saved) {
-    toast('Fiche ' + type + ' enregistrée — ' + montant.toLocaleString('fr-FR') + ' FCFA ✓', 'ok');
+
+  let saved;
+  if (_editingRecordId) {
+    // Mode édition : mise à jour de la fiche existante
+    saved = await updateRecordRemote(_editingRecordId, { patient: p, type, resultats, montant, prescripteur_id: prescripteurId || null });
+    if (saved) {
+      toast('Fiche ' + type + ' mise à jour — ' + montant.toLocaleString('fr-FR') + ' FCFA ✓', 'ok');
+      _editingRecordId = null; // sortir du mode édition après sauvegarde
+      const banner = document.getElementById('edit-mode-banner');
+      if (banner) banner.style.display = 'none';
+    }
+  } else {
+    // Mode création : nouvelle fiche
+    saved = await insertRecordRemote({ patient: p, type, resultats, montant, prescripteur_id: prescripteurId || null });
+    if (saved) {
+      toast('Fiche ' + type + ' enregistrée — ' + montant.toLocaleString('fr-FR') + ' FCFA ✓', 'ok');
+    }
+  }
+}
+
+// ============================================================
+// ÉDITION D'UNE FICHE DEPUIS L'HISTORIQUE
+// ============================================================
+
+let _editingRecordId = null;
+
+async function editRecord(id) {
+  let r = getDB().find(x => x.id === id);
+  if (!r) {
+    // Sécurité : si le cache est vide (accès direct, rafraîchissement réseau), on le recharge
+    await refreshDB();
+    r = getDB().find(x => x.id === id);
+  }
+  if (!r) { toast('Fiche introuvable', 'err'); return; }
+
+  _editingRecordId = id;
+
+  // Aller sur la vue Saisie
+  showView('saisie');
+  await new Promise(res => setTimeout(res, 50));
+
+  // Remplir le formulaire patient
+  const p = r.patient || {};
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  setVal('p_dossier', p.dossier);
+  setVal('p_date', p.date);
+  setVal('p_nom', p.nom);
+  setVal('p_age', p.age);
+  setVal('p_sexe', p.sexe);
+  setVal('p_medecin', p.medecin);
+  setVal('p_service', p.service);
+  setVal('p_clinique', p.clinique);
+  if (p.sexe || p.age) updateAllRefs();
+
+  // Mapping type → tab
+  const TYPE_TO_TAB = {
+    'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
+    'Sérologie': 'sero', 'Parasitologie': 'parasito',
+    'Groupe sanguin': 'gs', 'Bilan prénatal': 'bpn',
+  };
+  const tabKey = TYPE_TO_TAB[r.type] || 'hema';
+
+  // En mode édition, on affiche toujours tout l'onglet : une fiche existante
+  // peut contenir des résultats dans des sections qui ne correspondent plus
+  // forcément aux cases actuellement cochées (anciennes fiches notamment).
+  // Mieux vaut tout montrer que de risquer de cacher une donnée déjà saisie.
+  _showAllExams = true;
+
+  // Démarrer la saisie sur le bon onglet
+  document.getElementById('fiche-identification').style.display = 'none';
+  document.getElementById('zone-saisie').style.display = '';
+  switchTab(tabKey);
+  await new Promise(res => setTimeout(res, 100));
+
+  // Recharger les résultats sauvegardés dans le formulaire
+  loadResultsIntoForm(r.type, r.resultats || {});
+  markRequiredSections();
+
+  // Afficher le bandeau "Mode édition"
+  let banner = document.getElementById('edit-mode-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'edit-mode-banner';
+    banner.style.cssText = 'background:#fef3c7;border:1.5px solid #d97706;color:#92400e;padding:10px 16px;border-radius:var(--radius);margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px';
+    const rappelEl = document.getElementById('rappel-patient');
+    rappelEl?.parentNode?.insertBefore(banner, rappelEl);
+  }
+  banner.innerHTML = '✏️ Mode édition — Fiche ' + r.type + ' de ' + (p.nom||'') +
+    ' (N° ' + (p.dossier||'') + ') <button onclick="cancelEdit()" style="margin-left:auto;background:none;border:1px solid #92400e;color:#92400e;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Annuler</button>';
+  banner.style.display = 'flex';
+
+  // Rappel patient
+  const rappelNom  = document.getElementById('rappel-nom');
+  const rappelDoss = document.getElementById('rappel-dossier');
+  if (rappelNom)  rappelNom.textContent  = p.nom || '';
+  if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('Fiche chargée pour modification', 'ok');
+}
+
+function cancelEdit() {
+  _editingRecordId = null;
+  const banner = document.getElementById('edit-mode-banner');
+  if (banner) banner.style.display = 'none';
+  newPatient();
+}
+
+// Recharge les résultats sauvegardés dans les champs du formulaire (mode édition)
+function loadResultsIntoForm(type, res) {
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== '') el.value = val; };
+  const setSel = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+
+  if (type === 'Hématologie') {
+    [...HEMA_PARAMS, ...HEMA_FL].forEach(p => {
+      const v = res[p.name];
+      if (v && v.valeur) setVal('v_' + p.id, v.valeur);
+    });
+    calcConstantes(); calcFLAbsolues();
+    ['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].forEach(n => {
+      const v = res[n]; if (v && v.valeur) {
+        const id = n.toLowerCase().replace(/\s+/g,'_').replace('hb_','ephb_');
+        setVal(id, v.valeur);
+      }
+    });
+    setSel('ephb_profil', res['Profil Hb']);
+    setVal('ephb_commentaire', res['Commentaire Hb']);
+    setSel('ge_result', res['GE - Résultat']);
+    setSel('ge_espece', res['GE - Espèce']);
+    setVal('ge_para', res['GE - Parasitémie (%)']);
+    setSel('ge_stade', res['GE - Stade']);
+    setSel('ge_tdr', res['GE - TDR']);
+    setVal('ge_obs', res['GE - Observation']);
+    setSel('gs_abo_hema', res['GS - ABO']);
+    setSel('gs_rh_hema', res['GS - Rhésus']);
+    setSel('gs_rai_hema', res['GS - RAI']);
+    setVal('gs_phenotype_hema', res['GS - Phénotype']);
+    setSel('crp_valeur', res['CRP - Valeur']);
+    if (res['CRP - Valeur']) interpretCRP();
+    WIDAL_ANTIGENES.forEach(ag => {
+      const w = res['Widal - ' + ag.name];
+      if (w) {
+        setSel('widal_' + ag.id, w.titre);
+        setSel('widal_cin_' + ag.id, w.cinetique);
+      }
+    });
+    if (Object.keys(res).some(k => k.startsWith('Widal'))) interpretWidal();
+  }
+  else if (type === 'Biochimie') {
+    [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO].forEach(p => {
+      const v = res[p.name];
+      if (v && v.valeur) setVal('v_' + p.id, v.valeur);
+    });
+    if (typeof calcLDL === 'function') calcLDL();
+  }
+  else if (type === 'Bactériologie') {
+    setSel('bac_type', res['Type de prélèvement']);
+    setVal('bac_site', res['Site / Précision']);
+    setSel('bac_aspect', res['Aspect']);
+    setSel('bac_couleur', res['Couleur']);
+    setSel('bac_odeur', res['Odeur']);
+    setSel('bac_ph', res['pH']);
+    setVal('ef_leuco', res['Leucocytes (/mm³)']);
+    setVal('ef_hematies', res['Hématies (/mm³)']);
+    setSel('ef_epitheliales', res['Cellules épithéliales']);
+    setSel('ef_cylindres', res['Cylindres']);
+    setSel('ef_cristaux', res['Cristaux']);
+    setSel('ef_bacteries', res['Bactéries (état frais)']);
+    setSel('ef_levures', res['Levures']);
+    setVal('ef_parasites', res['Parasites']);
+    setSel('ef_sperma', res['Spermatozoïdes']);
+    setSel('bac_gram', res['Coloration de Gram']);
+    setSel('bac_gram_abond', res['Gram - Abondance']);
+    setVal('bac_gram_comment', res['Gram - Commentaire']);
+    setSel('bac_culture', res['Culture']);
+    setSel('bac_numeration', res['Numération bactérienne']);
+    setVal('bac_germe', res['Germe identifié']);
+    setVal('bac_germe2', res['2ème germe']);
+    setVal('bac_milieux', res['Milieux de culture']);
+    setVal('bac_obs', res['Observations']);
+    setVal('bac_abg_comment', res['Commentaire antibiogramme']);
+    if (res['Mode: ABG/AFG'] === 'afg') setAbgMode('afg');
+    const grid = (res['Mode: ABG/AFG']==='afg') ? AFG_ANTIFONGIQUES : ABG_ANTIBIOS;
+    const prefix = (res['Mode: ABG/AFG']==='afg') ? 'afg_' : 'abg_';
+    const keyPfx = (res['Mode: ABG/AFG']==='afg') ? 'AFG_' : 'ABG_';
+    if (res['Mode: ABG/AFG'] === 'afg') {
+      grid.forEach(ab => {
+        const v = res[keyPfx+ab];
+        const sel = document.querySelector('#' + prefix + ab.replace(/[^a-z]/gi,'_') + ' select');
+        if (sel && v) { sel.value = v; updateAbgColor(sel, ab); }
+      });
+    } else {
+      ABG_ANTIBIOS.forEach(ab => {
+        const v = res['ABG_'+ab];
+        const sel = document.querySelector('#abg_' + ab.replace(/[^a-z]/gi,'_') + ' select');
+        if (sel && v) { sel.value = v; updateAbgColor(sel, ab); }
+      });
+    }
+  }
+  else if (type === 'Sérologie' && typeof SERO_TESTS !== 'undefined') {
+    SERO_TESTS.forEach(t => {
+      const v = res[t.name];
+      if (v) {
+        setSel('sr_'+t.id+'_r', v.resultat);
+        setVal('sr_'+t.id+'_v', v.valeur);
+      }
+    });
+  }
+  else if (type === 'Groupe sanguin') {
+    setSel('gs_abo', res['Groupe ABO']);
+    setSel('gs_rh', res['Rhésus']);
+    setSel('gs_rai', res['RAI']);
+    setVal('gs_phenotype', res['Phénotype']);
+  }
+  else if (type === 'Parasitologie') {
+    setSel('eps_aspect', res['Aspect des selles']);
+    setSel('eps_consistance', res['Consistance']);
+    setVal('eps_obs', res['Observation']);
+  }
+  else if (type === 'Bilan prénatal') {
+    BPN_NFS.forEach(p => { const v=res[p.name]; if (v&&v.valeur) setVal('v_'+p.id, v.valeur); });
+    BPN_FL.forEach(p => { const v=res[p.name]; if (v&&v.valeur) setVal('v_'+p.id, v.valeur); });
+    if (typeof calcConstantesBPN === 'function') calcConstantesBPN();
+    if (typeof calcBpnFLAbsolues === 'function') calcBpnFLAbsolues();
+    // Biochimie BPN (clone bpn2_)
+    [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO].forEach(p => {
+      const v = res['BIO_'+p.name];
+      if (v && v.valeur) setVal('bpn2_v_'+p.id, v.valeur);
+    });
+    // Bactério BPN (clone bpn3_)
+    setSel('bpn3_bac_type', res['BAC - Type']);
+    setVal('bpn3_bac_site', res['BAC - Site']);
+    setSel('bpn3_bac_aspect', res['BAC - Aspect']);
+    setSel('bpn3_bac_gram', res['BAC - Gram']);
+    setVal('bpn3_bac_germe', res['BAC - Germe']);
   }
 }
 
@@ -3832,7 +4288,8 @@ async function renderHistory() {
       + '<td data-label="Saisi par">' + (r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
       + '<td data-label="Actions">'
-        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px" onclick="exportRecord(' + r.id + ')">⬇</button>'
+        + '<button class="btn" style="padding:4px 8px;font-size:11px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats">✏️</button>'
+        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF">📄</button>'
         + dossierMulti
         + deleteBtn(r.id)
@@ -3907,6 +4364,24 @@ function styleCell(cell, { bg, fg, bold, size, halign, border, italic } = {}) {
   if (border) cell.border = thinBorder(border === true ? C_BORDER : border);
 }
 
+// Retourne l'intitulé d'examen à afficher : la liste précise des examens
+// cochés au départ sur la fiche d'accueil (ex: "NFS · CRP"), ou à défaut
+// le type générique de l'onglet (ex: "Hématologie")
+function getDisplayType(r) {
+  const coches = r.resultats && r.resultats['_examens_coches'];
+  if (coches && coches.length) return coches.join(' · ');
+  return r.type;
+}
+
+// Version courte pour les noms de fichiers (sigles avant le tiret, sans accents lourds)
+function getDisplayTypeShort(r) {
+  const coches = r.resultats && r.resultats['_examens_coches'];
+  if (coches && coches.length) {
+    return coches.map(c => c.split(/[—-]/)[0].trim()).join('+');
+  }
+  return r.type;
+}
+
 function makeFilename(dossier, date, nom, type) {
   const safe = s => (s||'').toString().trim().replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,'_');
   const d = date ? date.split('-').reverse().join('-') : '';
@@ -3914,7 +4389,7 @@ function makeFilename(dossier, date, nom, type) {
 }
 
 function buildProfessionalSheet(wb, r, sheetName) {
-  const ws = wb.addWorksheet(sheetName || r.type.substring(0, 31), {
+  const ws = wb.addWorksheet(sheetName || getDisplayType(r).substring(0, 31), {
     pageSetup: {
       paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1,
       margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.2, footer: 0.2 }
@@ -3955,7 +4430,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   styleCell(cS, {bg:C_HEADER_BG, fg:'FFBFDBFE', size:9, italic:true});
   merge(row,4,row,NC);
   const cT = ws.getCell(row,4);
-  cT.value = 'RÉSULTAT : ' + r.type.toUpperCase();
+  cT.value = 'RÉSULTAT : ' + getDisplayType(r).toUpperCase();
   styleCell(cT, {bg:C_HEADER_BG, fg:'FFFBBF24', bold:true, size:10, halign:'right'});
   row++;
 
@@ -4226,12 +4701,16 @@ async function exportSingle(type) {
     return;
   }
 
+  // Avertir si des examens payés ne sont pas remplis
+  if (!confirmerSiExamensManquants(type, saved.resultats)) return;
+
   // Export depuis la fiche enregistrée (pas depuis le formulaire en cours)
+  const displayType = getDisplayType(saved);
   const wb = new ExcelJS.Workbook();
   wb.creator = CENTRE;
-  wb.title = 'Résultat ' + type;
-  buildProfessionalSheet(wb, saved, type.substring(0, 31));
-  await downloadWorkbook(wb, makeFilename(saved.patient.dossier, saved.patient.date, saved.patient.nom || 'PATIENT', type));
+  wb.title = 'Résultat ' + displayType;
+  buildProfessionalSheet(wb, saved, getDisplayTypeShort(saved).substring(0, 31));
+  await downloadWorkbook(wb, makeFilename(saved.patient.dossier, saved.patient.date, saved.patient.nom || 'PATIENT', getDisplayTypeShort(saved)));
   toast('Export Excel réussi ✓', 'ok');
 }
 
@@ -4266,19 +4745,6 @@ async function exportAllExcel() {
 
 const TYPES_ANALYSES = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Groupe sanguin','Bilan prénatal'];
 const TYPE_COLORS = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#DC2626','#EA580C'];
-
-// Détecte les anomalies dans un enregistrement (résultats Élevé/Bas/Positif)
-function countAnomalies(resultats) {
-  let count = 0;
-  if (!resultats) return 0;
-  Object.values(resultats).forEach(v => {
-    if (typeof v === 'object' && v !== null) {
-      const interp = (v.interp || v.resultat || '').toLowerCase();
-      if (interp.includes('élevé') || interp.includes('eleve') || interp.includes('bas') || interp.includes('positif')) count++;
-    }
-  });
-  return count;
-}
 
 async function renderStats() {
   ['kpi-total','kpi-month','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
@@ -4467,9 +4933,71 @@ async function renderStats() {
 // IMPRESSION DIRECTE
 // ============================================================
 
+// ============================================================
+// VÉRIFICATION EXAMENS PAYÉS NON REMPLIS — avant impression/export
+// ============================================================
+
+// Retourne la liste des libellés d'examens cochés (payés) sur la fiche
+// d'accueil dont la section correspondante n'a aucune valeur saisie
+function getExamensManquants(type, resultats) {
+  const TYPE_TO_TAB = {
+    'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
+    'Sérologie': 'sero', 'Parasitologie': 'parasito',
+    'Groupe sanguin': 'gs', 'Bilan prénatal': 'bpn',
+  };
+  const tabKey = TYPE_TO_TAB[type];
+  if (!tabKey) return [];
+
+  const tousExamens = getCatalogueComplet();
+  const examensConcernés = tousExamens.filter(ex => {
+    const chk = document.getElementById(ex.id);
+    return chk && chk.checked && ex.tab === tabKey;
+  });
+  if (!examensConcernés.length) return [];
+
+  // Un résultat est considéré "rempli" si au moins une valeur existe dans `resultats`
+  // pour la section concernée. On vérifie via les sections marquées.
+  const manquants = [];
+  examensConcernés.forEach(ex => {
+    if (!ex.section) return;
+    const sectionEl = document.getElementById(ex.section);
+    if (!sectionEl) return;
+    const card = sectionEl.closest('.card') || sectionEl;
+    // Vérifier si au moins un champ rempli existe dans cette carte
+    const inputs = card.querySelectorAll('input[type=number], input[type=text], select, textarea');
+    let rempli = false;
+    inputs.forEach(inp => {
+      if (inp.value && inp.value.trim() !== '' && inp.value !== '—') rempli = true;
+    });
+    if (!rempli) manquants.push(ex.label);
+  });
+  return [...new Set(manquants)];
+}
+
+// Affiche une confirmation si des examens payés ne sont pas remplis.
+// Retourne true si on peut continuer (rien à signaler, ou utilisateur confirme).
+function confirmerSiExamensManquants(type, resultats) {
+  const manquants = getExamensManquants(type, resultats);
+  if (!manquants.length) return true;
+  const msg = '⚠ Les examens suivants ont été payés mais ne sont pas remplis :\n\n'
+    + manquants.map(m => '  • ' + m).join('\n')
+    + '\n\nVoulez-vous imprimer/exporter quand même ?';
+  return confirm(msg);
+}
+
 function printRecord(id) {
   const r = getDB().find(x => x.id === id);
   if (!r) { toast('Fiche introuvable', 'err'); return; }
+  // Vérification simple : si la fiche a un montant > 0 mais aucun résultat exploitable
+  const hasAnyValue = Object.values(r.resultats || {}).some(v => {
+    if (!v) return false;
+    if (typeof v === 'object') return !!(v.valeur || v.resultat || v.titre);
+    return typeof v === 'string' && v.trim() !== '';
+  });
+  if (r.montant > 0 && !hasAnyValue) {
+    const ok = confirm('⚠ Cette fiche a été facturée (' + r.montant.toLocaleString('fr-FR') + ' FCFA) mais ne contient aucun résultat rempli.\n\nVoulez-vous imprimer quand même ?');
+    if (!ok) return;
+  }
   buildAndPrint(r);
 }
 
@@ -4477,6 +5005,7 @@ function printCurrentForm(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
   const resultats = collectResults(type);
+  if (!confirmerSiExamensManquants(type, resultats)) return;
   buildAndPrint({ type, patient: p, resultats, montant: parseInt(document.getElementById('montant-preview')?.dataset?.montant||'0'), savedAt: new Date().toISOString() });
 }
 
@@ -4490,12 +5019,21 @@ function buildAndPrint(r) {
     <div class="print-header">
       <div class="print-header-bar"></div>
       <div class="print-header-content">
-        <div class="print-logo">🏥</div>
+        <div class="print-logo">
+          <svg viewBox="0 0 64 64" width="34" height="34" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="31" fill="#1e3a8a"/>
+            <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
+            <circle cx="32" cy="14" r="3.4" fill="#fff"/>
+            <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+            <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
+            <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+          </svg>
+        </div>
         <div>
           <div class="print-center-name">CPMI DE GRAND-BASSAM</div>
           <div class="print-center-sub">Centre de Protection Mère et Infantile · Laboratoire d'analyses médicales</div>
         </div>
-        <div class="print-type-badge">${r.type.toUpperCase()}</div>
+        <div class="print-type-badge">${getDisplayType(r).toUpperCase()}</div>
       </div>
       <div class="print-header-bar" style="background:linear-gradient(to right,#e11d76,#d97706)"></div>
     </div>
@@ -4693,6 +5231,7 @@ async function exportPDFFromForm(type) {
   await refreshDB();
   const saved = getDB().find(r => r.type === type && r.patient.dossier === p.dossier);
   if (!saved) { toast('Enregistrez la fiche avant d\'exporter en PDF', 'err'); return; }
+  if (!confirmerSiExamensManquants(type, saved.resultats)) return;
   buildPDF(saved);
 }
 
@@ -4736,19 +5275,31 @@ function buildPDF(r) {
   // Type d'analyse
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('RÉSULTAT : ' + r.type.toUpperCase(), MARGIN + 22, 33);
+  doc.text('RÉSULTAT : ' + getDisplayType(r).toUpperCase(), MARGIN + 22, 33);
 
   // Liseré bleu clair bas
   doc.setFillColor(96, 165, 250);
   doc.rect(0, 38, W, 1.5, 'F');
 
-  // Logo simple (croix médicale texte)
+  // ── Logo CPMI — silhouette mère-enfant + croix dorée (dessin vectoriel natif) ──
+  const lcx = MARGIN + 9, lcy = 19; // centre du cercle logo
   doc.setFillColor(255, 255, 255);
-  doc.circle(MARGIN + 9, 19, 8, 'F');
-  doc.setTextColor(30, 58, 138);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('+', MARGIN + 6, 23);
+  doc.circle(lcx, lcy, 8.2, 'F');
+
+  doc.setFillColor(30, 58, 138); // silhouette en bleu profond CPMI
+  // Tête (cercle)
+  doc.circle(lcx, lcy - 4.3, 1.55, 'F');
+  // Corps (triangle arrondi approximé par un polygone lissé)
+  doc.setDrawColor(30, 58, 138);
+  doc.setFillColor(30, 58, 138);
+  doc.triangle(lcx - 3.4, lcy + 4.6, lcx + 3.4, lcy + 4.6, lcx, lcy - 2.0, 'F');
+  // Petit arrondi de base pour adoucir le triangle
+  doc.circle(lcx, lcy + 4.2, 0.9, 'F');
+
+  // Croix médicale dorée, petite, en bas à droite du cercle (signature CPMI)
+  doc.setFillColor(251, 191, 36);
+  doc.roundedRect(lcx + 4.6, lcy + 2.0, 1.3, 4.0, 0.4, 0.4, 'F');
+  doc.roundedRect(lcx + 3.1, lcy + 3.5, 4.0, 1.3, 0.4, 0.4, 'F');
 
   y = 44;
 
@@ -4985,8 +5536,8 @@ function buildPDF(r) {
   doc.setTextColor(150); doc.setFont('helvetica','normal'); doc.setFontSize(7);
   doc.text('Page 1/1', W - MARGIN, 290, { align: 'right' });
 
-  // Téléchargement
-  const filename = (p.dossier || 'fiche') + '_' + r.type.replace(/\s/g,'_') + '.pdf';
+  // Téléchargement — même convention de nommage que l'export Excel
+  const filename = makeFilename(p.dossier, p.date, p.nom, getDisplayTypeShort(r)).replace(/\.xlsx$/, '.pdf');
   doc.save(filename);
   toast('PDF généré ✓', 'ok');
 }
@@ -5100,15 +5651,15 @@ function buildAdminExamensGrid() {
   });
 
   grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => `
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-      <div style="font-size:10.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${groupe}</div>
+    <div class="exam-group-card">
+      <div class="exam-group-title">${groupe}</div>
       ${examens.map(ex => {
         const prix       = ref[ex.id] !== undefined ? ref[ex.id] : ex.prix;
         const isCustom   = !!ex.custom;
         const removeBtn  = isCustom
-          ? `<button onclick="removeExamenCustom('${ex.id}')" title="Supprimer cet examen" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;padding:0 2px;line-height:1">✕</button>`
+          ? `<button onclick="removeExamenCustom('${ex.id}')" title="Supprimer cet examen" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:15px;padding:2px 4px;line-height:1;border-radius:4px;transition:background .15s" onmouseover="this.style.background='var(--danger-light)'" onmouseout="this.style.background='none'">✕</button>`
           : '';
-        return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px dashed rgba(199,215,245,.5)">
+        return `<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px dashed rgba(199,215,245,.5);border-radius:6px;transition:background .15s" onmouseover="this.style.background='rgba(224,234,255,.4)'" onmouseout="this.style.background='none'">
           <label style="flex:1;font-size:12.5px;font-weight:${isCustom?'600':'500'};color:var(--text)">
             ${ex.label}${isCustom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
             ${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
@@ -5518,45 +6069,45 @@ function selectAllRoutine(checked) {
 // Catalogue complet des examens avec prix et type associé
 const CATALOGUE_EXAMENS = [
   // ── Hématologie ──
-  { id:'ex_nfs',   label:'NFS — Numération Formule Sanguine', groupe:'🩸 Hématologie', tab:'hema', prix:3500 },
-  { id:'ex_fl',    label:'Formule leucocytaire',               groupe:'🩸 Hématologie', tab:'hema', prix:0, note:'inclus NFS' },
-  { id:'ex_ephb',  label:'Électrophorèse de l\'hémoglobine',  groupe:'🩸 Hématologie', tab:'hema', prix:7500 },
-  { id:'ex_vs',    label:'VS — Vitesse de sédimentation',     groupe:'🩸 Hématologie', tab:'hema', prix:1500 },
+  { id:'ex_nfs',   label:'NFS — Numération Formule Sanguine', groupe:'🩸 Hématologie', tab:'hema', prix:3500, section:'sec-nfs' },
+  { id:'ex_fl',    label:'Formule leucocytaire',               groupe:'🩸 Hématologie', tab:'hema', prix:0, note:'inclus NFS', section:'sec-nfs' },
+  { id:'ex_ephb',  label:'Électrophorèse de l\'hémoglobine',  groupe:'🩸 Hématologie', tab:'hema', prix:7500, section:'sec-ephb' },
+  { id:'ex_vs',    label:'VS — Vitesse de sédimentation',     groupe:'🩸 Hématologie', tab:'hema', prix:1500, section:'sec-nfs' },
   // ── Parasitologie ──
-  { id:'ex_ge',    label:'Goutte épaisse / TDR Paludisme',    groupe:'🦟 Parasitologie', tab:'hema', prix:2500 },
-  { id:'ex_eps',   label:'EPS — Examen parasitologique des selles', groupe:'🦟 Parasitologie', tab:'parasito', prix:3000 },
+  { id:'ex_ge',    label:'Goutte épaisse / TDR Paludisme',    groupe:'🦟 Parasitologie', tab:'hema', prix:2500, section:'sec-ge' },
+  { id:'ex_eps',   label:'EPS — Examen parasitologique des selles', groupe:'🦟 Parasitologie', tab:'parasito', prix:3000, section:'sec-eps-title' },
   // ── Groupe sanguin ──
-  { id:'ex_gs',    label:'Groupe sanguin ABO / Rhésus',       groupe:'🩸 Groupe sanguin', tab:'gs', prix:3000 },
-  { id:'ex_rai',   label:'RAI + Phénotypage érythrocytaire',  groupe:'🩸 Groupe sanguin', tab:'gs', prix:5000 },
+  { id:'ex_gs',    label:'Groupe sanguin ABO / Rhésus',       groupe:'🩸 Groupe sanguin', tab:'gs', prix:3000, section:'sec-gs-standalone' },
+  { id:'ex_rai',   label:'RAI + Phénotypage érythrocytaire',  groupe:'🩸 Groupe sanguin', tab:'gs', prix:5000, section:'sec-gs-standalone' },
   // ── Sérologie ──
-  { id:'ex_crp',   label:'CRP — Protéine C-réactive',        groupe:'💉 Sérologie', tab:'hema', prix:2000 },
-  { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Sérologie', tab:'hema', prix:3000 },
-  { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Sérologie', tab:'sero', prix:3500 },
-  { id:'ex_hbs',   label:'Ag HBs (Hépatite B)',              groupe:'💉 Sérologie', tab:'sero', prix:2500 },
-  { id:'ex_hcv',   label:'Ac anti-VHC (Hépatite C)',         groupe:'💉 Sérologie', tab:'sero', prix:2500 },
-  { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Sérologie', tab:'sero', prix:2000 },
-  { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Sérologie', tab:'sero', prix:3500 },
-  { id:'ex_rube',  label:'Rubéole IgG / IgM',                groupe:'💉 Sérologie', tab:'sero', prix:3500 },
+  { id:'ex_crp',   label:'CRP — Protéine C-réactive',        groupe:'💉 Sérologie', tab:'hema', prix:2000, section:'sec-crp' },
+  { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Sérologie', tab:'hema', prix:3000, section:'sec-widal' },
+  { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
+  { id:'ex_hbs',   label:'Ag HBs (Hépatite B)',              groupe:'💉 Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
+  { id:'ex_hcv',   label:'Ac anti-VHC (Hépatite C)',         groupe:'💉 Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
+  { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Sérologie', tab:'sero', prix:2000, section:'sec-sero' },
+  { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
+  { id:'ex_rube',  label:'Rubéole IgG / IgM',                groupe:'💉 Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
   // ── Biochimie ──
-  { id:'ex_gly',   label:'Glycémie à jeun',                  groupe:'🧪 Biochimie', tab:'bio', prix:1000 },
-  { id:'ex_hba1c', label:'HbA1c',                             groupe:'🧪 Biochimie', tab:'bio', prix:7500 },
-  { id:'ex_uree',  label:'Urée',                              groupe:'🧪 Biochimie', tab:'bio', prix:1500 },
-  { id:'ex_crea',  label:'Créatinine',                        groupe:'🧪 Biochimie', tab:'bio', prix:1500 },
-  { id:'ex_ua',    label:'Acide urique',                      groupe:'🧪 Biochimie', tab:'bio', prix:1500 },
-  { id:'ex_asat',  label:'ASAT / ALAT (Transaminases)',       groupe:'🧪 Biochimie', tab:'bio', prix:3000 },
-  { id:'ex_ggt',   label:'Gamma GT',                          groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
-  { id:'ex_pal',   label:'Phosphatases alcalines',            groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
-  { id:'ex_bili',  label:'Bilirubine totale & directe',       groupe:'🧪 Biochimie', tab:'bio', prix:3000 },
-  { id:'ex_prot',  label:'Protéines totales / Albumine',      groupe:'🧪 Biochimie', tab:'bio', prix:2500 },
-  { id:'ex_chol',  label:'Cholestérol total',                 groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
-  { id:'ex_trig',  label:'Triglycérides',                     groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
-  { id:'ex_hdl',   label:'HDL-cholestérol',                   groupe:'🧪 Biochimie', tab:'bio', prix:2000 },
-  { id:'ex_iono',  label:'Ionogramme (Na, K, Cl)',            groupe:'🧪 Biochimie', tab:'bio', prix:4500 },
-  { id:'ex_ca',    label:'Calcium / Phosphore',               groupe:'🧪 Biochimie', tab:'bio', prix:2500 },
+  { id:'ex_gly',   label:'Glycémie à jeun',                  groupe:'🧪 Biochimie', tab:'bio', prix:1000, section:'sec-bio-glucides-wrap' },
+  { id:'ex_hba1c', label:'HbA1c',                             groupe:'🧪 Biochimie', tab:'bio', prix:7500, section:'sec-bio-glucides-wrap' },
+  { id:'ex_uree',  label:'Urée',                              groupe:'🧪 Biochimie', tab:'bio', prix:1500, section:'sec-bio-rein-wrap' },
+  { id:'ex_crea',  label:'Créatinine',                        groupe:'🧪 Biochimie', tab:'bio', prix:1500, section:'sec-bio-rein-wrap' },
+  { id:'ex_ua',    label:'Acide urique',                      groupe:'🧪 Biochimie', tab:'bio', prix:1500, section:'sec-bio-rein-wrap' },
+  { id:'ex_asat',  label:'ASAT / ALAT (Transaminases)',       groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
+  { id:'ex_ggt',   label:'Gamma GT',                          groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-foie-wrap' },
+  { id:'ex_pal',   label:'Phosphatases alcalines',            groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-foie-wrap' },
+  { id:'ex_bili',  label:'Bilirubine totale & directe',       groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
+  { id:'ex_prot',  label:'Protéines totales / Albumine',      groupe:'🧪 Biochimie', tab:'bio', prix:2500, section:'sec-bio-foie-wrap' },
+  { id:'ex_chol',  label:'Cholestérol total',                 groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_trig',  label:'Triglycérides',                     groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_hdl',   label:'HDL-cholestérol',                   groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_iono',  label:'Ionogramme (Na, K, Cl)',            groupe:'🧪 Biochimie', tab:'bio', prix:4500, section:'sec-bio-iono-wrap' },
+  { id:'ex_ca',    label:'Calcium / Phosphore',               groupe:'🧪 Biochimie', tab:'bio', prix:2500, section:'sec-bio-iono-wrap' },
   // ── Bactériologie ──
-  { id:'ex_ecbu',  label:'ECBU',                              groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000 },
-  { id:'ex_hemo',  label:'Hémoculture',                       groupe:'🦠 Bactériologie', tab:'bacterio', prix:8000 },
-  { id:'ex_copro', label:'Coproculture',                      groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000 },
+  { id:'ex_ecbu',  label:'ECBU',                              groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000, section:'sec-bacterio-title' },
+  { id:'ex_hemo',  label:'Hémoculture',                       groupe:'🦠 Bactériologie', tab:'bacterio', prix:8000, section:'sec-bacterio-title' },
+  { id:'ex_copro', label:'Coproculture',                      groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000, section:'sec-bacterio-title' },
   { id:'ex_pg',    label:'Prélèvement de gorge',              groupe:'🦠 Bactériologie', tab:'bacterio', prix:4000 },
   { id:'ex_pus',   label:'Prélèvement de pus / plaie',        groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000 },
   // ── Bilan prénatal ──
@@ -5575,24 +6126,39 @@ function buildFicheExamens() {
   });
 
   grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => `
-    <div style="background:rgba(255,255,255,.8);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;backdrop-filter:blur(4px)">
-      <div style="font-size:10.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">${groupe}</div>
+    <div class="exam-group-card">
+      <div class="exam-group-title">${groupe}</div>
       ${examens.map(ex => `
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(199,215,245,.5)">
-          <input type="checkbox" id="${ex.id}" onchange="calcFicheTotal()"
-            style="width:16px;height:16px;accent-color:var(--cpmi-mid);cursor:pointer;flex-shrink:0">
-          <label for="${ex.id}" style="flex:1;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--text)">
+        <div class="exam-row" id="row_${ex.id}" onclick="toggleExamRow(event,'${ex.id}')">
+          <input type="checkbox" id="${ex.id}" onchange="calcFicheTotal();syncExamRowState('${ex.id}')" onclick="event.stopPropagation()">
+          <label for="${ex.id}" onclick="event.stopPropagation()">
             ${ex.label}${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
             ${ex.custom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
           </label>
           <input type="number" id="px_${ex.id}" value="0" min="0" step="100"
-            style="width:78px;text-align:right;font-weight:700;color:var(--cpmi-deep);font-size:12px;padding:3px 6px"
-            oninput="calcFicheTotal()">
-          <span style="font-size:10px;color:var(--text-muted);flex-shrink:0">F</span>
+            oninput="calcFicheTotal()" onclick="event.stopPropagation()">
+          <span class="exam-unit">F</span>
         </div>`).join('')}
     </div>`).join('');
 
   rechargeFichePrix();
+}
+
+// Permet de cocher/décocher une ligne d'examen en cliquant n'importe où dessus
+// (pas seulement sur la checkbox), pour un confort d'usage tactile/souris optimal
+function toggleExamRow(evt, exId) {
+  const chk = document.getElementById(exId);
+  if (!chk) return;
+  chk.checked = !chk.checked;
+  calcFicheTotal();
+  syncExamRowState(exId);
+}
+
+// Met à jour le style visuel (fond vert pâle) de la ligne selon l'état coché
+function syncExamRowState(exId) {
+  const chk = document.getElementById(exId);
+  const row = document.getElementById('row_' + exId);
+  if (chk && row) row.classList.toggle('checked', chk.checked);
 }
 
 function calcFicheTotal() {
@@ -5602,6 +6168,7 @@ function calcFicheTotal() {
   getCatalogueComplet().forEach(ex => {
     const chk  = document.getElementById(ex.id);
     const pxEl = document.getElementById('px_' + ex.id);
+    const row  = document.getElementById('row_' + ex.id);
     if (chk && chk.checked) {
       const prix = parseInt(pxEl?.value || '0');
       total += prix;
@@ -5610,6 +6177,7 @@ function calcFicheTotal() {
       const tab = ex.tab || 'hema';
       montantParTab[tab] = (montantParTab[tab] || 0) + prix;
     }
+    if (row) row.classList.toggle('checked', !!(chk && chk.checked));
   });
 
   const montantEl = document.getElementById('montant-preview');
@@ -5627,6 +6195,9 @@ function demarrerSaisie() {
   // Vérification minimale
   const nom = document.getElementById('p_nom')?.value?.trim();
   if (!nom) { toast('Veuillez saisir le nom du patient', 'err'); return; }
+
+  // Nouvelle session de saisie : repartir en mode filtré (examens cochés seulement)
+  _showAllExams = false;
 
   // Déterminer l'onglet à activer selon le premier examen coché
   const premierEx = CATALOGUE_EXAMENS.find(ex => document.getElementById(ex.id)?.checked);
@@ -5649,9 +6220,122 @@ function demarrerSaisie() {
   document.getElementById('fiche-identification').style.display = 'none';
   document.getElementById('zone-saisie').style.display = '';
 
-  // Activer le bon onglet
+  // Activer le bon onglet (construit le panneau si ce n'est pas déjà fait)
   switchTab(tabCible);
+
+  // Marquer d'une étoile rouge les sections correspondant aux examens payés
+  // (doit venir APRÈS switchTab pour que les sections existent dans le DOM)
+  markRequiredSections();
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Marque les sections/cartes correspondant aux examens cochés (payés)
+// avec un badge "obligatoire" (étoile rouge) — purement visuel, pas bloquant
+// Onglets où le filtrage par section a du sens (plusieurs cartes/sous-sections
+// distinctes). Les onglets à carte unique (Bactério, Parasito, GS standalone)
+// n'ont rien à filtrer : ils s'affichent toujours en entier.
+const TABS_AVEC_SECTIONS_FILTRABLES = new Set(['hema', 'bio']);
+
+let _showAllExams = false; // état du bouton "Afficher tous les examens" pour la session de saisie en cours
+
+function markRequiredSections() {
+  // Nettoyer les anciens marquages
+  document.querySelectorAll('.required-mark').forEach(el => el.remove());
+  document.querySelectorAll('.card').forEach(c => { c.style.border = ''; c.style.boxShadow = ''; });
+
+  const sectionsAMarquer = new Set();
+  getCatalogueComplet().forEach(ex => {
+    const chk = document.getElementById(ex.id);
+    if (chk && chk.checked && ex.section) sectionsAMarquer.add(ex.section);
+  });
+
+  // ── Marquage à l'étoile rouge des sections requises (examens payés) ──
+  sectionsAMarquer.forEach(sectionId => {
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+    const star = document.createElement('span');
+    star.className = 'required-mark';
+    star.textContent = ' ✪ requis';
+    star.title = 'Examen payé — résultat attendu';
+    star.style.cssText = 'color:#dc2626;font-size:11px;font-weight:800;margin-left:8px;vertical-align:middle;letter-spacing:.2px';
+    el.appendChild(star);
+    const card = el.closest('.card');
+    if (card) {
+      card.style.border = '1.5px solid #fca5a5';
+      card.style.boxShadow = '0 0 0 1px rgba(220,38,38,.08)';
+    }
+  });
+
+  // ── Filtrage : cacher les sections non cochées (sauf si "tout afficher" actif) ──
+  applySectionVisibility(sectionsAMarquer);
+}
+
+// Affiche/masque les sections selon l'ensemble des sections requises,
+// en respectant l'état du bouton "Afficher tous les examens"
+function applySectionVisibility(sectionsRequises) {
+  const tabActif = document.querySelector('.panel.active')?.id?.replace('panel-', '');
+  if (!tabActif || !TABS_AVEC_SECTIONS_FILTRABLES.has(tabActif)) return;
+
+  // Lister toutes les cartes/sections filtrables de cet onglet
+  const toutesSections = getCatalogueComplet()
+    .filter(ex => ex.tab === tabActif && ex.section)
+    .map(ex => ex.section);
+  const sectionsUniques = [...new Set(toutesSections)];
+
+  // Cas spécial : la carte "Groupe sanguin" intégrée dans l'onglet Hématologie
+  // (sec-gs-hema) reflète les mêmes examens que l'onglet GS standalone (ex_gs, ex_rai),
+  // même si physiquement elle vit dans le panneau Hématologie.
+  if (tabActif === 'hema') {
+    sectionsUniques.push('sec-gs-hema');
+    const gsCoche = ['ex_gs', 'ex_rai'].some(id => document.getElementById(id)?.checked);
+    if (gsCoche) sectionsRequises.add('sec-gs-hema');
+  }
+
+  sectionsUniques.forEach(sectionId => {
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+    // La cible à cacher/montrer : soit l'élément lui-même (s'il EST déjà le wrap/carte),
+    // soit sa carte parente la plus proche
+    const target = el.id.endsWith('-wrap') ? el : (el.closest('.card') || el);
+    const doitEtreVisible = _showAllExams || sectionsRequises.has(sectionId);
+    target.style.display = doitEtreVisible ? '' : 'none';
+  });
+
+  updateShowAllButton(sectionsRequises, sectionsUniques);
+}
+
+// Affiche ou met à jour le bouton "Afficher tous les examens" dans le bandeau de rappel
+function updateShowAllButton(sectionsRequises, sectionsUniques) {
+  const rappelEl = document.getElementById('rappel-patient');
+  if (!rappelEl) return;
+
+  let btn = document.getElementById('btn-show-all-exams');
+  const nbCachees = sectionsUniques.filter(s => !sectionsRequises.has(s)).length;
+
+  if (nbCachees === 0 && !_showAllExams) {
+    // Rien n'est caché (tout coché), pas besoin du bouton
+    if (btn) btn.remove();
+    return;
+  }
+
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'btn-show-all-exams';
+    btn.style.cssText = 'margin-left:10px;background:none;border:1px solid var(--cpmi-mid);color:var(--cpmi-mid);padding:3px 10px;border-radius:99px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap';
+    btn.onclick = toggleShowAllExams;
+    const retourBtn = rappelEl.querySelector('[onclick*="fiche-identification"]');
+    if (retourBtn) rappelEl.insertBefore(btn, retourBtn);
+    else rappelEl.appendChild(btn);
+  }
+  btn.textContent = _showAllExams
+    ? '👁 Masquer les examens non sélectionnés'
+    : '👁 Afficher tous les examens (' + nbCachees + ' masqué' + (nbCachees>1?'s':'') + ')';
+}
+
+function toggleShowAllExams() {
+  _showAllExams = !_showAllExams;
+  markRequiredSections();
 }
 
 function enregistrerFicheIdentif() {
@@ -5917,19 +6601,13 @@ async function deleteUserAccount(id, username) {
   renderUsersList();
 }
 
-function initApp() {
+async function initApp() {
   document.getElementById('p_date').value = new Date().toISOString().slice(0,10);
-  regenDossier();
-  buildHema();
-  buildBio();
-  buildAbg();
-  buildSero();
-  buildParaEPS();
-  buildGS();
-  buildBpnNfs();
-  buildBpnBio();
-  buildBpnBacterio();
-  buildBpnSero();
+  regenDossier(); // asynchrone — met à jour le champ dès résolution, sans bloquer le reste
+  // Seul l'onglet actif par défaut (Hématologie) est construit immédiatement.
+  // Les autres (Bio, Bactério, Sérologie, Parasito, GS, BPN) sont construits
+  // à la demande, au moment du premier clic sur leur onglet — voir switchTab().
+  ensurePanelBuilt('hema');
   updateUserBadge();
   loadPrescripteurs();
   buildFicheExamens(); // fiche d'identification avec examens
