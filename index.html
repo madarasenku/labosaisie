@@ -1898,36 +1898,84 @@ select {
 
 <!-- HISTORIQUE -->
 <div id="view-historique" style="display:none">
-  <div class="card">
-    <div class="card-title">📂 Historique des saisies</div>
-    <div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
-      <input type="text" id="search-input" placeholder="🔍 Nom, dossier, médecin..." style="flex:1;min-width:180px" oninput="renderHistory()">
-      <select id="filter-type" onchange="renderHistory()" style="width:auto">
-        <option value="">Toutes les analyses</option>
-        <option>Hématologie</option><option>Biochimie</option><option>Bactériologie</option>
-        <option>Sérologie</option><option>Parasitologie</option>
-        <option>Groupe sanguin</option><option>Bilan prénatal</option>
-      </select>
-      <select id="filter-sort" onchange="renderHistory()" style="width:auto">
-        <option value="desc">Plus récent</option>
-        <option value="asc">Plus ancien</option>
-      </select>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">🔍 Recherche & Filtres</div>
+
+    <!-- Ligne 1 : recherche texte + type + tri -->
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;margin-bottom:12px;align-items:end">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Recherche libre</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;pointer-events:none">🔍</span>
+          <input type="text" id="search-input" placeholder="Nom, N° dossier, médecin, service…"
+            style="padding-left:32px;width:100%" oninput="renderHistoryDebounced()">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Type d'analyse</label>
+        <select id="filter-type" onchange="renderHistory()" style="min-width:160px">
+          <option value="">Tous les types</option>
+          <option>Hématologie</option><option>Biochimie</option><option>Bactériologie</option>
+          <option>Sérologie</option><option>Parasitologie</option>
+          <option>Groupe sanguin</option><option>Bilan prénatal</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Tri</label>
+        <select id="filter-sort" onchange="renderHistory()">
+          <option value="desc">⬇ Plus récent</option>
+          <option value="asc">⬆ Plus ancien</option>
+        </select>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+
+    <!-- Ligne 2 : période rapide + dates -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;background:var(--bg);border-radius:var(--radius);margin-bottom:10px">
+      <span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap">Période :</span>
       <button class="btn btn-outline" id="hist-btn-jour" onclick="setHistPeriode('jour')" style="padding:5px 12px;font-size:11.5px">Aujourd'hui</button>
       <button class="btn btn-outline" id="hist-btn-semaine" onclick="setHistPeriode('semaine')" style="padding:5px 12px;font-size:11.5px">Cette semaine</button>
       <button class="btn btn-outline" id="hist-btn-mois" onclick="setHistPeriode('mois')" style="padding:5px 12px;font-size:11.5px">Ce mois</button>
       <button class="btn btn-outline active" id="hist-btn-tout" onclick="setHistPeriode('tout')" style="padding:5px 12px;font-size:11.5px">Tout</button>
-      <span style="width:1px;height:18px;background:var(--border)"></span>
-      <label style="font-size:12px;color:var(--text-muted)">Du</label>
-      <input type="date" id="filter-date-from" onchange="setHistPeriode('custom')" style="width:auto">
-      <label style="font-size:12px;color:var(--text-muted)">Au</label>
-      <input type="date" id="filter-date-to" onchange="setHistPeriode('custom')" style="width:auto">
-      <select id="filter-agent" onchange="renderHistory()" style="width:auto"><option value="">Tous les agents</option></select>
-      <button class="btn btn-outline" onclick="clearSearchFilters()" style="padding:6px 10px;font-size:12px">✕ Filtres</button>
-      <button id="btn-clear-history" class="btn btn-danger" onclick="clearHistory()" style="display:none;padding:6px 10px;font-size:12px">🗑 Vider</button>
+      <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <label style="font-size:11.5px;color:var(--text-muted)">Du</label>
+        <input type="date" id="filter-date-from" onchange="setHistPeriode('custom')" style="width:auto">
+        <label style="font-size:11.5px;color:var(--text-muted)">au</label>
+        <input type="date" id="filter-date-to" onchange="setHistPeriode('custom')" style="width:auto">
+      </div>
     </div>
-    <div id="search-count" style="font-size:12px;color:var(--text-muted);margin-bottom:8px"></div>
+
+    <!-- Ligne 3 : agent + reset + effacer -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px">
+        <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Agent</label>
+        <select id="filter-agent" onchange="renderHistory()"><option value="">Tous les agents</option></select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;padding-top:18px">
+        <button class="btn btn-outline" onclick="clearSearchFilters()"
+          style="padding:8px 14px;font-size:12.5px;display:flex;align-items:center;gap:6px">
+          ↺ Réinitialiser
+        </button>
+        <button id="btn-clear-history" class="btn btn-danger" onclick="clearHistory()"
+          style="display:none;padding:8px 14px;font-size:12.5px">🗑 Vider l'historique</button>
+      </div>
+    </div>
+
+    <!-- Bandeau résultats -->
+    <div id="search-count-bar" style="margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:linear-gradient(to right,var(--accent-light),#f0f9ff);border:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span id="search-count" style="font-size:12.5px;font-weight:600;color:var(--cpmi-deep)"></span>
+      <span id="search-total-bar" style="font-size:12.5px;font-weight:800;color:#15803d;margin-left:auto"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span>📋 Résultats</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-success" onclick="exportAllExcel()" style="padding:5px 12px;font-size:12px">⬇ Excel complet</button>
+        <button class="btn btn-outline" onclick="printHistory()" style="padding:5px 12px;font-size:12px">🖨 Imprimer</button>
+      </div>
+    </div>
     <div class="table-wrap">
       <table id="history-table">
         <thead><tr>
@@ -1941,10 +1989,6 @@ select {
         </tr></thead>
         <tbody id="history-body"></tbody>
       </table>
-    </div>
-    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="exportAllExcel()">⬇ Exporter tout en Excel</button>
-      <button class="btn btn-outline" onclick="printHistory()" style="padding:7px 14px;font-size:13px">🖨 Imprimer l'historique</button>
     </div>
   </div>
 </div>
@@ -3461,7 +3505,7 @@ function showView(v) {
   const viewComptes = document.getElementById('view-comptes');
   if (viewComptes) viewComptes.style.display = v === 'comptes' ? '' : 'none';
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
-  if (v === 'historique') renderHistory();
+  if (v === 'historique') renderHistory(true);
   if (v === 'comptes') { renderUsersList(); if (isAdmin()) buildAdminExamensGrid(); }
   if (v === 'stats') renderStats();
 }
@@ -4264,7 +4308,7 @@ function clearSearchFilters() {
     const btn = document.getElementById('hist-btn-' + p);
     if (btn) btn.classList.toggle('active', p === 'tout');
   });
-  renderHistory();
+  renderHistory(true);
 }
 
 // ── Raccourcis de période pour l'Historique (même logique que Statistiques) ──
@@ -4310,10 +4354,19 @@ function computeHistDateRange(periode) {
   return { from: null, to: null }; // 'tout'
 }
 
-async function renderHistory() {
+// Debounce pour la recherche texte (évite appels Supabase à chaque frappe)
+let _histDebounce = null;
+function renderHistoryDebounced() {
+  clearTimeout(_histDebounce);
+  _histDebounce = setTimeout(renderHistory, 220);
+}
+
+async function renderHistory(forceRefresh) {
   const b = document.getElementById('history-body');
-  b.innerHTML = '<tr><td colspan="9"><div class="empty-state">Chargement…</div></td></tr>';
-  await refreshDB();
+  if (!b) return;
+  b.innerHTML = '<tr><td colspan="10"><div class="empty-state"><span style="font-size:20px">⏳</span><br>Chargement…</div></td></tr>';
+  // Rafraîchir depuis Supabase uniquement si demandé ou cache vide
+  if (forceRefresh || !getDB().length) await refreshDB();
   const db = getDB();
 
   const agentSel = document.getElementById('filter-agent');
@@ -4362,13 +4415,29 @@ async function renderHistory() {
 
   const totalMontant = filtered.reduce((s, r) => s + (r.montant || 0), 0);
   const countEl = document.getElementById('search-count');
-  if (countEl) countEl.textContent = (filtered.length === db.length
-    ? db.length + ' fiche' + (db.length>1?'s':'') + ' au total'
-    : filtered.length + ' résultat' + (filtered.length>1?'s':'') + ' sur ' + db.length + ' fiche' + (db.length>1?'s':''))
-    + '  ·  Total : ' + totalMontant.toLocaleString('fr-FR') + ' FCFA';
+  const totalBar = document.getElementById('search-total-bar');
+  if (countEl) {
+    const isFull = filtered.length === db.length;
+    countEl.textContent = isFull
+      ? db.length + ' fiche' + (db.length>1?'s':'') + ' au total'
+      : filtered.length + ' résultat' + (filtered.length>1?'s':'') + ' sur ' + db.length + ' fiche' + (db.length>1?'s':'');
+  }
+  if (totalBar) {
+    totalBar.textContent = totalMontant > 0 ? '💰 ' + totalMontant.toLocaleString('fr-FR') + ' FCFA' : '';
+  }
 
   if (!filtered.length) {
-    b.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div style="font-size:32px;margin-bottom:8px">📂</div><div>Aucune saisie trouvée</div></div></td></tr>';
+    const hasFilters = (document.getElementById('search-input')?.value||'').trim()
+      || document.getElementById('filter-type')?.value
+      || document.getElementById('filter-agent')?.value
+      || document.getElementById('filter-date-from')?.value
+      || _histPeriode !== 'tout';
+    b.innerHTML = '<tr><td colspan="10"><div class="empty-state">'
+      + '<div style="font-size:32px;margin-bottom:8px">' + (hasFilters ? '🔍' : '📂') + '</div>'
+      + '<div>' + (hasFilters
+          ? 'Aucune fiche ne correspond à ces filtres — <a href="#" onclick="clearSearchFilters();return false" style="color:var(--cpmi-mid)">Réinitialiser</a>'
+          : 'Aucune saisie enregistrée pour le moment')
+      + '</div></div></td></tr>';
     return;
   }
 
@@ -4496,299 +4565,495 @@ function makeFilename(dossier, date, nom, type) {
 }
 
 function buildProfessionalSheet(wb, r, sheetName) {
-  const ws = wb.addWorksheet(sheetName || getDisplayType(r).substring(0, 31), {
-    pageSetup: {
-      paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1,
-      margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.2, footer: 0.2 }
-    },
-    views: [{ showGridLines: false }],
-  });
+  // ── Helpers globaux ──────────────────────────────────────────
+  const p = r.patient || {};
+  const res = r.resultats || {};
+  const nomMAJ = (p.nom || 'PATIENT').toUpperCase();
+  const dateF  = p.date ? p.date.split('-').reverse().join('/') : '—';
+  const ageSexeF = [p.age ? p.age + ' ans' : '', p.sexe === 'M' ? 'Masculin' : p.sexe === 'F' ? 'Féminin' : p.sexe || ''].filter(Boolean).join(' · ');
 
-  const p = r.patient;
-  let row = 1;
+  // Palette
+  const BLU  = 'FF1E3A8A'; // bleu profond CPMI
+  const BLU2 = 'FF2563EB'; // bleu vif
+  const GLD  = 'FFCBA135'; // or
+  const WHT  = 'FFFFFFFF';
+  const PAT_LABEL = 'FFE8F0FE'; // fond étiquette patient
+  const PAT_VAL   = 'FFFAFCFF'; // fond valeur patient
+  const SEC_BG    = 'FFDBEAFE'; // fond titre de section
+  const SEC_FG    = 'FF1E3A8A';
+  const TH_BG     = 'FF1E3A8A';
+  const TH_FG     = 'FFFFFFFF';
+  const PAR_W     = 'FFFFFFFF'; // ligne paire
+  const PAR_A     = 'FFF5F8FF'; // ligne impaire légère
+  const HI_BG     = 'FFFFF1F1'; const HI_FG = 'FFB91C1C';
+  const LO_BG     = 'FFF0F5FF'; const LO_FG = 'FF1D4ED8';
+  const OK_BG     = 'FFF0FDF4'; const OK_FG = 'FF15803D';
+  const MUTED     = 'FF6B7280';
+  const DARK      = 'FF111827';
+  const BRD       = 'FFD1D9E6';
+
+  function tB(col) { const b={style:'thin',color:{argb:col||BRD}}; return {top:b,bottom:b,left:b,right:b}; }
+  function medB(col) { const b={style:'medium',color:{argb:col||BLU}}; return {top:b,bottom:b,left:b,right:b}; }
+
+  function sC(cell, {bg,fg,bold,size,ha,border,italic,wt}={}) {
+    cell.font = { name:'Calibri', size:size||10, bold:!!bold, italic:!!italic, color:{argb:fg||DARK} };
+    cell.alignment = { horizontal:ha||'left', vertical:'middle', wrapText:wt!==false };
+    if (bg) cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+    if (border) cell.border = tB(border===true ? BRD : border);
+  }
+
+  // ── Création feuille ─────────────────────────────────────────
   const NC = 6;
-
+  const ws = wb.addWorksheet(sheetName || getDisplayType(r).substring(0,31), {
+    pageSetup: { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1,
+      margins:{left:0.5,right:0.5,top:0.6,bottom:0.6,header:0.2,footer:0.2} },
+    views: [{ showGridLines:false, state:'frozen', ySplit:10 }],
+  });
   ws.columns = [
-    { width: 34 }, { width: 16 }, { width: 13 },
-    { width: 22 }, { width: 18 }, { width: 12 },
+    {width:34}, {width:17}, {width:13},
+    {width:13}, {width:24}, {width:14},
   ];
 
-  function merge(r1,c1,r2,c2) { ws.mergeCells(r1,c1,r2,c2); }
+  let row = 1;
+  function mg(r1,c1,r2,c2) { ws.mergeCells(r1,c1,r2,c2); }
 
-  // ── EN-TÊTE ────────────────────────────────────────────────
-  // Liseré doré
-  ws.getRow(row).height = 4;
-  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:C_GOLD}};
+  // ════════════════════════════════════════════════════
+  // BLOC 1 — EN-TÊTE CPMI
+  // ════════════════════════════════════════════════════
+  // Liseré or
+  ws.getRow(row).height = 5;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:GLD}};
   row++;
 
-  // Nom du centre
-  ws.getRow(row).height = 22;
-  merge(row,1,row,NC);
-  const cN = ws.getCell(row,1);
-  cN.value = CENTRE + '  —  ' + CENTRE_SUB;
-  styleCell(cN, {bg:C_HEADER_BG, fg:C_HEADER_FG, bold:true, size:12, halign:'center'});
+  // Nom centre (grande ligne)
+  ws.getRow(row).height = 26;
+  mg(row,1,row,NC);
+  const cCentre = ws.getCell(row,1);
+  cCentre.value = 'CPMI DE GRAND-BASSAM  —  Centre de Protection Mère et Infantile';
+  sC(cCentre, {bg:BLU, fg:WHT, bold:true, size:13, ha:'center'});
   row++;
 
-  // Sous-titre + type d'analyse
-  ws.getRow(row).height = 16;
-  merge(row,1,row,3);
-  const cS = ws.getCell(row,1);
-  cS.value = CENTRE_ADRESSE;
-  styleCell(cS, {bg:C_HEADER_BG, fg:'FFBFDBFE', size:9, italic:true});
-  merge(row,4,row,NC);
-  const cT = ws.getCell(row,4);
-  cT.value = 'RÉSULTAT : ' + getDisplayType(r).toUpperCase();
-  styleCell(cT, {bg:C_HEADER_BG, fg:'FFFBBF24', bold:true, size:10, halign:'right'});
+  // Sous-titre + type analyse (2 colonnes)
+  ws.getRow(row).height = 17;
+  mg(row,1,row,4);
+  const cSub = ws.getCell(row,1);
+  cSub.value = "Laboratoire d'analyses médicales  ·  Grand-Bassam, Côte d'Ivoire";
+  sC(cSub, {bg:BLU, fg:'FFBFDBFE', size:9, italic:true});
+  mg(row,5,row,NC);
+  const cType = ws.getCell(row,5);
+  cType.value = 'RÉSULTAT : ' + getDisplayType(r).toUpperCase();
+  sC(cType, {bg:BLU, fg:'FFFBBF24', bold:true, size:10, ha:'right'});
   row++;
 
-  // Liseré doré bas
-  ws.getRow(row).height = 4;
-  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:C_GOLD}};
+  // Liseré or bas
+  ws.getRow(row).height = 5;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:GLD}};
   row++;
+
+  // ════════════════════════════════════════════════════
+  // BLOC 2 — NOM DU PATIENT (très visible, en MAJUSCULES)
+  // ════════════════════════════════════════════════════
   row++; // espace
-
-  // ── FICHE PATIENT ──────────────────────────────────────────
-  ws.getRow(row).height = 14;
-  merge(row,1,row,NC);
-  const pt = ws.getCell(row,1);
-  pt.value = 'IDENTIFICATION DU PATIENT';
-  styleCell(pt, {bg:C_SECTION_BG, fg:C_SECTION_FG, bold:true, size:9});
-  pt.border = { bottom:{style:'medium',color:{argb:C_HEADER_BG}} };
+  ws.getRow(row).height = 32;
+  mg(row,1,row,NC);
+  const cNom = ws.getCell(row,1);
+  cNom.value = nomMAJ;
+  sC(cNom, {bg:PAT_LABEL, fg:BLU, bold:true, size:18, ha:'center', wt:false});
+  cNom.border = { top:{style:'medium',color:{argb:BLU}}, bottom:{style:'medium',color:{argb:BLU}},
+    left:tB().left, right:tB().right };
   row++;
 
-  const lS = {bg:C_PAT_LABEL_BG, fg:C_SECTION_FG, bold:true, size:9.5, border:true};
-  const vS = {bg:C_PAT_BG, fg:'FF111827', size:9.5, border:true};
+  // ════════════════════════════════════════════════════
+  // BLOC 3 — FICHE PATIENT (grille 2×3)
+  // ════════════════════════════════════════════════════
+  const LS = {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:9.5, border:true};
+  const VS = {bg:PAT_VAL,   fg:DARK,   size:10,   border:true};
 
-  function patRow(l1,v1,l2,v2) {
-    const rr=ws.getRow(row); rr.height=16;
-    styleCell(rr.getCell(1),lS); rr.getCell(1).value=l1;
-    merge(row,2,row,l2!==undefined?3:NC);
-    styleCell(rr.getCell(2),vS); rr.getCell(2).value=v1||'—';
-    if (l2!==undefined) {
-      styleCell(rr.getCell(4),lS); rr.getCell(4).value=l2;
-      merge(row,5,row,NC);
-      styleCell(rr.getCell(5),vS); rr.getCell(5).value=v2||'—';
+  function patRow2(l1,v1,l2,v2) {
+    const rr = ws.getRow(row); rr.height = 17;
+    sC(rr.getCell(1),LS); rr.getCell(1).value = l1;
+    mg(row,2,row,3); sC(rr.getCell(2),VS); rr.getCell(2).value = v1||'—';
+    if (l2 !== undefined) {
+      sC(rr.getCell(4),LS); rr.getCell(4).value = l2;
+      mg(row,5,row,NC); sC(rr.getCell(5),{...VS,bold:(l2==='N° Dossier')}); rr.getCell(5).value = v2||'—';
     }
     row++;
   }
 
-  const dateF = p.date ? p.date.split('-').reverse().join('/') : '—';
-  const ageSexeF = [p.age?p.age+' ans':'', p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':''].filter(Boolean).join(' / ');
-  patRow('N° Dossier', p.dossier, 'Date de prélèvement', dateF);
-  patRow('Nom du patient', p.nom, 'Âge / Sexe', ageSexeF);
-  patRow('Médecin prescripteur', p.medecin, 'Service', p.service);
-  if (p.clinique) {
-    const rr=ws.getRow(row); rr.height=18;
-    styleCell(rr.getCell(1),lS); rr.getCell(1).value='Renseignements cliniques';
-    merge(row,2,row,NC);
-    styleCell(rr.getCell(2),{...vS,italic:true}); rr.getCell(2).value=p.clinique;
-    row++;
-  }
-  row++;
+  patRow2('N° Dossier',        p.dossier,  'Date de prélèvement', dateF);
+  patRow2('Âge / Sexe',        ageSexeF,   'Médecin prescripteur', p.medecin);
+  patRow2('Service / Unité',   p.service,  'Renseignements cliniques', p.clinique || '');
 
-  // ── HELPERS RÉSULTATS ──────────────────────────────────────
+  row++; // espace
+
+  // ════════════════════════════════════════════════════
+  // HELPERS RÉSULTATS
+  // ════════════════════════════════════════════════════
+  let alt = false;
+
   function secHdr(title) {
-    const rr=ws.getRow(row); rr.height=14;
-    merge(row,1,row,NC);
-    const c=rr.getCell(1);
-    c.value=title;
-    styleCell(c, {bg:C_SECTION_BG, fg:C_SECTION_FG, bold:true, size:9.5});
-    c.border={top:{style:'thin',color:{argb:C_HEADER_BG}},bottom:{style:'thin',color:{argb:C_HEADER_BG}}};
+    ws.getRow(row).height = 17;
+    mg(row,1,row,NC);
+    const c = ws.getCell(row,1);
+    c.value = title.replace(/[^\w\s\-–·'àâäéèêëîïôùûüç%°()\/,.:]/g, '').trim();
+    sC(c, {bg:SEC_BG, fg:SEC_FG, bold:true, size:10});
+    c.border = { top:{style:'medium',color:{argb:BLU}}, bottom:{style:'thin',color:{argb:BLU}},
+      left:tB().left, right:tB().right };
     row++;
+    alt = false;
   }
 
   function tblHdr(cols) {
-    const rr=ws.getRow(row); rr.height=14;
+    const rr = ws.getRow(row); rr.height = 15;
     cols.forEach((col,i) => {
-      const c=rr.getCell(i+1);
-      styleCell(c, {bg:C_TH_BG, fg:C_TH_FG, bold:true, size:9, halign:i===0?'left':'center'});
-      c.value=col;
+      sC(rr.getCell(i+1), {bg:TH_BG, fg:TH_FG, bold:true, size:9, ha:i===0?'left':'center', wt:false});
+      rr.getCell(i+1).value = col;
     });
     row++;
   }
 
-  let alt=false;
   function pRow(nom, valeur, unite, ref, interp) {
-    if (!valeur || valeur.toString().trim()==='') return;
-    alt=!alt;
-    const bg=alt?C_ALT_BG:C_PARAM_BG;
-    let iBg=bg, iFg=C_MUTED;
-    const il=(interp||'').toLowerCase();
-    if (il.includes('élevé')||il.includes('eleve')||il.includes('positif')) {iBg=C_HIGH_BG;iFg=C_HIGH_FG;}
-    else if (il.includes('bas')) {iBg=C_LOW_BG;iFg=C_LOW_FG;}
-    else if (il.includes('normal')||il.includes('négatif')) {iBg=C_NORM_BG;iFg=C_NORM_FG;}
-    const rr=ws.getRow(row); rr.height=15;
-    styleCell(rr.getCell(1),{bg,fg:C_LABEL_FG,size:9.5,border:true}); rr.getCell(1).value=nom;
-    styleCell(rr.getCell(2),{bg,fg:'FF0F172A',bold:true,size:10,halign:'center',border:true}); rr.getCell(2).value=valeur;
-    styleCell(rr.getCell(3),{bg,fg:C_MUTED,size:9,halign:'center',border:true}); rr.getCell(3).value=unite||'';
-    styleCell(rr.getCell(4),{bg,fg:C_MUTED,size:9,halign:'center',border:true}); rr.getCell(4).value=ref||'';
-    merge(row,5,row,NC);
-    styleCell(rr.getCell(5),{bg:iBg,fg:iFg,bold:!!(interp&&interp.trim()),size:9,halign:'center',border:true});
-    rr.getCell(5).value=(interp&&interp!=='—')?interp:'';
+    if (!valeur || valeur.toString().trim() === '') return;
+    alt = !alt;
+    const bg = alt ? PAR_A : PAR_W;
+    // La case Valeur se colore si pathologique — pas de colonne séparée
+    let vBg = bg, vFg = 'FF0F172A';
+    const il = (interp||'').toLowerCase();
+    if (il.includes('élevé')||il.includes('eleve')||il.includes('positif')||il.includes('anormal'))
+      { vBg = HI_BG; vFg = HI_FG; }
+    else if (il.includes('bas'))
+      { vBg = LO_BG; vFg = LO_FG; }
+    const rr = ws.getRow(row); rr.height = 16;
+    sC(rr.getCell(1), {bg,   fg:DARK,  size:9.5, border:true, wt:false}); rr.getCell(1).value = nom;
+    sC(rr.getCell(2), {bg:vBg, fg:vFg, bold:true, size:11, ha:'center', border:true, wt:false}); rr.getCell(2).value = valeur;
+    sC(rr.getCell(3), {bg,   fg:MUTED, size:9,   ha:'center', border:true, wt:false}); rr.getCell(3).value = unite||'';
+    mg(row,4,row,NC);
+    sC(rr.getCell(4), {bg,   fg:MUTED, size:9,   ha:'center', border:true, wt:false}); rr.getCell(4).value = ref||'';
     row++;
   }
 
   function fRow(label, value) {
     if (!value) return;
-    const rr=ws.getRow(row); rr.height=14;
-    styleCell(rr.getCell(1),{bg:C_PAT_LABEL_BG,fg:C_SECTION_FG,bold:true,size:9,border:true}); rr.getCell(1).value=label;
-    merge(row,2,row,NC);
-    styleCell(rr.getCell(2),{bg:C_PAT_BG,fg:'FF111827',size:9.5,border:true}); rr.getCell(2).value=value;
+    const rr = ws.getRow(row); rr.height = 15;
+    sC(rr.getCell(1), {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:9, border:true, wt:false}); rr.getCell(1).value = label;
+    mg(row,2,row,NC);
+    sC(rr.getCell(2), {bg:PAT_VAL, fg:DARK, size:9.5, border:true}); rr.getCell(2).value = value;
     row++;
   }
 
   function nRow(text, bgColor) {
     if (!text||text==='—') return;
-    const rr=ws.getRow(row); rr.height=18;
-    merge(row,1,row,NC);
-    const c=rr.getCell(1);
-    styleCell(c,{bg:bgColor||'FFFFFDE7',fg:'FF78350F',italic:true,size:9,border:true});
-    c.value=text;
+    const rr = ws.getRow(row); rr.height = 20;
+    mg(row,1,row,NC);
+    const c = rr.getCell(1);
+    sC(c, {bg:bgColor||'FFFFFDE7', fg:'FF78350F', italic:true, size:9.5, border:true});
+    c.value = text;
     row++;
   }
 
-  // ── CONTENU PAR TYPE ───────────────────────────────────────
-  const res = r.resultats || {};
+  // abgRow : la case valeur (S/I/R) colorée directement
+  function abgRow(nom, val) {
+    if (!val||val==='nd') return;
+    alt = !alt;
+    const bg = alt ? PAR_A : PAR_W;
+    const label = val==='S'?'Sensible':val==='I'?'Intermédiaire':val==='R'?'Résistant':val;
+    let vBg=bg, vFg=DARK;
+    if (val==='S'){vBg=OK_BG;vFg=OK_FG;}
+    else if (val==='R'){vBg=HI_BG;vFg=HI_FG;}
+    else if (val==='I'){vBg='FFFFFBEB';vFg='FFB45309';}
+    const rr = ws.getRow(row); rr.height = 15;
+    sC(rr.getCell(1),{bg,fg:DARK,size:9.5,border:true,wt:false}); rr.getCell(1).value=nom;
+    mg(row,2,row,NC);
+    sC(rr.getCell(2),{bg:vBg,fg:vFg,bold:true,size:10.5,ha:'center',border:true,wt:false}); rr.getCell(2).value=label;
+    row++;
+  }
+
+  // ════════════════════════════════════════════════════
+  // CONTENU PAR TYPE D'ANALYSE
+  // ════════════════════════════════════════════════════
 
   if (r.type === 'Hématologie') {
-    // NFS + FL
     const nfsVals = [...HEMA_PARAMS,...HEMA_FL].filter(q=>res[q.name]&&res[q.name].valeur);
     if (nfsVals.length) {
-      alt=false;
-      secHdr('🩸  NFS — Numération Formule Sanguine');
-      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales','Interprétation']);
+      secHdr('NFS — Numération Formule Sanguine');
+      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
       nfsVals.forEach(q => {
         const v=res[q.name];
-        const val=v.absolu ? v.valeur+' ('+v.absolu+' G/L)' : v.valeur;
-        pRow(q.name, val, q.unit, '', v.interp);
+        const val = v.absolu ? v.valeur+' ('+v.absolu+' G/L)' : v.valeur;
+        pRow(q.name, val, q.unit||'', '', v.interp||'');
       });
       row++;
     }
-    // Électrophorèse Hb
     const ephbNames=['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].filter(n=>res[n]&&res[n].valeur);
     if (ephbNames.length||res['Profil Hb']) {
-      alt=false;
-      secHdr("🔬  Électrophorèse de l'Hémoglobine");
-      tblHdr(['Fraction','%','','Valeur normale','Interprétation']);
-      ephbNames.forEach(n=>{const v=res[n];pRow(n,v.valeur,'%','',v.interp);});
-      if (res['Profil Hb'])    fRow('Profil',res['Profil Hb']);
-      if (res['Commentaire Hb']) nRow(res['Commentaire Hb']);
+      secHdr("Electrophorese de l'Hemoglobine");
+      tblHdr(['Fraction','%','','Valeur normale (ref.)','','']);
+      ephbNames.forEach(n=>{const v=res[n]; pRow(n,v.valeur,'%','',v.interp||'');});
+      if (res['Profil Hb'])       fRow('Profil',res['Profil Hb']);
+      if (res['Commentaire Hb'])  nRow(res['Commentaire Hb']);
       row++;
     }
-    // GE
     if (res['GE - Résultat']||res['GE - TDR']) {
-      alt=false;
-      secHdr('🦟  Goutte Épaisse / Parasitologie');
-      tblHdr(['Paramètre','Résultat','','','Observation']);
-      if (res['GE - Résultat'])      pRow('Résultat GE',res['GE - Résultat'],'','','');
-      if (res['GE - TDR'])           pRow('TDR Paludisme',res['GE - TDR'],'','','');
-      if (res['GE - Espèce'])        pRow('Espèce plasmodiale',res['GE - Espèce'],'','','');
+      secHdr('Goutte Epaisse / Parasitologie');
+      tblHdr(['Paramètre','Résultat','','','','']);
+      if (res['GE - Résultat'])   pRow('Résultat GE',res['GE - Résultat'],'','','');
+      if (res['GE - TDR'])        pRow('TDR Paludisme',res['GE - TDR'],'','','');
+      if (res['GE - Espèce'])     pRow('Espèce plasmodiale',res['GE - Espèce'],'','','');
       if (res['GE - Parasitémie (%)']) pRow('Parasitémie',res['GE - Parasitémie (%)'],'%','','');
       if (res['GE - Densité parasitaire (/µL)']) pRow('Densité parasitaire',res['GE - Densité parasitaire (/µL)'],'/µL','','');
-      if (res['GE - Stade'])         pRow('Stade parasitaire',res['GE - Stade'],'','','');
-      if (res['GE - Observation'])   nRow(res['GE - Observation']);
+      if (res['GE - Stade'])      pRow('Stade',res['GE - Stade'],'','','');
+      if (res['GE - Observation']) nRow(res['GE - Observation']);
       row++;
     }
-    // Groupe sanguin
     if (res['GS - ABO']||res['GS - Rhésus']) {
-      alt=false;
-      secHdr('🩸  Groupe Sanguin ABO / Rhésus');
-      tblHdr(['Paramètre','Résultat','','','']);
+      secHdr('Groupe Sanguin ABO / Rhesus');
+      tblHdr(['Paramètre','Résultat','','','','']);
       if (res['GS - ABO'])       pRow('Groupe ABO',res['GS - ABO'],'','','');
       if (res['GS - Rhésus'])    pRow('Rhésus',res['GS - Rhésus'],'','','');
       if (res['GS - RAI'])       pRow('RAI',res['GS - RAI'],'','','');
-      if (res['GS - Phénotype']) pRow('Phénotype érythrocytaire',res['GS - Phénotype'],'','','');
+      if (res['GS - Phénotype']) pRow('Phénotype',res['GS - Phénotype'],'','','');
       row++;
     }
-    // CRP
     if (res['CRP - Valeur']) {
-      alt=false;
-      secHdr('🔥  CRP — Protéine C-réactive (Latex)');
-      tblHdr(['Test','Résultat','','','Interprétation']);
-      const crpLabel = res['CRP - Valeur']==='neg'?'Négatif (< 6 mg/L)':res['CRP - Valeur']+' mg/L';
-      const crpInterp= (res['CRP - Interprétation']||'').replace(/^[🔥✓⚠]\s*/,'');
-      pRow('CRP Latex', crpLabel, '', '', crpInterp);
+      secHdr('CRP — Protéine C-réactive (Latex)');
+      tblHdr(['Test','Résultat','','','','']);
+      const crpL = res['CRP - Valeur']==='neg'?'Négatif (< 6 mg/L)':res['CRP - Valeur']+' mg/L';
+      const crpI = (res['CRP - Interprétation']||'').replace(/^[^\w]+/,'');
+      pRow('CRP Latex',crpL,'','',crpI);
       row++;
     }
-    // Widal
     const widalData = WIDAL_ANTIGENES.filter(ag=>{const w=res['Widal - '+ag.name];return w&&w.titre&&w.titre!=='Négatif';});
-    const widalConcl= res['Widal - Conclusion']||'';
+    const widalConcl = res['Widal - Conclusion']||'';
     if (widalData.length||widalConcl) {
-      alt=false;
-      secHdr('🦠  Sérodiagnostic de Widal & Félix');
-      tblHdr(['Antigène','Titre','Cinétique','Seuil significatif','Interprétation']);
-      widalData.forEach(ag=>{const w=res['Widal - '+ag.name];pRow(ag.name,w.titre,'','1/'+ag.seuil,w.interp);});
-      if (widalConcl) {
-        const bad=widalConcl.includes('ÉTAT')||widalConcl.includes('DÉBUT');
-        nRow(widalConcl.replace(/^[🔴🟠🟡⚪]\s*/,''), bad?'FFFFF1F1':'FFFFFDE7');
-      }
+      secHdr('Sérodiagnostic de Widal & Felix');
+      tblHdr(['Antigène','Titre','Cinétique','Seuil significatif','','']);
+      widalData.forEach(ag=>{const w=res['Widal - '+ag.name];pRow(ag.name,w.titre,'','1/'+ag.seuil,w.interp||'');});
+      if (widalConcl) nRow(widalConcl.replace(/^[^\w]+/,''), widalConcl.includes('ÉTAT')||widalConcl.includes('DÉBUT')?'FFFFF1F1':'FFFFFDE7');
       row++;
     }
 
-  } else {
-    // Rendu générique
-    const gRows=[];
-    Object.entries(res).forEach(([k,v])=>{
-      if (!v) return;
-      if (typeof v==='object') {
-        const val=v.valeur||v.resultat||v.titre||'';
-        if (val) gRows.push({n:k,v:val,u:v.unite||'',r:'',i:v.interp||v.obs||''});
-      } else if (typeof v==='string'&&v&&v!=='—'&&!k.startsWith('ABG_')&&!k.startsWith('AFG_')&&!k.startsWith('BPNSERO_')) {
-        gRows.push({n:k,v,u:'',r:'',i:''});
-      }
+  } else if (r.type === 'Biochimie') {
+    const bioSections = [
+      {label:'Glucides', params:BIO_GLUCIDES},
+      {label:'Fonction rénale', params:BIO_REIN},
+      {label:'Fonction hépatique', params:BIO_FOIE},
+      {label:'Lipides', params:BIO_LIPIDES},
+      {label:'Ionogramme', params:BIO_IONO},
+    ];
+    bioSections.forEach(sec => {
+      const vals = sec.params.filter(q=>res[q.name]&&res[q.name].valeur);
+      if (!vals.length) return;
+      secHdr('Biochimie — ' + sec.label);
+      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
+      vals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,v.unite||q.unit,'',v.interp||'');});
+      row++;
     });
-    if (gRows.length) {
-      alt=false;
-      secHdr('📋  '+r.type+' — Résultats');
-      tblHdr(['Paramètre','Résultat','Unité','Valeur normale','Interprétation']);
-      gRows.forEach(q=>pRow(q.n,q.v,q.u,q.r,q.i));
+
+  } else if (r.type === 'Bactériologie') {
+    if (res['Type de prélèvement']) fRow('Type de prélèvement', res['Type de prélèvement']);
+    if (res['Site / Précision'])    fRow('Site / Précision', res['Site / Précision']);
+    // Macroscopie
+    const macroFields = ['Aspect','Couleur','Odeur','pH'];
+    const macroVals = macroFields.filter(k=>res[k]&&res[k]!=='—');
+    if (macroVals.length) {
+      secHdr('Macroscopie');
+      tblHdr(['Paramètre','Résultat','','','','']);
+      macroVals.forEach(k=>pRow(k,res[k],'','',''));
+      row++;
+    }
+    // État frais
+    const efFields=['Leucocytes (/mm³)','Hématies (/mm³)','Cellules épithéliales','Bactéries (état frais)','Levures'];
+    const efVals = efFields.filter(k=>res[k]&&res[k]!=='—'&&res[k]!=='Absents'&&res[k]!=='Absentes');
+    if (efVals.length) {
+      secHdr('État frais — Cytologie');
+      tblHdr(['Élément','Résultat','Unité','','','']);
+      if (res['Leucocytes (/mm³)']) pRow('Leucocytes',res['Leucocytes (/mm³)'],'/mm³','','');
+      if (res['Hématies (/mm³)'])   pRow('Hématies',res['Hématies (/mm³)'],'/mm³','','');
+      efVals.filter(k=>!k.startsWith('Leuco')&&!k.startsWith('Héma')).forEach(k=>pRow(k,res[k],'','',''));
+      row++;
+    }
+    // Gram
+    if (res['Coloration de Gram']&&res['Coloration de Gram']!=='neg') {
+      secHdr('Coloration de Gram');
+      tblHdr(['Résultat Gram','Abondance','','','','']);
+      pRow(res['Coloration de Gram'], res['Gram - Abondance']||'—','','','');
+      if (res['Gram - Commentaire']) nRow(res['Gram - Commentaire']);
+      row++;
+    }
+    // Culture
+    if (res['Culture']||res['Germe identifié']) {
+      secHdr('Culture & Identification');
+      tblHdr(['Paramètre','Résultat','','','','']);
+      if (res['Culture'])            pRow('Culture',res['Culture'],'','','');
+      if (res['Numération bactérienne']) pRow('Numération',res['Numération bactérienne'],'','','');
+      if (res['Germe identifié'])    pRow('Germe identifié',res['Germe identifié'],'','','');
+      if (res['2ème germe'])         pRow('2ème germe',res['2ème germe'],'','','');
       row++;
     }
     // Antibiogramme
+    const abgD = ABG_ANTIBIOS.filter(ab=>res['ABG_'+ab]&&res['ABG_'+ab]!=='nd');
+    if (abgD.length) {
+      secHdr('Antibiogramme');
+      tblHdr(['Antibiotique','Résultat','','','','']);
+      abgD.forEach(ab=>abgRow(ab,res['ABG_'+ab]));
+      if (res['Commentaire antibiogramme']) nRow(res['Commentaire antibiogramme']);
+      row++;
+    }
+    const afgD = AFG_ANTIFONGIQUES.filter(af=>res['AFG_'+af]&&res['AFG_'+af]!=='nd');
+    if (afgD.length) {
+      secHdr('Antifongigramme');
+      tblHdr(['Antifongique','Résultat','','','','']);
+      afgD.forEach(af=>abgRow(af,res['AFG_'+af]));
+      row++;
+    }
+
+  } else if (r.type === 'Sérologie') {
+    const seroVals = (typeof SERO_TESTS!=='undefined') ? SERO_TESTS.filter(t=>{const v=res[t.name];return v&&(v.resultat||v.valeur);}) : [];
+    if (seroVals.length) {
+      secHdr('Sérologies');
+      tblHdr(['Test','Résultat','Valeur','','','']);
+      seroVals.forEach(t=>{
+        const v=res[t.name];
+        const interp = v.resultat==='Positif'?'Positif' : v.resultat==='Négatif'?'Négatif' : v.resultat||'';
+        pRow(t.name, v.resultat||v.valeur||'', t.unit||'', '', interp);
+      });
+      row++;
+    }
+
+  } else if (r.type === 'Groupe sanguin') {
+    secHdr('Groupe Sanguin ABO / Rhesus');
+    tblHdr(['Paramètre','Résultat','','','','']);
+    const gsFields=[{k:'Groupe ABO',id:'gs_abo'},{k:'Rhésus',id:'gs_rh'},{k:'RAI',id:'gs_rai'},{k:'Phénotype',id:'gs_phen'}];
+    gsFields.forEach(f=>{ if(res[f.k]) pRow(f.k,res[f.k],'','',''); });
+    if (res['Observations / Notes']) nRow(res['Observations / Notes']);
+    row++;
+
+  } else if (r.type === 'Parasitologie') {
+    secHdr('Examen Parasitologique des Selles');
+    tblHdr(['Paramètre','Résultat','','','','']);
+    if (res['Aspect des selles'])  pRow('Aspect',res['Aspect des selles'],'','','');
+    if (res['Consistance'])        pRow('Consistance',res['Consistance'],'','','');
+    if (res['Observation'])        nRow(res['Observation']);
+    const parasites = Object.keys(res).filter(k=>k.startsWith('EPS_')&&res[k]&&res[k]!=='Absent');
+    parasites.forEach(k=>pRow(k.replace('EPS_',''),res[k],'','',''));
+    row++;
+
+  } else if (r.type === 'Bilan prénatal') {
+    // NFS bilan prénatal
+    const bpnNfsVals = BPN_NFS.filter(q=>res[q.name]&&res[q.name].valeur);
+    if (bpnNfsVals.length) {
+      secHdr('Bilan prénatal — NFS (normes femme enceinte)');
+      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
+      bpnNfsVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,q.unit,'',v.interp||'');});
+      row++;
+    }
+    // Formule leucocytaire BPN
+    const bpnFlVals = BPN_FL.filter(q=>res[q.name]&&res[q.name].valeur);
+    if (bpnFlVals.length) {
+      secHdr('Bilan prénatal — Formule Leucocytaire');
+      tblHdr(['Paramètre','%','Absolu (G/L)','Valeurs normales (ref.)','','']);
+      bpnFlVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,v.absolu?v.absolu+' G/L':'',q.ref||'',v.interp||'');});
+      row++;
+    }
+    // Biochimie BPN
+    const bpnBioSections = [
+      {label:'Glucides',params:BIO_GLUCIDES},{label:'Fonction rénale',params:BIO_REIN},
+      {label:'Fonction hépatique',params:BIO_FOIE},{label:'Lipides',params:BIO_LIPIDES},{label:'Ionogramme',params:BIO_IONO}
+    ];
+    let hasBio=false;
+    bpnBioSections.forEach(sec=>{
+      const vals=sec.params.filter(q=>res['BIO_'+q.name]&&res['BIO_'+q.name].valeur);
+      if (!vals.length) return;
+      if (!hasBio){ hasBio=true; }
+      secHdr('Bilan prénatal — Biochimie : '+sec.label);
+      tblHdr(['Paramètre','Valeur','Unité','Valeurs normales (ref.)','','']);
+      vals.forEach(q=>{const v=res['BIO_'+q.name]; pRow(q.name,v.valeur,v.unite||q.unit,'',v.interp||'');});
+      row++;
+    });
+    // Sérologies BPN
+    const bpnSeroVals = BPN_SERO.filter(t=>res['BPNSERO_'+t.name]&&(res['BPNSERO_'+t.name].resultat||res['BPNSERO_'+t.name].valeur));
+    if (bpnSeroVals.length) {
+      secHdr('Bilan prénatal — Sérologies');
+      tblHdr(['Test','Résultat','Valeur','','','']);
+      bpnSeroVals.forEach(t=>{
+        const v=res['BPNSERO_'+t.name];
+        pRow(t.name, v.resultat||v.valeur||'', t.unit||'', '', v.resultat||'');
+      });
+      row++;
+    }
+    if (res['BAC - Germe']||res['BAC - Culture']) {
+      secHdr('Bilan prénatal — ECBU / Bactériologie');
+      tblHdr(['Paramètre','Résultat','','','','']);
+      if (res['BAC - Type'])    fRow('Type de prélèvement',res['BAC - Type']);
+      if (res['BAC - Culture']) pRow('Culture',res['BAC - Culture'],'','','');
+      if (res['BAC - Germe'])   pRow('Germe identifié',res['BAC - Germe'],'','','');
+      row++;
+    }
+    if (res['bpn_obs']||res['Observations générales']) nRow(res['bpn_obs']||res['Observations générales']);
+
+  } else {
+    // Rendu générique fallback
+    const gRows=[];
+    Object.entries(res).forEach(([k,v])=>{
+      if (!v||k.startsWith('ABG_')||k.startsWith('AFG_')||k.startsWith('BPNSERO_')||k==='_examens_coches') return;
+      if (typeof v==='object') {
+        const val=v.valeur||v.resultat||v.titre||'';
+        if (val) gRows.push({n:k,v:val,u:v.unite||'',i:v.interp||v.obs||''});
+      } else if (typeof v==='string'&&v&&v!=='—') {
+        gRows.push({n:k,v,u:'',i:''});
+      }
+    });
+    if (gRows.length) {
+      secHdr(r.type + ' — Résultats');
+      tblHdr(['Paramètre','Résultat','Unité','','','']);
+      gRows.forEach(q=>pRow(q.n,q.v,q.u,'',q.i));
+      row++;
+    }
     const abgD=ABG_ANTIBIOS.filter(ab=>res['ABG_'+ab]&&res['ABG_'+ab]!=='nd');
     if (abgD.length) {
-      alt=false;
-      secHdr('💊  Antibiogramme');
-      tblHdr(['Antibiotique','S/I/R','','','']);
-      abgD.forEach(ab=>{const v=res['ABG_'+ab];const i=v==='S'?'Sensible':v==='I'?'Intermédiaire':v==='R'?'Résistant':v;pRow(ab,v,'','',i);});
-      row++;
+      secHdr('Antibiogramme'); tblHdr(['Antibiotique','Résultat','','','','']);
+      abgD.forEach(ab=>abgRow(ab,res['ABG_'+ab])); row++;
     }
     const afgD=AFG_ANTIFONGIQUES.filter(af=>res['AFG_'+af]&&res['AFG_'+af]!=='nd');
     if (afgD.length) {
-      alt=false;
-      secHdr('💊  Antifongigramme');
-      tblHdr(['Antifongique','S/I/R','','','']);
-      afgD.forEach(af=>{const v=res['AFG_'+af];const i=v==='S'?'Sensible':v==='I'?'Intermédiaire':v==='R'?'Résistant':v;pRow(af,v,'','',i);});
-      row++;
+      secHdr('Antifongigramme'); tblHdr(['Antifongique','Résultat','','','','']);
+      afgD.forEach(af=>abgRow(af,res['AFG_'+af])); row++;
     }
   }
 
-  // ── PIED DE PAGE ───────────────────────────────────────────
-  ws.getRow(row).height=4;
-  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:C_GOLD}};
+  // ════════════════════════════════════════════════════
+  // PIED DE PAGE
+  // ════════════════════════════════════════════════════
+  row++;
+  ws.getRow(row).height = 5;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:GLD}};
   row++;
 
-  ws.getRow(row).height=12;
-  merge(row,1,row,3);
-  const cFt=ws.getCell(row,1);
-  cFt.value='Édité le '+new Date().toLocaleDateString('fr-FR')+' — CPMI de Grand-Bassam';
-  styleCell(cFt,{fg:C_MUTED,size:8,italic:true});
-  row++;
-  row++;
+  ws.getRow(row).height = 13;
+  mg(row,1,row,4);
+  const cFt = ws.getCell(row,1);
+  cFt.value = 'Édité le ' + new Date().toLocaleDateString('fr-FR') + '  —  CPMI de Grand-Bassam';
+  sC(cFt, {fg:MUTED, size:8, italic:true});
+
+  mg(row,4,row,NC);
+  const cMontant = ws.getCell(row,4);
+  if (r.montant) {
+    cMontant.value = 'Montant : ' + r.montant.toLocaleString('fr-FR') + ' FCFA';
+    sC(cMontant, {fg:'FF15803D', bold:true, size:9, ha:'right'});
+  }
+  row++; row++;
 
   // Zones signature
-  ws.getRow(row).height=13;
-  merge(row,1,row,3);
-  styleCell(ws.getCell(row,1),{bg:C_PAT_LABEL_BG,fg:C_SECTION_FG,bold:true,size:9});
+  ws.getRow(row).height = 14;
+  mg(row,1,row,3); sC(ws.getCell(row,1),{bg:PAT_LABEL,fg:SEC_FG,bold:true,size:9});
   ws.getCell(row,1).value='Cachet du biologiste responsable';
-  merge(row,4,row,NC);
-  styleCell(ws.getCell(row,4),{bg:C_PAT_LABEL_BG,fg:C_SECTION_FG,bold:true,size:9});
+  mg(row,4,row,NC); sC(ws.getCell(row,4),{bg:PAT_LABEL,fg:SEC_FG,bold:true,size:9});
   ws.getCell(row,4).value='Signature';
   row++;
-  for (let i=0;i<3;i++) {
-    ws.getRow(row).height=15;
-    merge(row,1,row,3); ws.getCell(row,1).border=thinBorder(C_BORDER);
-    merge(row,4,row,NC); ws.getCell(row,4).border=thinBorder(C_BORDER);
+  for (let i=0;i<4;i++) {
+    ws.getRow(row).height=14;
+    mg(row,1,row,3); ws.getCell(row,1).border=tB(BRD);
+    mg(row,4,row,NC); ws.getCell(row,4).border=tB(BRD);
     row++;
   }
 }
