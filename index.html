@@ -366,6 +366,11 @@ select {
 .interp.hi  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 .interp.lo  { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
 
+/* NFS — la case Valeur elle-même se colore quand le résultat est anormal,
+   sans colonne Interprétation dédiée */
+.result-table input.val-hi { background: #fee2e2 !important; color: #991b1b !important; border-color: #fca5a5 !important; font-weight: 700; }
+.result-table input.val-lo { background: #dbeafe !important; color: #1e40af !important; border-color: #93c5fd !important; font-weight: 700; }
+
 /* ================================================================
    BOUTONS
    ================================================================ */
@@ -763,62 +768,69 @@ select {
 
   /* Masquer toute l'app, n'afficher que le rendu d'impression */
   body > *:not(#print-render) { display: none !important; }
-  body { background: white !important; margin: 0; }
-  #print-render { display: block !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #0f1f40; }
+  body::before { display: none !important; content: none !important; }
+  #cpmi-bg-canvas { display: none !important; }
+  body { background: #fff !important; margin: 0; }
+  #print-render { display: block !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #000; background: #fff; }
 
-  /* En-tête */
-  .print-header-bar { height: 3px; background: linear-gradient(to right, #1a4480, #2563eb, #0d9488); margin-bottom: 0; }
-  .print-header-content { display: flex; align-items: center; gap: 12px; padding: 8px 0 6px; border-bottom: 1px solid #c7d7f5; margin-bottom: 6px; }
-  .print-logo { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; }
-  .print-center-name { font-size: 14pt; font-weight: 800; color: #1a4480; letter-spacing: .3px; }
-  .print-center-sub { font-size: 8pt; color: #5a739f; }
-  .print-type-badge { margin-left: auto; background: #1a4480; color: white; padding: 5px 14px; border-radius: 20px; font-size: 9pt; font-weight: 700; letter-spacing: .5px; white-space: nowrap; }
+  /* En-tête — fond blanc, traits noirs (pas de bandeau coloré plein qui mange l'encre) */
+  .print-header-bar { height: 1.5px; background: #000; margin-bottom: 0; }
+  .print-header-content { display: flex; align-items: center; gap: 12px; padding: 8px 0 6px; border-bottom: 1.5px solid #000; margin-bottom: 6px; background: #fff; }
+  .print-logo { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; filter: grayscale(1) contrast(1.4); }
+  .print-center-name { font-size: 14pt; font-weight: 800; color: #000; letter-spacing: .3px; }
+  .print-center-sub { font-size: 8pt; color: #444; }
+  .print-type-badge { margin-left: auto; background: #fff; color: #000; border: 1.5px solid #000; padding: 4px 13px; border-radius: 20px; font-size: 9pt; font-weight: 700; letter-spacing: .5px; white-space: nowrap; }
 
-  /* Fiche patient */
-  .print-patient-card { background: #f0f5ff; border: 1px solid #c7d7f5; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; }
+  /* Fiche patient — fond blanc, cadre noir fin */
+  .print-patient-card { background: #fff; border: 1.3px solid #000; border-radius: 4px; padding: 8px 12px; margin-bottom: 10px; }
   .print-patient-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-  .print-patient-table td { padding: 3px 8px; vertical-align: top; border-right: 1px solid #dde8ff; }
+  .print-patient-table td { padding: 3px 8px; vertical-align: top; border-right: 1px solid #ccc; }
   .print-patient-table td:last-child { border-right: none; }
-  .print-dossier { font-size: 12pt; font-weight: 800; color: #1a4480; }
+  .print-dossier { font-size: 12pt; font-weight: 800; color: #000; }
 
   /* Sections */
   .print-section { margin-bottom: 8px; break-inside: avoid; }
-  .print-section-title { font-size: 9pt; font-weight: 700; color: #1a4480; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1.5px solid #1a4480; padding-bottom: 2px; margin-bottom: 5px; }
+  .print-section-title { font-size: 9pt; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px; }
 
-  /* Tableaux */
+  /* Tableaux — en-têtes en gris très clair (quasi blanc, peu d'encre), texte noir, bordures fines */
   .print-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 4px; }
-  .print-table th { background: #e8f0fe !important; color: #1a4480; font-weight: 700; padding: 4px 7px; text-align: left; border: 1px solid #c7d7f5; font-size: 8pt; }
-  .print-table td { padding: 3.5px 7px; border: 1px solid #dde8ff; vertical-align: middle; }
-  .print-table tr:nth-child(even) td { background: #f8faff; }
-  .print-hi  { color: #991b1b !important; background: #fef2f2 !important; font-weight: 700; }
-  .print-lo  { color: #1e40af !important; background: #eff6ff !important; font-weight: 700; }
-  .print-ok  { color: #065f46 !important; background: #f0fdf4 !important; font-weight: 700; }
-  .print-warn{ color: #92400e !important; background: #fffbeb !important; font-weight: 700; }
+  .print-table th { background: #eee !important; color: #000; font-weight: 700; padding: 4px 7px; text-align: left; border: 1px solid #999; font-size: 8pt; }
+  .print-table td { padding: 3.5px 7px; border: 1px solid #ccc; vertical-align: middle; color: #000; }
+  .print-table tr:nth-child(even) td { background: #fafafa; }
+  /* Résultats anormaux : pas de fond coloré (économie d'encre) — texte en gras
+     + un repère textuel ▲/▼ explicite pour rester lisible même en noir pur */
+  .print-hi  { color: #000 !important; background: #fff !important; font-weight: 800; }
+  .print-hi::before  { content: '▲ '; }
+  .print-lo  { color: #000 !important; background: #fff !important; font-weight: 800; }
+  .print-lo::before  { content: '▼ '; }
+  .print-ok  { color: #000 !important; background: #fff !important; font-weight: 400; }
+  .print-warn{ color: #000 !important; background: #fff !important; font-weight: 800; }
+  .print-warn::before { content: '⚠ '; }
 
-  /* Notes et conclusions */
-  .print-note   { font-size: 8pt; color: #374151; margin: 3px 0; padding: 3px 8px; }
+  /* Notes et conclusions — fond blanc, bordure gauche noire en guise d'accent */
+  .print-note   { font-size: 8pt; color: #000; margin: 3px 0; padding: 3px 8px; }
   .print-italic { font-style: italic; }
-  .print-conclusion { font-size: 8.5pt; font-weight: 600; padding: 5px 10px; border-radius: 4px; margin: 4px 0; }
-  .print-conclusion.print-hi   { background: #fef2f2; color: #991b1b; border-left: 3px solid #dc2626; }
-  .print-conclusion.print-warn { background: #fffbeb; color: #92400e; border-left: 3px solid #d97706; }
-  .print-conclusion.print-note { background: #f8faff; color: #374151; border-left: 3px solid #94a3b8; }
+  .print-conclusion { font-size: 8.5pt; font-weight: 700; padding: 5px 10px; border-radius: 0; margin: 4px 0; background: #fff; border: 1px solid #000; border-left: 4px solid #000; color: #000; }
+  .print-conclusion.print-hi   { border-left-color: #000; }
+  .print-conclusion.print-warn { border-left-color: #000; }
+  .print-conclusion.print-note { border-left-color: #999; }
 
   /* Pied de page */
   .print-footer { margin-top: 10px; }
-  .print-footer-bar { height: 1.5px; background: linear-gradient(to right, #d97706, #e11d76); margin-bottom: 8px; }
+  .print-footer-bar { height: 1px; background: #000; margin-bottom: 8px; }
   .print-footer-content { display: flex; gap: 16px; align-items: flex-start; }
   .print-sig-box { flex: 1; }
-  .print-sig-label { font-size: 7.5pt; font-weight: 700; color: #1a4480; background: #e8f0fe; padding: 2px 6px; border-radius: 3px; margin-bottom: 2px; }
-  .print-sig-zone { border: 1px solid #c7d7f5; height: 20mm; border-radius: 3px; }
-  .print-meta { font-size: 7pt; color: #94a3b8; font-style: italic; align-self: flex-end; text-align: right; margin-left: auto; }
+  .print-sig-label { font-size: 7.5pt; font-weight: 700; color: #000; background: #fff; border: 1px solid #000; padding: 2px 6px; border-radius: 0; margin-bottom: 2px; display: inline-block; }
+  .print-sig-zone { border: 1px solid #000; height: 20mm; border-radius: 0; }
+  .print-meta { font-size: 7pt; color: #444; font-style: italic; align-self: flex-end; text-align: right; margin-left: auto; }
 
-  /* Filigrane CPMI */
+  /* Filigrane CPMI — extrêmement léger, ne consomme quasiment pas d'encre */
   body::after {
     content: 'CPMI';
     position: fixed; top: 50%; left: 50%;
     transform: translate(-50%,-50%) rotate(-35deg);
     font-size: 14cm; font-weight: 900;
-    color: rgba(26,68,128,.04);
+    color: rgba(0,0,0,.03);
     font-family: 'Playfair Display', serif;
     letter-spacing: .1em; pointer-events: none;
     z-index: -1; white-space: nowrap;
@@ -827,7 +839,7 @@ select {
     content: 'Centre de Protection Mère et Infantile · Grand-Bassam';
     position: fixed; bottom: 1cm; left: 0; right: 0;
     text-align: center; font-size: 7.5pt;
-    color: rgba(26,68,128,.25); font-style: italic; font-weight: 600;
+    color: rgba(0,0,0,.35); font-style: italic; font-weight: 600;
   }
 }
 
@@ -1115,7 +1127,7 @@ select {
       <div class="card-title">🩸 NFS — Numération formule sanguine</div>
       <div class="table-wrap">
         <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
+          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th></tr></thead>
           <tbody id="hema-body"></tbody>
         </table>
       </div>
@@ -1124,7 +1136,7 @@ select {
       <div class="section-label" style="margin-top:16px">Formule leucocytaire</div>
       <div class="table-wrap">
         <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue (G/L)</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
+          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue</th><th>Valeurs normales</th></tr></thead>
           <tbody id="hema-fl-body"></tbody>
         </table>
       </div>
@@ -1189,6 +1201,10 @@ select {
         <div class="form-group">
           <label>Parasitémie (%)</label>
           <input type="number" id="ge_para" step="0.01" min="0" max="100" placeholder="ex: 2.5">
+        </div>
+        <div class="form-group">
+          <label>Densité parasitaire (/µL)</label>
+          <input type="number" id="ge_densite" step="1" min="0" placeholder="ex: 5000">
         </div>
         <div class="form-group">
           <label>Stade parasitaire</label>
@@ -1830,7 +1846,7 @@ select {
       <div class="section-label">NFS — Numération formule sanguine</div>
       <div class="table-wrap">
         <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales (femme enceinte)</th><th>Interprétation</th></tr></thead>
+          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales (femme enceinte)</th></tr></thead>
           <tbody id="bpn-nfs-body"></tbody>
         </table>
       </div>
@@ -1838,7 +1854,7 @@ select {
       <div class="section-label">Formule leucocytaire</div>
       <div class="table-wrap">
         <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue (G/L)</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
+          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue</th><th>Valeurs normales</th></tr></thead>
           <tbody id="bpn-fl-body"></tbody>
         </table>
       </div>
@@ -2595,6 +2611,27 @@ function makeParamRow(p, tbody) {
   tbody.appendChild(tr);
 }
 
+// Variante NFS : pas de colonne Interprétation — la case Valeur elle-même
+// se colore (rouge/bleu) quand le résultat sort des normes, sinon reste neutre.
+function makeParamRowColored(p, tbody) {
+  const tr = document.createElement('tr');
+  const profile = getPatientProfile();
+  const dynRef = getRef(p.id, profile);
+  const refDisplay = dynRef ? dynRef.ref : (p.refM && p.refF
+    ? (profile.sexe === 'F' ? p.refF : p.refM) : (p.ref || ''));
+  const inputStyle = p.calc
+    ? 'width:90px;background:var(--accent-light);color:var(--accent);font-weight:600;cursor:default;'
+    : 'width:90px';
+  const readonly = p.calc ? 'readonly title="Calculé automatiquement"' : '';
+  tr.innerHTML = `
+    <td style="font-size:13px;white-space:nowrap">${p.name}</td>
+    <td><input type="number" id="v_${p.id}" step="any" style="${inputStyle}" ${readonly} oninput="onParamInputColored('${p.id}')"></td>
+    <td><span class="unit">${p.unit}</span></td>
+    <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
+  `;
+  tbody.appendChild(tr);
+}
+
 function onParamInput(id) {
   const profile = getPatientProfile();
   const ref = getRef(id, profile);
@@ -2605,6 +2642,24 @@ function onParamInput(id) {
   const interp = interprete(valEl.value, ref.lo, ref.hi);
   interpEl.textContent = interp || '—';
   interpEl.className = 'interp ' + (interp === 'Élevé' ? 'hi' : interp === 'Bas' ? 'lo' : interp === 'Normal' ? 'ok' : '');
+  updateMontantCurrent();
+}
+
+// Variante NFS : colore directement la case input selon l'interprétation,
+// sans afficher de texte d'interprétation (pas de colonne dédiée).
+function onParamInputColored(id) {
+  const profile = getPatientProfile();
+  const ref = getRef(id, profile);
+  const valEl = document.getElementById('v_' + id);
+  if (!valEl) return;
+  if (!ref || valEl.value === '') {
+    valEl.classList.remove('val-hi', 'val-lo');
+    updateMontantCurrent();
+    return;
+  }
+  const interp = interprete(valEl.value, ref.lo, ref.hi);
+  valEl.classList.toggle('val-hi', interp === 'Élevé');
+  valEl.classList.toggle('val-lo', interp === 'Bas');
   updateMontantCurrent();
 }
 
@@ -2692,7 +2747,7 @@ function buildBpnNfs() {
   // NFS
   const b = document.getElementById('bpn-nfs-body');
   b.innerHTML = '';
-  BPN_NFS.forEach(p => makeParamRow(p, b));
+  BPN_NFS.forEach(p => makeParamRowColored(p, b));
 
   // Brancher le calcul des constantes sur Hb, Ht, GR du BPN
   ['bpn_hb','bpn_ht','bpn_gr'].forEach(id => {
@@ -2711,14 +2766,12 @@ function buildBpnNfs() {
       tr.innerHTML = `
         <td style="font-size:13px">${p.name}</td>
         <td><input type="number" id="v_${p.id}" step="any" min="0" max="100" style="width:75px"
-            oninput="onParamInput('${p.id}'); calcBpnFLAbsolues()"></td>
+            oninput="onParamInputColored('${p.id}'); calcBpnFLAbsolues()"></td>
         <td>
           <span class="unit">%</span>
           <span style="display:inline-block;margin-left:6px;min-width:60px;font-size:11px;color:var(--accent);font-weight:600" id="bpn_abs_${p.id}"></span>
-          <span id="bpn_abs_unit_${p.id}" style="font-size:10px;color:var(--text-muted);display:none">G/L</span>
         </td>
-        <td><span class="ref-range" id="ref_${p.id}">${dynRef.ref || p.ref}</span></td>
-        <td><span class="interp" id="i_${p.id}">—</span></td>`;
+        <td><span class="ref-range" id="ref_${p.id}">${dynRef.ref || p.ref}</span></td>`;
       bfl.appendChild(tr);
     });
 
@@ -2734,11 +2787,11 @@ function calcConstantesBPN() {
   const gr  = parseFloat(document.getElementById('v_bpn_gr')?.value  || '');
   if (!isNaN(hb) && !isNaN(gr) && gr > 0) {
     const vgmEl = document.getElementById('v_bpn_vgm');
-    if (vgmEl) { vgmEl.value = (ht / gr * 10).toFixed(1); onParamInput('bpn_vgm'); }
+    if (vgmEl) { vgmEl.value = (ht / gr * 10).toFixed(1); onParamInputColored('bpn_vgm'); }
     const tcmhEl = document.getElementById('v_bpn_tcmh');
-    if (tcmhEl) { tcmhEl.value = (hb / gr * 10).toFixed(1); onParamInput('bpn_tcmh'); }
+    if (tcmhEl) { tcmhEl.value = (hb / gr * 10).toFixed(1); onParamInputColored('bpn_tcmh'); }
     const ccmhEl = document.getElementById('v_bpn_ccmh');
-    if (ccmhEl) { ccmhEl.value = (hb / ht * 100).toFixed(1); onParamInput('bpn_ccmh'); }
+    if (ccmhEl) { ccmhEl.value = (hb / ht * 100).toFixed(1); onParamInputColored('bpn_ccmh'); }
   }
 }
 
@@ -2747,15 +2800,8 @@ function calcBpnFLAbsolues() {
   BPN_FL.forEach(p => {
     const pct    = parseFloat(document.getElementById('v_' + p.id)?.value || '');
     const absEl  = document.getElementById('bpn_abs_' + p.id);
-    const unitEl = document.getElementById('bpn_abs_unit_' + p.id);
     if (absEl) {
-      if (!isNaN(pct) && !isNaN(gb) && gb > 0) {
-        absEl.textContent = (pct * gb / 100).toFixed(2);
-        if (unitEl) unitEl.style.display = '';
-      } else {
-        absEl.textContent = '';
-        if (unitEl) unitEl.style.display = 'none';
-      }
+      absEl.textContent = (!isNaN(pct) && !isNaN(gb) && gb > 0) ? (pct * gb / 100).toFixed(2) : '';
     }
   });
 }
@@ -2919,9 +2965,9 @@ function buildHema() {
   b1.innerHTML = ''; b2.innerHTML = '';
 
   // NFS standard
-  HEMA_PARAMS.forEach(p => makeParamRow(p, b1));
+  HEMA_PARAMS.forEach(p => makeParamRowColored(p, b1));
 
-  // Formule leucocytaire avec valeurs absolues
+  // Formule leucocytaire avec valeurs absolues (sans unité affichée, case colorée)
   HEMA_FL.forEach(p => {
     const tr = document.createElement('tr');
     const profile = getPatientProfile();
@@ -2930,14 +2976,12 @@ function buildHema() {
     tr.innerHTML = `
       <td style="font-size:13px">${p.name}</td>
       <td><input type="number" id="v_${p.id}" step="any" min="0" max="100" style="width:75px"
-          oninput="onParamInput('${p.id}'); calcFLAbsolues()"></td>
+          oninput="onParamInputColored('${p.id}'); calcFLAbsolues()"></td>
       <td>
         <span class="unit">%</span>
         <span style="display:inline-block;margin-left:6px;min-width:60px;font-size:11px;color:var(--accent);font-weight:600" id="abs_${p.id}"></span>
-        <span id="abs_unit_${p.id}" style="font-size:10px;color:var(--text-muted);display:none">G/L</span>
       </td>
-      <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
-      <td><span class="interp" id="i_${p.id}">—</span></td>`;
+      <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>`;
     b2.appendChild(tr);
   });
 
@@ -2981,15 +3025,8 @@ function calcFLAbsolues() {
   HEMA_FL.forEach(p => {
     const pct    = parseFloat(document.getElementById('v_' + p.id)?.value || '');
     const absEl  = document.getElementById('abs_' + p.id);
-    const unitEl = document.getElementById('abs_unit_' + p.id);
     if (absEl) {
-      if (!isNaN(pct) && !isNaN(gb) && gb > 0) {
-        absEl.textContent = (pct * gb / 100).toFixed(2);
-        if (unitEl) unitEl.style.display = '';
-      } else {
-        absEl.textContent = '';
-        if (unitEl) unitEl.style.display = 'none';
-      }
+      absEl.textContent = (!isNaN(pct) && !isNaN(gb) && gb > 0) ? (pct * gb / 100).toFixed(2) : '';
     }
   });
 }
@@ -3387,7 +3424,7 @@ function buildGS() {
 
 // Compatibilité avec les anciens appels (encore dans certains oninput générés)
 function autoInterp(id, lo, hiM, hiF) {
-  onParamInput(id); // délègue au nouveau système
+  onParamInputColored(id); // VGM/TCMH/CCMH font partie de la NFS : case colorée, pas de texte
 }
 
 // Calcule et affiche le montant pour l'onglet courant
@@ -3685,6 +3722,17 @@ async function newPatient() {
   toast('Nouveau patient prêt ✓', 'ok');
 }
 
+// Déduit le texte d'interprétation (pour les exports PDF/Excel/impression)
+// à partir de la classe de coloration appliquée sur la case Valeur (NFS),
+// puisque ces tableaux n'ont plus de colonne Interprétation visible à l'écran.
+function getValColorInterp(id) {
+  const el = document.getElementById('v_' + id);
+  if (!el) return '';
+  if (el.classList.contains('val-hi')) return 'Élevé';
+  if (el.classList.contains('val-lo')) return 'Bas';
+  return el.value ? 'Normal' : '';
+}
+
 function collectResults(type) {
   const data = {};
   if (type === 'Hématologie') {
@@ -3694,7 +3742,7 @@ function collectResults(type) {
       const absEl  = document.getElementById('abs_'+p.id);
       data[p.name] = {
         valeur, unite: p.unit,
-        interp: document.getElementById('i_'+p.id)?.textContent || '',
+        interp: getValColorInterp(p.id),
         absolu: absEl ? absEl.textContent : '',
       };
     });
@@ -3709,6 +3757,7 @@ function collectResults(type) {
     data['GE - Résultat'] = document.getElementById('ge_result')?.value || '';
     data['GE - Espèce'] = document.getElementById('ge_espece')?.value || '';
     data['GE - Parasitémie (%)'] = document.getElementById('ge_para')?.value || '';
+    data['GE - Densité parasitaire (/µL)'] = document.getElementById('ge_densite')?.value || '';
     data['GE - Stade'] = document.getElementById('ge_stade')?.value || '';
     data['GE - TDR'] = document.getElementById('ge_tdr')?.value || '';
     data['GE - Observation'] = document.getElementById('ge_obs')?.value || '';
@@ -3792,7 +3841,7 @@ function collectResults(type) {
     data['RAI'] = document.getElementById('bpn_rai')?.value || '';
     data['Phénotype érythrocytaire'] = document.getElementById('bpn_phenotype')?.value || '';
     BPN_NFS.forEach(p => {
-      data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: document.getElementById('i_'+p.id)?.textContent || '' };
+      data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: getValColorInterp(p.id) };
     });
     // Formule leucocytaire BPN avec valeurs absolues
     BPN_FL.forEach(p => {
@@ -3800,7 +3849,7 @@ function collectResults(type) {
       data[p.name] = {
         valeur: document.getElementById('v_'+p.id)?.value || '',
         unite: p.unit,
-        interp: document.getElementById('i_'+p.id)?.textContent || '',
+        interp: getValColorInterp(p.id),
         absolu: absEl ? absEl.textContent : '',
       };
     });
@@ -4072,6 +4121,7 @@ function loadResultsIntoForm(type, res) {
     setSel('ge_result', res['GE - Résultat']);
     setSel('ge_espece', res['GE - Espèce']);
     setVal('ge_para', res['GE - Parasitémie (%)']);
+    setVal('ge_densite', res['GE - Densité parasitaire (/µL)']);
     setSel('ge_stade', res['GE - Stade']);
     setSel('ge_tdr', res['GE - TDR']);
     setVal('ge_obs', res['GE - Observation']);
@@ -4627,6 +4677,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       if (res['GE - TDR'])           pRow('TDR Paludisme',res['GE - TDR'],'','','');
       if (res['GE - Espèce'])        pRow('Espèce plasmodiale',res['GE - Espèce'],'','','');
       if (res['GE - Parasitémie (%)']) pRow('Parasitémie',res['GE - Parasitémie (%)'],'%','','');
+      if (res['GE - Densité parasitaire (/µL)']) pRow('Densité parasitaire',res['GE - Densité parasitaire (/µL)'],'/µL','','');
       if (res['GE - Stade'])         pRow('Stade parasitaire',res['GE - Stade'],'','','');
       if (res['GE - Observation'])   nRow(res['GE - Observation']);
       row++;
@@ -4736,9 +4787,40 @@ function buildProfessionalSheet(wb, r, sheetName) {
 }
 
 
+// Vérifie que la bibliothèque ExcelJS (chargée depuis un CDN) est bien
+// disponible avant de tenter un export — évite un échec silencieux si
+// la connexion internet est coupée ou trop lente au moment du clic.
+function ensureExcelJSReady() {
+  if (typeof ExcelJS === 'undefined') {
+    toast('Bibliothèque Excel indisponible — vérifiez votre connexion internet et réessayez', 'err');
+    return false;
+  }
+  return true;
+}
+
+// Convertit un classeur ExcelJS en fichier .xlsx et déclenche son
+// téléchargement dans le navigateur. C'était la fonction manquante qui
+// empêchait TOUS les exports Excel de fonctionner (le classeur était bien
+// construit mais jamais réellement écrit sur le disque de l'utilisateur).
+async function downloadWorkbook(wb, filename) {
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function exportSingle(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
+  if (!ensureExcelJSReady()) return;
 
   // Rafraîchit le cache depuis Supabase pour avoir les données à jour
   await refreshDB();
@@ -4765,6 +4847,7 @@ async function exportSingle(type) {
 }
 
 async function exportAllExcel() {
+  if (!ensureExcelJSReady()) return;
   toast('Récupération des données…');
   await refreshDB();
   const db = getDB();
@@ -5177,13 +5260,14 @@ function buildPrintSections(type, res) {
     }
 
     // GE / Parasitologie
-    const ge = { res:res['GE - Résultat'], espece:res['GE - Espèce'], para:res['GE - Parasitémie (%)'], stade:res['GE - Stade'], tdr:res['GE - TDR'], obs:res['GE - Observation'] };
+    const ge = { res:res['GE - Résultat'], espece:res['GE - Espèce'], para:res['GE - Parasitémie (%)'], densite:res['GE - Densité parasitaire (/µL)'], stade:res['GE - Stade'], tdr:res['GE - TDR'], obs:res['GE - Observation'] };
     if (ge.res || ge.tdr || ge.espece) {
       const geRows = [];
       if (ge.res)    geRows.push(['Résultat GE', ge.res, '', '']);
       if (ge.tdr)    geRows.push(['TDR Paludisme', ge.tdr, '', '']);
       if (ge.espece) geRows.push(['Espèce plasmodiale', ge.espece, '', '']);
       if (ge.para)   geRows.push(['Parasitémie', ge.para, '%', '']);
+      if (ge.densite) geRows.push(['Densité parasitaire', ge.densite, '/µL', '']);
       if (ge.stade)  geRows.push(['Stade', ge.stade, '', '']);
       if (ge.obs)    geRows.push(['Observation', ge.obs, '', '']);
       html += section('🦟 Goutte Épaisse / Parasitologie', table(['Paramètre','Résultat','Unité','Observation'], geRows));
@@ -5273,6 +5357,51 @@ function exportPDF(id) {
   const r = getDB().find(x => x.id === id);
   if (!r) { toast('Fiche introuvable', 'err'); return; }
   buildPDF(r);
+}
+
+// Export Excel d'une fiche depuis l'historique (par id) — c'était la fonction
+// manquante qui empêchait le bouton ⬇ Excel de la table Historique de fonctionner.
+async function exportRecord(id) {
+  const r = getDB().find(x => x.id === id);
+  if (!r) { toast('Fiche introuvable', 'err'); return; }
+  if (!ensureExcelJSReady()) return;
+  const displayType = getDisplayType(r);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = CENTRE;
+  wb.title = 'Résultat ' + displayType;
+  buildProfessionalSheet(wb, r, getDisplayTypeShort(r).substring(0, 31));
+  await downloadWorkbook(wb, makeFilename(r.patient.dossier, r.patient.date, r.patient.nom || 'PATIENT', getDisplayTypeShort(r)));
+  toast('Export Excel réussi ✓', 'ok');
+}
+
+// Export Excel multi-feuilles de TOUTES les fiches d'un même patient
+// (même N° de dossier) — appelé depuis le bouton 📁 de l'historique,
+// qui n'apparaît que lorsque ce dossier a plusieurs fiches enregistrées.
+async function exportPatientComplet(dossier) {
+  if (!ensureExcelJSReady()) return;
+  await refreshDB();
+  const db = getDB();
+  const recs = db.filter(r => r.patient.dossier === dossier)
+                 .sort((a, b) => (a.savedAt || '').localeCompare(b.savedAt || ''));
+  if (!recs.length) { toast('Aucune fiche trouvée pour ce dossier', 'err'); return; }
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = CENTRE;
+  wb.title = 'Dossier complet ' + dossier;
+
+  const usedNames = new Set();
+  recs.forEach(r => {
+    let base = getDisplayTypeShort(r).substring(0, 28) || 'Fiche';
+    let sheetName = base;
+    let n = 2;
+    while (usedNames.has(sheetName)) { sheetName = (base + ' (' + n + ')').substring(0, 31); n++; }
+    usedNames.add(sheetName);
+    buildProfessionalSheet(wb, r, sheetName);
+  });
+
+  const nom = recs[0].patient.nom || 'PATIENT';
+  await downloadWorkbook(wb, makeFilename(dossier, recs[0].patient.date, nom, 'Dossier-complet'));
+  toast('Dossier complet exporté ✓ (' + recs.length + ' fiches)', 'ok');
 }
 
 async function exportPDFFromForm(type) {
@@ -5455,6 +5584,7 @@ function buildPDF(r) {
     const geRes    = res['GE - Résultat'] || '';
     const geEspece = res['GE - Espèce'] || '';
     const gePara   = res['GE - Parasitémie (%)'] || '';
+    const geDensite= res['GE - Densité parasitaire (/µL)'] || '';
     const geStade  = res['GE - Stade'] || '';
     const geTDR    = res['GE - TDR'] || '';
     const geObs    = res['GE - Observation'] || '';
@@ -5465,6 +5595,7 @@ function buildPDF(r) {
       if (geTDR)    geRows.push(['TDR Paludisme', geTDR, '', '']);
       if (geEspece) geRows.push(['Espèce plasmodiale', geEspece, '', '']);
       if (gePara)   geRows.push(['Parasitémie', gePara, '%', '']);
+      if (geDensite) geRows.push(['Densité parasitaire', geDensite, '/µL', '']);
       if (geStade)  geRows.push(['Stade parasitaire', geStade, '', '']);
       if (geObs)    geRows.push(['Observation', geObs, '', '']);
       addTable(['Paramètre','Résultat','Unité','Observation'], geRows);
