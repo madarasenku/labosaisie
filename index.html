@@ -103,11 +103,6 @@ body::before {
   0%   { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 /* ── Animation d'entrée sur les cartes ── */
 .card {
   animation: slide-in-up .35s ease both;
@@ -1619,7 +1614,7 @@ select {
       <div class="card-title">💉 Sérologie / Immunologie</div>
       <div class="table-wrap">
         <table class="result-table">
-          <thead><tr><th>Test</th><th>Résultat</th><th>Titre / Valeur</th><th>Interprétation</th></tr></thead>
+          <thead><tr><th>Test</th><th>Résultat qualitatif</th><th>Valeur numérique</th><th>Valeurs normales</th><th>Commentaire</th></tr></thead>
           <tbody id="sero-body"></tbody>
         </table>
       </div>
@@ -2347,6 +2342,15 @@ const NORM = {
   bpn_gly:  { _all: { ref:'0.70–0.92',lo:0.70,hi:0.92 } },
   bpn_crea: { _all: { ref:'35–90',  lo:35,   hi:90   } },
   bpn_uree: { _all: { ref:'2.0–6.5',lo:2.0,  hi:6.5  } },
+
+  // ── Électrophorèse de l'hémoglobine ──
+  ephb_a:  { _all: { ref:'95–97',   lo:95,  hi:97  } },
+  ephb_a2: { _all: { ref:'1.5–3.5', lo:1.5, hi:3.5 } },
+  ephb_f:  { _all: { ref:'< 2',     lo:0,   hi:2   } },
+  ephb_s:  { _all: { ref:'0',       lo:0,   hi:0   } },
+  ephb_c:  { _all: { ref:'0',       lo:0,   hi:0   } },
+  ephb_d:  { _all: { ref:'0',       lo:0,   hi:0   } },
+  ephb_e:  { _all: { ref:'0',       lo:0,   hi:0   } },
 };
 
 // Implémentation de base (utilisée comme fallback par getRef)
@@ -2379,15 +2383,30 @@ function buildRefObj(entry, profile) {
 // ──────────────────────────────────────────────────────────────────────
 const LABO_REFS_KEY = 'labosaisie_refs_v1';
 
+// Cache en mémoire pour éviter de parser localStorage à chaque frappe
+let _customRefsCache = null;
+
 function getCustomRefs() {
-  try { return JSON.parse(localStorage.getItem(LABO_REFS_KEY) || '{}'); } catch(e) { return {}; }
+  if (_customRefsCache) return _customRefsCache;
+  try { _customRefsCache = JSON.parse(localStorage.getItem(LABO_REFS_KEY) || '{}'); }
+  catch(e) { _customRefsCache = {}; }
+  return _customRefsCache;
 }
 
 function saveCustomRefs(obj) {
+  _customRefsCache = obj;  // mettre à jour le cache immédiatement
   localStorage.setItem(LABO_REFS_KEY, JSON.stringify(obj));
 }
 
 // getRef : surcharge avec valeurs admin (priorité sur les défauts NORM)
+// Retourne l'unité personnalisée si définie, sinon la valeur par défaut du tableau
+function getUnit(paramId, defaultUnit) {
+  const custom = getCustomRefs();
+  if (custom[paramId] && custom[paramId].unit && custom[paramId].unit.trim())
+    return custom[paramId].unit.trim();
+  return defaultUnit || '';
+}
+
 function getRef(paramId, profile) {
   const custom = getCustomRefs();
   if (custom[paramId]) {
@@ -2408,47 +2427,42 @@ function interprete(val, lo, hi) {
 // Met à jour les références ET les interprétations de tous les tableaux
 function updateAllRefs() {
   const profile = getPatientProfile();
-  // Hématologie
-  [...HEMA_PARAMS, ...HEMA_FL].forEach(p => {
-    const ref = getRef(p.id, profile);
+
+  // ── Helper interne ──────────────────────────────────────────
+  function applyRef(p, colored) {
+    const ref    = getRef(p.id, profile);
     if (!ref) return;
-    const refEl = document.getElementById('ref_' + p.id);
-    if (refEl) refEl.textContent = ref.ref;
-    const valEl = document.getElementById('v_' + p.id);
-    const interpEl = document.getElementById('i_' + p.id);
-    if (valEl && interpEl) {
-      const interp = interprete(valEl.value, ref.lo, ref.hi);
-      interpEl.textContent = interp;
-      interpEl.className = 'interp ' + (interp === 'Élevé' ? 'hi' : interp === 'Bas' ? 'lo' : interp === 'Normal' ? 'ok' : '');
+    const refEl  = document.getElementById('ref_'  + p.id);
+    const unitEl = document.getElementById('unit_' + p.id);
+    const valEl  = document.getElementById('v_'    + p.id);
+    if (refEl)  refEl.textContent  = ref.ref;
+    if (unitEl) unitEl.textContent = getUnit(p.id, p.unit);
+    if (!valEl) return;
+    if (colored) {
+      // NFS : colore la case input (pas de span interp)
+      onParamInputColored(p.id);
+    } else {
+      // Bio / BPN : met à jour le badge interp
+      const interpEl = document.getElementById('i_' + p.id);
+      if (interpEl) {
+        const interp = interprete(valEl.value, ref.lo, ref.hi);
+        interpEl.textContent = interp;
+        interpEl.className   = 'interp ' + (interp==='Élevé'?'hi':interp==='Bas'?'lo':interp==='Normal'?'ok':'');
+      }
     }
-  });
-  // Biochimie
-  [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO].forEach(p => {
-    const ref = getRef(p.id, profile);
-    if (!ref) return;
-    const refEl = document.getElementById('ref_' + p.id);
-    if (refEl) refEl.textContent = ref.ref;
-    const valEl = document.getElementById('v_' + p.id);
-    const interpEl = document.getElementById('i_' + p.id);
-    if (valEl && interpEl) {
-      const interp = interprete(valEl.value, ref.lo, ref.hi);
-      interpEl.textContent = interp;
-      interpEl.className = 'interp ' + (interp === 'Élevé' ? 'hi' : interp === 'Bas' ? 'lo' : interp === 'Normal' ? 'ok' : '');
-    }
-  });
-  // BPN NFS + FL (la biochimie BPN réutilise les mêmes IDs que l'onglet Bio, déjà couverts)
-  [...BPN_NFS, ...BPN_FL].forEach(p => {
-    const ref = getRef(p.id, profile);
-    if (!ref) return;
-    const refEl = document.getElementById('ref_' + p.id);
-    if (refEl) refEl.textContent = ref.ref;
-    const valEl = document.getElementById('v_' + p.id);
-    const interpEl = document.getElementById('i_' + p.id);
-    if (valEl && interpEl) {
-      const interp = interprete(valEl.value, ref.lo, ref.hi);
-      interpEl.textContent = interp;
-      interpEl.className = 'interp ' + (interp === 'Élevé' ? 'hi' : interp === 'Bas' ? 'lo' : interp === 'Normal' ? 'ok' : '');
-    }
+  }
+
+  // NFS (cases colorées)
+  [...HEMA_PARAMS, ...HEMA_FL].forEach(p => applyRef(p, true));
+  // Biochimie (badge interp texte)
+  [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO].forEach(p => applyRef(p, false));
+  // BPN NFS + FL (cases colorées)
+  [...BPN_NFS, ...BPN_FL].forEach(p => applyRef(p, true));
+  // EPHB (spans ref_ uniquement, pas d'interp dynamique — checkEphbTotal() s'en charge)
+  EPHB_FRACTIONS.forEach(p => {
+    const ref    = getRef(p.id, profile);
+    const refEl  = document.getElementById('ref_' + p.id);
+    if (ref && refEl) refEl.textContent = ref.ref;
   });
   // Mettre à jour l'affichage de la tranche dans l'interface
   const trancheEl = document.getElementById('patient-tranche');
@@ -2675,7 +2689,7 @@ function makeParamRow(p, tbody) {
   tr.innerHTML = `
     <td style="font-size:13px;white-space:nowrap">${p.name}</td>
     <td><input type="number" id="v_${p.id}" step="any" style="${inputStyle}" ${readonly} oninput="onParamInput('${p.id}')"></td>
-    <td><span class="unit">${p.unit}</span></td>
+    <td><span class="unit" id="unit_${p.id}">${getUnit(p.id, p.unit)}</span></td>
     <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
     <td><span class="interp interp-?" id="i_${p.id}">—</span></td>
   `;
@@ -2697,7 +2711,7 @@ function makeParamRowColored(p, tbody) {
   tr.innerHTML = `
     <td style="font-size:13px;white-space:nowrap">${p.name}</td>
     <td><input type="number" id="v_${p.id}" step="any" style="${inputStyle}" ${readonly} oninput="onParamInputColored('${p.id}')"></td>
-    <td><span class="unit">${p.unit}</span></td>
+    <td><span class="unit" id="unit_${p.id}">${getUnit(p.id, p.unit)}</span></td>
     <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
   `;
   tbody.appendChild(tr);
@@ -2959,21 +2973,19 @@ function calcConstantes() {
   if (!isNaN(ht) && !isNaN(gr) && gr > 0) {
     const vgm = ((ht / gr) * 10).toFixed(1);
     const el = document.getElementById('v_vgm');
-    if (el) { el.value = vgm; autoInterp('vgm', 80, 100, 100); }
+    if (el) { el.value = vgm; onParamInputColored('vgm'); }
   }
-
   // TCMH = Hb(g/dL) / GR(10⁶/µL) × 10  → pg
   if (!isNaN(hb) && !isNaN(gr) && gr > 0) {
     const tcmh = ((hb / gr) * 10).toFixed(1);
     const el = document.getElementById('v_tcmh');
-    if (el) { el.value = tcmh; autoInterp('tcmh', 27, 32, 32); }
+    if (el) { el.value = tcmh; onParamInputColored('tcmh'); }
   }
-
   // CCMH = Hb(g/dL) / Ht% × 100  → g/dL
   if (!isNaN(hb) && !isNaN(ht) && ht > 0) {
     const ccmh = ((hb / ht) * 100).toFixed(1);
     const el = document.getElementById('v_ccmh');
-    if (el) { el.value = ccmh; autoInterp('ccmh', 32, 36, 36); }
+    if (el) { el.value = ccmh; onParamInputColored('ccmh'); }
   }
 }
 
@@ -2986,10 +2998,7 @@ function calcLDL() {
   if (!isNaN(chol) && !isNaN(hdl) && !isNaN(trig) && trig < 4.0) {
     const ldl = (chol - hdl - (trig / 5)).toFixed(2);
     const el = document.getElementById('v_ldl');
-    if (el) {
-      el.value = ldl;
-      autoInterp('ldl', 0, 1.60, 1.60);
-    }
+    if (el) { el.value = ldl; onParamInput('ldl'); }
   }
 }
 
@@ -3033,12 +3042,15 @@ function buildHema() {
   if (b3) {
     b3.innerHTML = '';
     EPHB_FRACTIONS.forEach(p => {
+      const profile = getPatientProfile();
+      const dynRef  = getRef(p.id, profile);
+      const refDisp = dynRef ? dynRef.ref : (p.ref || '');
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="font-size:13px">${p.name}</td>
         <td><input type="number" id="${p.id}" step="0.1" min="0" max="100" style="width:80px"
             oninput="checkEphbTotal()"></td>
-        <td><span class="ref-range">${p.ref}</span></td>
+        <td><span class="ref-range" id="ref_${p.id}">${refDisp}</span></td>
         <td><span class="interp" id="i_${p.id}">—</span></td>`;
       b3.appendChild(tr);
     });
@@ -3126,7 +3138,7 @@ function buildWidal() {
     const opts = WIDAL_DILUTIONS.map(d => `<option value="${d}">${d}</option>`).join('');
     const cinetOpts = '<option value="">—</option><option value="montant">↗ Montant</option><option value="stable">→ Stable</option><option value="descendant">↘ Descendant</option>';
     tr.innerHTML = `
-      <td style="font-size:12.5px;white-space:nowrap">${ag.name}<br><span style="font-size:10.5px;color:var(--text-muted)">Seuil significatif : 1/${ag.seuil}</span></td>
+      <td style="font-size:12.5px;white-space:nowrap">${ag.name}<br><span style="font-size:10.5px;color:var(--text-muted)" id="widal_seuil_lbl_${ag.id}">Seuil significatif : 1/${(getCustomRefs()['widal_'+ag.id]?.lo)||ag.seuil}</span></td>
       <td><select id="widal_${ag.id}" onchange="interpretWidal()" style="width:100px">${opts}</select></td>
       <td><select id="widal_cin_${ag.id}" onchange="interpretWidal()" style="width:130px">${cinetOpts}</select></td>
       <td><span id="widal_i_${ag.id}" style="font-size:12px;font-weight:600">—</span></td>`;
@@ -3169,8 +3181,12 @@ function interpretWidal() {
     return;
   }
 
-  const toSignif = to >= 80;
-  const thSignif = th >= 80;
+  // Lire les seuils depuis la config si modifiés par l'admin
+  const custom = getCustomRefs();
+  const seuilTO = custom['widal_to']?.lo || 80;
+  const seuilTH = custom['widal_th']?.lo || 80;
+  const toSignif = to >= seuilTO;
+  const thSignif = th >= seuilTH;
 
   let conclusion = '';
   let color = '', bg = '';
@@ -3354,16 +3370,45 @@ function buildSero() {
   const b = document.getElementById('sero-body'); b.innerHTML = '';
   SERO_TESTS.forEach(t => {
     const tr = document.createElement('tr');
+    const profile = getPatientProfile();
+    // Chercher les refs dans la config (clé: sero_<id>)
+    const cfgRef = getRef('sero_' + t.id, profile);
+    const refText = cfgRef ? cfgRef.ref : (t.ref || '');
+    const unitText = getUnit('sero_' + t.id, t.unit || '');
     tr.innerHTML = `
       <td style="font-size:13px">${t.name}</td>
       <td>${t.type === 'qual'
         ? `<select id="sr_${t.id}" style="width:130px"><option value="">—</option><option>Positif</option><option>Négatif</option><option>Douteux</option></select>`
-        : `<select id="sr_${t.id}" style="width:130px"><option value="">—</option><option>Positif</option><option>Négatif</option></select>`}</td>
-      <td>${t.type === 'quant' ? `<input type="number" id="sv_${t.id}" step="any" style="width:90px" placeholder="valeur"> <span class="unit">${t.unit||''}</span>` : '<span class="unit">—</span>'}</td>
+        : `<select id="sr_${t.id}_r" style="width:130px"><option value="">—</option><option>Positif</option><option>Négatif</option></select>`}</td>
+      <td>${t.type === 'quant'
+        ? `<input type="number" id="sv_${t.id}" step="any" style="width:90px"
+             placeholder="valeur"
+             oninput="onSeroQuantInput('${t.id}')">
+           <span class="unit" id="sero_unit_${t.id}">${unitText}</span>
+           <span class="interp" id="sero_interp_${t.id}" style="margin-left:6px"></span>`
+        : '<span class="unit">—</span>'}</td>
+      <td>${refText
+        ? `<span class="ref-range" id="sero_ref_${t.id}">${refText}</span>`
+        : `<span class="ref-range">—</span>`}</td>
       <td><input type="text" id="so_${t.id}" placeholder="commentaire" style="width:100%"></td>
     `;
     b.appendChild(tr);
   });
+}
+
+// Interprétation en temps réel pour les sérologies quantitatives
+function onSeroQuantInput(id) {
+  const valEl    = document.getElementById('sv_' + id);
+  const interpEl = document.getElementById('sero_interp_' + id);
+  if (!valEl || !interpEl) return;
+  const val = parseFloat(valEl.value);
+  if (isNaN(val) || valEl.value === '') { interpEl.textContent = ''; interpEl.className = 'interp'; return; }
+  const profile = getPatientProfile();
+  const ref = getRef('sero_' + id, profile);
+  if (!ref) { interpEl.textContent = ''; return; }
+  const interp = interprete(val, ref.lo, ref.hi);
+  interpEl.textContent = interp || '';
+  interpEl.className   = 'interp ' + (interp==='Élevé'?'hi':interp==='Bas'?'lo':interp==='Normal'?'ok':'');
 }
 
 function buildParaEPS() {
@@ -3717,7 +3762,7 @@ function collectResults(type) {
       const valeur = document.getElementById('v_'+p.id)?.value || '';
       const absEl  = document.getElementById('abs_'+p.id);
       data[p.name] = {
-        valeur, unite: p.unit,
+        valeur, unite: getUnit(p.id, p.unit),
         interp: getValColorInterp(p.id),
         absolu: absEl ? absEl.textContent : '',
       };
@@ -3757,7 +3802,7 @@ function collectResults(type) {
 
   } else if (type === 'Biochimie') {
     [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO].forEach(p => {
-      data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: document.getElementById('i_'+p.id)?.textContent || '' };
+      data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: getUnit(p.id, p.unit), interp: document.getElementById('i_'+p.id)?.textContent || '' };
     });
   } else if (type === 'Bactériologie') {
     // Infos générales
@@ -3803,7 +3848,14 @@ function collectResults(type) {
     });
   } else if (type === 'Sérologie') {
     SERO_TESTS.forEach(t => {
-      data[t.name] = { resultat: document.getElementById('sr_'+t.id)?.value || '', valeur: document.getElementById('sv_'+t.id)?.value || '', obs: document.getElementById('so_'+t.id)?.value || '' };
+      // Les quant utilisent sr_<id>_r (buildSero v5), les qual utilisent sr_<id>
+      const selId = t.type === 'quant' ? 'sr_'+t.id+'_r' : 'sr_'+t.id;
+      data[t.name] = {
+        resultat: document.getElementById(selId)?.value || '',
+        valeur:   document.getElementById('sv_'+t.id)?.value || '',
+        unite:    getUnit('sero_'+t.id, t.unit||''),
+        obs:      document.getElementById('so_'+t.id)?.value || '',
+      };
     });
     data['Observations'] = document.getElementById('sero_obs')?.value || '';
   } else if (type === 'Bilan prénatal') {
@@ -4141,10 +4193,11 @@ function loadResultsIntoForm(type, res) {
   else if (type === 'Sérologie' && typeof SERO_TESTS !== 'undefined') {
     SERO_TESTS.forEach(t => {
       const v = res[t.name];
-      if (v) {
-        setSel('sr_'+t.id+'_r', v.resultat);
-        setVal('sr_'+t.id+'_v', v.valeur);
-      }
+      if (!v) return;
+      const selId = t.type === 'quant' ? 'sr_'+t.id+'_r' : 'sr_'+t.id;
+      setSel(selId, v.resultat);
+      setVal('sv_'+t.id, v.valeur);
+      setVal('so_'+t.id, v.obs);
     });
   }
   else if (type === 'Groupe sanguin') {
@@ -4695,7 +4748,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       nfsVals.forEach(q => {
         const v=res[q.name];
         const val = v.absolu ? v.valeur+' ('+v.absolu+' G/L)' : v.valeur;
-        pRow(q.name, val, q.unit||'', '', v.interp||'');
+        pRow(q.name, val, getUnit(q.id, v.unite||q.unit||''), '', v.interp||'');
       });
       row++;
     }
@@ -4760,7 +4813,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       if (!vals.length) return;
       secHdr('Biochimie — ' + sec.label);
       tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
-      vals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,v.unite||q.unit,'',v.interp||'');});
+      vals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,getUnit(q.id,v.unite||q.unit||''),'',v.interp||'');});
       row++;
     });
 
@@ -4859,7 +4912,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     if (bpnNfsVals.length) {
       secHdr('Bilan prénatal — NFS (normes femme enceinte)');
       tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
-      bpnNfsVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,q.unit,'',v.interp||'');});
+      bpnNfsVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,getUnit(q.id,v.unite||q.unit||''),'',v.interp||'');});
       row++;
     }
     // Formule leucocytaire BPN
@@ -5369,7 +5422,7 @@ function buildAndPrint(r) {
       <table class="print-patient-table">
         <tr>
           <td><b>N° Dossier</b><br><span class="print-dossier">${escHTML(p.dossier)||'—'}</span></td>
-          <td><b>Patient</b><br>${escHTML(p.nom)||'—'}</td>
+          <td><b>Patient</b><br><strong style="text-transform:uppercase;font-size:14px;letter-spacing:.3px">${escHTML(p.nom)||'—'}</strong></td>
           <td><b>Âge / Sexe</b><br>${escHTML(p.age)||'—'} ans / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td>
           <td><b>Date prélèvement</b><br>${p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}</td>
         </tr>
@@ -5435,7 +5488,7 @@ function buildPrintSections(type, res) {
       const v = res[p.name];
       if (!v || !v.valeur) return;
       const abs = v.absolu ? ` (${v.absolu} G/L)` : '';
-      nfsRows.push([p.name, v.valeur + abs, v.unite||'', v.interp||'']);
+      nfsRows.push([p.name, v.valeur + abs, getUnit(p.id, v.unite||''), v.interp||'']);
     });
     if (nfsRows.length) html += section('🩸 NFS — Numération Formule Sanguine', table(['Paramètre','Valeur','Unité','Interprétation'], nfsRows));
 
@@ -5510,12 +5563,20 @@ function buildPrintSections(type, res) {
 
   else {
     // Rendu générique pour tous les autres types
+    // Map nom de paramètre → id (pour getUnit)
+    const _paramIdMap = {};
+    [...(typeof BIO_GLUCIDES!=='undefined'?[...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO]:[]),
+     ...(typeof BPN_NFS!=='undefined'?[...BPN_NFS,...BPN_FL]:[]),
+     ...(typeof HEMA_PARAMS!=='undefined'?[...HEMA_PARAMS,...HEMA_FL]:[])
+    ].forEach(p => { _paramIdMap[p.name] = p.id; });
+
     const rows = [];
     Object.entries(res).forEach(([k,v]) => {
       if (!v) return;
       if (typeof v === 'object') {
         const val = v.valeur || v.resultat || '';
-        if (val) rows.push([k, val, v.unite||'', v.interp||v.obs||'']);
+        const pid = _paramIdMap[k];
+        if (val) rows.push([k, val, pid ? getUnit(pid, v.unite||'') : (v.unite||''), v.interp||v.obs||'']);
       } else if (typeof v === 'string' && v && v !== '—' && !k.startsWith('ABG_') && !k.startsWith('AFG_')) {
         rows.push([k, v, '', '']);
       }
@@ -6904,219 +6965,331 @@ function buildRefsEditor() {
 
   const custom = getCustomRefs();
 
-  // Tous les paramètres éditables, groupés
+  // ── Définition exhaustive : 90 paramètres, toutes sections ──
   const SECTIONS = [
     {
-      label: '🩸 Hématologie — NFS',
+      label: '🩸 Hématologie — NFS', id: 'nfs',
       params: [
-        { id:'gbc',  name:'Globules blancs (GB)',    unit:'10³/µL' },
-        { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL' },
-        { id:'hb',   name:'Hémoglobine (Hb)',        unit:'g/dL'   },
-        { id:'ht',   name:'Hématocrite (Ht)',         unit:'%'      },
-        { id:'vgm',  name:'VGM',                     unit:'fL'     },
-        { id:'tcmh', name:'TCMH',                    unit:'pg'     },
-        { id:'ccmh', name:'CCMH',                    unit:'g/dL'   },
-        { id:'plt',  name:'Plaquettes',               unit:'10³/µL' },
-        { id:'ret',  name:'Réticulocytes',            unit:'%'      },
-        { id:'vs',   name:'VS (1ère heure)',          unit:'mm/h'   },
+        { id:'gbc',  name:'Globules blancs (GB)',         unit:'10³/µL', ref:'4–10',      lo:4,    hi:10   },
+        { id:'gr',   name:'Globules rouges (GR)',         unit:'10⁶/µL', ref:'4.0–5.5',   lo:4.0,  hi:5.5  },
+        { id:'hb',   name:'Hémoglobine (Hb)',             unit:'g/dL',   ref:'12–17',     lo:12,   hi:17   },
+        { id:'ht',   name:'Hématocrite (Ht)',              unit:'%',      ref:'37–54',     lo:37,   hi:54   },
+        { id:'vgm',  name:'VGM (calculé)',                unit:'fL',     ref:'80–100',    lo:80,   hi:100  },
+        { id:'tcmh', name:'TCMH (calculé)',               unit:'pg',     ref:'27–32',     lo:27,   hi:32   },
+        { id:'ccmh', name:'CCMH (calculé)',               unit:'g/dL',   ref:'32–36',     lo:32,   hi:36   },
+        { id:'plt',  name:'Plaquettes',                   unit:'10³/µL', ref:'150–400',   lo:150,  hi:400  },
+        { id:'ret',  name:'Réticulocytes',                unit:'%',      ref:'0.5–1.5',   lo:0.5,  hi:1.5  },
+        { id:'vs',   name:'VS (1ère heure)',              unit:'mm/h',   ref:'< 20',      lo:0,    hi:20   },
       ]
     },
     {
-      label: '🩸 Formule leucocytaire',
+      label: '🩸 Formule leucocytaire', id: 'fl',
       params: [
-        { id:'pnn',  name:'Polynucléaires neutrophiles (PNN)', unit:'%' },
-        { id:'pne',  name:'Polynucléaires éosinophiles (PNE)', unit:'%' },
-        { id:'pnb',  name:'Polynucléaires basophiles (PNB)',   unit:'%' },
-        { id:'lymp', name:'Lymphocytes',                       unit:'%' },
-        { id:'mono', name:'Monocytes',                         unit:'%' },
+        { id:'pnn',  name:'PNN (Polynucléaires neutrophiles)', unit:'%', ref:'50–70', lo:50, hi:70 },
+        { id:'pne',  name:'PNE (Éosinophiles)',               unit:'%', ref:'1–5',   lo:1,  hi:5  },
+        { id:'pnb',  name:'PNB (Basophiles)',                 unit:'%', ref:'0–1',   lo:0,  hi:1  },
+        { id:'lymp', name:'Lymphocytes',                      unit:'%', ref:'20–40', lo:20, hi:40 },
+        { id:'mono', name:'Monocytes',                        unit:'%', ref:'2–10',  lo:2,  hi:10 },
       ]
     },
     {
-      label: '🧪 Biochimie — Glucides',
+      label: '🔬 Électrophorèse de l\'hémoglobine', id: 'ephb',
       params: [
-        { id:'gly', name:'Glycémie à jeun', unit:'g/L'   },
-        { id:'hba', name:'HbA1c',           unit:'%'     },
+        { id:'ephb_a',  name:'Hb A',  unit:'%', ref:'95–97',   lo:95,  hi:97  },
+        { id:'ephb_a2', name:'Hb A2', unit:'%', ref:'1.5–3.5', lo:1.5, hi:3.5 },
+        { id:'ephb_f',  name:'Hb F',  unit:'%', ref:'< 2',     lo:0,   hi:2   },
+        { id:'ephb_s',  name:'Hb S',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
+        { id:'ephb_c',  name:'Hb C',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
+        { id:'ephb_d',  name:'Hb D',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
+        { id:'ephb_e',  name:'Hb E',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
       ]
     },
     {
-      label: '🧪 Biochimie — Fonction rénale',
+      label: '🔵 Sérodiagnostic de Widal — Seuils significatifs', id: 'widal',
+      note: 'Le seuil est la valeur minimale de lo. Ex: lo=80 → 1/80 significatif.',
       params: [
-        { id:'crea', name:'Créatinine',  unit:'µmol/L' },
-        { id:'uree', name:'Urée',        unit:'mmol/L' },
-        { id:'ua',   name:'Acide urique',unit:'µmol/L' },
+        { id:'widal_to', name:'Salmonella typhi O (TO)',       unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
+        { id:'widal_th', name:'Salmonella typhi H (TH)',       unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
+        { id:'widal_ao', name:'Salmonella paratyphi A O (AO)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
+        { id:'widal_bo', name:'Salmonella paratyphi B O (BO)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
       ]
     },
     {
-      label: '🧪 Biochimie — Fonction hépatique',
+      label: '🧪 Biochimie — Glucides', id: 'bio_glu',
       params: [
-        { id:'asat', name:'ASAT (TGO)',               unit:'UI/L'   },
-        { id:'alat', name:'ALAT (TGP)',               unit:'UI/L'   },
-        { id:'ggt',  name:'Gamma GT',                 unit:'UI/L'   },
-        { id:'pal',  name:'Phosphatases alcalines',   unit:'UI/L'   },
-        { id:'bili', name:'Bilirubine totale',        unit:'µmol/L' },
-        { id:'bilid',name:'Bilirubine directe',       unit:'µmol/L' },
-        { id:'prot', name:'Protéines totales',        unit:'g/L'    },
-        { id:'alb',  name:'Albumine',                 unit:'g/L'    },
+        { id:'gly', name:'Glycémie à jeun', unit:'g/L',   ref:'0.70–1.10', lo:0.70, hi:1.10 },
+        { id:'hba', name:'HbA1c',           unit:'%',     ref:'< 5.7',     lo:0,    hi:5.7  },
       ]
     },
     {
-      label: '🧪 Biochimie — Lipides',
+      label: '🧪 Biochimie — Fonction rénale', id: 'bio_rein',
       params: [
-        { id:'chol', name:'Cholestérol total',   unit:'g/L' },
-        { id:'trig', name:'Triglycérides',       unit:'g/L' },
-        { id:'hdl',  name:'HDL-cholestérol',     unit:'g/L' },
-        { id:'ldl',  name:'LDL-cholestérol',     unit:'g/L' },
+        { id:'crea', name:'Créatinine',   unit:'µmol/L', ref:'50–115',  lo:50,   hi:115  },
+        { id:'uree', name:'Urée',         unit:'mmol/L', ref:'2.5–7.5', lo:2.5,  hi:7.5  },
+        { id:'ua',   name:'Acide urique', unit:'µmol/L', ref:'150–420', lo:150,  hi:420  },
       ]
     },
     {
-      label: '🧪 Biochimie — Ionogramme',
+      label: '🧪 Biochimie — Fonction hépatique', id: 'bio_foie',
       params: [
-        { id:'na',   name:'Sodium (Na⁺)',          unit:'mEq/L'  },
-        { id:'k',    name:'Potassium (K⁺)',         unit:'mEq/L'  },
-        { id:'cl',   name:'Chlore (Cl⁻)',           unit:'mEq/L'  },
-        { id:'ca',   name:'Calcium (Ca²⁺)',         unit:'mmol/L' },
-        { id:'phos', name:'Phosphore',              unit:'mmol/L' },
-        { id:'mg',   name:'Magnésium (Mg²⁺)',       unit:'mmol/L' },
-        { id:'bic',  name:'Bicarbonates (HCO₃⁻)',  unit:'mEq/L'  },
+        { id:'asat',  name:'ASAT (TGO)',              unit:'UI/L',   ref:'< 40',   lo:0,   hi:40   },
+        { id:'alat',  name:'ALAT (TGP)',              unit:'UI/L',   ref:'< 40',   lo:0,   hi:40   },
+        { id:'ggt',   name:'Gamma GT',                unit:'UI/L',   ref:'< 55',   lo:0,   hi:55   },
+        { id:'pal',   name:'Phosphatases alcalines',  unit:'UI/L',   ref:'40–130', lo:40,  hi:130  },
+        { id:'bili',  name:'Bilirubine totale',       unit:'µmol/L', ref:'< 20',   lo:0,   hi:20   },
+        { id:'bilid', name:'Bilirubine directe',      unit:'µmol/L', ref:'< 5',    lo:0,   hi:5    },
+        { id:'prot',  name:'Protéines totales',       unit:'g/L',    ref:'65–80',  lo:65,  hi:80   },
+        { id:'alb',   name:'Albumine',                unit:'g/L',    ref:'35–50',  lo:35,  hi:50   },
       ]
     },
     {
-      label: '🤰 Bilan prénatal — NFS',
+      label: '🧪 Biochimie — Lipides', id: 'bio_lip',
       params: [
-        { id:'bpn_gb',   name:'Globules blancs (GB)',  unit:'10³/µL' },
-        { id:'bpn_gr',   name:'Globules rouges (GR)',  unit:'10⁶/µL' },
-        { id:'bpn_hb',   name:'Hémoglobine (Hb)',      unit:'g/dL'   },
-        { id:'bpn_ht',   name:'Hématocrite (Ht)',       unit:'%'      },
-        { id:'bpn_plt',  name:'Plaquettes',             unit:'10³/µL' },
-        { id:'bpn_gly',  name:'Glycémie',               unit:'g/L'    },
-        { id:'bpn_crea', name:'Créatinine',              unit:'µmol/L' },
-        { id:'bpn_uree', name:'Urée',                   unit:'mmol/L' },
+        { id:'chol', name:'Cholestérol total',     unit:'g/L', ref:'< 2.0',  lo:0,    hi:2.0  },
+        { id:'trig', name:'Triglycérides',         unit:'g/L', ref:'< 1.5',  lo:0,    hi:1.5  },
+        { id:'hdl',  name:'HDL-cholestérol',       unit:'g/L', ref:'> 0.40', lo:0.40, hi:99   },
+        { id:'ldl',  name:'LDL-cholestérol',       unit:'g/L', ref:'< 1.60', lo:0,    hi:1.60 },
+      ]
+    },
+    {
+      label: '🧪 Biochimie — Ionogramme', id: 'bio_iono',
+      params: [
+        { id:'na',   name:'Sodium (Na⁺)',         unit:'mEq/L',  ref:'136–145',  lo:136,  hi:145  },
+        { id:'k',    name:'Potassium (K⁺)',        unit:'mEq/L',  ref:'3.5–5.0',  lo:3.5,  hi:5.0  },
+        { id:'cl',   name:'Chlore (Cl⁻)',          unit:'mEq/L',  ref:'98–107',   lo:98,   hi:107  },
+        { id:'ca',   name:'Calcium (Ca²⁺)',        unit:'mmol/L', ref:'2.2–2.6',  lo:2.2,  hi:2.6  },
+        { id:'phos', name:'Phosphore',             unit:'mmol/L', ref:'0.8–1.5',  lo:0.8,  hi:1.5  },
+        { id:'mg',   name:'Magnésium (Mg²⁺)',      unit:'mmol/L', ref:'0.75–1.0', lo:0.75, hi:1.0  },
+        { id:'bic',  name:'Bicarbonates (HCO₃⁻)', unit:'mEq/L',  ref:'22–28',    lo:22,   hi:28   },
+      ]
+    },
+    {
+      label: '🧫 Sérologie — Tests quantitatifs (valeurs normales)', id: 'sero',
+      note: 'Les tests qualitatifs (Positif/Négatif) n\'ont pas de plage numérique.',
+      params: [
+        { id:'sero_hbsac', name:'Ac anti-HBs',                 unit:'UI/L',   ref:'> 10 (protecteur)', lo:10,   hi:9999 },
+        { id:'sero_toxo',  name:'Toxoplasmose IgG',            unit:'UI/mL',  ref:'> 8 (immunisé)',    lo:8,    hi:9999 },
+        { id:'sero_rubig', name:'Rubéole IgG',                 unit:'UI/mL',  ref:'> 10 (immunisé)',   lo:10,   hi:9999 },
+        { id:'sero_crp',   name:'CRP (Protéine C-réactive)',   unit:'mg/L',   ref:'< 6',              lo:0,    hi:6    },
+        { id:'sero_aso',   name:'ASLO (Antistreptolysines)',   unit:'UI/mL',  ref:'< 200',            lo:0,    hi:200  },
+        { id:'sero_tsh',   name:'TSH',                         unit:'mUI/L',  ref:'0.4–4.0',          lo:0.4,  hi:4.0  },
+        { id:'sero_ft4',   name:'T4 libre (FT4)',              unit:'pmol/L', ref:'12–22',            lo:12,   hi:22   },
+        { id:'sero_psa',   name:'PSA total',                   unit:'ng/mL',  ref:'< 4.0',            lo:0,    hi:4.0  },
+      ]
+    },
+    {
+      label: '🤰 Bilan prénatal — NFS', id: 'bpn_nfs',
+      params: [
+        { id:'bpn_gb',   name:'Globules blancs (GB)',  unit:'10³/µL', ref:'6–16',     lo:6,    hi:16   },
+        { id:'bpn_gr',   name:'Globules rouges (GR)',  unit:'10⁶/µL', ref:'3.5–5.0',  lo:3.5,  hi:5.0  },
+        { id:'bpn_hb',   name:'Hémoglobine (Hb)',      unit:'g/dL',   ref:'≥ 11.0',   lo:11.0, hi:16.0 },
+        { id:'bpn_ht',   name:'Hématocrite (Ht)',       unit:'%',      ref:'≥ 33',     lo:33,   hi:47   },
+        { id:'bpn_vgm',  name:'VGM (calculé)',          unit:'fL',     ref:'80–100',   lo:80,   hi:100  },
+        { id:'bpn_tcmh', name:'TCMH (calculé)',         unit:'pg',     ref:'27–32',    lo:27,   hi:32   },
+        { id:'bpn_ccmh', name:'CCMH (calculé)',         unit:'g/dL',   ref:'32–36',    lo:32,   hi:36   },
+        { id:'bpn_plt',  name:'Plaquettes',             unit:'10³/µL', ref:'150–400',  lo:150,  hi:400  },
+      ]
+    },
+    {
+      label: '🤰 Bilan prénatal — Formule leucocytaire', id: 'bpn_fl',
+      params: [
+        { id:'bpn_pnn',  name:'PNN', unit:'%', ref:'50–70', lo:50, hi:70 },
+        { id:'bpn_pne',  name:'PNE', unit:'%', ref:'1–5',   lo:1,  hi:5  },
+        { id:'bpn_pnb',  name:'PNB', unit:'%', ref:'0–1',   lo:0,  hi:1  },
+        { id:'bpn_lymp', name:'Lymphocytes', unit:'%', ref:'20–40', lo:20, hi:40 },
+        { id:'bpn_mono', name:'Monocytes',   unit:'%', ref:'2–10',  lo:2,  hi:10 },
+      ]
+    },
+    {
+      label: '🤰 Bilan prénatal — Biochimie', id: 'bpn_bio',
+      params: [
+        { id:'bpn_gly',  name:'Glycémie',   unit:'g/L',    ref:'0.70–0.92', lo:0.70, hi:0.92 },
+        { id:'bpn_crea', name:'Créatinine', unit:'µmol/L', ref:'35–90',     lo:35,   hi:90   },
+        { id:'bpn_uree', name:'Urée',       unit:'mmol/L', ref:'2.0–6.5',   lo:2.0,  hi:6.5  },
+      ]
+    },
+    {
+      label: '🤰 Bilan prénatal — Sérologies', id: 'bpn_sero',
+      note: 'Les tests qualitatifs sont affichés pour information. Seuls les quantitatifs ont des seuils.',
+      params: [
+        { id:'bpnsero_hbsac', name:'Ac anti-HBs (protection)', unit:'UI/L',  ref:'> 10 UI/L', lo:10,  hi:9999 },
+        { id:'bpnsero_toxog', name:'Toxoplasmose IgG',          unit:'UI/mL', ref:'> 8',       lo:8,   hi:9999 },
+        { id:'bpnsero_rubg',  name:'Rubéole IgG',               unit:'UI/mL', ref:'> 10',      lo:10,  hi:9999 },
       ]
     },
   ];
 
-  const defaultRefs = {
-    // NFS adulte (valeurs de référence les plus courantes)
-    gbc:'4–10',  gr:'4.0–5.5', hb:'12–17', ht:'37–54',
-    vgm:'80–100', tcmh:'27–32', ccmh:'32–36', plt:'150–400',
-    ret:'0.5–1.5', vs:'< 20',
-    pnn:'50–70', pne:'1–5', pnb:'0–1', lymp:'20–40', mono:'2–10',
-    // Bio
-    gly:'0.70–1.10', hba:'< 5.7',
-    crea:'50–115', uree:'2.5–7.5', ua:'150–420',
-    asat:'< 40', alat:'< 40', ggt:'< 55', pal:'40–130',
-    bili:'< 20', bilid:'< 5', prot:'65–80', alb:'35–50',
-    chol:'< 2.0', trig:'< 1.5', hdl:'> 0.40', ldl:'< 1.60',
-    na:'136–145', k:'3.5–5.0', cl:'98–107', ca:'2.2–2.6',
-    phos:'0.8–1.5', mg:'0.75–1.0', bic:'22–28',
-    // BPN
-    bpn_gb:'6–16', bpn_gr:'3.5–5.0', bpn_hb:'≥ 11.0',
-    bpn_ht:'≥ 33', bpn_plt:'150–400',
-    bpn_gly:'0.70–0.92', bpn_crea:'35–90', bpn_uree:'2.0–6.5',
-  };
-
-  const defaultLo = {
-    gbc:4, gr:4.0, hb:12, ht:37, vgm:80, tcmh:27, ccmh:32, plt:150, ret:0.5, vs:0,
-    pnn:50, pne:1, pnb:0, lymp:20, mono:2,
-    gly:0.70, hba:0, crea:50, uree:2.5, ua:150, asat:0, alat:0, ggt:0, pal:40,
-    bili:0, bilid:0, prot:65, alb:35, chol:0, trig:0, hdl:0.40, ldl:0,
-    na:136, k:3.5, cl:98, ca:2.2, phos:0.8, mg:0.75, bic:22,
-    bpn_gb:6, bpn_gr:3.5, bpn_hb:11.0, bpn_ht:33, bpn_plt:150,
-    bpn_gly:0.70, bpn_crea:35, bpn_uree:2.0,
-  };
-
-  const defaultHi = {
-    gbc:10, gr:5.5, hb:17, ht:54, vgm:100, tcmh:32, ccmh:36, plt:400, ret:1.5, vs:20,
-    pnn:70, pne:5, pnb:1, lymp:40, mono:10,
-    gly:1.10, hba:5.7, crea:115, uree:7.5, ua:420, asat:40, alat:40, ggt:55, pal:130,
-    bili:20, bilid:5, prot:80, alb:50, chol:2.0, trig:1.5, hdl:99, ldl:1.60,
-    na:145, k:5.0, cl:107, ca:2.6, phos:1.5, mg:1.0, bic:28,
-    bpn_gb:16, bpn_gr:5.0, bpn_hb:16.0, bpn_ht:47, bpn_plt:400,
-    bpn_gly:0.92, bpn_crea:90, bpn_uree:6.5,
-  };
+  function rowHTML(p, custom) {
+    const cur    = custom[p.id] || {};
+    const curRef = cur.ref  !== undefined ? cur.ref  : p.ref;
+    const curLo  = cur.lo   !== undefined ? cur.lo   : p.lo;
+    const curHi  = cur.hi   !== undefined ? cur.hi   : p.hi;
+    const curUnit= cur.unit !== undefined ? cur.unit : p.unit;
+    const mod    = !!custom[p.id];
+    return `<tr style="${mod ? 'background:#fffbeb' : ''}">
+      <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12.5px">
+        ${p.name}${mod ? ' <span style="color:var(--warning);font-size:10px;font-weight:700">✎</span>' : ''}
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
+        <input type="text" id="runit_${p.id}" value="${curUnit}"
+          style="width:90px;font-size:12px;text-align:center" placeholder="ex: g/dL">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
+        <input type="text" id="rref_${p.id}" value="${curRef}"
+          style="width:110px;font-size:12px;text-align:center" placeholder="ex: 12–17">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
+        <input type="number" id="rlo_${p.id}" value="${curLo}" step="any"
+          style="width:80px;font-size:12px;text-align:center">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
+        <input type="number" id="rhi_${p.id}" value="${curHi}" step="any"
+          style="width:80px;font-size:12px;text-align:center">
+      </td>
+      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
+        ${mod ? `<button onclick="resetOneRef('${p.id}')" class="btn btn-outline"
+          style="padding:2px 7px;font-size:11px" title="Remettre défaut">↺</button>` : ''}
+      </td>
+    </tr>`;
+  }
 
   let html = '';
   SECTIONS.forEach(sec => {
-    html += `<div style="margin-bottom:20px">
-      <div style="font-size:11px;font-weight:700;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.6px;padding:6px 10px;background:var(--accent-light);border-radius:var(--radius);margin-bottom:8px">${sec.label}</div>
+    html += `
+    <div style="margin-bottom:22px">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:7px 12px;background:var(--accent-light);border-radius:var(--radius);margin-bottom:6px">
+        <span style="font-size:11px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.5px">${sec.label}</span>
+        <button onclick="resetSectionRefs('${sec.id}')" class="btn btn-outline"
+          style="padding:2px 8px;font-size:10.5px">↺ Section</button>
+      </div>
+      ${sec.note ? `<p style="font-size:11.5px;color:var(--text-muted);margin:0 0 6px 4px;font-style:italic">${sec.note}</p>` : ''}
       <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:var(--bg)">
-          <th style="padding:7px 10px;text-align:left;border-bottom:2px solid var(--border);min-width:200px">Paramètre</th>
-          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:80px">Unité</th>
-          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:120px">Affichage (texte)</th>
-          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:90px">Borne basse</th>
-          <th style="padding:7px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:90px">Borne haute</th>
-          <th style="padding:7px 10px;border-bottom:2px solid var(--border);min-width:60px"></th>
+          <th style="padding:6px 10px;text-align:left;border-bottom:2px solid var(--border);min-width:200px">Paramètre</th>
+          <th style="padding:6px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:95px">Unité</th>
+          <th style="padding:6px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:120px">Affichage (texte)</th>
+          <th style="padding:6px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:90px">Borne basse</th>
+          <th style="padding:6px 10px;text-align:center;border-bottom:2px solid var(--border);min-width:90px">Borne haute</th>
+          <th style="padding:6px 10px;border-bottom:2px solid var(--border);min-width:55px"></th>
         </tr></thead>
-        <tbody>`;
-
-    sec.params.forEach(p => {
-      const cur = custom[p.id] || {};
-      const curRef = cur.ref !== undefined ? cur.ref : (defaultRefs[p.id] || '');
-      const curLo  = cur.lo  !== undefined ? cur.lo  : (defaultLo[p.id]  ?? '');
-      const curHi  = cur.hi  !== undefined ? cur.hi  : (defaultHi[p.id]  ?? '');
-      const isModified = !!custom[p.id];
-      html += `<tr style="${isModified ? 'background:#fffbeb' : ''}">
-        <td style="padding:6px 10px;border-bottom:1px solid var(--border)">${p.name}${isModified ? ' <span style="color:var(--warning);font-size:10px;font-weight:700">✎</span>' : ''}</td>
-        <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.unit}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid var(--border)"><input type="text" id="rref_${p.id}" value="${curRef}" placeholder="ex: 12–17" style="width:110px;font-size:12px;text-align:center"></td>
-        <td style="padding:6px 10px;border-bottom:1px solid var(--border)"><input type="number" id="rlo_${p.id}" value="${curLo}" step="any" style="width:80px;font-size:12px;text-align:center"></td>
-        <td style="padding:6px 10px;border-bottom:1px solid var(--border)"><input type="number" id="rhi_${p.id}" value="${curHi}" step="any" style="width:80px;font-size:12px;text-align:center"></td>
-        <td style="padding:6px 10px;border-bottom:1px solid var(--border)">${isModified ? `<button onclick="resetOneRef('${p.id}')" class="btn btn-outline" style="padding:2px 7px;font-size:11px" title="Remettre valeur par défaut">↺</button>` : ''}</td>
-      </tr>`;
-    });
-
-    html += `</tbody></table></div></div>`;
+        <tbody>
+          ${sec.params.map(p => rowHTML(p, custom)).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>`;
   });
 
   document.getElementById('refs-editor-grid').innerHTML = html;
 }
 
+// IDs de tous les paramètres éditables (90)
+const _ALL_REF_IDS = [
+  'gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret','vs',
+  'pnn','pne','pnb','lymp','mono',
+  'ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e',
+  'widal_to','widal_th','widal_ao','widal_bo',
+  'gly','hba','crea','uree','ua',
+  'asat','alat','ggt','pal','bili','bilid','prot','alb',
+  'chol','trig','hdl','ldl',
+  'na','k','cl','ca','phos','mg','bic',
+  'sero_hbsac','sero_toxo','sero_rubig','sero_crp','sero_aso','sero_tsh','sero_ft4','sero_psa',
+  'bpn_gb','bpn_gr','bpn_hb','bpn_ht','bpn_vgm','bpn_tcmh','bpn_ccmh','bpn_plt',
+  'bpn_pnn','bpn_pne','bpn_pnb','bpn_lymp','bpn_mono',
+  'bpn_gly','bpn_crea','bpn_uree',
+  'bpnsero_hbsac','bpnsero_toxog','bpnsero_rubg',
+];
+
+// Mapping section id → liste des param ids
+const _SECTION_PARAMS = {
+  nfs:     ['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret','vs'],
+  fl:      ['pnn','pne','pnb','lymp','mono'],
+  ephb:    ['ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e'],
+  widal:   ['widal_to','widal_th','widal_ao','widal_bo'],
+  bio_glu: ['gly','hba'],
+  bio_rein:['crea','uree','ua'],
+  bio_foie:['asat','alat','ggt','pal','bili','bilid','prot','alb'],
+  bio_lip: ['chol','trig','hdl','ldl'],
+  bio_iono:['na','k','cl','ca','phos','mg','bic'],
+  sero:    ['sero_hbsac','sero_toxo','sero_rubig','sero_crp','sero_aso','sero_tsh','sero_ft4','sero_psa'],
+  bpn_nfs: ['bpn_gb','bpn_gr','bpn_hb','bpn_ht','bpn_vgm','bpn_tcmh','bpn_ccmh','bpn_plt'],
+  bpn_fl:  ['bpn_pnn','bpn_pne','bpn_pnb','bpn_lymp','bpn_mono'],
+  bpn_bio: ['bpn_gly','bpn_crea','bpn_uree'],
+  bpn_sero:['bpnsero_hbsac','bpnsero_toxog','bpnsero_rubg'],
+};
+
 function saveRefsConfig() {
   const custom = getCustomRefs();
-  const allIds = [
-    'gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret','vs',
-    'pnn','pne','pnb','lymp','mono',
-    'gly','hba','crea','uree','ua','asat','alat','ggt','pal',
-    'bili','bilid','prot','alb','chol','trig','hdl','ldl',
-    'na','k','cl','ca','phos','mg','bic',
-    'bpn_gb','bpn_gr','bpn_hb','bpn_ht','bpn_plt',
-    'bpn_gly','bpn_crea','bpn_uree',
-  ];
-  allIds.forEach(id => {
-    const refEl = document.getElementById('rref_' + id);
-    const loEl  = document.getElementById('rlo_'  + id);
-    const hiEl  = document.getElementById('rhi_'  + id);
-    if (!refEl) return;
+  _ALL_REF_IDS.forEach(id => {
+    const refEl  = document.getElementById('rref_'  + id);
+    const loEl   = document.getElementById('rlo_'   + id);
+    const hiEl   = document.getElementById('rhi_'   + id);
+    const unitEl = document.getElementById('runit_' + id);
+    if (!refEl) return; // section non rendue
     custom[id] = {
-      ref: refEl.value.trim(),
-      lo:  parseFloat(loEl?.value) || 0,
-      hi:  parseFloat(hiEl?.value) || 999,
+      ref:  refEl.value.trim(),
+      lo:   parseFloat(loEl?.value)   || 0,
+      hi:   parseFloat(hiEl?.value)   || 999,
+      unit: unitEl?.value.trim()      || '',
     };
   });
   saveCustomRefs(custom);
   updateAllRefs();
-  buildRefsEditor(); // Rafraîchir pour afficher les indicateurs ✎
-  toast('Valeurs de référence enregistrées ✓ — appliquées sur tout le site', 'ok');
+  buildRefsEditor();
+  toast('✓ Toutes les valeurs de référence et unités enregistrées — appliquées sur tout le site', 'ok');
+}
+
+function resetSectionRefs(sectionId) {
+  if (!confirm('Remettre les valeurs par défaut pour cette section ?')) return;
+  const custom = getCustomRefs();
+  (_SECTION_PARAMS[sectionId] || []).forEach(id => delete custom[id]);
+  _customRefsCache = null;  // invalider le cache
+  saveCustomRefs(custom);
+  updateAllRefs();
+  buildRefsEditor();
+  toast('Section réinitialisée', 'ok');
 }
 
 function resetRefsConfig() {
-  if (!confirm('Remettre toutes les valeurs de référence aux défauts du système ?')) return;
+  if (!confirm('Remettre TOUTES les valeurs de référence et unités aux défauts du système ?')) return;
+  _customRefsCache = null;           // invalider le cache
   localStorage.removeItem(LABO_REFS_KEY);
   updateAllRefs();
   buildRefsEditor();
-  toast('Valeurs de référence réinitialisées', 'ok');
+  toast('Toutes les valeurs de référence réinitialisées', 'ok');
 }
 
 function resetOneRef(id) {
   const custom = getCustomRefs();
   delete custom[id];
+  _customRefsCache = null;  // invalider le cache
   saveCustomRefs(custom);
   updateAllRefs();
   buildRefsEditor();
-  toast('Valeur réinitialisée pour ce paramètre', 'ok');
+  toast('Valeur réinitialisée', 'ok');
 }
+
+// ── Auto-logout après 4 h d'inactivité ──────────────────────────
+const IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 heures
+let _lastActivity = Date.now();
+['click','keydown','mousemove','touchstart'].forEach(evt =>
+  document.addEventListener(evt, () => { _lastActivity = Date.now(); }, { passive: true })
+);
+setInterval(() => {
+  if (_currentUser && Date.now() - _lastActivity > IDLE_TIMEOUT_MS) {
+    toast('Session expirée par inactivité — reconnexion requise', 'err');
+    setTimeout(() => {
+      clearSession();
+      document.getElementById('app-root').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-error').textContent = 'Session expirée — veuillez vous reconnecter.';
+    }, 2000);
+  }
+}, 60_000); // vérifier chaque minute
 
 document.addEventListener('DOMContentLoaded', () => {
   if (hasValidSession()) {
