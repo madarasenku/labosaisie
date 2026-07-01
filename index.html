@@ -3591,7 +3591,7 @@ async function insertRecordRemote(record) {
       created_by: _currentUser ? _currentUser.username : null,
       montant: record.montant || 0,
       prescripteur_id: record.prescripteur_id || null,
-      est_bpn: record.type === 'Bilan prénatal',
+      est_bpn: record.type === 'Bilan prénatal' || (record.resultats?._types||[]).includes('Bilan prénatal'),
     })
     .select()
     .single();
@@ -3963,9 +3963,7 @@ async function saveRecord(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
   toast('Enregistrement en cours…');
-  const resultats = collectResults(type);
 
-  // Mapping type d'analyse → tab de la fiche d'accueil
   const TYPE_TO_TAB = {
     'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
     'Sérologie': 'sero', 'Parasitologie': 'parasito',
@@ -3973,46 +3971,108 @@ async function saveRecord(type) {
   };
   const tabKey = TYPE_TO_TAB[type] || 'hema';
 
-  // Lire le montant du tab concerné (prix cochés sur la fiche d'accueil)
+  // Collecter les résultats de cette analyse
+  const typeResultats = collectResults(type);
+
+  // Montant pour cette analyse
   let montant = 0;
   try {
     const montantEl = document.getElementById('montant-preview');
     const parTab = JSON.parse(montantEl?.dataset?.montantParTab || '{}');
     montant = parTab[tabKey] || 0;
-    // Si rien n'est coché pour ce tab, fallback sur calculateMontant
-    if (!montant) montant = calculateMontant(type, resultats);
-  } catch(e) {
-    montant = calculateMontant(type, resultats);
-  }
+    if (!montant) montant = calculateMontant(type, typeResultats);
+  } catch(e) { montant = calculateMontant(type, typeResultats); }
 
-  // Capturer la liste des examens cochés pour ce tab (sert d'intitulé précis sur les exports)
+  // Examens cochés pour ce tab
   const examensCochesTab = getCatalogueComplet()
     .filter(ex => ex.tab === tabKey && document.getElementById(ex.id)?.checked)
     .map(ex => ex.label);
-  if (examensCochesTab.length) {
-    resultats['_examens_coches'] = examensCochesTab;
-  }
 
   const prescripteurId = document.getElementById('p_prescripteur_id')?.value || null;
+  const dossier = p.dossier;
 
-  let saved;
+  // ── Mode édition d'une fiche existante ─────────────────────
   if (_editingRecordId) {
-    // Mode édition : mise à jour de la fiche existante
-    saved = await updateRecordRemote(_editingRecordId, { patient: p, type, resultats, montant, prescripteur_id: prescripteurId || null });
+    const existing = getDB().find(rr => rr.id === _editingRecordId);
+    if (!existing) { toast('Fiche introuvable', 'err'); return; }
+
+    let newRes, newMontant;
+    if (isDossierRecord(existing)) {
+      // Mise à jour d'une analyse dans le dossier
+      newRes = { ...existing.resultats, [type]: typeResultats };
+      if (!newRes._types) newRes._types = [];
+      if (!newRes._types.includes(type)) newRes._types.push(type);
+      if (examensCochesTab.length) {
+        if (!newRes._examens_coches) newRes._examens_coches = {};
+        newRes._examens_coches[type] = examensCochesTab;
+      }
+      newMontant = existing.montant || 0; // pas de double-comptage en édition
+    } else {
+      // Ancien format : mise à jour directe
+      newRes = typeResultats;
+      if (examensCochesTab.length) newRes['_examens_coches'] = examensCochesTab;
+      newMontant = montant;
+    }
+
+    const saved = await updateRecordRemote(_editingRecordId, {
+      patient: p, type: isDossierRecord(existing) ? 'Dossier' : type,
+      resultats: newRes, montant: newMontant,
+      prescripteur_id: prescripteurId || existing.prescripteur_id || null,
+    });
     if (saved) {
-      toast('Fiche ' + type + ' mise à jour — ' + montant.toLocaleString('fr-FR') + ' FCFA ✓', 'ok');
-      _editingRecordId = null; // sortir du mode édition après sauvegarde
+      toast(type + ' mis à jour ✓', 'ok');
+      _editingRecordId = null;
       const banner = document.getElementById('edit-mode-banner');
       if (banner) banner.style.display = 'none';
     }
-  } else {
-    // Mode création : nouvelle fiche
-    saved = await insertRecordRemote({ patient: p, type, resultats, montant, prescripteur_id: prescripteurId || null });
+    return;
+  }
+
+  // ── Mode création : chercher un dossier existant pour ce patient ──
+  // On rafraîchit d'abord pour être sûr d'avoir les données les plus récentes
+  if (!getDB().length) await refreshDB();
+
+  const existingDossier = getDB().find(rr =>
+    isDossierRecord(rr) && rr.patient?.dossier === dossier
+  );
+
+  if (existingDossier) {
+    // ── Fusionner dans le dossier existant ─────────────────────
+    const newRes = { ...existingDossier.resultats, [type]: typeResultats };
+    if (!newRes._types) newRes._types = [];
+    if (!newRes._types.includes(type)) newRes._types.push(type);
+    if (examensCochesTab.length) {
+      if (!newRes._examens_coches) newRes._examens_coches = {};
+      newRes._examens_coches[type] = examensCochesTab;
+    }
+    const newMontant = (existingDossier.montant || 0) + montant;
+
+    const saved = await updateRecordRemote(existingDossier.id, {
+      patient: p, type: 'Dossier',
+      resultats: newRes, montant: newMontant,
+      prescripteur_id: prescripteurId || existingDossier.prescripteur_id || null,
+    });
     if (saved) {
-      toast('Fiche ' + type + ' enregistrée — ' + montant.toLocaleString('fr-FR') + ' FCFA ✓', 'ok');
+      const allTypes = newRes._types.join(' · ');
+      toast('✓ ' + type + ' ajouté au dossier N°' + dossier + ' — Total : ' + newMontant.toLocaleString('fr-FR') + ' FCFA', 'ok');
+    }
+
+  } else {
+    // ── Créer un nouveau dossier ────────────────────────────────
+    const newRes = { [type]: typeResultats, _types: [type] };
+    if (examensCochesTab.length) newRes._examens_coches = { [type]: examensCochesTab };
+
+    const saved = await insertRecordRemote({
+      patient: p, type: 'Dossier',
+      resultats: newRes, montant,
+      prescripteur_id: prescripteurId || null,
+    });
+    if (saved) {
+      toast('✓ Dossier N°' + dossier + ' créé — ' + type + ' — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
     }
   }
 }
+
 
 // ============================================================
 // ÉDITION D'UNE FICHE DEPUIS L'HISTORIQUE
@@ -4020,83 +4080,107 @@ async function saveRecord(type) {
 
 let _editingRecordId = null;
 
-async function editRecord(id) {
-  let r = getDB().find(x => x.id === id);
-  if (!r) {
-    // Sécurité : si le cache est vide (accès direct, rafraîchissement réseau), on le recharge
+async function editRecord(id, typeOverride) {
+  let record = getDB().find(x => x.id === id);
+  if (!record) {
     await refreshDB();
-    r = getDB().find(x => x.id === id);
+    record = getDB().find(x => x.id === id);
   }
-  if (!r) { toast('Fiche introuvable', 'err'); return; }
+  if (!record) { toast('Fiche introuvable', 'err'); return; }
+
+  // Pour un dossier multi-analyses : demander quel onglet modifier
+  if (isDossierRecord(record) && !typeOverride) {
+    const types = getRecordTypes(record);
+    if (types.length > 1) {
+      showEditTypeModal(id, types);
+      return;
+    }
+    typeOverride = types[0] || 'Hématologie';
+  }
+
+  const type      = typeOverride || record.type || 'Hématologie';
+  const res       = getRecordResultats(record, type);
+  const fakeRecord = { ...record, type, resultats: res };
 
   _editingRecordId = id;
 
-  // Aller sur la vue Saisie
   showView('saisie');
   await new Promise(res => setTimeout(res, 50));
 
   // Remplir le formulaire patient
-  const p = r.patient || {};
-  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  setVal('p_dossier', p.dossier);
-  setVal('p_date', p.date);
-  setVal('p_nom', p.nom);
-  setVal('p_age', p.age);
-  setVal('p_sexe', p.sexe);
-  setVal('p_medecin', p.medecin);
-  setVal('p_service', p.service);
-  setVal('p_clinique', p.clinique);
+  const p = record.patient || {};
+  const setVal = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val || ''; };
+  setVal('p_dossier', p.dossier); setVal('p_date', p.date); setVal('p_nom', p.nom);
+  setVal('p_age', p.age);         setVal('p_sexe', p.sexe); setVal('p_medecin', p.medecin);
+  setVal('p_service', p.service); setVal('p_clinique', p.clinique);
   if (p.sexe || p.age) updateAllRefs();
-  // Restaurer le prescripteur lié
   const prescEl = document.getElementById('p_prescripteur_id');
-  if (prescEl && r.prescripteur_id) prescEl.value = r.prescripteur_id;
+  if (prescEl && record.prescripteur_id) prescEl.value = record.prescripteur_id;
 
-  // Mapping type → tab
   const TYPE_TO_TAB = {
-    'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
-    'Sérologie': 'sero', 'Parasitologie': 'parasito',
-    'Groupe sanguin': 'gs', 'Bilan prénatal': 'bpn',
+    'Hématologie':'hema','Biochimie':'bio','Bactériologie':'bacterio',
+    'Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn',
   };
-  const tabKey = TYPE_TO_TAB[r.type] || 'hema';
-
-  // En mode édition, on affiche toujours tout l'onglet : une fiche existante
-  // peut contenir des résultats dans des sections qui ne correspondent plus
-  // forcément aux cases actuellement cochées (anciennes fiches notamment).
-  // Mieux vaut tout montrer que de risquer de cacher une donnée déjà saisie.
+  const tabKey = TYPE_TO_TAB[type] || 'hema';
   _showAllExams = true;
 
-  // Démarrer la saisie sur le bon onglet
   document.getElementById('fiche-identification').style.display = 'none';
   document.getElementById('zone-saisie').style.display = '';
   switchTab(tabKey);
   await new Promise(res => setTimeout(res, 100));
 
-  // Recharger les résultats sauvegardés dans le formulaire
-  loadResultsIntoForm(r.type, r.resultats || {});
+  loadResultsIntoForm(type, res);
   markRequiredSections();
 
-  // Afficher le bandeau "Mode édition"
+  // Bandeau édition
   let banner = document.getElementById('edit-mode-banner');
   if (!banner) {
     banner = document.createElement('div');
     banner.id = 'edit-mode-banner';
     banner.style.cssText = 'background:#fef3c7;border:1.5px solid #d97706;color:#92400e;padding:10px 16px;border-radius:var(--radius);margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px';
-    const rappelEl = document.getElementById('rappel-patient');
-    rappelEl?.parentNode?.insertBefore(banner, rappelEl);
+    document.getElementById('rappel-patient')?.parentNode?.insertBefore(banner, document.getElementById('rappel-patient'));
   }
-  banner.innerHTML = '✏️ Mode édition — Fiche ' + r.type + ' de ' + (p.nom||'') +
-    ' (N° ' + (p.dossier||'') + ') <button onclick="cancelEdit()" style="margin-left:auto;background:none;border:1px solid #92400e;color:#92400e;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Annuler</button>';
+  const allTypes = getRecordTypes(record);
+  banner.innerHTML = '✏️ Modification — ' + type + ' · Dossier N°' + (p.dossier||'') + ' · ' + (p.nom||'')
+    + (allTypes.length > 1 ? ' <span style="font-size:11px;font-weight:400;opacity:.7">(dossier : ' + allTypes.join(', ') + ')</span>' : '')
+    + ' <button onclick="cancelEdit()" style="margin-left:auto;background:none;border:1px solid #92400e;color:#92400e;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Annuler</button>';
   banner.style.display = 'flex';
 
-  // Rappel patient
   const rappelNom  = document.getElementById('rappel-nom');
   const rappelDoss = document.getElementById('rappel-dossier');
   if (rappelNom)  rappelNom.textContent  = p.nom || '';
   if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  toast('Fiche chargée pour modification', 'ok');
+  toast('Fiche chargée pour modification (' + type + ')', 'ok');
 }
+
+// Modal de sélection du type à modifier pour les dossiers multi-analyses
+function showEditTypeModal(id, types) {
+  let modal = document.getElementById('edit-type-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'edit-type-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:var(--radius-lg);padding:28px;max-width:420px;width:90%;box-shadow:var(--shadow-lg)">
+      <div style="font-size:16px;font-weight:800;color:var(--cpmi-deep);margin-bottom:6px">Quel examen modifier ?</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Ce dossier contient plusieurs analyses. Choisissez celle à modifier :</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${types.map(t => `
+          <button class="btn btn-outline" style="justify-content:flex-start;font-size:13px"
+            onclick="document.getElementById('edit-type-modal').remove(); editRecord(${id},'${t}')">
+            ${t}
+          </button>`).join('')}
+      </div>
+      <button class="btn btn-outline" style="margin-top:14px;width:100%;justify-content:center;color:var(--text-muted)"
+        onclick="document.getElementById('edit-type-modal').remove()">Annuler</button>
+    </div>`;
+  modal.style.display = 'flex';
+}
+
 
 function cancelEdit() {
   _editingRecordId = null;
@@ -4356,10 +4440,14 @@ async function renderHistory(forceRefresh) {
   let filtered = filterByDateRange(db, dateFrom, dateTo);
 
   filtered = filtered.filter(r => {
-    if (ft && r.type !== ft) return false;
+    if (ft) {
+      // Pour les dossiers unifiés, vérifier dans _types ; pour les anciens, vérifier r.type
+      const types = isDossierRecord(r) ? (r.resultats?._types || []) : [r.type];
+      if (!types.includes(ft)) return false;
+    }
     if (fa && r.createdBy !== fa) return false;
     if (q) {
-      const txt = [r.patient.nom, r.patient.dossier, r.patient.medecin, r.patient.service, r.createdBy].join(' ').toLowerCase();
+      const txt = [r.patient?.nom, r.patient?.dossier, r.patient?.medecin, r.patient?.service, r.createdBy, getDisplayType(r)].filter(Boolean).join(' ').toLowerCase();
       if (!txt.includes(q)) return false;
     }
     return true;
@@ -4429,7 +4517,9 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Âge">' + (r.patient.age || '—') + '</td>'
       + '<td data-label="Sexe">' + (r.patient.sexe || '—') + '</td>'
       + '<td data-label="Service">' + (r.patient.service || '—') + '</td>'
-      + '<td data-label="Type"><span class="badge-type">' + r.type + '</span></td>'
+      + '<td data-label="Type">' + getRecordTypes(r).map(t =>
+          '<span class="badge-type" style="margin:1px 2px;display:inline-block">' + t + '</span>'
+        ).join('') + '</td>'
       + '<td data-label="Saisi par">' + (r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
       + '<td data-label="Actions">'
@@ -4508,10 +4598,31 @@ function styleCell(cell, { bg, fg, bold, size, halign, border, italic } = {}) {
 // Retourne l'intitulé d'examen à afficher : la liste précise des examens
 // cochés au départ sur la fiche d'accueil (ex: "NFS · CRP"), ou à défaut
 // le type générique de l'onglet (ex: "Hématologie")
+// ── Helpers dossier unifié ───────────────────────────────────
+// Un enregistrement de type 'Dossier' contient TOUTES les analyses
+// d'un même patient en une seule fiche (clé resultats._types).
+function isDossierRecord(r) { return r && r.type === 'Dossier'; }
+
+function getRecordTypes(r) {
+  if (isDossierRecord(r)) return r.resultats?._types || [];
+  return r.type ? [r.type] : [];
+}
+
+// Retourne les résultats d'une analyse spécifique dans un enregistrement
+// (compatible ancien format et nouveau format dossier)
+function getRecordResultats(r, type) {
+  if (isDossierRecord(r)) return r.resultats?.[type] || {};
+  return r.resultats || {};
+}
+
 function getDisplayType(r) {
+  if (isDossierRecord(r)) {
+    const types = r.resultats?._types || [];
+    return types.length ? types.join(' · ') : 'Dossier';
+  }
   const coches = r.resultats && r.resultats['_examens_coches'];
   if (coches && coches.length) return coches.join(' · ');
-  return r.type;
+  return r.type || '—';
 }
 
 // Version courte pour les noms de fichiers (sigles avant le tiret, sans accents lourds)
@@ -5062,12 +5173,18 @@ async function exportSingle(type) {
   if (!validatePatient(p)) return;
   if (!ensureExcelJSReady()) return;
 
-  // Rafraîchit le cache depuis Supabase pour avoir les données à jour
   await refreshDB();
-
-  // Vérifie que la fiche est bien enregistrée en base avant d'autoriser l'export
   const db = getDB();
-  const saved = db.find(r => r.type === type && r.patient.dossier === p.dossier);
+
+  // Chercher dans les dossiers unifiés ET les anciens formats
+  let saved = db.find(r => isDossierRecord(r) && r.patient?.dossier === p.dossier);
+  if (saved) {
+    // Extraire le type demandé du dossier
+    const typeRes = getRecordResultats(saved, type);
+    saved = { ...saved, type, resultats: typeRes };
+  } else {
+    saved = db.find(r => r.type === type && r.patient?.dossier === p.dossier);
+  }
   if (!saved) {
     toast('Enregistrez la fiche avant de l\'exporter ✗', 'err');
     return;
@@ -5095,17 +5212,27 @@ async function exportAllExcel() {
   const wb = new ExcelJS.Workbook();
   wb.creator = CENTRE;
   wb.title = 'Export LaboSaisie';
-  const types = ['Hématologie', 'Biochimie', 'Bactériologie', 'Sérologie', 'Parasitologie', 'Groupe sanguin', 'Bilan prénatal']; // ✅ v2: Groupe sanguin ajouté
   let sheetCount = 0;
-  types.forEach(type => {
-    const recs = db.filter(r => r.type === type);
-    recs.forEach((r, i) => {
+
+  db.forEach((record, ri) => {
+    if (isDossierRecord(record)) {
+      // Nouveau format : une feuille par analyse
+      const types = getRecordTypes(record);
+      types.forEach(type => {
+        sheetCount++;
+        const fakeRecord = { ...record, type, resultats: getRecordResultats(record, type) };
+        const nom = (record.patient?.nom || 'PATIENT').toUpperCase().substring(0, 10);
+        const sheetName = (nom + '_' + type.substring(0, 18)).substring(0, 31);
+        buildProfessionalSheet(wb, fakeRecord, sheetName);
+      });
+    } else {
+      // Ancien format : une seule feuille
       sheetCount++;
-      const base = type.substring(0, 24);
-      const sheetName = (recs.length > 1 ? `${base} (${i + 1})` : base).substring(0, 31);
-      buildProfessionalSheet(wb, r, sheetName);
-    });
+      const base = (record.type || 'Analyse').substring(0, 24);
+      buildProfessionalSheet(wb, record, base.substring(0, 31));
+    }
   });
+
   if (!sheetCount) { toast('Aucune donnée à exporter', 'err'); return; }
   const today = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
   await downloadWorkbook(wb, `LaboSaisie_Export_${today}.xlsx`);
@@ -5159,7 +5286,11 @@ async function renderStats() {
   // ── Fiches par type d'analyse (barres horizontales) ─────────
   const byType = {};
   TYPES_ANALYSES.forEach(t => byType[t] = 0);
-  db.forEach(r => { if (byType[r.type] !== undefined) byType[r.type]++; });
+  db.forEach(r => {
+    // Dossiers unifiés : compter chaque type séparément
+    const types = isDossierRecord(r) ? (r.resultats?._types || []) : [r.type];
+    types.forEach(t => { if (byType[t] !== undefined) byType[t]++; });
+  });
   const maxType = Math.max(...Object.values(byType), 1);
 
   document.getElementById('chart-by-type').innerHTML = `
@@ -5359,8 +5490,24 @@ function confirmerSiExamensManquants(type, resultats) {
 }
 
 function printRecord(id) {
-  const r = getDB().find(x => x.id === id);
+  let r = getDB().find(x => x.id === id);
   if (!r) { toast('Fiche introuvable', 'err'); return; }
+  // Pour un dossier unifié : créer une fiche composite avec toutes les analyses
+  if (isDossierRecord(r)) {
+    const types = getRecordTypes(r);
+    if (types.length === 0) { toast('Dossier vide', 'err'); return; }
+    if (types.length === 1) {
+      // Une seule analyse : utiliser le rendu standard avec les bons resultats
+      r = { ...r, type: types[0], resultats: getRecordResultats(r, types[0]) };
+    } else {
+      // Plusieurs analyses : construire un faux record agrégé pour l'impression
+      // buildAndPrint va appeler buildPrintSections pour chaque type
+      const compositeResultats = { _types: types, _dossier: true };
+      types.forEach(t => { compositeResultats[t] = getRecordResultats(r, t); });
+      buildAndPrint({ ...r, type: 'Dossier', resultats: compositeResultats });
+      return;
+    }
+  }
   // Vérification simple : si la fiche a un montant > 0 mais aucun résultat exploitable
   const hasAnyValue = Object.values(r.resultats || {}).some(v => {
     if (!v) return false;
@@ -5461,6 +5608,17 @@ function buildAndPrint(r) {
 
 function buildPrintSections(type, res) {
   let html = '';
+
+  // Dossier composite (impression multi-analyses) : itérer sur chaque type
+  if (type === 'Dossier' && res?._dossier && res._types) {
+    res._types.forEach(t => {
+      const typeRes = res[t] || {};
+      html += `<div style="margin-top:16px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--cpmi-deep);border-bottom:2px solid var(--cpmi-deep);padding-bottom:4px;margin-bottom:8px">${t}</div>`;
+      html += buildPrintSections(t, typeRes);
+      html += '</div>';
+    });
+    return html;
+  }
 
   const section = (title, content) => {
     if (!content) return '';
@@ -5617,15 +5775,31 @@ function exportPDF(id) {
 // Export Excel d'une fiche depuis l'historique (par id) — c'était la fonction
 // manquante qui empêchait le bouton ⬇ Excel de la table Historique de fonctionner.
 async function exportRecord(id) {
-  const r = getDB().find(x => x.id === id);
-  if (!r) { toast('Fiche introuvable', 'err'); return; }
+  const record = getDB().find(x => x.id === id);
+  if (!record) { toast('Fiche introuvable', 'err'); return; }
   if (!ensureExcelJSReady()) return;
-  const displayType = getDisplayType(r);
+
   const wb = new ExcelJS.Workbook();
   wb.creator = CENTRE;
-  wb.title = 'Résultat ' + displayType;
-  buildProfessionalSheet(wb, r, getDisplayTypeShort(r).substring(0, 31));
-  await downloadWorkbook(wb, makeFilename(r.patient.dossier, r.patient.date, r.patient.nom || 'PATIENT', getDisplayTypeShort(r)));
+  wb.title = 'Dossier ' + (record.patient?.dossier || '');
+
+  if (isDossierRecord(record)) {
+    // Une feuille par analyse dans le dossier
+    const types = getRecordTypes(record);
+    if (!types.length) { toast('Aucune analyse dans ce dossier', 'err'); return; }
+    types.forEach(type => {
+      const fakeRecord = { ...record, type, resultats: getRecordResultats(record, type) };
+      buildProfessionalSheet(wb, fakeRecord, type.substring(0, 31));
+    });
+  } else {
+    // Ancien format : une seule feuille
+    buildProfessionalSheet(wb, record, getDisplayTypeShort(record).substring(0, 31));
+  }
+
+  await downloadWorkbook(wb, makeFilename(
+    record.patient?.dossier, record.patient?.date,
+    record.patient?.nom || 'PATIENT', 'Dossier'
+  ));
   toast('Export Excel réussi ✓', 'ok');
 }
 
@@ -5663,7 +5837,15 @@ async function exportPDFFromForm(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
   await refreshDB();
-  const saved = getDB().find(r => r.type === type && r.patient.dossier === p.dossier);
+  // Chercher dans les dossiers unifiés ET les anciens formats
+  let saved = getDB().find(r => isDossierRecord(r) && r.patient?.dossier === p.dossier);
+  if (saved) {
+    // Extraire le bon type depuis le dossier
+    const res = getRecordResultats(saved, type);
+    saved = { ...saved, type, resultats: res };
+  } else {
+    saved = getDB().find(r => r.type === type && r.patient?.dossier === p.dossier);
+  }
   if (!saved) { toast('Enregistrez la fiche avant d\'exporter en PDF', 'err'); return; }
   if (!confirmerSiExamensManquants(type, saved.resultats)) return;
   buildPDF(saved);
