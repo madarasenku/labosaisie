@@ -24,15 +24,12 @@
   --cpmi-sky:     #3b82f6;   /* bleu ciel */
   --cpmi-teal:    #0d9488;   /* vert teal (santé) */
   --cpmi-rose:    #e11d76;   /* rose maternité */
-  --cpmi-pink:    #fbcfe8;   /* rose très doux */
   --cpmi-gold:    #d97706;   /* or chaleureux */
-  --cpmi-gold-lt: #fef3c7;   /* or clair */
 
   /* Aliases fonctionnels */
   --bg:           #f0f5ff;
   --surface:      #ffffff;
   --border:       #c7d7f5;
-  --border-focus: #2563eb;
   --text:         #0f1f40;
   --text-muted:   #5a739f;
   --text-label:   #253c6b;
@@ -94,12 +91,6 @@ body::before {
 }
 
 /* ── Animations de base ── */
-@keyframes float-up {
-  0%   { transform: translateY(100vh) rotate(0deg);  opacity: 0; }
-  5%   { opacity: .6; }
-  95%  { opacity: .4; }
-  100% { transform: translateY(-120px) rotate(20deg); opacity: 0; }
-}
 @keyframes pulse-soft {
   0%, 100% { transform: scale(1); opacity: .7; }
   50%       { transform: scale(1.08); opacity: 1; }
@@ -108,17 +99,9 @@ body::before {
   from { opacity: 0; transform: translateY(28px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(-20px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position: 200% center; }
-}
-@keyframes glow-ring {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,.3); }
-  50%       { box-shadow: 0 0 0 8px rgba(37,99,235,.0); }
 }
 @keyframes fade-in {
   from { opacity: 0; }
@@ -1329,9 +1312,7 @@ select {
   <!-- ===== BIOCHIMIE ===== -->
   <div class="panel" id="panel-bio">
     <div class="card">
-      <div class="card-title">🧪 Biochimie sanguine
-        <button onclick="showBioConfig()" style="float:right;padding:4px 10px;font-size:11.5px;background:var(--accent-light);color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);cursor:pointer">⚙ Configurer unités & refs</button>
-      </div>
+      <div class="card-title">🧪 Biochimie sanguine</div>
       <div id="sec-bio-glucides-wrap">
         <div class="section-label" id="sec-bio-glucides">Glucides</div>
         <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-glucides-body"></tbody></table></div>
@@ -2368,23 +2349,19 @@ const NORM = {
   bpn_uree: { _all: { ref:'2.0–6.5',lo:2.0,  hi:6.5  } },
 };
 
-function getRef(paramId, profile) {
+// Implémentation de base (utilisée comme fallback par getRef)
+const _getRefBase = function(paramId, profile) {
   const table = NORM[paramId];
   if (!table) return null;
-
-  // Table plate universelle
   if (table._all) return buildRefObj(table._all, profile);
-
-  // Entrée pour la tranche précise
   const entry = table[profile.tranche] || table._default;
   if (!entry) {
-    // Fallback : tranche ADULTE
     const fallback = table.ADULTE || table._default;
     if (!fallback) return null;
     return buildRefObj(fallback, profile);
   }
   return buildRefObj(entry, profile);
-}
+};
 
 function buildRefObj(entry, profile) {
   const isMale = profile.sexe === 'M';
@@ -2410,15 +2387,14 @@ function saveCustomRefs(obj) {
   localStorage.setItem(LABO_REFS_KEY, JSON.stringify(obj));
 }
 
-// getRef avec surcharge custom (priorité aux valeurs admin)
-const _getRefOriginal = getRef;
+// getRef : surcharge avec valeurs admin (priorité sur les défauts NORM)
 function getRef(paramId, profile) {
   const custom = getCustomRefs();
   if (custom[paramId]) {
-    const c = custom[paramId];
-    return { ref: c.ref || '', lo: parseFloat(c.lo) || 0, hi: parseFloat(c.hi) || 999 };
+    const cc = custom[paramId];
+    return { ref: cc.ref || '', lo: parseFloat(cc.lo) || 0, hi: parseFloat(cc.hi) || 999 };
   }
-  return _getRefOriginal(paramId, profile);
+  return _getRefBase(paramId, profile);
 }
 
 function interprete(val, lo, hi) {
@@ -2798,34 +2774,6 @@ const BPN_SERO = [
   { id:'bpn_rubm',  name:'Rubéole IgM',                 type:'qual' },
 ];
 
-// ── Bilan de routine : Goutte épaisse + Groupe sanguin + CRP + Widal ──
-const ROUTINE_GOUTTE = [
-  { id:'rt_ge_result',  name:'Résultat goutte épaisse',    type:'qual3',  opts:['Positif','Négatif','Non réalisé'] },
-  { id:'rt_ge_esp',     name:'Espèce plasmodiale',         type:'text' },
-  { id:'rt_ge_para',    name:'Parasitémie (%)',            type:'num',   unit:'%' },
-  { id:'rt_ge_densite', name:'Densité parasitaire (/µL)',  type:'num',   unit:'/µL' },
-  { id:'rt_ge_tdr',     name:'TDR paludisme',              type:'qual3',  opts:['Positif','Négatif','Non réalisé'] },
-];
-
-const ROUTINE_GS = [
-  { id:'rt_gs_abo',    name:'Groupe sanguin ABO',         type:'sel',  opts:['A','B','AB','O'] },
-  { id:'rt_gs_rh',     name:'Rhésus (Rh)',                type:'qual2', opts:['Positif','Négatif'] },
-  { id:'rt_gs_rai',    name:'RAI (Recherche agglutinines)',type:'qual2', opts:['Positive','Négative'] },
-  { id:'rt_gs_phen',   name:'Phénotype érythrocytaire',   type:'text' },
-];
-
-const ROUTINE_CRP = [
-  { id:'rt_crp_val',   name:'CRP (Protéine C-réactive)',  type:'num',   unit:'mg/L', ref:'< 6 mg/L' },
-  { id:'rt_crp_interp',name:'Interprétation CRP',         type:'qual3',  opts:['Normale','Élevée','Très élevée'] },
-];
-
-const ROUTINE_WIDAL = [
-  { id:'rt_wid_to',    name:'Salmonella typhi O',         type:'titer' },
-  { id:'rt_wid_th',    name:'Salmonella typhi H',         type:'titer' },
-  { id:'rt_wid_ao',    name:'Salmonella paratyphi A (O)', type:'titer' },
-  { id:'rt_wid_bo',    name:'Salmonella paratyphi B (O)', type:'titer' },
-  { id:'rt_wid_interp',name:'Interprétation Widal',       type:'text' },
-];
 
 // ── Groupe sanguin seul ───────────────────────────────────────────────
 const GS_PARAMS = [
@@ -3433,73 +3381,6 @@ function buildParaEPS() {
   });
 }
 
-function buildRoutine() {
-  // Goutte épaisse
-  const bg = document.getElementById('routine-goutte-body'); bg.innerHTML = '';
-  ROUTINE_GOUTTE.forEach(p => {
-    const tr = document.createElement('tr');
-    let input = '';
-    if (p.type === 'qual3') {
-      input = `<select id="rt_${p.id}" style="width:160px"><option value="">—</option>${p.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
-    } else if (p.type === 'num') {
-      input = `<input type="number" id="rt_${p.id}" step="any" style="width:100px">`;
-    } else {
-      input = `<input type="text" id="rt_${p.id}" style="width:160px" placeholder="—">`;
-    }
-    tr.innerHTML = `<td style="font-size:13px">${p.name}</td><td>${input}</td><td><span class="unit">${p.unit||''}</span></td><td><input type="text" id="rt_obs_${p.id}" placeholder="obs..." style="width:100%"></td>`;
-    bg.appendChild(tr);
-  });
-
-  // Groupe sanguin dans routine
-  const gs = document.getElementById('routine-gs-body'); gs.innerHTML = '';
-  ROUTINE_GS.forEach(p => {
-    const tr = document.createElement('tr');
-    let input = '';
-    if (p.type === 'sel') {
-      input = `<select id="rt_${p.id}" style="width:120px"><option value="">—</option>${p.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
-    } else if (p.type === 'qual2') {
-      input = `<select id="rt_${p.id}" style="width:130px"><option value="">—</option>${p.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
-    } else {
-      input = `<input type="text" id="rt_${p.id}" style="width:200px" placeholder="—">`;
-    }
-    tr.innerHTML = `<td style="font-size:13px">${p.name}</td><td>${input}</td><td colspan="2"><input type="text" id="rt_obs_${p.id}" placeholder="obs..." style="width:100%"></td>`;
-    gs.appendChild(tr);
-  });
-
-  // CRP
-  const crp = document.getElementById('routine-crp-body'); crp.innerHTML = '';
-  ROUTINE_CRP.forEach(p => {
-    const tr = document.createElement('tr');
-    let input = '';
-    if (p.type === 'num') {
-      input = `<input type="number" id="rt_${p.id}" step="any" style="width:100px">`;
-    } else {
-      input = `<select id="rt_${p.id}" style="width:150px"><option value="">—</option>${p.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
-    }
-    tr.innerHTML = `<td style="font-size:13px">${p.name}</td><td>${input}</td><td><span class="unit">${p.unit||''}</span></td><td><span class="ref-range">${p.ref||''}</span></td>`;
-    crp.appendChild(tr);
-  });
-
-  // Widal
-  const wid = document.getElementById('routine-widal-body'); wid.innerHTML = '';
-  ROUTINE_WIDAL.forEach(p => {
-    const tr = document.createElement('tr');
-    let input = '';
-    if (p.type === 'titer') {
-      input = `<select id="rt_${p.id}" style="width:130px">
-        <option value="">—</option>
-        <option>Négatif</option>
-        <option>1/50</option><option>1/100</option><option>1/200</option>
-        <option>1/400</option><option>1/800</option><option>1/1600</option>
-      </select>`;
-    } else {
-      input = `<input type="text" id="rt_${p.id}" style="width:200px" placeholder="—">`;
-    }
-    tr.innerHTML = `<td style="font-size:13px">${p.name}</td><td>${input}</td><td colspan="2"><input type="text" id="rt_obs_${p.id}" placeholder="obs..." style="width:100%"></td>`;
-    wid.appendChild(tr);
-  });
-}
-
 function buildGS() {
   const b = document.getElementById('gs-body'); b.innerHTML = '';
   GS_PARAMS.forEach(p => {
@@ -3529,7 +3410,7 @@ function updateMontantCurrent() {
   const tabId = activeTab.id.replace('tab-', '');
   const typeMap = {
     hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
-    sero:'Sérologie', parasito:'Parasitologie', routine:'Bilan de routine',
+    sero:'Sérologie', parasito:'Parasitologie',
     gs:'Groupe sanguin', bpn:'Bilan prénatal'
   };
   const type = typeMap[tabId];
@@ -3924,7 +3805,7 @@ function collectResults(type) {
     SERO_TESTS.forEach(t => {
       data[t.name] = { resultat: document.getElementById('sr_'+t.id)?.value || '', valeur: document.getElementById('sv_'+t.id)?.value || '', obs: document.getElementById('so_'+t.id)?.value || '' };
     });
-    data['Observations'] = document.getElementById('sero_obs').value;
+    data['Observations'] = document.getElementById('sero_obs')?.value || '';
   } else if (type === 'Bilan prénatal') {
     data['Terme (SA)'] = document.getElementById('bpn_sa')?.value || '';
     data['Gestité'] = document.getElementById('bpn_geste')?.value || '';
@@ -4016,31 +3897,6 @@ function collectResults(type) {
       data[pa] = sel ? sel.value : '';
     });
     data['Observations'] = document.getElementById('para_obs').value;
-  } else if (type === 'Bilan de routine') {
-    // Goutte épaisse
-    ROUTINE_GOUTTE.forEach(p => {
-      const el = document.getElementById('rt_' + p.id);
-      const obs = document.getElementById('rt_obs_' + p.id);
-      data[p.name] = { valeur: el?.value || '', obs: obs?.value || '', unite: p.unit || '' };
-    });
-    // Groupe sanguin
-    ROUTINE_GS.forEach(p => {
-      const el = document.getElementById('rt_' + p.id);
-      const obs = document.getElementById('rt_obs_' + p.id);
-      data[p.name] = { valeur: el?.value || '', obs: obs?.value || '' };
-    });
-    // CRP
-    ROUTINE_CRP.forEach(p => {
-      const el = document.getElementById('rt_' + p.id);
-      const obs = document.getElementById('rt_obs_' + p.id);
-      data[p.name] = { valeur: el?.value || '', obs: obs?.value || '', unite: p.unit || '', ref: p.ref || '' };
-    });
-    // Widal
-    ROUTINE_WIDAL.forEach(p => {
-      const el = document.getElementById('rt_' + p.id);
-      const obs = document.getElementById('rt_obs_' + p.id);
-      data[p.name] = { valeur: el?.value || '', obs: obs?.value || '' };
-    });
   } else if (type === 'Groupe sanguin') {
     GS_PARAMS.forEach(p => {
       const el = document.getElementById(p.id);
@@ -4139,6 +3995,9 @@ async function editRecord(id) {
   setVal('p_service', p.service);
   setVal('p_clinique', p.clinique);
   if (p.sexe || p.age) updateAllRefs();
+  // Restaurer le prescripteur lié
+  const prescEl = document.getElementById('p_prescripteur_id');
+  if (prescEl && r.prescripteur_id) prescEl.value = r.prescripteur_id;
 
   // Mapping type → tab
   const TYPE_TO_TAB = {
@@ -4268,23 +4127,16 @@ function loadResultsIntoForm(type, res) {
     setVal('bac_milieux', res['Milieux de culture']);
     setVal('bac_obs', res['Observations']);
     setVal('bac_abg_comment', res['Commentaire antibiogramme']);
-    if (res['Mode: ABG/AFG'] === 'afg') setAbgMode('afg');
-    const grid = (res['Mode: ABG/AFG']==='afg') ? AFG_ANTIFONGIQUES : ABG_ANTIBIOS;
-    const prefix = (res['Mode: ABG/AFG']==='afg') ? 'afg_' : 'abg_';
-    const keyPfx = (res['Mode: ABG/AFG']==='afg') ? 'AFG_' : 'ABG_';
-    if (res['Mode: ABG/AFG'] === 'afg') {
-      grid.forEach(ab => {
-        const v = res[keyPfx+ab];
-        const sel = document.querySelector('#' + prefix + ab.replace(/[^a-z]/gi,'_') + ' select');
-        if (sel && v) { sel.value = v; updateAbgColor(sel, ab); }
-      });
-    } else {
-      ABG_ANTIBIOS.forEach(ab => {
-        const v = res['ABG_'+ab];
-        const sel = document.querySelector('#abg_' + ab.replace(/[^a-z]/gi,'_') + ' select');
-        if (sel && v) { sel.value = v; updateAbgColor(sel, ab); }
-      });
-    }
+    const isAfg = res['Mode: ABG/AFG'] === 'afg';
+    if (isAfg) setAbgMode('afg');
+    const abList = isAfg ? AFG_ANTIFONGIQUES : ABG_ANTIBIOS;
+    const abPfx  = isAfg ? 'afg_' : 'abg_';
+    const abKey  = isAfg ? 'AFG_' : 'ABG_';
+    abList.forEach(ab => {
+      const v = res[abKey + ab];
+      const sel = document.querySelector('#' + abPfx + ab.replace(/[^a-z]/gi,'_') + ' select');
+      if (sel && v) { sel.value = v; updateAbgColor(sel, ab); }
+    });
   }
   else if (type === 'Sérologie' && typeof SERO_TESTS !== 'undefined') {
     SERO_TESTS.forEach(t => {
@@ -4316,12 +4168,32 @@ function loadResultsIntoForm(type, res) {
       const v = res['BIO_'+p.name];
       if (v && v.valeur) setVal('bpn2_v_'+p.id, v.valeur);
     });
-    // Bactério BPN (clone bpn3_)
-    setSel('bpn3_bac_type', res['BAC - Type']);
-    setVal('bpn3_bac_site', res['BAC - Site']);
-    setSel('bpn3_bac_aspect', res['BAC - Aspect']);
-    setSel('bpn3_bac_gram', res['BAC - Gram']);
-    setVal('bpn3_bac_germe', res['BAC - Germe']);
+    // Bactério BPN (clone bpn3_) — restauration complète
+    setSel('bpn3_bac_type',         res['BAC - Type']);
+    setVal('bpn3_bac_site',         res['BAC - Site']);
+    setSel('bpn3_bac_aspect',       res['BAC - Aspect']);
+    setSel('bpn3_bac_couleur',      res['BAC - Couleur']);
+    setSel('bpn3_bac_odeur',        res['BAC - Odeur']);
+    setSel('bpn3_bac_ph',           res['BAC - pH']);
+    setVal('bpn3_ef_leuco',         res['BAC - Leucocytes']);
+    setVal('bpn3_ef_hematies',      res['BAC - Hématies']);
+    setSel('bpn3_ef_bacteries',     res['BAC - Bactéries']);
+    setSel('bpn3_ef_epitheliales',  res['BAC - Épithéliales']);
+    setSel('bpn3_ef_levures',       res['BAC - Levures']);
+    setVal('bpn3_ef_parasites',     res['BAC - Parasites']);
+    setSel('bpn3_bac_gram',         res['BAC - Gram']);
+    setVal('bpn3_bac_gram_comment', res['BAC - Gram comment']);
+    setSel('bpn3_bac_culture',      res['BAC - Culture']);
+    setSel('bpn3_bac_numeration',   res['BAC - Numération']);
+    setVal('bpn3_bac_germe',        res['BAC - Germe']);
+    setVal('bpn3_bac_germe2',       res['BAC - Germe 2']);
+    setVal('bpn3_bac_obs',          res['BAC - Obs']);
+    setVal('bpn3_bac_abg_comment',  res['BAC - ABG comment']);
+    ABG_ANTIBIOS.forEach(ab => {
+      const v = res['BAC_ABG_'+ab];
+      const sel = document.querySelector('#bpn3_abg_' + ab.replace(/[^a-z]/gi,'_') + ' select');
+      if (sel && v) { sel.value = v; }
+    });
   }
 }
 
@@ -4536,10 +4408,6 @@ async function clearHistory() {
     toast('Historique vidé');
   }
 }
-
-// ============================================================
-// EXCEL EXPORT — RENDU PROFESSIONNEL (ExcelJS)
-// ============================================================
 
 // ============================================================
 // EXCEL EXPORT — RENDU PROFESSIONNEL (ExcelJS)
@@ -5461,6 +5329,13 @@ function printCurrentForm(type) {
   buildAndPrint({ type, patient: p, resultats, montant: parseInt(document.getElementById('montant-preview')?.dataset?.montant||'0'), savedAt: new Date().toISOString() });
 }
 
+// Échappe les caractères HTML spéciaux pour éviter toute injection XSS
+function escHTML(s) {
+  return (s || '').toString()
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function buildAndPrint(r) {
   // Construire le HTML de rendu d'impression
   const p = r.patient;
@@ -5493,15 +5368,15 @@ function buildAndPrint(r) {
     <div class="print-patient-card">
       <table class="print-patient-table">
         <tr>
-          <td><b>N° Dossier</b><br><span class="print-dossier">${p.dossier||'—'}</span></td>
-          <td><b>Patient</b><br>${p.nom||'—'}</td>
-          <td><b>Âge / Sexe</b><br>${p.age||'—'} ans / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td>
+          <td><b>N° Dossier</b><br><span class="print-dossier">${escHTML(p.dossier)||'—'}</span></td>
+          <td><b>Patient</b><br>${escHTML(p.nom)||'—'}</td>
+          <td><b>Âge / Sexe</b><br>${escHTML(p.age)||'—'} ans / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td>
           <td><b>Date prélèvement</b><br>${p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}</td>
         </tr>
         <tr>
-          <td><b>Prescripteur</b><br>${p.medecin||'—'}</td>
-          <td><b>Service</b><br>${p.service||'—'}</td>
-          <td colspan="2"><b>Renseignements cliniques</b><br>${p.clinique||'—'}</td>
+          <td><b>Prescripteur</b><br>${escHTML(p.medecin)||'—'}</td>
+          <td><b>Service</b><br>${escHTML(p.service)||'—'}</td>
+          <td colspan="2"><b>Renseignements cliniques</b><br>${escHTML(p.clinique)||'—'}</td>
         </tr>
       </table>
     </div>`;
@@ -6458,167 +6333,10 @@ async function renderRistournes(db) {
   </table>`;
 }
 
-// ============================================================
-// BIOCHIMIE PARAMÉTRABLE (unités et refs modifiables)
-// ============================================================
+// (Ancien système bio_config supprimé — remplacé par labosaisie_refs_v1 dans le panneau admin)
 
-// Charge les préférences utilisateur pour les refs bio
-function getBioConfig() {
-  try {
-    return JSON.parse(localStorage.getItem('bio_config') || 'null') || {};
-  } catch(e) { return {}; }
-}
-function saveBioConfig(cfg) {
-  localStorage.setItem('bio_config', JSON.stringify(cfg));
-}
 
-// Applique les configs personnalisées aux inputs d'une ligne
-function applyBioConfig(paramId) {
-  const cfg = getBioConfig();
-  if (!cfg[paramId]) return;
-  const refEl = document.getElementById('ref_' + paramId);
-  const unitEl = document.querySelector(`#panel-bio .unit[data-id="${paramId}"]`);
-  if (refEl && cfg[paramId].ref) refEl.textContent = cfg[paramId].ref;
-}
 
-function showBioConfig() {
-  const cfg = getBioConfig();
-  const allParams = [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO];
-  const modal = document.getElementById('bio-config-modal');
-  if (!modal) return;
-
-  const rows = allParams.map(p => {
-    const cur = cfg[p.id] || {};
-    return `<tr>
-      <td style="padding:5px 8px;font-size:12.5px">${p.name}</td>
-      <td style="padding:5px 8px"><input type="text" id="cfg_unit_${p.id}" value="${cur.unit||p.unit}" style="width:80px;font-size:12px"></td>
-      <td style="padding:5px 8px"><input type="text" id="cfg_ref_${p.id}" value="${cur.ref||p.ref||''}" style="width:120px;font-size:12px" placeholder="ex: 0.70–1.10"></td>
-      <td style="padding:5px 8px"><input type="number" id="cfg_lo_${p.id}" value="${cur.lo||p.lo||''}" style="width:70px;font-size:12px" step="any"></td>
-      <td style="padding:5px 8px"><input type="number" id="cfg_hi_${p.id}" value="${cur.hi||p.hi||''}" style="width:70px;font-size:12px" step="any"></td>
-    </tr>`;
-  }).join('');
-
-  modal.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
-      <div style="background:white;border-radius:var(--radius-lg);padding:24px;width:100%;max-width:700px;box-shadow:0 20px 50px rgba(0,0,0,.3)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <h2 style="font-size:16px;font-weight:700">⚙ Configuration des paramètres biochimiques</h2>
-          <button onclick="closeBioConfig()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted)">✕</button>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Modifiez les unités et plages de référence selon les valeurs de votre laboratoire. Ces paramètres s'appliqueront à tous les nouveaux bilans.</p>
-        <div style="overflow-x:auto;max-height:60vh;overflow-y:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead style="position:sticky;top:0;background:var(--bg)"><tr>
-              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Paramètre</th>
-              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Unité</th>
-              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Référence (texte)</th>
-              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Borne basse</th>
-              <th style="padding:6px 8px;text-align:left;border-bottom:2px solid var(--border)">Borne haute</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:16px">
-          <button class="btn btn-primary" onclick="saveBioConfigUI()">💾 Enregistrer</button>
-          <button class="btn btn-outline" onclick="resetBioConfig()">↺ Remettre les défauts</button>
-          <button class="btn btn-outline" onclick="closeBioConfig()">Annuler</button>
-        </div>
-      </div>
-    </div>`;
-  modal.style.display = 'block';
-}
-
-function saveBioConfigUI() {
-  const allParams = [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO];
-  const cfg = {};
-  allParams.forEach(p => {
-    cfg[p.id] = {
-      unit: document.getElementById('cfg_unit_'+p.id)?.value || p.unit,
-      ref:  document.getElementById('cfg_ref_'+p.id)?.value || '',
-      lo:   parseFloat(document.getElementById('cfg_lo_'+p.id)?.value || p.lo || '0'),
-      hi:   parseFloat(document.getElementById('cfg_hi_'+p.id)?.value || p.hi || '999'),
-    };
-  });
-  saveBioConfig(cfg);
-  closeBioConfig();
-  updateAllRefs();
-  toast('Configuration biochimie enregistrée ✓', 'ok');
-}
-
-function resetBioConfig() {
-  if (!confirm('Remettre toutes les références aux valeurs par défaut ?')) return;
-  localStorage.removeItem('bio_config');
-  closeBioConfig();
-  updateAllRefs();
-  toast('Références biochimiques réinitialisées', 'ok');
-}
-
-function closeBioConfig() {
-  const modal = document.getElementById('bio-config-modal');
-  if (modal) { modal.innerHTML = ''; modal.style.display = 'none'; }
-}
-
-// ============================================================
-// BILAN DE ROUTINE — CHECKBOXES & FACTURATION TEMPS RÉEL
-// ============================================================
-
-const ROUTINE_PACK = [
-  { id:'rt_nfs',     label:'NFS complète',           prix: 3500 },
-  { id:'rt_ge',      label:'Goutte épaisse (GE)',    prix: 2500 },
-  { id:'rt_crp',     label:'CRP (Latex)',             prix: 2000 },
-  { id:'rt_swf',     label:'Widal & Félix (SWF)',    prix: 3000 },
-  { id:'rt_gly',     label:'Glycémie à jeun',         prix: 1000 },
-  { id:'rt_gs',      label:'Groupe sanguin ABO/Rh',  prix: 3000 },
-  { id:'rt_uree',    label:'Urée',                    prix: 1500 },
-  { id:'rt_crea',    label:'Créatinine',              prix: 1500 },
-  { id:'rt_chol',    label:'Cholestérol total',       prix: 2000 },
-  { id:'rt_trig',    label:'Triglycérides',           prix: 2000 },
-  { id:'rt_transam', label:'Transaminases (ASAT/ALAT)',prix: 3000 },
-];
-
-function buildRoutineCheckboxes() {
-  const container = document.getElementById('routine-checkboxes');
-  if (!container) return;
-  const tarifsBase = getTarifsBase();
-  container.innerHTML = ROUTINE_PACK.map(item => {
-    const prix = tarifsBase[item.label] || item.prix;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)">
-      <input type="checkbox" id="chk_${item.id}" onchange="calcRoutineTotal()"
-        style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer">
-      <label for="chk_${item.id}" style="flex:1;cursor:pointer;font-size:13px">${item.label}</label>
-      <input type="number" id="prix_${item.id}" value="${prix}" min="0" step="100"
-        style="width:85px;text-align:right;font-weight:600;color:var(--accent);font-size:12.5px"
-        oninput="calcRoutineTotal()">
-      <span style="font-size:11.5px;color:var(--text-muted)">FCFA</span>
-    </div>`;
-  }).join('');
-  calcRoutineTotal();
-}
-
-function calcRoutineTotal() {
-  let total = 0;
-  let count = 0;
-  ROUTINE_PACK.forEach(item => {
-    const chk = document.getElementById('chk_' + item.id);
-    const prix = parseInt(document.getElementById('prix_' + item.id)?.value || '0');
-    if (chk && chk.checked) { total += prix; count++; }
-  });
-  const totalEl = document.getElementById('routine-total');
-  const countEl = document.getElementById('routine-count');
-  if (totalEl) totalEl.textContent = total.toLocaleString('fr-FR') + ' FCFA';
-  if (countEl) countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
-  // Mettre à jour le montant estimé global
-  const mpEl = document.getElementById('montant-preview');
-  if (mpEl) { mpEl.textContent = total.toLocaleString('fr-FR') + ' FCFA'; mpEl.dataset.montant = total; }
-}
-
-function selectAllRoutine(checked) {
-  ROUTINE_PACK.forEach(item => {
-    const chk = document.getElementById('chk_' + item.id);
-    if (chk) chk.checked = checked;
-  });
-  calcRoutineTotal();
-}
 
 // ============================================================
 // FICHE D'IDENTIFICATION — EXAMENS & FACTURATION
@@ -6758,7 +6476,7 @@ function demarrerSaisie() {
   _showAllExams = false;
 
   // Déterminer l'onglet à activer selon le premier examen coché
-  const premierEx = CATALOGUE_EXAMENS.find(ex => document.getElementById(ex.id)?.checked);
+  const premierEx = getCatalogueComplet().find(ex => document.getElementById(ex.id)?.checked);
   const tabCible  = premierEx ? premierEx.tab : 'hema';
 
   // Mettre à jour le rappel patient
@@ -6897,9 +6615,11 @@ function toggleShowAllExams() {
 }
 
 function enregistrerFicheIdentif() {
+  // Cette fonction valide simplement le nom avant de passer à la saisie
   const nom = document.getElementById('p_nom')?.value?.trim();
   if (!nom) { toast('Veuillez saisir le nom du patient', 'err'); return; }
-  toast('Fiche patient enregistrée localement ✓', 'ok');
+  // La fiche est enregistrée en base au moment de l'enregistrement de chaque analyse
+  toast('Identification validée — Passez à la saisie des analyses', 'ok');
 }
 
 // ============================================================
@@ -7408,7 +7128,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 </div><!-- /#app-root -->
-<!-- Modal configuration biochimie -->
-<div id="bio-config-modal" style="display:none"></div>
+
 </body>
 </html>
