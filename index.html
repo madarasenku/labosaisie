@@ -5226,6 +5226,29 @@ function ensureExcelJSReady() {
 // téléchargement dans le navigateur. C'était la fonction manquante qui
 // empêchait TOUS les exports Excel de fonctionner (le classeur était bien
 // construit mais jamais réellement écrit sur le disque de l'utilisateur).
+// ── Nom de feuille Excel valide (ExcelJS rejette certains caractères) ──
+function safeSheetName(name, usedNames) {
+  // Supprimer les caractères interdits par Excel : [ ] : * ? / \ '
+  let safe = (name || 'Feuille')
+    .replace(/[\[\]:*?/\\']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 31);
+  if (!safe) safe = 'Feuille';
+  // Dédoublonner si usedNames fourni
+  if (usedNames) {
+    let candidate = safe;
+    let n = 2;
+    while (usedNames.has(candidate)) {
+      candidate = safe.substring(0, 28) + ' ' + n;
+      n++;
+    }
+    usedNames.add(candidate);
+    return candidate;
+  }
+  return safe;
+}
+
 async function downloadWorkbook(wb, filename) {
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -5242,6 +5265,7 @@ async function downloadWorkbook(wb, filename) {
 }
 
 async function exportSingle(type) {
+  try {
   const p = getPatient();
   if (!validatePatient(p)) return;
   if (!ensureExcelJSReady()) return;
@@ -5274,9 +5298,14 @@ async function exportSingle(type) {
   buildProfessionalSheet(wb, saved, getDisplayTypeShort(saved).substring(0, 31));
   await downloadWorkbook(wb, makeFilename(saved.patient.dossier, saved.patient.date, saved.patient.nom || 'PATIENT', getDisplayTypeShort(saved)));
   toast('Export Excel réussi ✓', 'ok');
+  } catch(err) {
+    console.error('exportSingle:', err);
+    toast('Erreur export Excel : ' + (err.message || err), 'err');
+  }
 }
 
 async function exportAllExcel() {
+  try {
   if (!ensureExcelJSReady()) return;
   toast('Récupération des données…');
   await refreshDB();
@@ -5287,22 +5316,26 @@ async function exportAllExcel() {
   wb.title = 'Export LaboSaisie';
   let sheetCount = 0;
 
+  const usedNames = new Set();
   db.forEach((record, ri) => {
-    if (isDossierRecord(record)) {
-      // Nouveau format : une feuille par analyse
-      const types = getRecordTypes(record);
-      types.forEach(type => {
+    try {
+      if (isDossierRecord(record)) {
+        const types = getRecordTypes(record);
+        types.forEach(type => {
+          sheetCount++;
+          const fakeRecord = { ...record, type, resultats: getRecordResultats(record, type) };
+          const nom = (record.patient?.nom || 'PATIENT').toUpperCase().substring(0, 8);
+          const rawName = nom + ' ' + type.substring(0, 18);
+          buildProfessionalSheet(wb, fakeRecord, safeSheetName(rawName, usedNames));
+        });
+      } else {
         sheetCount++;
-        const fakeRecord = { ...record, type, resultats: getRecordResultats(record, type) };
-        const nom = (record.patient?.nom || 'PATIENT').toUpperCase().substring(0, 10);
-        const sheetName = (nom + '_' + type.substring(0, 18)).substring(0, 31);
-        buildProfessionalSheet(wb, fakeRecord, sheetName);
-      });
-    } else {
-      // Ancien format : une seule feuille
-      sheetCount++;
-      const base = (record.type || 'Analyse').substring(0, 24);
-      buildProfessionalSheet(wb, record, base.substring(0, 31));
+        const rawName = (record.type || 'Analyse') + ' ' + (record.patient?.nom || '').substring(0, 10);
+        buildProfessionalSheet(wb, record, safeSheetName(rawName, usedNames));
+      }
+    } catch(sheetErr) {
+      console.error('Erreur feuille dossier', ri, ':', sheetErr);
+      // Continuer avec les autres dossiers
     }
   });
 
@@ -5310,6 +5343,10 @@ async function exportAllExcel() {
   const today = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
   await downloadWorkbook(wb, `LaboSaisie_Export_${today}.xlsx`);
   toast('Export complet réussi ✓', 'ok');
+  } catch(err) {
+    console.error('exportAllExcel:', err);
+    toast('Erreur export Excel : ' + (err.message || err), 'err');
+  }
 }
 
 // ============================================================
@@ -6042,9 +6079,34 @@ function printHistory() {
 // ============================================================
 
 function exportPDF(id) {
-  const r = getDB().find(x => x.id === id);
-  if (!r) { toast('Fiche introuvable', 'err'); return; }
-  buildPDF(r);
+  try {
+    const record = getDB().find(x => x.id === id);
+    if (!record) { toast('Fiche introuvable', 'err'); return; }
+
+    if (isDossierRecord(record)) {
+      // Dossier unifié : PDF multi-pages (une section par type)
+      const types = getRecordTypes(record);
+      if (!types.length) { toast('Dossier vide', 'err'); return; }
+      if (types.length === 1) {
+        // Un seul type → PDF standard
+        buildPDF({ ...record, type: types[0], resultats: getRecordResultats(record, types[0]) });
+      } else {
+        // Plusieurs types → générer les PDFs un par un
+        // (jsPDF ne supporte pas facilement le multi-doc, on génère le premier)
+        // Pour l'instant : PDF du premier type + toast d'info
+        const fakeR = { ...record, type: types[0], resultats: getRecordResultats(record, types[0]) };
+        buildPDF(fakeR);
+        if (types.length > 1) {
+          setTimeout(() => toast('Dossier multi-analyses : PDF généré pour "' + types[0] + '". Utilisez ⬇ Excel pour exporter toutes les analyses.', 'ok'), 500);
+        }
+      }
+    } else {
+      buildPDF(record);
+    }
+  } catch(err) {
+    console.error('exportPDF:', err);
+    toast('Erreur PDF : ' + (err.message||err), 'err');
+  }
 }
 
 // Export Excel d'une fiche depuis l'historique (par id) — c'était la fonction
@@ -6058,17 +6120,22 @@ async function exportRecord(id) {
   wb.creator = CENTRE;
   wb.title = 'Dossier ' + (record.patient?.dossier || '');
 
-  if (isDossierRecord(record)) {
-    // Une feuille par analyse dans le dossier
-    const types = getRecordTypes(record);
-    if (!types.length) { toast('Aucune analyse dans ce dossier', 'err'); return; }
-    types.forEach(type => {
-      const fakeRecord = { ...record, type, resultats: getRecordResultats(record, type) };
-      buildProfessionalSheet(wb, fakeRecord, type.substring(0, 31));
-    });
-  } else {
-    // Ancien format : une seule feuille
-    buildProfessionalSheet(wb, record, getDisplayTypeShort(record).substring(0, 31));
+  const usedNamesR = new Set();
+  try {
+    if (isDossierRecord(record)) {
+      const types = getRecordTypes(record);
+      if (!types.length) { toast('Aucune analyse dans ce dossier', 'err'); return; }
+      types.forEach(type => {
+        const fakeRecord = { ...record, type, resultats: getRecordResultats(record, type) };
+        buildProfessionalSheet(wb, fakeRecord, safeSheetName(type, usedNamesR));
+      });
+    } else {
+      buildProfessionalSheet(wb, record, safeSheetName(getDisplayTypeShort(record), usedNamesR));
+    }
+  } catch(err) {
+    console.error('buildProfessionalSheet:', err);
+    toast('Erreur lors de la construction du fichier Excel : ' + (err.message || err), 'err');
+    return;
   }
 
   await downloadWorkbook(wb, makeFilename(
@@ -6108,7 +6175,8 @@ async function exportPatientComplet(dossier) {
   toast('Dossier complet exporté ✓ (' + recs.length + ' fiches)', 'ok');
 }
 
-async function exportPDFFromForm(type) {
+async async function exportPDFFromForm(type) {
+  try {
   const p = getPatient();
   if (!validatePatient(p)) return;
   await refreshDB();
@@ -6124,15 +6192,21 @@ async function exportPDFFromForm(type) {
   if (!saved) { toast('Enregistrez la fiche avant d\'exporter en PDF', 'err'); return; }
   if (!confirmerSiExamensManquants(type, saved.resultats)) return;
   buildPDF(saved);
+  } catch(err) { console.error('exportPDFFromForm:', err); toast('Erreur PDF : ' + (err.message||err), 'err'); }
 }
 
 function buildPDF(r) {
+  try {
   // Ordre des paramètres NFS pour le PDF (même ordre que l'écran)
   const HEMA_PARAMS_PRINT = HEMA_PARAMS.map(p => p.name);
   const HEMA_FL_PRINT     = HEMA_FL.map(p => p.name);
 
+  // Protection contre CDN non chargé
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    toast('Bibliothèque PDF non disponible — vérifiez votre connexion internet', 'err');
+    return;
+  }
   const { jsPDF } = window.jspdf;
-  if (!jsPDF) { toast('Bibliothèque PDF non disponible', 'err'); return; }
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const p = r.patient;
@@ -6433,6 +6507,10 @@ function buildPDF(r) {
   const filename = makeFilename(p.dossier, p.date, p.nom, getDisplayTypeShort(r)).replace(/\.xlsx$/, '.pdf');
   doc.save(filename);
   toast('PDF généré ✓', 'ok');
+  } catch(err) {
+    console.error('buildPDF:', err);
+    toast('Erreur génération PDF : ' + (err.message||err), 'err');
+  }
 }
 
 // ============================================================
