@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CPMI — Centre de Protection Mère et Infantile · Laboratoire</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -503,12 +505,19 @@ select {
 #history-table td, #users-table td { padding: 8px 11px; border-bottom: 1px solid #edf2fc; vertical-align: middle; }
 #history-table tr:hover td, #users-table tr:hover td { background: rgba(224,234,255,.5); }
 .badge-type {
-  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  font-size: 10px; font-weight: 700; padding: 2px 7px;
   border-radius: 20px;
   background: linear-gradient(135deg, var(--accent-light), #dbeafe);
   color: var(--cpmi-deep);
   border: 1px solid rgba(37,99,235,.2);
 }
+.badge-hema     { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
+.badge-bio      { background:#fef9c3; color:#854d0e; border-color:#fde047; }
+.badge-bacterio { background:#dcfce7; color:#166534; border-color:#86efac; }
+.badge-sero     { background:#ede9fe; color:#5b21b6; border-color:#c4b5fd; }
+.badge-parasito { background:#fce7f3; color:#9d174d; border-color:#f9a8d4; }
+.badge-gs       { background:#ffedd5; color:#9a3412; border-color:#fdba74; }
+.badge-bpn      { background:#cffafe; color:#155e75; border-color:#67e8f9; }
 .empty-state { text-align: center; padding: 52px 20px; color: var(--text-muted); }
 
 /* ================================================================
@@ -741,6 +750,8 @@ select {
    IMPRESSION — Filigrane CPMI
    ================================================================ */
 @media print {
+  .print-composite-section + .print-composite-section { page-break-before: always; }
+  .print-composite-section { break-inside: avoid; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   @page { margin: 1.8cm; size: A4; }
 
@@ -1991,13 +2002,44 @@ select {
     </div>
   </div>
 
-  <!-- KPI -->
+  <!-- KPI améliorés -->
   <div class="stats-kpi-row" id="stats-kpi-row">
-    <div class="stats-kpi" id="kpi-total"><div class="kpi-val">—</div><div class="kpi-label">Fiches totales</div></div>
-    <div class="stats-kpi" id="kpi-month"><div class="kpi-val">—</div><div class="kpi-label">Période sélectionnée</div></div>
-    <div class="stats-kpi" id="kpi-agents"><div class="kpi-val">—</div><div class="kpi-label">Agents actifs</div></div>
+    <div class="stats-kpi" id="kpi-total">
+      <div class="kpi-val">—</div><div class="kpi-label">Dossiers totaux</div>
+      <div class="kpi-sub" id="kpi-total-sub" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+    </div>
+    <div class="stats-kpi" id="kpi-month">
+      <div class="kpi-val">—</div><div class="kpi-label">Période sélectionnée</div>
+      <div class="kpi-sub" id="kpi-month-sub" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+    </div>
+    <div class="stats-kpi" id="kpi-agents">
+      <div class="kpi-val">—</div><div class="kpi-label">Agents actifs</div>
+      <div class="kpi-sub" id="kpi-agents-sub" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+    </div>
     <div class="stats-kpi" id="kpi-recettes-month" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes période (FCFA)</div></div>
     <div class="stats-kpi" id="kpi-recettes-total" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes totales (FCFA)</div></div>
+  </div>
+
+  <!-- Graphiques Chart.js -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">🍩 Répartition par type</div>
+      <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center">
+        <canvas id="chartjs-donut" style="max-height:200px"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">💰 Recettes mensuelles (FCFA)</div>
+      <div style="position:relative;height:220px">
+        <canvas id="chartjs-bar-recettes"></canvas>
+      </div>
+    </div>
+  </div>
+  <div style="margin-bottom:16px" class="card">
+    <div class="card-title">📈 Évolution du nombre de dossiers (12 mois)</div>
+    <div style="position:relative;height:180px">
+      <canvas id="chartjs-line-evolution"></canvas>
+    </div>
   </div>
 
   <div class="stats-grid">
@@ -3995,6 +4037,7 @@ async function saveRecord(type) {
   if (_editingRecordId) {
     const existing = getDB().find(rr => rr.id === _editingRecordId);
     if (!existing) { toast('Fiche introuvable', 'err'); return; }
+    if (isDossierRecord(existing) && _editingType) type = _editingType;
 
     let newRes, newMontant;
     if (isDossierRecord(existing)) {
@@ -4022,6 +4065,7 @@ async function saveRecord(type) {
     if (saved) {
       toast(type + ' mis à jour ✓', 'ok');
       _editingRecordId = null;
+      _editingType     = null;
       const banner = document.getElementById('edit-mode-banner');
       if (banner) banner.style.display = 'none';
     }
@@ -4079,6 +4123,7 @@ async function saveRecord(type) {
 // ============================================================
 
 let _editingRecordId = null;
+let _editingType     = null; // type de l'analyse en cours d'édition
 
 async function editRecord(id, typeOverride) {
   let record = getDB().find(x => x.id === id);
@@ -4103,6 +4148,7 @@ async function editRecord(id, typeOverride) {
   const fakeRecord = { ...record, type, resultats: res };
 
   _editingRecordId = id;
+  _editingType     = type;
 
   showView('saisie');
   await new Promise(res => setTimeout(res, 50));
@@ -4498,17 +4544,12 @@ async function renderHistory(forceRefresh) {
     return;
   }
 
-  const dossiersCount = {};
-  db.forEach(r => { dossiersCount[r.patient.dossier] = (dossiersCount[r.patient.dossier] || 0) + 1; });
-
   const deleteBtn = (id) => isAdmin()
     ? '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="deleteRecord(' + id + ')">🗑</button>'
     : '';
 
   b.innerHTML = filtered.map(r => {
-    const dossierMulti = dossiersCount[r.patient.dossier] > 1
-      ? `<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:var(--accent-light);color:var(--accent)" onclick="exportPatientComplet('${r.patient.dossier.replace(/'/g, "\\'")}')">📁</button>`
-      : '';
+    const dossierMulti = '';
     const montantStr = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
     return '<tr>'
       + '<td data-label="Date">' + (r.patient.date || '—') + '</td>'
@@ -4517,9 +4558,13 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Âge">' + (r.patient.age || '—') + '</td>'
       + '<td data-label="Sexe">' + (r.patient.sexe || '—') + '</td>'
       + '<td data-label="Service">' + (r.patient.service || '—') + '</td>'
-      + '<td data-label="Type">' + getRecordTypes(r).map(t =>
-          '<span class="badge-type" style="margin:1px 2px;display:inline-block">' + t + '</span>'
-        ).join('') + '</td>'
+      + '<td data-label="Type">' + getRecordTypes(r).map(t => {
+          const cls = t==='Hématologie'?'badge-hema':t==='Biochimie'?'badge-bio':
+            t==='Bactériologie'?'badge-bacterio':t==='Sérologie'?'badge-sero':
+            t==='Parasitologie'?'badge-parasito':t==='Groupe sanguin'?'badge-gs':
+            t==='Bilan prénatal'?'badge-bpn':'';
+          return '<span class="badge-type '+cls+'" style="margin:1px 2px;display:inline-block">'+t+'</span>';
+        }).join('') + '</td>'
       + '<td data-label="Saisi par">' + (r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
       + '<td data-label="Actions">'
@@ -4527,12 +4572,40 @@ async function renderHistory(forceRefresh) {
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF">📄</button>'
         + dossierMulti
-        + deleteBtn(r.id)
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer">🖨</button>'
+        + (isAdmin() && isDossierRecord(r) && getRecordTypes(r).length > 0
+            ? getRecordTypes(r).map(t =>
+                '<button class="btn btn-danger" style="padding:3px 7px;font-size:10px;margin-left:2px;opacity:.75" title="Supprimer ' + t + '" onclick="deleteAnalyseFromDossier(' + r.id + ',\'' + t.replace(/'/g,"\\'") + '\')">✕ ' + t.substring(0,4) + '</button>'
+              ).join('')
+            : deleteBtn(r.id))
+        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer résultats">🖨</button>'
+        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="printReceipt(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
       + '</td></tr>';
   }).join('');
 }
 
+
+async function deleteAnalyseFromDossier(recordId, type) {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  const record = getDB().find(r => r.id === recordId);
+  if (!record || !isDossierRecord(record)) { toast('Dossier introuvable', 'err'); return; }
+  const types = getRecordTypes(record);
+  if (types.length <= 1) {
+    if (!confirm('C\'est la dernière analyse de ce dossier. Supprimer le dossier entier ?')) return;
+    const ok = await deleteRecordRemote(recordId);
+    if (ok) { renderHistory(); toast('Dossier supprimé'); }
+    return;
+  }
+  if (!confirm('Supprimer "' + type + '" du dossier ? Les autres analyses seront conservées.')) return;
+  const newRes = { ...record.resultats };
+  delete newRes[type];
+  newRes._types = (newRes._types || []).filter(t => t !== type);
+  if (newRes._examens_coches) delete newRes._examens_coches[type];
+  const saved = await updateRecordRemote(recordId, {
+    patient: record.patient, type: 'Dossier', resultats: newRes,
+    montant: record.montant, prescripteur_id: record.prescripteur_id,
+  });
+  if (saved) { renderHistory(); toast('"' + type + '" supprimé du dossier ✓', 'ok'); }
+}
 
 async function deleteRecord(id) {
   if (!confirm('Supprimer cette fiche ?')) return;
@@ -5427,6 +5500,32 @@ async function renderStats() {
     </div>`;
 
   // Ristournes sur la période filtrée
+
+  // ── Graphiques Chart.js ──────────────────────────────────────
+  if (window._charts) { Object.values(window._charts).forEach(ch => { try { ch.destroy(); } catch(e){} }); }
+  window._charts = {};
+  const CHART_COLORS = {'Hématologie':'#b91c1c','Biochimie':'#854d0e','Bactériologie':'#166534','Sérologie':'#5b21b6','Parasitologie':'#9d174d','Groupe sanguin':'#9a3412','Bilan prénatal':'#155e75'};
+  const donutEl = document.getElementById('chartjs-donut');
+  if (donutEl && typeof Chart !== 'undefined') {
+    const dL=TYPES_ANALYSES.filter(t=>byType[t]>0), dD=dL.map(t=>byType[t]), dC=dL.map(t=>CHART_COLORS[t]||'#6b7280'), dT=dD.reduce((a,b)=>a+b,0);
+    window._charts.donut = new Chart(donutEl,{type:'doughnut',data:{labels:dL,datasets:[{data:dD,backgroundColor:dC,borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw/dT*100)}%)`}}}}});
+  }
+  const barRecEl = document.getElementById('chartjs-bar-recettes');
+  if (barRecEl && typeof Chart !== 'undefined') {
+    const bL=[],bD=[];
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');bL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));bD.push(db.filter(r=>(r.savedAt||'').startsWith(k)).reduce((s,r)=>s+(r.montant||0),0));}
+    window._charts.barRec = new Chart(barRecEl,{type:'bar',data:{labels:bL,datasets:[{label:'FCFA',data:bD,backgroundColor:'rgba(30,58,138,.75)',borderColor:'#1e3a8a',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.raw.toLocaleString('fr-FR')+' FCFA'}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}},x:{ticks:{font:{size:10}}}}}});
+  }
+  const lineEl = document.getElementById('chartjs-line-evolution');
+  if (lineEl && typeof Chart !== 'undefined') {
+    const lL=[],lD=[];
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');lL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));lD.push(db.filter(r=>(r.savedAt||'').startsWith(k)).length);}
+    window._charts.line = new Chart(lineEl,{type:'line',data:{labels:lL,datasets:[{data:lD,borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',borderWidth:2,tension:.35,pointRadius:4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},stepSize:1}},x:{ticks:{font:{size:10}}}}}});
+  }
+  const el_ts=document.getElementById('kpi-total-sub'); if(el_ts){const n=Object.values(byType).reduce((a,b)=>a+b,0);el_ts.textContent=n+' analyse'+(n>1?'s':'')+' enregistrée'+(n>1?'s':'');}
+  const el_ms=document.getElementById('kpi-month-sub'); if(el_ms){const n=dbPeriode.reduce((s,r)=>s+(isDossierRecord(r)?(r.resultats?._types||[]).length:1),0);el_ms.textContent=n+' analyse'+(n>1?'s':'');}
+  const el_as=document.getElementById('kpi-agents-sub'); if(el_as){const n=new Set(db.map(r=>r.createdBy).filter(Boolean)).size;el_as.textContent=n+' agent'+(n>1?'s':'')+' au total';}
+
   await renderRistournes(dbPeriode);
   // Section admin prescripteurs
   const adminCard = document.getElementById('prescripteurs-admin-card');
@@ -5536,7 +5635,37 @@ function escHTML(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function buildAndPrint(r) {
+
+// ============================================================
+// QR CODE — Génération asynchrone via QRCode.js (CDN)
+// ============================================================
+
+function generateQRDataURL(text, size = 120) {
+  return new Promise((resolve) => {
+    if (typeof QRCode === 'undefined') { resolve(''); return; }
+    const div = document.createElement('div');
+    div.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
+    document.body.appendChild(div);
+    try {
+      new QRCode(div, {
+        text: text.substring(0, 900), // QR supporte ~900 chars mode alphanum
+        width: size, height: size,
+        colorDark: '#1e3a8a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    } catch(e) { document.body.removeChild(div); resolve(''); return; }
+    // QRCode.js crée le canvas de façon synchrone mais on attend un tick
+    requestAnimationFrame(() => {
+      const canvas = div.querySelector('canvas');
+      const url = canvas ? canvas.toDataURL('image/png') : '';
+      document.body.removeChild(div);
+      resolve(url);
+    });
+  });
+}
+
+async function buildAndPrint(r) {
   // Construire le HTML de rendu d'impression
   const p = r.patient;
   const res = r.resultats || {};
@@ -5581,6 +5710,16 @@ function buildAndPrint(r) {
       </table>
     </div>`;
 
+  // ── QR Code (si disponible) ────────────────────────────────
+  const qrText = `CPMI Grand-Bassam\nDossier: ${p?.dossier||'—'}\nPatient: ${(p?.nom||'').toUpperCase()}\nDate: ${p?.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}\nAnalyses: ${getDisplayType(r)}`;
+  const qrUrl = await generateQRDataURL(qrText, 100);
+  if (qrUrl) {
+    html += `<div style="float:right;margin:-80px 0 10px 10px;text-align:center">
+      <img src="${qrUrl}" width="80" height="80" style="display:block;border:1px solid #e5e7eb;border-radius:4px">
+      <div style="font-size:8px;color:#9ca3af;margin-top:2px">Scan = info dossier</div>
+    </div>`;
+  }
+
   // ── Sections selon le type ──────────────────────────────────
   html += buildPrintSections(r.type, res);
 
@@ -5613,7 +5752,7 @@ function buildPrintSections(type, res) {
   if (type === 'Dossier' && res?._dossier && res._types) {
     res._types.forEach(t => {
       const typeRes = res[t] || {};
-      html += `<div style="margin-top:16px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--cpmi-deep);border-bottom:2px solid var(--cpmi-deep);padding-bottom:4px;margin-bottom:8px">${t}</div>`;
+      html += `<div class="print-composite-section" style="margin-top:20px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--cpmi-deep);border-bottom:2px solid var(--cpmi-deep);padding-bottom:4px;margin-bottom:8px">${t}</div>`;
       html += buildPrintSections(t, typeRes);
       html += '</div>';
     });
@@ -5755,6 +5894,142 @@ function buildPrintSections(type, res) {
   }
 
   return html;
+}
+
+
+// ============================================================
+// REÇU DE PAIEMENT IMPRIMABLE
+// ============================================================
+
+async function printReceipt(id) {
+  const record = getDB().find(r => r.id === id);
+  if (!record) { toast('Dossier introuvable', 'err'); return; }
+
+  const p = record.patient || {};
+  const types = getRecordTypes(record);
+  const now = new Date();
+  const ref = typeof getTarifsRef === 'function' ? getTarifsRef() : {};
+  const catalogue = getCatalogueComplet();
+
+  // Construire les lignes du reçu
+  const lignes = [];
+  let totalCalcule = 0;
+
+  types.forEach(type => {
+    const TYPE_TO_TAB = {
+      'Hématologie':'hema','Biochimie':'bio','Bactériologie':'bacterio',
+      'Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn',
+    };
+    const tabKey = TYPE_TO_TAB[type] || 'hema';
+    // Examens cochés enregistrés dans le dossier
+    const examens = isDossierRecord(record)
+      ? (record.resultats?._examens_coches?.[type] || [])
+      : (record.resultats?.['_examens_coches'] || []);
+
+    if (examens.length) {
+      examens.forEach(label => {
+        const ex = catalogue.find(e => e.label === label);
+        const prix = ex ? (ref[ex.id] !== undefined ? ref[ex.id] : ex.prix || 0) : 0;
+        lignes.push({ label, prix, type });
+        totalCalcule += prix;
+      });
+    } else {
+      lignes.push({ label: type, prix: null, type });
+    }
+  });
+
+  const montantAffiche = record.montant || totalCalcule;
+
+  // QR code pour le reçu
+  const qrText = `CPMI Grand-Bassam\nREÇU N°${record.id}\nDossier: ${p.dossier||'—'}\nPatient: ${(p.nom||'').toUpperCase()}\nMontant: ${montantAffiche.toLocaleString('fr-FR')} FCFA`;
+  const qrUrl = await generateQRDataURL(qrText, 90);
+
+  const receiptNum = String(record.id).padStart(6, '0');
+  const dateHeure = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 8px; }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .line { border-top: 1px dashed #333; margin: 6px 0; }
+  .double-line { border-top: 2px solid #000; margin: 6px 0; }
+  .row { display: flex; justify-content: space-between; margin: 2px 0; }
+  .total-row { font-size: 14px; font-weight: bold; }
+  .small { font-size: 10px; color: #555; }
+  .badge { display: inline-block; background: #1e3a8a; color: #fff; padding: 1px 6px; border-radius: 4px; font-size: 10px; }
+  @media print { body { width: 100%; } }
+</style>
+</head><body>
+  <!-- En-tête -->
+  <div class="center">
+    <div class="bold" style="font-size:14px">CPMI DE GRAND-BASSAM</div>
+    <div class="small">Centre de Protection Mère et Infantile</div>
+    <div class="small">Laboratoire d'analyses médicales</div>
+    <div class="small">Grand-Bassam — Côte d'Ivoire</div>
+  </div>
+  <div class="double-line"></div>
+  <div class="center bold" style="font-size:13px; letter-spacing:1px">REÇU DE PAIEMENT</div>
+  <div class="line"></div>
+
+  <!-- Infos reçu -->
+  <div class="row"><span>N° Reçu :</span><span class="bold">${receiptNum}</span></div>
+  <div class="row"><span>Date :</span><span>${dateHeure}</span></div>
+  <div class="row"><span>Agent :</span><span>${record.createdBy || '—'}</span></div>
+  <div class="line"></div>
+
+  <!-- Patient -->
+  <div class="bold" style="margin-bottom:3px">PATIENT</div>
+  <div class="row"><span>Nom :</span><span class="bold">${escHTML((p.nom||'').toUpperCase())}</span></div>
+  <div class="row"><span>N° Dossier :</span><span>${escHTML(p.dossier||'—')}</span></div>
+  <div class="row"><span>Âge / Sexe :</span><span>${escHTML(p.age||'—')} ans / ${p.sexe||'—'}</span></div>
+  <div class="row"><span>Prescripteur :</span><span>${escHTML(p.medecin||'—')}</span></div>
+  <div class="line"></div>
+
+  <!-- Détail analyses -->
+  <div class="bold" style="margin-bottom:3px">DÉTAIL DES ANALYSES</div>
+  ${lignes.map(l => `
+  <div class="row">
+    <span style="flex:1;max-width:55mm">${escHTML(l.label)}</span>
+    <span>${l.prix !== null ? l.prix.toLocaleString('fr-FR') + ' F' : '—'}</span>
+  </div>`).join('')}
+  <div class="double-line"></div>
+
+  <!-- Total -->
+  <div class="row total-row">
+    <span>TOTAL PAYÉ :</span>
+    <span>${montantAffiche.toLocaleString('fr-FR')} FCFA</span>
+  </div>
+  <div class="line"></div>
+
+  <!-- Mode paiement -->
+  <div class="row"><span>Mode de paiement :</span><span>_________________</span></div>
+  <div class="row small"><span>Signature caissier :</span><span>_________________</span></div>
+  <div class="line"></div>
+
+  <!-- QR code -->
+  ${qrUrl ? `<div class="center" style="margin:6px 0">
+    <img src="${qrUrl}" width="80" height="80">
+    <div class="small">Scannez pour vérifier</div>
+  </div>
+  <div class="line"></div>` : ''}
+
+  <!-- Pied -->
+  <div class="center small" style="margin-top:4px">
+    Merci de votre confiance<br>
+    Ce reçu fait foi de paiement<br>
+    CPMI Grand-Bassam
+  </div>
+</body></html>`;
+
+  const win = window.open('', 'receipt', 'width=400,height=700,toolbar=no,scrollbars=yes');
+  if (!win) { toast('Autorisez les pop-ups pour imprimer le reçu', 'err'); return; }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => { win.print(); }, 400);
 }
 
 function printHistory() {
@@ -6536,8 +6811,8 @@ async function renderRistournes(db) {
   // Pour chaque prescripteur, calculer BPN + extra-BPN
   const rows = _prescripteurs.map(presc => {
     const fiches = db.filter(r => Number(r.prescripteur_id) === Number(presc.id)); // ✅ v2: comparaison stricte ID uniquement
-    const bpn = fiches.filter(r => r.type === 'Bilan prénatal');
-    const extraBPN = fiches.filter(r => r.type !== 'Bilan prénatal');
+    const bpn      = fiches.filter(r => getRecordTypes(r).includes('Bilan prénatal'));
+    const extraBPN = fiches.filter(r => !getRecordTypes(r).includes('Bilan prénatal'));
     const montantExtraBPN = extraBPN.reduce((s, r) => s + (r.montant || 0), 0);
     const ristourne = Math.round(montantExtraBPN * (presc.taux_ristourne || 0) / 100);
     return { presc, bpn: bpn.length, extraBPN: extraBPN.length, montantExtraBPN, ristourne };
