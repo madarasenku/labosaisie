@@ -749,7 +749,23 @@ select {
 /* ================================================================
    IMPRESSION — Filigrane CPMI
    ================================================================ */
+/* ── Loading overlay ───────────────────────────────── */
+#loading-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(255,255,255,.75); backdrop-filter: blur(3px);
+  align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+}
+#loading-overlay.active { display: flex; }
+.loading-spinner {
+  width: 44px; height: 44px; border: 4px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+
 @media print {
+  #loading-overlay { display: none !important; }
   .print-composite-section + .print-composite-section { page-break-before: always; }
   .print-composite-section { break-inside: avoid; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -1015,7 +1031,8 @@ select {
       </div>
       <div class="form-group">
         <label>Nom complet<span class="req">*</span></label>
-        <input type="text" id="p_nom" placeholder="Nom et prénom">
+        <input type="text" id="p_nom" placeholder="Nom et prénom" autocomplete="off" list="patient-suggestions" oninput="onPatientNameInput()">
+        <datalist id="patient-suggestions"></datalist>
       </div>
       <div class="form-group">
         <label>Âge</label>
@@ -1958,8 +1975,9 @@ select {
   <div class="card">
     <div class="card-title" style="justify-content:space-between">
       <span>📋 Résultats</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-success" onclick="exportAllExcel()" style="padding:5px 12px;font-size:12px">⬇ Excel complet</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="exportAllExcel()" style="padding:5px 12px;font-size:12px">⬇ Excel</button>
+        <button class="btn btn-outline" onclick="exportHistoryCSV()" style="padding:5px 12px;font-size:12px">📄 CSV</button>
         <button class="btn btn-outline" onclick="printHistory()" style="padding:5px 12px;font-size:12px">🖨 Imprimer</button>
       </div>
     </div>
@@ -3603,7 +3621,20 @@ let _dbCache = [];
 
 function getDB() { return _dbCache; }
 
-async function refreshDB() {
+
+// ── Loading overlay ──────────────────────────────────────────────────
+function showLoading(msg) {
+  const el = document.getElementById('loading-overlay');
+  const lb = document.getElementById('loading-label');
+  if (lb) lb.textContent = msg || 'Chargement…';
+  if (el) el.classList.add('active');
+}
+function hideLoading() {
+  const el = document.getElementById('loading-overlay');
+  if (el) el.classList.remove('active');
+}
+
+async function refreshDB(force) {
   const { data, error } = await _sb
     .from('labo_resultats')
     .select('id, type, patient, resultats, created_at, created_by, montant, prescripteur_id, est_bpn')
@@ -3620,6 +3651,7 @@ async function refreshDB() {
     prescripteur_id: row.prescripteur_id,
     est_bpn: row.est_bpn || false,
   }));
+  if (typeof buildPatientCache === 'function') buildPatientCache();
   return _dbCache;
 }
 
@@ -3724,7 +3756,15 @@ async function getNextDossierNum() {
   const yy = String(now.getFullYear()).slice(-2);
   const suffix = '-' + mm + yy;
 
-  // Rafraîchir le cache pour avoir l'historique à jour
+  // ── Essayer la RPC atomique Supabase en priorité (évite les doublons) ──
+  try {
+    const { data, error } = await _sb.rpc('get_next_dossier_num', { p_month_year: mm + yy });
+    if (!error && data && typeof data === 'number') {
+      return String(data).padStart(4, '0') + suffix;
+    }
+  } catch(e) { /* fallback client-side si RPC non disponible */ }
+
+  // ── Fallback : calcul local (base déjà chargée) ──
   await refreshDB();
   const db = getDB();
 
@@ -4001,10 +4041,83 @@ function collectResults(type) {
   return data;
 }
 
+
+// ── Autocomplete patient depuis l'historique ─────────────────────────
+let _patientCache = [];   // { nom, age, sexe, medecin, service, clinique }
+
+function buildPatientCache() {
+  const db = getDB();
+  const seen = new Set();
+  _patientCache = [];
+  db.forEach(r => {
+    const p = r.patient;
+    if (!p?.nom) return;
+    const key = (p.nom||'').toUpperCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      _patientCache.push({ ...p, nom: p.nom.toUpperCase().trim() });
+    }
+  });
+  _patientCache.sort((a,b) => a.nom.localeCompare(b.nom));
+}
+
+function onPatientNameInput() {
+  const val = (document.getElementById('p_nom')?.value || '').toUpperCase().trim();
+  const dl  = document.getElementById('patient-suggestions');
+  if (!dl) return;
+  dl.innerHTML = '';
+  if (!val || val.length < 2) return;
+  const matches = _patientCache.filter(p => p.nom.includes(val)).slice(0, 10);
+  matches.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.nom;
+    opt.dataset.patient = JSON.stringify(p);
+    dl.appendChild(opt);
+  });
+}
+
+// Quand l'utilisateur sélectionne une suggestion → autofill
+document.addEventListener('change', e => {
+  if (e.target.id !== 'p_nom') return;
+  const val = e.target.value.toUpperCase().trim();
+  const match = _patientCache.find(p => p.nom === val);
+  if (!match) return;
+  const setV = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  setV('p_age', match.age);
+  setV('p_sexe', match.sexe);
+  setV('p_medecin', match.medecin);
+  setV('p_service', match.service);
+  setV('p_clinique', match.clinique);
+  if (match.sexe || match.age) updateAllRefs();
+  toast('Patient reconnu — informations pré-remplies', 'ok');
+});
+
+
+// Met à jour le bandeau patient + indicateur d'analyses déjà sauvegardées
+async function refreshRappelPatient() {
+  const p = getPatient();
+  const rappelNom  = document.getElementById('rappel-nom');
+  const rappelDoss = document.getElementById('rappel-dossier');
+  if (rappelNom)  rappelNom.textContent  = (p.nom||'').toUpperCase();
+  if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier||'');
+
+  // Afficher les analyses déjà enregistrées pour ce dossier
+  const db = getDB();
+  const existing = db.find(rr => isDossierRecord(rr) && rr.patient?.dossier === p.dossier);
+  const savedEl = document.getElementById('rappel-saved-analyses');
+  if (savedEl) {
+    const types = existing ? getRecordTypes(existing) : [];
+    savedEl.innerHTML = types.length
+      ? '✓ ' + types.map(t => '<span style="display:inline-block;background:#dcfce7;color:#166534;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin:0 2px">' + t.substring(0,4) + '</span>').join('') + ' enregistrés'
+      : '';
+  }
+}
+
 async function saveRecord(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
   toast('Enregistrement en cours…');
+  showLoading('Enregistrement…');
 
   const TYPE_TO_TAB = {
     'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
@@ -4063,7 +4176,7 @@ async function saveRecord(type) {
       prescripteur_id: prescripteurId || existing.prescripteur_id || null,
     });
     if (saved) {
-      toast(type + ' mis à jour ✓', 'ok');
+      hideLoading(); toast(type + ' mis à jour ✓', 'ok');
       _editingRecordId = null;
       _editingType     = null;
       const banner = document.getElementById('edit-mode-banner');
@@ -4098,7 +4211,7 @@ async function saveRecord(type) {
     });
     if (saved) {
       const allTypes = newRes._types.join(' · ');
-      toast('✓ ' + type + ' ajouté au dossier N°' + dossier + ' — Total : ' + newMontant.toLocaleString('fr-FR') + ' FCFA', 'ok');
+      hideLoading(); refreshRappelPatient(); toast('✓ ' + type + ' ajouté au dossier N°' + dossier + ' — Total : ' + newMontant.toLocaleString('fr-FR') + ' FCFA', 'ok');
     }
 
   } else {
@@ -4112,7 +4225,7 @@ async function saveRecord(type) {
       prescripteur_id: prescripteurId || null,
     });
     if (saved) {
-      toast('✓ Dossier N°' + dossier + ' créé — ' + type + ' — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
+      hideLoading(); refreshRappelPatient(); toast('✓ Dossier N°' + dossier + ' créé — ' + type + ' — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
     }
   }
 }
@@ -4194,7 +4307,7 @@ async function editRecord(id, typeOverride) {
 
   const rappelNom  = document.getElementById('rappel-nom');
   const rappelDoss = document.getElementById('rappel-dossier');
-  if (rappelNom)  rappelNom.textContent  = p.nom || '';
+  if (rappelNom)  rappelNom.textContent  = (p.nom||'').toUpperCase();
   if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -6069,6 +6182,43 @@ async function printReceipt(id) {
   setTimeout(() => { win.print(); }, 400);
 }
 
+
+// ── Export CSV de l'historique filtré ────────────────────────────────
+function exportHistoryCSV() {
+  const db = getDB();
+  if (!db.length) { toast('Aucune donnée à exporter', 'err'); return; }
+
+  const headers = ['N° Dossier','Nom patient','Âge','Sexe','Date prélèvement',
+    'Types analyses','Prescripteur','Montant (FCFA)','Saisi par','Date saisie'];
+
+  const rows = db.map(r => {
+    const p = r.patient || {};
+    return [
+      p.dossier || '',
+      (p.nom || '').toUpperCase(),
+      p.age || '',
+      p.sexe || '',
+      p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '',
+      getRecordTypes(r).join(' + ') || r.type || '',
+      p.medecin || '',
+      r.montant || 0,
+      r.createdBy || '',
+      r.savedAt ? new Date(r.savedAt).toLocaleDateString('fr-FR') : '',
+    ].map(v => '"' + String(v).replace(/"/g, '""') + '"');
+  });
+
+  const csv = [headers.map(h => '"'+h+'"').join(','), ...rows.map(r => r.join(','))].join('
+');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'LaboSaisie_Historique_' + new Date().toLocaleDateString('fr-FR').replace(/\//g,'-') + '.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('Export CSV réussi ✓', 'ok');
+}
+
 function printHistory() {
   _printData = null; // mode historique complet
   window.print();
@@ -6175,7 +6325,7 @@ async function exportPatientComplet(dossier) {
   toast('Dossier complet exporté ✓ (' + recs.length + ' fiches)', 'ok');
 }
 
-async async function exportPDFFromForm(type) {
+async function exportPDFFromForm(type) {
   try {
   const p = getPatient();
   if (!validatePatient(p)) return;
@@ -7312,6 +7462,17 @@ function doLogout() {
 function enterApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-root').style.display = 'block';
+  // Charger les valeurs de référence depuis Supabase au login
+  (async () => {
+    try {
+      const { data: remoteRefs } = await _sb.rpc('get_refs_config');
+      if (remoteRefs && Object.keys(remoteRefs).length > 0) {
+        _customRefsCache = remoteRefs;
+        localStorage.setItem(LABO_REFS_KEY, JSON.stringify(remoteRefs));
+      }
+    } catch(e) { /* RPC non disponible → utiliser localStorage */ }
+    updateAllRefs();
+  })();
   initApp();
 }
 
@@ -7773,7 +7934,16 @@ function saveRefsConfig() {
   saveCustomRefs(custom);
   updateAllRefs();
   buildRefsEditor();
-  toast('✓ Toutes les valeurs de référence et unités enregistrées — appliquées sur tout le site', 'ok');
+  // Persister en Supabase pour sync tous les postes
+  if (_currentUser?.id) {
+    _sb.rpc('save_refs_config', { p_user_id: _currentUser.id, p_refs: custom })
+      .then(({ error }) => {
+        if (!error) toast('✓ Valeurs de référence synchronisées sur tous les postes du labo', 'ok');
+        else toast('✓ Valeurs enregistrées localement (sync Supabase indisponible)', 'ok');
+      }).catch(() => toast('✓ Valeurs enregistrées localement', 'ok'));
+  } else {
+    toast('✓ Valeurs de référence enregistrées sur ce poste', 'ok');
+  }
 }
 
 function resetSectionRefs(sectionId) {
@@ -7826,6 +7996,38 @@ setInterval(() => {
   }
 }, 60_000); // vérifier chaque minute
 
+
+// ── Raccourcis clavier globaux ────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Ctrl+S / Cmd+S — Sauvegarder l'analyse active
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (!activeTab) return;
+    const tabId = activeTab.dataset.tab;
+    const TYPE_MAP = {
+      hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
+      sero:'Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin', bpn:'Bilan prénatal',
+    };
+    const type = TYPE_MAP[tabId];
+    if (type) saveRecord(type);
+    return;
+  }
+  // Ctrl+P / Cmd+P — Imprimer (géré nativement sauf si on est dans la saisie)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+    const view = document.querySelector('[id^="view-"]:not([style*="none"])');
+    if (view?.id === 'view-saisie') {
+      e.preventDefault();
+      toast('Enregistrez d'abord la fiche avant d'imprimer', 'ok');
+    }
+  }
+  // Escape — Fermer les modaux ouverts
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('edit-type-modal');
+    if (modal) modal.remove();
+  }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   if (hasValidSession()) {
     enterApp();
@@ -7837,5 +8039,12 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </div><!-- /#app-root -->
 
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-label" id="loading-label">Chargement…</div>
+</div>
+
 </body>
 </html>
+      <div id="rappel-saved-analyses" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
