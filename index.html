@@ -7,7 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -3612,9 +3612,35 @@ function validatePatient(p) {
 // STORAGE — Supabase (base de données distante)
 // ============================================================
 
+// ════════════════════════════════════════════════════════════════
+// CONFIGURATION SUPABASE
+// ⚠ REMPLACEZ CES 2 VALEURS par celles de VOTRE projet :
+//   Supabase → Project Settings → API
+//     • Project URL  → SUPABASE_URL
+//     • anon public  → SUPABASE_KEY
+// ════════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://uvxxbihlagfncraokqlg.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_RPgz6piVcNONZOOcLmOCQw_5YPxZTd6';
-const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Initialisation robuste : vérifie que la librairie est chargée
+let _sb = null;
+function initSupabase() {
+  if (!window.supabase || !window.supabase.createClient) {
+    console.error('[LaboSaisie] Librairie Supabase non chargée (vérifiez votre connexion internet).');
+    return false;
+  }
+  if (SUPABASE_URL.includes('uvxxbihlagfncraokqlg') || SUPABASE_KEY.includes('RPgz6piVcNONZOOcLmOCQw')) {
+    console.warn('[LaboSaisie] ⚠ Vous utilisez la configuration Supabase par défaut. Remplacez SUPABASE_URL et SUPABASE_KEY par vos propres identifiants.');
+  }
+  try {
+    _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    return true;
+  } catch(e) {
+    console.error('[LaboSaisie] Erreur création client Supabase:', e);
+    return false;
+  }
+}
+initSupabase();
 
 // Cache local pour affichage instantané ; toujours resynchronisé avec Supabase
 let _dbCache = [];
@@ -6207,8 +6233,7 @@ function exportHistoryCSV() {
     ].map(v => '"' + String(v).replace(/"/g, '""') + '"');
   });
 
-  const csv = [headers.map(h => '"'+h+'"').join(','), ...rows.map(r => r.join(','))].join('
-');
+  const csv = [headers.map(h => '"'+h+'"').join(','), ...rows.map(r => r.join(','))].join('\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
@@ -7428,11 +7453,29 @@ async function doLogin() {
   if (!username || !pwd) { errEl.textContent = "Veuillez saisir le nom d'utilisateur et le mot de passe."; return; }
 
   errEl.textContent = 'Vérification…';
+
+  // Vérifier que Supabase est initialisé
+  if (!_sb) {
+    if (!initSupabase()) {
+      errEl.textContent = '⚠ Impossible de contacter le serveur. Vérifiez votre connexion internet et rechargez la page.';
+      return;
+    }
+  }
+
   try {
     const { data, error } = await _sb.rpc('login_user', { p_username: username, p_password: pwd });
     if (error) {
       console.error('Erreur login_user:', error);
-      errEl.textContent = 'Erreur de connexion au serveur. Réessayez.';
+      // Messages précis selon le type d'erreur
+      if (error.message && error.message.includes('Could not find the function')) {
+        errEl.textContent = '⚠ La base de données n\'est pas initialisée. Exécutez le script SQL dans Supabase.';
+      } else if (error.message && (error.message.includes('JWT') || error.message.includes('apikey') || error.message.includes('Invalid API key'))) {
+        errEl.textContent = '⚠ Clé Supabase invalide. Vérifiez SUPABASE_KEY dans le fichier.';
+      } else if (error.message && error.message.includes('Failed to fetch')) {
+        errEl.textContent = '⚠ Serveur injoignable. Vérifiez SUPABASE_URL et votre connexion internet.';
+      } else {
+        errEl.textContent = 'Erreur serveur : ' + (error.message || 'inconnue') + ' (voir console F12)';
+      }
       return;
     }
     if (data && data.length > 0) {
@@ -7444,8 +7487,12 @@ async function doLogin() {
       pwdInput.focus();
     }
   } catch (e) {
-    console.error(e);
-    errEl.textContent = 'Erreur de connexion au serveur. Réessayez.';
+    console.error('Exception login:', e);
+    if (e.message && e.message.includes('Failed to fetch')) {
+      errEl.textContent = '⚠ Serveur injoignable. Vérifiez SUPABASE_URL et votre connexion internet.';
+    } else {
+      errEl.textContent = 'Erreur : ' + (e.message || 'connexion impossible') + ' (voir console F12)';
+    }
   }
 }
 
@@ -8018,7 +8065,7 @@ document.addEventListener('keydown', e => {
     const view = document.querySelector('[id^="view-"]:not([style*="none"])');
     if (view?.id === 'view-saisie') {
       e.preventDefault();
-      toast('Enregistrez d'abord la fiche avant d'imprimer', 'ok');
+      toast('Enregistrez d\'abord la fiche avant d\'imprimer', 'ok');
     }
   }
   // Escape — Fermer les modaux ouverts
