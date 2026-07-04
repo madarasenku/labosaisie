@@ -4,12 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CPMI — Centre de Protection Mère et Infantile · Laboratoire</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- ⚠ SÉCURITÉ (SRI) — Pour verrouiller ces CDN contre toute altération,
+     ajoutez un attribut integrity="sha384-…" à chaque balise ci-dessous.
+     Générez le hash de chaque fichier ainsi (dans un terminal) :
+       curl -s <URL_DU_SCRIPT> | openssl dgst -sha384 -binary | openssl base64 -A
+     puis : integrity="sha384-<RÉSULTAT>" (crossorigin est déjà présent).
+     Alternative plus robuste : héberger ces 6 fichiers dans le dépôt GitHub.
+     ⚠ N'ajoutez PAS de hash au hasard : un hash erroné bloque le chargement. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
 <style>
 /* ============================================================
    CPMI — Centre de Protection Mère et Infantile
@@ -518,6 +525,16 @@ select {
 .badge-parasito { background:#fce7f3; color:#9d174d; border-color:#f9a8d4; }
 .badge-gs       { background:#ffedd5; color:#9a3412; border-color:#fdba74; }
 .badge-bpn      { background:#cffafe; color:#155e75; border-color:#67e8f9; }
+.bpn-compo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:6px 14px; }.bpn-compo-grid label { display:flex; align-items:center; gap:7px; font-size:12.5px; cursor:pointer; padding:3px 0; }
+.bpn-compo-grid input[type=checkbox] { width:16px; height:16px; accent-color:var(--cpmi-mid,#0891b2); cursor:pointer; }
+.modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+.modal-box { background:var(--card,#fff); border-radius:14px; padding:20px; width:100%; max-width:420px; box-shadow:0 20px 50px rgba(0,0,0,.3); max-height:90vh; overflow-y:auto; }
+.modal-title { font-size:16px; font-weight:700; margin-bottom:14px; color:var(--text,#0f172a); }
+.modal-label { display:block; font-size:12px; font-weight:600; color:var(--text-muted,#64748b); margin:10px 0 4px; }
+.modal-input { width:100%; padding:9px 11px; border:1px solid var(--border,#e2e8f0); border-radius:8px; font-size:14px; box-sizing:border-box; }
+.modal-input:focus { outline:2px solid var(--cpmi-mid,#0891b2); outline-offset:-1px; }
+.modal-error { color:#b91c1c; font-size:12.5px; min-height:16px; margin-top:8px; }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
 .empty-state { text-align: center; padding: 52px 20px; color: var(--text-muted); }
 
 /* ================================================================
@@ -971,6 +988,13 @@ select {
 </div>
 
 <div id="app-root">
+<div id="offline-banner" style="display:none;background:#b91c1c;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:600;position:sticky;top:0;z-index:900">
+  ⚠ Hors ligne — vos saisies seront enregistrées localement puis synchronisées au retour de la connexion.
+</div>
+<div id="sync-banner" style="display:none;background:#b45309;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:600;position:sticky;top:0;z-index:899">
+  <span id="sync-banner-label">⏳ Enregistrements en attente de synchronisation</span>
+  <button onclick="flushSyncQueue()" style="margin-left:10px;background:#fff;color:#b45309;border:none;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700;cursor:pointer">Synchroniser maintenant</button>
+</div>
 
 <header>
   <div class="logo">
@@ -1793,6 +1817,22 @@ select {
     <div class="card">
       <div class="card-title">🤰 Bilan prénatal (BPN)</div>
 
+      <!-- ✅ v12.4 — Composition du BPN : checklist des examens réellement -->
+      <!-- inclus dans CE bilan. Le prix reste fixe (20 000 FCFA) quel que -->
+      <!-- soit le nombre d'examens cochés. Sert uniquement à la traçabilité. -->
+      <details id="bpn-compo-details" style="margin:6px 0 14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <summary style="padding:10px 14px;background:var(--bg);cursor:pointer;font-weight:600;font-size:13.5px;user-select:none">
+          🧾 Composition de ce bilan prénatal — <span style="color:var(--accent)">forfait 20 000 FCFA</span>
+          <span style="font-size:11.5px;font-weight:400;color:var(--text-muted)"> (cliquer pour cocher les examens inclus)</span>
+        </summary>
+        <div style="padding:12px 14px">
+          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">
+            Chaque bilan prénatal peut différer. Cochez les examens réalisés — le forfait reste à 20 000 FCFA.
+          </div>
+          <div id="bpn-compo-list" class="bpn-compo-grid"></div>
+        </div>
+      </details>
+
       <div class="section-label">Informations obstétricales</div>
       <div class="form-grid col-3">
         <div class="form-group">
@@ -2156,6 +2196,23 @@ select {
           </tr>
         </thead>
         <tbody id="users-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ✅ v13.2 — Journal d'audit médico-légal (admin, lecture seule) -->
+  <div class="card" id="audit-log-card">
+    <div class="card-title" style="justify-content:space-between">
+      <span>🛡️ Journal d'audit</span>
+      <button class="btn btn-outline" onclick="renderAuditLog()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Trace inaltérable de toutes les créations, modifications et suppressions (qui, quand, quoi). Lecture seule.
+    </p>
+    <div class="table-wrap">
+      <table id="audit-table">
+        <thead><tr><th>Date/heure</th><th>Utilisateur</th><th>Action</th><th>Détails</th></tr></thead>
+        <tbody id="audit-body"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:14px">Cliquez sur « Actualiser » pour charger le journal.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -2545,7 +2602,7 @@ const TARIFS_BASE_DEFAULT = {
   'Sérologie':        0,
   'Parasitologie':    2500,
   'Groupe sanguin':   3000,
-  'Bilan prénatal':   25000,
+  'Bilan prénatal':   20000,
 };
 
 // Prix par paramètre individuel (Biochimie et Sérologie surtout)
@@ -2859,6 +2916,39 @@ const GS_PARAMS = [
   { id:'gs_tech',   name:'Technique utilisée',          type:'text' },
   { id:'gs_note',   name:'Observations / Notes',        type:'text' },
 ];
+
+// ✅ v12.4 — Examens couramment inclus dans un bilan prénatal.
+// Cochés par défaut = composition standard ; l'utilisateur ajuste par patient.
+// Le prix du BPN est un FORFAIT fixe (20 000 FCFA), indépendant de cette liste.
+const BPN_EXAMENS = [
+  { id:'bpnc_grsg',  label:'Groupe sanguin ABO / Rhésus', def:true },
+  { id:'bpnc_rai',   label:'RAI (Recherche d\'agglutinines irrégulières)', def:true },
+  { id:'bpnc_nfs',   label:'NFS — Numération formule sanguine', def:true },
+  { id:'bpnc_gaj',   label:'Glycémie à jeun', def:true },
+  { id:'bpnc_ecbu',  label:'ECBU', def:true },
+  { id:'bpnc_albsuc',label:'Albumine / Sucre (bandelette urinaire)', def:true },
+  { id:'bpnc_vih',   label:'Sérologie VIH', def:true },
+  { id:'bpnc_hbs',   label:'Ag HBs (Hépatite B)', def:true },
+  { id:'bpnc_hcv',   label:'Ac anti-VHC (Hépatite C)', def:false },
+  { id:'bpnc_tpha',  label:'TPHA / VDRL (Syphilis)', def:true },
+  { id:'bpnc_toxo',  label:'Toxoplasmose IgG / IgM', def:true },
+  { id:'bpnc_rube',  label:'Rubéole IgG / IgM', def:true },
+  { id:'bpnc_emp',   label:'Goutte épaisse / TDR Paludisme', def:true },
+  { id:'bpnc_eps',   label:'EPS — Parasitologie des selles', def:false },
+];
+
+function buildBpnCompo() {
+  const el = document.getElementById('bpn-compo-list');
+  if (!el) return;
+  el.innerHTML = BPN_EXAMENS.map(e =>
+    `<label><input type="checkbox" id="${e.id}"${e.def ? ' checked' : ''}>${esc(e.label)}</label>`
+  ).join('');
+}
+
+// Retourne la liste des examens BPN cochés (pour enregistrement / fiche)
+function collectBpnCompo() {
+  return BPN_EXAMENS.filter(e => document.getElementById(e.id)?.checked).map(e => e.label);
+}
 
 function buildBpnNfs() {
   // NFS
@@ -3536,7 +3626,7 @@ function showView(v) {
   if (viewComptes) viewComptes.style.display = v === 'comptes' ? '' : 'none';
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v === 'historique') renderHistory(true);
-  if (v === 'comptes') { renderUsersList(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); } }
+  if (v === 'comptes') { renderUsersList(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
 }
 
@@ -3553,7 +3643,7 @@ const PANEL_BUILDERS = {
   sero:     () => { buildSero(); },
   parasito: () => { buildParaEPS(); },
   gs:       () => { buildGS(); },
-  bpn:      () => { buildBpnNfs(); buildBpnBio(); buildBpnBacterio(); buildBpnSero(); },
+  bpn:      () => { buildBpnNfs(); buildBpnBio(); buildBpnBacterio(); buildBpnSero(); buildBpnCompo(); },
 };
 const _panelsBuilt = new Set();
 
@@ -3661,78 +3751,265 @@ function hideLoading() {
 }
 
 async function refreshDB(force) {
-  const { data, error } = await _sb
-    .from('labo_resultats')
-    .select('id, type, patient, resultats, created_at, created_by, montant, prescripteur_id, est_bpn')
-    .order('created_at', { ascending: true });
+  // ✅ v13.5 — chargement ALLÉGÉ : la liste sans le gros JSONB des résultats.
+  // Le détail par analyse est récupéré à la demande via ensureFull().
+  if (!force && _dbCache.length) return _dbCache;
+  if (!navigator.onLine) return _dbCache;
+  let data, error;
+  try {
+    ({ data, error } = await _sb.rpc('get_resultats_light', { p_token: TK() }));
+  } catch (e) {
+    if (isNetworkError(e)) return _dbCache;
+    console.error('Erreur de chargement Supabase:', e);
+    toast('Impossible de charger les données distantes', 'err');
+    return _dbCache;
+  }
   if (error) {
     console.error('Erreur de chargement Supabase:', error);
     toast('Impossible de charger les données distantes', 'err');
     return _dbCache;
   }
+  const pendings = _dbCache.filter(r => r._pending); // conserver les fiches en attente
   _dbCache = (data || []).map(row => ({
     id: row.id, type: row.type, patient: row.patient,
-    resultats: row.resultats, savedAt: row.created_at,
+    resultats: row.resultats || {}, savedAt: row.created_at,
     createdBy: row.created_by, montant: row.montant || 0,
     prescripteur_id: row.prescripteur_id,
     est_bpn: row.est_bpn || false,
-  }));
+    _light: true, // ✅ v13.5 — détail non encore chargé
+  })).concat(pendings);
   if (typeof buildPatientCache === 'function') buildPatientCache();
   return _dbCache;
 }
 
+// ✅ v13.5 — Charge le détail complet d'UNE fiche à la demande (ouverture,
+// édition, export, impression, fusion). Sans ça, resultats ne contient que
+// les métadonnées « _… » et les valeurs d'analyses seraient absentes.
+async function ensureFull(record) {
+  if (!record || !record._light || record._pending) return record;
+  if (!navigator.onLine) return record;
+  try {
+    const { data, error } = await _sb.rpc('get_resultat_full', { p_token: TK(), p_id: record.id });
+    if (error || !data) return record;
+    record.resultats = data.resultats || {};
+    record._light = false;
+    const idx = _dbCache.findIndex(r => r.id === record.id);
+    if (idx >= 0) { _dbCache[idx].resultats = record.resultats; _dbCache[idx]._light = false; }
+  } catch (e) { /* garder ce qu'on a en cas d'échec réseau */ }
+  return record;
+}
+
+// ✅ v13.5 — Charge le détail complet de TOUTES les fiches (export global).
+async function refreshDBFull() {
+  if (!navigator.onLine) return _dbCache;
+  try {
+    const { data, error } = await _sb.rpc('get_resultats', { p_token: TK() });
+    if (error || !data) return _dbCache;
+    const pendings = _dbCache.filter(r => r._pending);
+    _dbCache = data.map(row => ({
+      id: row.id, type: row.type, patient: row.patient,
+      resultats: row.resultats || {}, savedAt: row.created_at,
+      createdBy: row.created_by, montant: row.montant || 0,
+      prescripteur_id: row.prescripteur_id, est_bpn: row.est_bpn || false,
+      _light: false,
+    })).concat(pendings);
+    if (typeof buildPatientCache === 'function') buildPatientCache();
+  } catch (e) { /* garder le cache */ }
+  return _dbCache;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ✅ v13.4 — FILE D'ATTENTE HORS-LIGNE (best-effort)
+// Capture les écritures échouées pour cause réseau et les rejoue au
+// retour de la connexion. Ne stocke PAS le jeton (reconstruit à la
+// synchro). Ne vise pas une base offline-first complète : c'est un
+// filet de sécurité contre la perte de saisies sur le terrain.
+// ⚠ Le numéro de dossier attribué hors-ligne provient du calcul local
+//   (cache) et est conservé tel quel à la synchro ; en cas de saisies
+//   simultanées sur plusieurs postes hors-ligne, vérifiez l'unicité.
+// ══════════════════════════════════════════════════════════════
+const SYNC_QUEUE_KEY = 'labo_sync_queue';
+let _syncing = false;
+
+function loadSyncQueue() {
+  try { return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function saveSyncQueue(q) {
+  try { localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); } catch(e){}
+  updateSyncBanner();
+}
+function queueLength() { return loadSyncQueue().length; }
+
+function isNetworkError(e) {
+  if (!navigator.onLine) return true;
+  const m = (e && (e.message || e.msg || '')) + '';
+  return m.includes('Failed to fetch') || m.includes('NetworkError')
+      || m.includes('network') || m.includes('fetch');
+}
+
+function updateSyncBanner() {
+  const bar = document.getElementById('sync-banner');
+  if (!bar) return;
+  const n = queueLength();
+  if (n > 0) {
+    bar.style.display = 'block';
+    const lbl = document.getElementById('sync-banner-label');
+    if (lbl) lbl.textContent = '⏳ ' + n + ' enregistrement' + (n>1?'s':'') + ' en attente de synchronisation';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+// Enfile un insert et renvoie une fiche « en attente » (id temporaire)
+function enqueueInsert(record, est_bpn) {
+  const tempId = 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  const q = loadSyncQueue();
+  q.push({ qid: tempId, op: 'insert', tempId, record, est_bpn, queuedAt: new Date().toISOString() });
+  saveSyncQueue(q);
+  const pending = { id: tempId, type: record.type, patient: record.patient,
+    resultats: record.resultats, savedAt: new Date().toISOString(),
+    createdBy: (_currentUser?.username || ''), montant: record.montant || 0,
+    prescripteur_id: record.prescripteur_id || null, est_bpn, _pending: true };
+  _dbCache.push(pending);
+  toast('📴 Hors ligne — enregistré localement, synchronisation au retour du réseau', 'ok');
+  return pending;
+}
+
+// Enfile une mise à jour. Si l'id cible est encore temporaire (fiche créée
+// hors-ligne non synchronisée), on met simplement à jour la charge en file.
+function enqueueUpdate(id, record, est_bpn) {
+  const q = loadSyncQueue();
+  if (String(id).startsWith('tmp_')) {
+    const it = q.find(x => x.op === 'insert' && x.tempId === id);
+    if (it) { it.record = record; it.est_bpn = est_bpn; saveSyncQueue(q); }
+  } else {
+    q.push({ qid: 'upd_' + id + '_' + Date.now(), op: 'update', id, record, est_bpn, queuedAt: new Date().toISOString() });
+    saveSyncQueue(q);
+  }
+  const idx = _dbCache.findIndex(r => r.id === id);
+  const upd = { id, type: 'Dossier', patient: record.patient, resultats: record.resultats,
+    savedAt: new Date().toISOString(), createdBy: (_currentUser?.username || ''),
+    montant: record.montant || 0, prescripteur_id: record.prescripteur_id || null, est_bpn, _pending: true };
+  if (idx >= 0) _dbCache[idx] = { ..._dbCache[idx], ...upd }; else _dbCache.push(upd);
+  toast('📴 Hors ligne — modification enregistrée localement', 'ok');
+  return upd;
+}
+
+function removeFromQueue(qid) {
+  saveSyncQueue(loadSyncQueue().filter(x => x.qid !== qid));
+}
+
+// Rejoue la file. Reconstruit les paramètres avec le jeton courant.
+async function flushSyncQueue(silent) {
+  if (_syncing || !navigator.onLine || !TK()) return;
+  const q = loadSyncQueue();
+  if (!q.length) return;
+  _syncing = true;
+  let ok = 0;
+  for (const item of q) {
+    try {
+      if (item.op === 'insert') {
+        const { data, error } = await _sb.rpc('insert_resultat', {
+          p_token: TK(), p_type: item.record.type, p_patient: item.record.patient,
+          p_resultats: item.record.resultats, p_montant: item.record.montant || 0,
+          p_prescripteur_id: item.record.prescripteur_id || null, p_est_bpn: item.est_bpn });
+        if (error) throw error;
+        const saved = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats,
+          savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0,
+          prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
+        const idx = _dbCache.findIndex(r => r.id === item.tempId);
+        if (idx >= 0) _dbCache[idx] = saved; else _dbCache.push(saved);
+        removeFromQueue(item.qid); ok++;
+      } else if (item.op === 'update') {
+        const { data, error } = await _sb.rpc('update_resultat', {
+          p_token: TK(), p_id: item.id, p_patient: item.record.patient,
+          p_resultats: item.record.resultats, p_montant: item.record.montant || 0,
+          p_prescripteur_id: item.record.prescripteur_id || null, p_est_bpn: item.est_bpn });
+        if (error) throw error;
+        const idx = _dbCache.findIndex(r => r.id === item.id);
+        if (idx >= 0) _dbCache[idx] = { id: data.id, type: data.type, patient: data.patient,
+          resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by,
+          montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
+        removeFromQueue(item.qid); ok++;
+      }
+    } catch (e) {
+      if (isNetworkError(e)) break;               // toujours hors-ligne → on s'arrête
+      console.error('Synchro : échec non-réseau, élément conservé :', e, item);
+      break;                                       // erreur serveur → stop pour éviter une boucle
+    }
+  }
+  _syncing = false;
+  updateSyncBanner();
+  if (ok > 0) {
+    if (!silent) toast('✅ ' + ok + ' enregistrement' + (ok>1?'s':'') + ' synchronisé' + (ok>1?'s':''), 'ok');
+    if (typeof renderHistory === 'function') renderHistory(true);
+  }
+}
+
 async function insertRecordRemote(record) {
-  const { data, error } = await _sb
-    .from('labo_resultats')
-    .insert({
-      type: record.type,
-      patient: record.patient,
-      resultats: record.resultats,
-      created_by: _currentUser ? _currentUser.username : null,
-      montant: record.montant || 0,
-      prescripteur_id: record.prescripteur_id || null,
-      est_bpn: record.type === 'Bilan prénatal' || (record.resultats?._types||[]).includes('Bilan prénatal'),
-    })
-    .select()
-    .single();
-  if (error) {
-    console.error('Erreur insertion Supabase:', error);
+  // ✅ v13 — insertion via RPC sécurisée par jeton
+  const est_bpn = record.type === 'Bilan prénatal' || (record.resultats?._types||[]).includes('Bilan prénatal');
+  if (!navigator.onLine) return enqueueInsert(record, est_bpn); // ✅ v13.4 — hors-ligne connu
+  try {
+    const { data, error } = await _sb.rpc('insert_resultat', {
+      p_token: TK(),
+      p_type: record.type,
+      p_patient: record.patient,
+      p_resultats: record.resultats,
+      p_montant: record.montant || 0,
+      p_prescripteur_id: record.prescripteur_id || null,
+      p_est_bpn: est_bpn,
+    });
+    if (error) throw error;
+    const saved = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
+    _dbCache.push(saved);
+    return saved;
+  } catch (e) {
+    if (isNetworkError(e)) return enqueueInsert(record, est_bpn); // ✅ v13.4 — bascule en file
+    console.error('Erreur insertion Supabase:', e);
     toast("Échec de l'enregistrement distant", 'err');
     return null;
   }
-  const saved = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0 };
-  _dbCache.push(saved);
-  return saved;
 }
 
 // Met à jour une fiche existante (édition depuis l'historique)
 async function updateRecordRemote(id, record) {
-  const { data, error } = await _sb
-    .from('labo_resultats')
-    .update({
-      patient: record.patient,
-      resultats: record.resultats,
-      montant: record.montant || 0,
-      prescripteur_id: record.prescripteur_id || null,
-    })
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    console.error('Erreur mise à jour Supabase:', error);
+  // ✅ v13 — mise à jour via RPC sécurisée par jeton
+  const est_bpn = record.type === 'Bilan prénatal' || (record.resultats?._types||[]).includes('Bilan prénatal');
+  if (!navigator.onLine || String(id).startsWith('tmp_')) return enqueueUpdate(id, record, est_bpn); // ✅ v13.4
+  try {
+    const { data, error } = await _sb.rpc('update_resultat', {
+      p_token: TK(),
+      p_id: id,
+      p_patient: record.patient,
+      p_resultats: record.resultats,
+      p_montant: record.montant || 0,
+      p_prescripteur_id: record.prescripteur_id || null,
+      p_est_bpn: est_bpn,
+    });
+    if (error) throw error;
+    const idx = _dbCache.findIndex(r => r.id === id);
+    const updated = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
+    if (idx >= 0) _dbCache[idx] = updated; else _dbCache.push(updated);
+    return updated;
+  } catch (e) {
+    if (isNetworkError(e)) return enqueueUpdate(id, record, est_bpn); // ✅ v13.4
+    console.error('Erreur mise à jour Supabase:', e);
     toast('Échec de la mise à jour', 'err');
     return null;
   }
-  // Mettre à jour le cache local
-  const idx = _dbCache.findIndex(r => r.id === id);
-  const updated = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
-  if (idx >= 0) _dbCache[idx] = updated; else _dbCache.push(updated);
-  return updated;
 }
 
 async function deleteRecordRemote(id) {
   if (!_currentUser) { toast('Session expirée, reconnectez-vous', 'err'); return false; }
-  const { data, error } = await _sb.rpc('delete_resultat_admin', { p_user_id: _currentUser.id, p_resultat_id: id });
+  // ✅ v13.4 — fiche créée hors-ligne non encore synchronisée : retirer de la file
+  if (String(id).startsWith('tmp_')) {
+    saveSyncQueue(loadSyncQueue().filter(x => x.tempId !== id));
+    _dbCache = _dbCache.filter(r => r.id !== id);
+    return true;
+  }
+  const { data, error } = await _sb.rpc('delete_resultat_admin', { p_token: TK(), p_resultat_id: id });
   if (error) {
     console.error('Erreur suppression Supabase:', error);
     toast('Échec de la suppression distante', 'err');
@@ -3748,7 +4025,7 @@ async function deleteRecordRemote(id) {
 
 async function clearAllRemote() {
   if (!_currentUser) { toast('Session expirée, reconnectez-vous', 'err'); return false; }
-  const { data, error } = await _sb.rpc('clear_resultats_admin', { p_user_id: _currentUser.id });
+  const { data, error } = await _sb.rpc('clear_resultats_admin', { p_token: TK() });
   if (error) {
     console.error('Erreur vidage Supabase:', error);
     toast('Échec du vidage distant', 'err');
@@ -3760,6 +4037,13 @@ async function clearAllRemote() {
   }
   _dbCache = [];
   return true;
+}
+
+// ✅ v12 — Échappement HTML : à appliquer à TOUTE donnée issue de la base
+// avant insertion dans innerHTML (protection XSS stocké).
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function formatDossier(n) {
@@ -3786,7 +4070,7 @@ async function getNextDossierNum() {
   try {
     const { data, error } = await _sb.rpc('get_next_dossier_num', { p_month_year: mm + yy });
     if (!error && data && typeof data === 'number') {
-      return String(data).padStart(4, '0') + suffix;
+      return data; // ✅ v12 — retourner le NOMBRE (formatDossier ajoute le suffixe)
     }
   } catch(e) { /* fallback client-side si RPC non disponible */ }
 
@@ -3967,6 +4251,7 @@ function collectResults(type) {
     });
     data['Observations'] = document.getElementById('sero_obs')?.value || '';
   } else if (type === 'Bilan prénatal') {
+    data['_bpn_inclus'] = collectBpnCompo(); // ✅ v12.4 — traçabilité des examens inclus
     data['Terme (SA)'] = document.getElementById('bpn_sa')?.value || '';
     data['Gestité'] = document.getElementById('bpn_geste')?.value || '';
     data['Parité'] = document.getElementById('bpn_parite')?.value || '';
@@ -4139,7 +4424,23 @@ async function refreshRappelPatient() {
   }
 }
 
+// ✅ v13 — Garde anti double-soumission : un double-clic (fréquent sur mobile
+// ou connexion lente) pouvait créer deux dossiers pour le même patient.
+let _saving = false;
 async function saveRecord(type) {
+  if (_saving) return;
+  _saving = true;
+  const btns = document.querySelectorAll('button[onclick^="saveRecord"]');
+  btns.forEach(b => b.disabled = true);
+  try {
+    await _saveRecordImpl(type);
+  } finally {
+    _saving = false;
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+async function _saveRecordImpl(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
   toast('Enregistrement en cours…');
@@ -4220,6 +4521,18 @@ async function saveRecord(type) {
   );
 
   if (existingDossier) {
+    // ✅ v13.5 — CHARGER LE DÉTAIL COMPLET avant de fusionner (sinon les autres
+    // analyses du dossier, absentes du chargement allégé, seraient écrasées).
+    await ensureFull(existingDossier);
+    // Garde-fou anti-perte de données : chaque analyse annoncée par _types
+    // doit être présente en détail ; sinon on refuse d'écrire.
+    const declaredTypes = existingDossier.resultats?._types || [];
+    const manquant = declaredTypes.find(t => !existingDossier.resultats[t]);
+    if (existingDossier._light || manquant) {
+      hideLoading();
+      toast('⚠ Détail du dossier non chargé (réseau ?). Réessayez pour éviter toute perte.', 'err');
+      return;
+    }
     // ── Fusionner dans le dossier existant ─────────────────────
     const newRes = { ...existingDossier.resultats, [type]: typeResultats };
     if (!newRes._types) newRes._types = [];
@@ -4228,6 +4541,8 @@ async function saveRecord(type) {
       if (!newRes._examens_coches) newRes._examens_coches = {};
       newRes._examens_coches[type] = examensCochesTab;
     }
+    if (!newRes._montants) newRes._montants = {}; // ✅ v12 — mémorise le montant par analyse
+    newRes._montants[type] = montant;
     const newMontant = (existingDossier.montant || 0) + montant;
 
     const saved = await updateRecordRemote(existingDossier.id, {
@@ -4242,7 +4557,7 @@ async function saveRecord(type) {
 
   } else {
     // ── Créer un nouveau dossier ────────────────────────────────
-    const newRes = { [type]: typeResultats, _types: [type] };
+    const newRes = { [type]: typeResultats, _types: [type], _montants: { [type]: montant } }; // ✅ v12
     if (examensCochesTab.length) newRes._examens_coches = { [type]: examensCochesTab };
 
     const saved = await insertRecordRemote({
@@ -4264,6 +4579,21 @@ async function saveRecord(type) {
 let _editingRecordId = null;
 let _editingType     = null; // type de l'analyse en cours d'édition
 
+// ✅ v13.1 — Recalcule les interprétations d'un panneau en redéclenchant les
+// gestionnaires oninput. Corrige le cas « édition → ré-enregistrement » où les
+// valeurs rechargées n'avaient pas rafraîchi les interp lues via textContent.
+function ensureInterpFresh(type) {
+  const MAP = {
+    'Hématologie':'hema','Biochimie':'bio','Bactériologie':'bacterio',
+    'Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn'
+  };
+  const panel = document.getElementById('panel-' + (MAP[type] || ''));
+  if (!panel) return;
+  panel.querySelectorAll('input, select').forEach(el => {
+    try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
+  });
+}
+
 async function editRecord(id, typeOverride) {
   let record = getDB().find(x => x.id === id);
   if (!record) {
@@ -4283,6 +4613,7 @@ async function editRecord(id, typeOverride) {
   }
 
   const type      = typeOverride || record.type || 'Hématologie';
+  await ensureFull(record); // ✅ v13.5 — détail complet avant édition
   const res       = getRecordResultats(record, type);
   const fakeRecord = { ...record, type, resultats: res };
 
@@ -4315,6 +4646,7 @@ async function editRecord(id, typeOverride) {
   await new Promise(res => setTimeout(res, 100));
 
   loadResultsIntoForm(type, res);
+  ensureInterpFresh(type); // ✅ v13.1 — recalcule les interp depuis les valeurs rechargées
   markRequiredSections();
 
   // Bandeau édition
@@ -4326,8 +4658,8 @@ async function editRecord(id, typeOverride) {
     document.getElementById('rappel-patient')?.parentNode?.insertBefore(banner, document.getElementById('rappel-patient'));
   }
   const allTypes = getRecordTypes(record);
-  banner.innerHTML = '✏️ Modification — ' + type + ' · Dossier N°' + (p.dossier||'') + ' · ' + (p.nom||'')
-    + (allTypes.length > 1 ? ' <span style="font-size:11px;font-weight:400;opacity:.7">(dossier : ' + allTypes.join(', ') + ')</span>' : '')
+  banner.innerHTML = '✏️ Modification — ' + esc(type) + ' · Dossier N°' + esc(p.dossier||'') + ' · ' + esc(p.nom||'')
+    + (allTypes.length > 1 ? ' <span style="font-size:11px;font-weight:400;opacity:.7">(dossier : ' + esc(allTypes.join(', ')) + ')</span>' : '')
     + ' <button onclick="cancelEdit()" style="margin-left:auto;background:none;border:1px solid #92400e;color:#92400e;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Annuler</button>';
   banner.style.display = 'flex';
 
@@ -4481,6 +4813,14 @@ function loadResultsIntoForm(type, res) {
     setVal('eps_obs', res['Observation']);
   }
   else if (type === 'Bilan prénatal') {
+    // ✅ v12.4 — restaurer les examens inclus cochés
+    if (Array.isArray(res['_bpn_inclus'])) {
+      buildBpnCompo();
+      BPN_EXAMENS.forEach(e => {
+        const cb = document.getElementById(e.id);
+        if (cb) cb.checked = res['_bpn_inclus'].includes(e.label);
+      });
+    }
     BPN_NFS.forEach(p => { const v=res[p.name]; if (v&&v.valeur) setVal('v_'+p.id, v.valeur); });
     BPN_FL.forEach(p => { const v=res[p.name]; if (v&&v.valeur) setVal('v_'+p.id, v.valeur); });
     if (typeof calcConstantesBPN === 'function') calcConstantesBPN();
@@ -4611,7 +4951,7 @@ async function renderHistory(forceRefresh) {
   const currentAgent = agentSel ? agentSel.value : '';
   const agents = [...new Set(db.map(r => r.createdBy).filter(Boolean))].sort();
   if (agentSel) agentSel.innerHTML = '<option value="">Tous les agents</option>' +
-    agents.map(a => '<option value="' + a + '"' + (a === currentAgent ? ' selected' : '') + '>' + a + '</option>').join('');
+    agents.map(a => '<option value="' + esc(a) + '"' + (a === currentAgent ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
 
   const q         = (document.getElementById('search-input')?.value   || '').toLowerCase();
   const ft        =  document.getElementById('filter-type')?.value    || '';
@@ -4691,12 +5031,14 @@ async function renderHistory(forceRefresh) {
     const dossierMulti = '';
     const montantStr = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
     return '<tr>'
-      + '<td data-label="Date">' + (r.patient.date || '—') + '</td>'
-      + '<td data-label="N° Dossier"><strong>' + r.patient.dossier + '</strong></td>'
-      + '<td data-label="Patient">' + r.patient.nom + '</td>'
-      + '<td data-label="Âge">' + (r.patient.age || '—') + '</td>'
-      + '<td data-label="Sexe">' + (r.patient.sexe || '—') + '</td>'
-      + '<td data-label="Service">' + (r.patient.service || '—') + '</td>'
+      + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+      + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong>'
+        + (r._pending ? ' <span title="En attente de synchronisation" style="font-size:10px;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">⏳ à synchroniser</span>' : '')
+      + '</td>'
+      + '<td data-label="Patient">' + esc(r.patient.nom) + '</td>'
+      + '<td data-label="Âge">' + esc(r.patient.age || '—') + '</td>'
+      + '<td data-label="Sexe">' + esc(r.patient.sexe || '—') + '</td>'
+      + '<td data-label="Service">' + esc(r.patient.service || '—') + '</td>'
       + '<td data-label="Type">' + getRecordTypes(r).map(t => {
           const cls = t==='Hématologie'?'badge-hema':t==='Biochimie'?'badge-bio':
             t==='Bactériologie'?'badge-bacterio':t==='Sérologie'?'badge-sero':
@@ -4704,7 +5046,7 @@ async function renderHistory(forceRefresh) {
             t==='Bilan prénatal'?'badge-bpn':'';
           return '<span class="badge-type '+cls+'" style="margin:1px 2px;display:inline-block">'+t+'</span>';
         }).join('') + '</td>'
-      + '<td data-label="Saisi par">' + (r.createdBy || '—') + '</td>'
+      + '<td data-label="Saisi par">' + esc(r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
       + '<td data-label="Actions">'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats">✏️</button>'
@@ -4727,6 +5069,11 @@ async function deleteAnalyseFromDossier(recordId, type) {
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
   const record = getDB().find(r => r.id === recordId);
   if (!record || !isDossierRecord(record)) { toast('Dossier introuvable', 'err'); return; }
+  await ensureFull(record); // ✅ v13.5 — détail complet avant de recomposer le dossier
+  const declaredTypes = record.resultats?._types || [];
+  if (record._light || declaredTypes.some(t => !record.resultats[t])) {
+    toast('⚠ Détail du dossier non chargé (réseau ?). Réessayez.', 'err'); return;
+  }
   const types = getRecordTypes(record);
   if (types.length <= 1) {
     if (!confirm('C\'est la dernière analyse de ce dossier. Supprimer le dossier entier ?')) return;
@@ -4735,13 +5082,33 @@ async function deleteAnalyseFromDossier(recordId, type) {
     return;
   }
   if (!confirm('Supprimer "' + type + '" du dossier ? Les autres analyses seront conservées.')) return;
+  // ✅ v12 — retrancher le montant de l'analyse supprimée :
+  // 1) montant mémorisé à la saisie (_montants) si disponible ;
+  // 2) sinon (anciens dossiers) : répartition proportionnelle du total facturé
+  //    selon les tarifs actuels, de sorte que la somme reste cohérente avec le
+  //    montant réellement facturé (plutôt qu'une ré-estimation brute).
+  let montantAnalyse;
+  if (record.resultats?._montants && record.resultats._montants[type] != null) {
+    montantAnalyse = record.resultats._montants[type];
+  } else {
+    const allTypes = getRecordTypes(record);
+    const estimations = {};
+    let sommeEst = 0;
+    allTypes.forEach(t => { const e = calculateMontant(t, getRecordResultats(record, t)) || 0; estimations[t] = e; sommeEst += e; });
+    const total = record.montant || 0;
+    montantAnalyse = (sommeEst > 0)
+      ? Math.round(total * (estimations[type] || 0) / sommeEst)  // part proportionnelle
+      : Math.round(total / Math.max(1, allTypes.length));        // sinon part égale
+  }
+  const newMontant = Math.max(0, (record.montant || 0) - (montantAnalyse || 0));
   const newRes = { ...record.resultats };
   delete newRes[type];
   newRes._types = (newRes._types || []).filter(t => t !== type);
   if (newRes._examens_coches) delete newRes._examens_coches[type];
+  if (newRes._montants) delete newRes._montants[type];
   const saved = await updateRecordRemote(recordId, {
     patient: record.patient, type: 'Dossier', resultats: newRes,
-    montant: record.montant, prescripteur_id: record.prescripteur_id,
+    montant: newMontant, prescripteur_id: record.prescripteur_id,
   });
   if (saved) { renderHistory(); toast('"' + type + '" supprimé du dossier ✓', 'ok'); }
 }
@@ -4813,8 +5180,15 @@ function styleCell(cell, { bg, fg, bold, size, halign, border, italic } = {}) {
 // ── Helpers dossier unifié ───────────────────────────────────
 // Un enregistrement de type 'Dossier' contient TOUTES les analyses
 // d'un même patient en une seule fiche (clé resultats._types).
+// ⚠ CONVENTION (v13) — Dans un objet `resultats`, les clés commençant par
+// un underscore sont des MÉTADONNÉES techniques, pas des résultats d'analyse :
+//   _types           : liste des analyses du dossier
+//   _montants        : montant facturé par analyse (recalcul à la suppression)
+//   _examens_coches  : examens cochés (demandés) par analyse
+//   _bpn_inclus      : composition d'un bilan prénatal (forfait fixe)
+// Toute boucle sur `resultats` (rendu, export, impression) DOIT ignorer les
+// clés `k.startsWith('_')` pour ne pas les afficher comme des paramètres.
 function isDossierRecord(r) { return r && r.type === 'Dossier'; }
-
 function getRecordTypes(r) {
   if (isDossierRecord(r)) return r.resultats?._types || [];
   return r.type ? [r.type] : [];
@@ -4890,6 +5264,25 @@ function buildProfessionalSheet(wb, r, sheetName) {
     if (border) cell.border = tB(border===true ? BRD : border);
   }
 
+  // ✅ v12.2 — Hauteur adaptative : estime le nombre de lignes qu'occupera
+  // un texte dans une plage de colonnes (fusion incluse) et retourne la
+  // hauteur nécessaire, bornée pour éviter les lignes démesurées.
+  const COLW = [34, 17, 13, 13, 24, 14]; // doit rester aligné sur ws.columns
+  function spanWidth(c1, c2) { let w = 0; for (let c = c1; c <= c2; c++) w += COLW[c-1] || 10; return w; }
+  function neededLines(text, widthChars) {
+    const s = String(text ?? '');
+    if (!s) return 1;
+    return s.split('\n').reduce((n, seg) =>
+      n + Math.max(1, Math.ceil(seg.length / Math.max(4, widthChars - 2))), 0);
+  }
+  // parts : [{text, c1, c2, size?}] — retourne la hauteur max requise
+  function fitH(parts, minH) {
+    let lines = 1;
+    parts.forEach(p => { lines = Math.max(lines, neededLines(p.text, spanWidth(p.c1, p.c2 ?? p.c1))); });
+    lines = Math.min(lines, 10); // garde-fou
+    return Math.max(minH || 15, lines * 12 + 4);
+  }
+
   // ── Création feuille ─────────────────────────────────────────
   const NC = 6;
   const ws = wb.addWorksheet(sheetName || getDisplayType(r).substring(0,31), {
@@ -4942,11 +5335,12 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // BLOC 2 — NOM DU PATIENT (très visible, en MAJUSCULES)
   // ════════════════════════════════════════════════════
   row++; // espace
-  ws.getRow(row).height = 32;
+  // ✅ v12.2 — police 18 ≈ caractères 2x plus larges : largeur effective divisée par 2
+  ws.getRow(row).height = Math.max(32, neededLines(nomMAJ, Math.floor(spanWidth(1,NC)/2)) * 24 + 8);
   mg(row,1,row,NC);
   const cNom = ws.getCell(row,1);
   cNom.value = nomMAJ;
-  sC(cNom, {bg:PAT_LABEL, fg:BLU, bold:true, size:18, ha:'center', wt:false});
+  sC(cNom, {bg:PAT_LABEL, fg:BLU, bold:true, size:18, ha:'center'});
   cNom.border = { top:{style:'medium',color:{argb:BLU}}, bottom:{style:'medium',color:{argb:BLU}},
     left:tB().left, right:tB().right };
   row++;
@@ -4958,7 +5352,12 @@ function buildProfessionalSheet(wb, r, sheetName) {
   const VS = {bg:PAT_VAL,   fg:DARK,   size:10,   border:true};
 
   function patRow2(l1,v1,l2,v2) {
-    const rr = ws.getRow(row); rr.height = 17;
+    const rr = ws.getRow(row);
+    // ✅ v12.3 — en-tête adaptatif : hauteur selon le plus long des 4 contenus
+    rr.height = fitH([
+      {text:l1, c1:1}, {text:v1||'—', c1:2, c2:3},
+      {text:l2, c1:4}, {text:v2||'—', c1:5, c2:NC}
+    ], 17);
     sC(rr.getCell(1),LS); rr.getCell(1).value = l1;
     mg(row,2,row,3); sC(rr.getCell(2),VS); rr.getCell(2).value = v1||'—';
     if (l2 !== undefined) {
@@ -5014,19 +5413,37 @@ function buildProfessionalSheet(wb, r, sheetName) {
       { vBg = HI_BG; vFg = HI_FG; }
     else if (il.includes('bas'))
       { vBg = LO_BG; vFg = LO_FG; }
-    const rr = ws.getRow(row); rr.height = 16;
-    sC(rr.getCell(1), {bg,   fg:DARK,  size:9.5, border:true, wt:false}); rr.getCell(1).value = nom;
-    sC(rr.getCell(2), {bg:vBg, fg:vFg, bold:true, size:11, ha:'center', border:true, wt:false}); rr.getCell(2).value = valeur;
-    sC(rr.getCell(3), {bg,   fg:MUTED, size:9,   ha:'center', border:true, wt:false}); rr.getCell(3).value = unite||'';
+    const rr = ws.getRow(row);
+    // ✅ v12.2 — wrap activé + hauteur calculée sur le contenu réel
+    rr.height = fitH([
+      {text:nom, c1:1}, {text:valeur, c1:2}, {text:unite, c1:3}, {text:ref, c1:4, c2:NC}
+    ], 16);
+    sC(rr.getCell(1), {bg,   fg:DARK,  size:9.5, border:true}); rr.getCell(1).value = nom;
+    sC(rr.getCell(2), {bg:vBg, fg:vFg, bold:true, size:11, ha:'center', border:true}); rr.getCell(2).value = valeur;
+    sC(rr.getCell(3), {bg,   fg:MUTED, size:9,   ha:'center', border:true}); rr.getCell(3).value = unite||'';
     mg(row,4,row,NC);
-    sC(rr.getCell(4), {bg,   fg:MUTED, size:9,   ha:'center', border:true, wt:false}); rr.getCell(4).value = ref||'';
+    sC(rr.getCell(4), {bg,   fg:MUTED, size:9,   ha:'center', border:true}); rr.getCell(4).value = ref||'';
+    row++;
+  }
+
+  // ✅ v12.4 — Ligne vide (examen demandé, résultat à remplir à la main)
+  function pRowEmpty(nom, unite, ref) {
+    alt = !alt;
+    const bg = alt ? PAR_A : PAR_W;
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text:nom, c1:1}, {text:ref, c1:4, c2:NC}], 18);
+    sC(rr.getCell(1), {bg, fg:DARK, size:9.5, border:true}); rr.getCell(1).value = nom;
+    sC(rr.getCell(2), {bg:'FFFFFFFF', fg:DARK, border:true}); rr.getCell(2).value = '';
+    sC(rr.getCell(3), {bg, fg:MUTED, size:9, ha:'center', border:true}); rr.getCell(3).value = unite||'';
+    mg(row,4,row,NC);
+    sC(rr.getCell(4), {bg, fg:MUTED, size:9, ha:'center', border:true}); rr.getCell(4).value = ref||'';
     row++;
   }
 
   function fRow(label, value) {
-    if (!value) return;
-    const rr = ws.getRow(row); rr.height = 15;
-    sC(rr.getCell(1), {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:9, border:true, wt:false}); rr.getCell(1).value = label;
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text:label, c1:1}, {text:value, c1:2, c2:NC}], 15); // ✅ v12.2
+    sC(rr.getCell(1), {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:9, border:true}); rr.getCell(1).value = label;
     mg(row,2,row,NC);
     sC(rr.getCell(2), {bg:PAT_VAL, fg:DARK, size:9.5, border:true}); rr.getCell(2).value = value;
     row++;
@@ -5034,7 +5451,8 @@ function buildProfessionalSheet(wb, r, sheetName) {
 
   function nRow(text, bgColor) {
     if (!text||text==='—') return;
-    const rr = ws.getRow(row); rr.height = 20;
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text, c1:1, c2:NC}], 20); // ✅ v12.2 — observations multi-lignes
     mg(row,1,row,NC);
     const c = rr.getCell(1);
     sC(c, {bg:bgColor||'FFFFFDE7', fg:'FF78350F', italic:true, size:9.5, border:true});
@@ -5052,10 +5470,11 @@ function buildProfessionalSheet(wb, r, sheetName) {
     if (val==='S'){vBg=OK_BG;vFg=OK_FG;}
     else if (val==='R'){vBg=HI_BG;vFg=HI_FG;}
     else if (val==='I'){vBg='FFFFFBEB';vFg='FFB45309';}
-    const rr = ws.getRow(row); rr.height = 15;
-    sC(rr.getCell(1),{bg,fg:DARK,size:9.5,border:true,wt:false}); rr.getCell(1).value=nom;
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text:nom, c1:1}, {text:label, c1:2, c2:NC}], 15); // ✅ v12.2
+    sC(rr.getCell(1),{bg,fg:DARK,size:9.5,border:true}); rr.getCell(1).value=nom;
     mg(row,2,row,NC);
-    sC(rr.getCell(2),{bg:vBg,fg:vFg,bold:true,size:10.5,ha:'center',border:true,wt:false}); rr.getCell(2).value=label;
+    sC(rr.getCell(2),{bg:vBg,fg:vFg,bold:true,size:10.5,ha:'center',border:true}); rr.getCell(2).value=label;
     row++;
   }
 
@@ -5286,7 +5705,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     // Rendu générique fallback
     const gRows=[];
     Object.entries(res).forEach(([k,v])=>{
-      if (!v||k.startsWith('ABG_')||k.startsWith('AFG_')||k.startsWith('BPNSERO_')||k==='_examens_coches') return;
+      if (!v||k.startsWith('ABG_')||k.startsWith('AFG_')||k.startsWith('BPNSERO_')||k.startsWith('_')) return; // ✅ v12
       if (typeof v==='object') {
         const val=v.valeur||v.resultat||v.titre||'';
         if (val) gRows.push({n:k,v:val,u:v.unite||'',i:v.interp||v.obs||''});
@@ -5312,6 +5731,24 @@ function buildProfessionalSheet(wb, r, sheetName) {
     }
   }
 
+  // ✅ v12.4 — Composition BPN (traçabilité des examens inclus, forfait fixe)
+  if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
+    secHdr('Composition du bilan prénatal (forfait ' + (r.montant||20000).toLocaleString('fr-FR') + ' FCFA)');
+    res['_bpn_inclus'].forEach(lbl => nRow('☑  ' + lbl, 'FFF0FDFA'));
+    row++;
+  }
+
+  // ✅ v12.4 — Examens demandés non encore renseignés → affichés vides à compléter
+  const pending = getPendingCheckedExams(r, r.type);
+  if (pending.length) {
+    secHdr('Examens demandés — résultats à compléter');
+    pending.forEach(ex => {
+      tblHdr(ex.label, 'Résultat', 'Unité', 'Valeurs normales');
+      ex.rows.forEach(pr => pRowEmpty(pr.name, pr.unit, pr.ref));
+    });
+    row++;
+  }
+
   // ════════════════════════════════════════════════════
   // PIED DE PAGE
   // ════════════════════════════════════════════════════
@@ -5321,7 +5758,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   row++;
 
   ws.getRow(row).height = 13;
-  mg(row,1,row,4);
+  mg(row,1,row,3);
   const cFt = ws.getCell(row,1);
   cFt.value = 'Édité le ' + new Date().toLocaleDateString('fr-FR') + '  —  CPMI de Grand-Bassam';
   sC(cFt, {fg:MUTED, size:8, italic:true});
@@ -5389,18 +5826,23 @@ function safeSheetName(name, usedNames) {
 }
 
 async function downloadWorkbook(wb, filename) {
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showLoading('Génération du fichier Excel…'); // ✅ v13
+  try {
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } finally {
+    hideLoading();
+  }
 }
 
 async function exportSingle(type) {
@@ -5415,11 +5857,13 @@ async function exportSingle(type) {
   // Chercher dans les dossiers unifiés ET les anciens formats
   let saved = db.find(r => isDossierRecord(r) && r.patient?.dossier === p.dossier);
   if (saved) {
+    await ensureFull(saved); // ✅ v13.5 — détail complet avant export Excel
     // Extraire le type demandé du dossier
     const typeRes = getRecordResultats(saved, type);
     saved = { ...saved, type, resultats: typeRes };
   } else {
     saved = db.find(r => r.type === type && r.patient?.dossier === p.dossier);
+    if (saved) await ensureFull(saved); // ✅ v13.5
   }
   if (!saved) {
     toast('Enregistrez la fiche avant de l\'exporter ✗', 'err');
@@ -5447,13 +5891,16 @@ async function exportAllExcel() {
   try {
   if (!ensureExcelJSReady()) return;
   toast('Récupération des données…');
-  await refreshDB();
+  showLoading('Récupération de tous les détails…'); // ✅ v13.5
+  await refreshDBFull(); // ✅ v13.5 — l'export global a besoin du détail complet
+  hideLoading();
   const db = getDB();
   if (!db.length) { toast('Aucune donnée à exporter', 'err'); return; }
   const wb = new ExcelJS.Workbook();
   wb.creator = CENTRE;
   wb.title = 'Export LaboSaisie';
   let sheetCount = 0;
+  let failedSheets = 0; // ✅ v12
 
   const usedNames = new Set();
   db.forEach((record, ri) => {
@@ -5474,6 +5921,7 @@ async function exportAllExcel() {
       }
     } catch(sheetErr) {
       console.error('Erreur feuille dossier', ri, ':', sheetErr);
+      failedSheets++; // ✅ v12 — compter les échecs pour ne plus les masquer
       // Continuer avec les autres dossiers
     }
   });
@@ -5481,7 +5929,11 @@ async function exportAllExcel() {
   if (!sheetCount) { toast('Aucune donnée à exporter', 'err'); return; }
   const today = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
   await downloadWorkbook(wb, `LaboSaisie_Export_${today}.xlsx`);
-  toast('Export complet réussi ✓', 'ok');
+  if (failedSheets > 0) {
+    toast('Export terminé, mais ' + failedSheets + ' feuille' + (failedSheets>1?'s':'') + ' en erreur (voir console F12)', 'err');
+  } else {
+    toast('Export complet réussi ✓', 'ok');
+  }
   } catch(err) {
     console.error('exportAllExcel:', err);
     toast('Erreur export Excel : ' + (err.message || err), 'err');
@@ -5764,9 +6216,10 @@ function confirmerSiExamensManquants(type, resultats) {
   return confirm(msg);
 }
 
-function printRecord(id) {
+async function printRecord(id) {
   let r = getDB().find(x => x.id === id);
   if (!r) { toast('Fiche introuvable', 'err'); return; }
+  await ensureFull(r); // ✅ v13.5 — détail complet avant impression
   // Pour un dossier unifié : créer une fiche composite avec toutes les analyses
   if (isDossierRecord(r)) {
     const types = getRecordTypes(r);
@@ -5898,6 +6351,30 @@ async function buildAndPrint(r) {
 
   // ── Sections selon le type ──────────────────────────────────
   html += buildPrintSections(r.type, res);
+
+  // ✅ v12.4 — Composition BPN (forfait fixe)
+  if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
+    html += `<div class="print-section">
+      <div class="print-section-title">Composition du bilan prénatal — forfait ${(r.montant||20000).toLocaleString('fr-FR')} FCFA</div>
+      <table class="print-table"><tbody>
+      ${res['_bpn_inclus'].map(l => `<tr><td style="width:26px;text-align:center;color:#15803d">☑</td><td>${escHTML(l)}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }
+
+  // ✅ v12.4 — Examens demandés non renseignés → lignes vides à compléter
+  const printPending = getPendingCheckedExams(r, r.type);
+  if (printPending.length) {
+    html += `<div class="print-section">
+      <div class="print-section-title">Examens demandés — résultats à compléter</div>`;
+    printPending.forEach(ex => {
+      html += `<table class="print-table" style="margin-bottom:8px">
+        <thead><tr><th>${escHTML(ex.label)}</th><th>Résultat</th><th>Unité</th><th>Valeurs normales</th></tr></thead>
+        <tbody>
+        ${ex.rows.map(pr => `<tr><td>${escHTML(pr.name)}</td><td style="min-width:70px">&nbsp;</td><td>${escHTML(pr.unit)}</td><td style="color:#64748b">${escHTML(pr.ref)}</td></tr>`).join('')}
+        </tbody></table>`;
+    });
+    html += `</div>`;
+  }
 
   // ── Pied de page ────────────────────────────────────────────
   html += `
@@ -6045,7 +6522,7 @@ function buildPrintSections(type, res) {
 
     const rows = [];
     Object.entries(res).forEach(([k,v]) => {
-      if (!v) return;
+      if (!v || k.startsWith('_')) return; // ✅ v12 — ignorer clés techniques
       if (typeof v === 'object') {
         const val = v.valeur || v.resultat || '';
         const pid = _paramIdMap[k];
@@ -6080,6 +6557,7 @@ function buildPrintSections(type, res) {
 async function printReceipt(id) {
   const record = getDB().find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
+  await ensureFull(record); // ✅ v13.5 — détail complet avant le reçu
 
   const p = record.patient || {};
   const types = getRecordTypes(record);
@@ -6253,10 +6731,11 @@ function printHistory() {
 // EXPORT PDF
 // ============================================================
 
-function exportPDF(id) {
+async function exportPDF(id) {
   try {
     const record = getDB().find(x => x.id === id);
     if (!record) { toast('Fiche introuvable', 'err'); return; }
+    await ensureFull(record); // ✅ v13.5 — détail complet avant export PDF
 
     if (isDossierRecord(record)) {
       // Dossier unifié : PDF multi-pages (une section par type)
@@ -6354,15 +6833,18 @@ async function exportPDFFromForm(type) {
   try {
   const p = getPatient();
   if (!validatePatient(p)) return;
+  showLoading('Génération du PDF…'); // ✅ v13
   await refreshDB();
   // Chercher dans les dossiers unifiés ET les anciens formats
   let saved = getDB().find(r => isDossierRecord(r) && r.patient?.dossier === p.dossier);
   if (saved) {
+    await ensureFull(saved); // ✅ v13.5 — détail complet avant export PDF
     // Extraire le bon type depuis le dossier
     const res = getRecordResultats(saved, type);
     saved = { ...saved, type, resultats: res };
   } else {
     saved = getDB().find(r => r.type === type && r.patient?.dossier === p.dossier);
+    if (saved) await ensureFull(saved); // ✅ v13.5
   }
   if (!saved) { toast('Enregistrez la fiche avant d\'exporter en PDF', 'err'); return; }
   if (!confirmerSiExamensManquants(type, saved.resultats)) return;
@@ -6384,6 +6866,41 @@ function buildPDF(r) {
   const { jsPDF } = window.jspdf;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  // ✅ v12.3 — La police intégrée de jsPDF (Helvetica/WinAnsi) ne rend PAS
+  // les emojis, superscripts (10⁶), ≥ ≤, flèches, etc. → caractères parasites.
+  // On nettoie tout texte AVANT le rendu (titres, cellules, valeurs, unités).
+  function pdfSafe(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, '~')
+      .replace(/→/g, '->').replace(/←/g, '<-').replace(/↔/g, '<->')
+      .replace(/[↑▲⬆↗]/g, '(+)').replace(/[↓▼⬇↘]/g, '(-)')
+      .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, m => '^' + '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(m))
+      .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, m => '₀₁₂₃₄₅₆₇₈₉'.indexOf(m))
+      .replace(/⁺/g, '+').replace(/⁻/g, '-').replace(/−/g, '-')
+      .replace(/β/g, 'beta')
+      // emojis, pictogrammes, symboles divers, sélecteurs de variante
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{2500}-\u{25FF}\u{FE00}-\u{FE0F}\u{200D}\u{2705}\u{2713}\u{2717}\u{2716}\u{2714}]/gu, '')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+  }
+  // Interception globale : tout passe par pdfSafe sans toucher aux appels existants
+  const _rawText = doc.text.bind(doc);
+  doc.text = function(txt, x, yy, opts) {
+    if (Array.isArray(txt)) txt = txt.map(pdfSafe);
+    else txt = pdfSafe(txt);
+    return _rawText(txt, x, yy, opts);
+  };
+  const _rawAutoTable = doc.autoTable.bind(doc);
+  doc.autoTable = function(o) {
+    if (o) {
+      if (Array.isArray(o.head)) o.head = o.head.map(rw => rw.map(pdfSafe));
+      if (Array.isArray(o.body)) o.body = o.body.map(rw => rw.map(c => Array.isArray(c) ? c : pdfSafe(c)));
+    }
+    return _rawAutoTable(o);
+  };
+
   const p = r.patient;
   const W = 210; const MARGIN = 14;
   let y = MARGIN;
@@ -6627,6 +7144,7 @@ function buildPDF(r) {
   } else {
     // Pour les autres types : affichage générique clé/valeur
     Object.entries(res).forEach(([k, v]) => {
+      if (k.startsWith('_')) return; // ✅ v12 — ignorer clés techniques
       if (typeof v === 'object' && v !== null) {
         const val = v.valeur || v.resultat || '';
         if (val) rows.push([k, val, v.unite || '', v.interp || v.obs || '']);
@@ -6646,6 +7164,42 @@ function buildPDF(r) {
       });
       y = doc.lastAutoTable.finalY + 6;
     }
+  }
+
+  // ✅ v12.4 — Composition BPN + examens demandés non renseignés
+  const pdfSectionTitle = (txt) => {
+    if (y > 250) { doc.addPage(); y = MARGIN; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,58,138);
+    doc.text(txt, MARGIN, y); y += 5;
+  };
+  if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
+    pdfSectionTitle('Composition du bilan prénatal (forfait ' + (r.montant||20000).toLocaleString('fr-FR') + ' FCFA)');
+    doc.autoTable({
+      startY: y,
+      body: res['_bpn_inclus'].map(l => ['☑', l]),
+      margin: { left: MARGIN, right: MARGIN },
+      styles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: { 0:{ cellWidth: 8, halign:'center', textColor:[21,128,61] } },
+      alternateRowStyles: { fillColor: [240,253,250] },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  }
+  const pdfPending = getPendingCheckedExams(r, r.type);
+  if (pdfPending.length) {
+    pdfSectionTitle('Examens demandés — résultats à compléter');
+    pdfPending.forEach(ex => {
+      doc.autoTable({
+        startY: y,
+        head: [[ex.label, 'Résultat', 'Unité', 'Valeurs normales']],
+        body: ex.rows.map(pr => [pr.name, '', pr.unit, pr.ref]),
+        margin: { left: MARGIN, right: MARGIN },
+        styles: { fontSize: 8, cellPadding: 2.5, minCellHeight: 7 },
+        headStyles: { fillColor: [71,85,105], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        columnStyles: { 1:{ fillColor:[255,255,255] } },
+      });
+      y = doc.lastAutoTable.finalY + 4;
+    });
+    y += 2;
   }
 
   // ── Pied de page ─────────────────────────────────────────
@@ -6685,6 +7239,8 @@ function buildPDF(r) {
   } catch(err) {
     console.error('buildPDF:', err);
     toast('Erreur génération PDF : ' + (err.message||err), 'err');
+  } finally {
+    hideLoading(); // ✅ v13
   }
 }
 
@@ -6850,11 +7406,8 @@ function resetTarifsConfig()  { resetAdminTarifs(); }
 let _prescripteurs = [];
 
 async function loadPrescripteurs() {
-  const { data, error } = await _sb
-    .from('labo_prescripteurs')
-    .select('*')
-    .eq('actif', true)
-    .order('nom');
+  // ✅ v13 — via RPC sécurisée par jeton
+  const { data, error } = await _sb.rpc('get_prescripteurs', { p_token: TK() });
   if (!error) {
     _prescripteurs = data || [];
     refreshPrescripteurSelects();
@@ -6865,7 +7418,7 @@ async function loadPrescripteurs() {
 function refreshPrescripteurSelects() {
   const opts = '<option value="">— Choisir un prescripteur —</option>'
     + _prescripteurs.map(p =>
-        `<option value="${p.id}">${p.nom}${p.specialite ? ' · ' + p.specialite : ''}</option>`
+        `<option value="${p.id}">${esc(p.nom)}${p.specialite ? ' · ' + esc(p.specialite) : ''}</option>`
       ).join('');
   document.querySelectorAll('select[id="p_prescripteur_id"]').forEach(el => {
     const cur = el.value;
@@ -6890,16 +7443,23 @@ function showAddPrescripteur() {
 }
 
 async function savePrescripteur() {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; } // ✅ v12
   const nom = document.getElementById('presc_nom')?.value?.trim();
   if (!nom) { toast('Nom du prescripteur obligatoire', 'err'); return; }
-  const payload = {
-    nom,
-    specialite: document.getElementById('presc_spec')?.value || '',
-    structure:  document.getElementById('presc_struct')?.value || '',
-    taux_ristourne: parseFloat(document.getElementById('presc_taux')?.value || '0'),
-  };
-  const { error } = await _sb.from('labo_prescripteurs').insert(payload);
+  if (_prescripteurs.some(p => (p.nom||'').trim().toLowerCase() === nom.toLowerCase())) { // ✅ v12 anti-doublon
+    toast('Un prescripteur porte déjà ce nom', 'err'); return;
+  }
+  const { data: res, error } = await _sb.rpc('insert_prescripteur', {
+    p_token: TK(),
+    p_nom: nom,
+    p_specialite: document.getElementById('presc_spec')?.value || '',
+    p_structure:  document.getElementById('presc_struct')?.value || '',
+    p_taux: parseFloat(document.getElementById('presc_taux')?.value || '0'),
+  });
   if (error) { toast('Erreur : ' + error.message, 'err'); return; }
+  if (res === 'forbidden') { toast('Action réservée aux administrateurs', 'err'); return; }
+  if (res === 'duplicate') { toast('Un prescripteur porte déjà ce nom', 'err'); return; }
+  if (res !== 'ok') { toast('Erreur : ' + res, 'err'); return; }
   toast('Prescripteur ajouté ✓', 'ok');
   ['presc_nom','presc_spec','presc_struct'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('presc_taux').value = '0';
@@ -6907,8 +7467,10 @@ async function savePrescripteur() {
 }
 
 async function deletePrescripteur(id) {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; } // ✅ v12
   if (!confirm('Désactiver ce prescripteur ?')) return;
-  await _sb.from('labo_prescripteurs').update({ actif: false }).eq('id', id);
+  const { data: res, error } = await _sb.rpc('deactivate_prescripteur', { p_token: TK(), p_id: id });
+  if (error || res !== 'ok') { toast('Échec de la désactivation', 'err'); return; }
   await loadPrescripteurs();
   toast('Prescripteur désactivé', 'ok');
 }
@@ -6928,13 +7490,13 @@ function renderPrescripteursList() {
     </tr></thead>
     <tbody>
       ${_prescripteurs.map(p => `<tr>
-        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${p.nom}</td>
-        <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.specialite||'—'}</td>
-        <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${p.structure||'—'}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${esc(p.nom)}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${esc(p.specialite||'—')}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${esc(p.structure||'—')}</td>
         <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--accent)">${p.taux_ristourne||0} %</td>
         <td style="padding:7px 8px;border-bottom:1px solid var(--border);display:flex;gap:4px">
-          ${isAdmin() ? `<button class="btn" style="padding:3px 8px;font-size:11px" onclick="editPrescripteur(${p.id})">✏</button>` : ''}
-          <button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deletePrescripteur(${p.id})">✕</button>
+          ${isAdmin() ? `<button class="btn" style="padding:3px 8px;font-size:11px" onclick="editPrescripteur(${p.id})">✏</button>
+          <button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deletePrescripteur(${p.id})">✕</button>` : ''}
         </td>
       </tr>`).join('')}
     </tbody>
@@ -6945,37 +7507,50 @@ async function editPrescripteur(id) {
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
   const presc = _prescripteurs.find(p => p.id === id);
   if (!presc) { toast('Prescripteur introuvable', 'err'); return; }
+  // ✅ v13.1 — ouverture d'une modale (remplace les prompt() en série, peu ergonomiques sur mobile)
+  document.getElementById('pm_id').value = presc.id;
+  document.getElementById('pm_nom').value = presc.nom || '';
+  document.getElementById('pm_spec').value = presc.specialite || '';
+  document.getElementById('pm_struct').value = presc.structure || '';
+  document.getElementById('pm_taux').value = presc.taux_ristourne || 0;
+  document.getElementById('pm-error').textContent = '';
+  document.getElementById('presc-modal').style.display = 'flex';
+  document.getElementById('pm_nom').focus();
+}
 
-  const nouveauNom = prompt('Nom du prescripteur :', presc.nom);
-  if (nouveauNom === null) return;
-  const nouvelleSpec = prompt('Spécialité :', presc.specialite || '');
-  if (nouvelleSpec === null) return;
-  const nouvelleStruct = prompt('Structure :', presc.structure || '');
-  if (nouvelleStruct === null) return;
-  const nouveauTaux = prompt('Taux de ristourne (%) :', String(presc.taux_ristourne || 0));
-  if (nouveauTaux === null) return;
+function closePrescModal() {
+  document.getElementById('presc-modal').style.display = 'none';
+}
 
-  const taux = parseFloat(nouveauTaux);
-  if (isNaN(taux) || taux < 0 || taux > 100) {
-    toast('Taux invalide (doit être entre 0 et 100)', 'err'); return;
+async function submitPrescModal() {
+  const errEl = document.getElementById('pm-error');
+  errEl.textContent = '';
+  const id = parseInt(document.getElementById('pm_id').value, 10);
+  const nom = document.getElementById('pm_nom').value.trim();
+  const spec = document.getElementById('pm_spec').value.trim();
+  const struct = document.getElementById('pm_struct').value.trim();
+  const taux = parseFloat(document.getElementById('pm_taux').value);
+  if (!nom) { errEl.textContent = 'Le nom est obligatoire.'; return; }
+  if (isNaN(taux) || taux < 0 || taux > 100) { errEl.textContent = 'Taux invalide (0 à 100).'; return; }
+  // anti-doublon (hors soi-même)
+  if (_prescripteurs.some(p => p.id !== id && (p.nom||'').trim().toLowerCase() === nom.toLowerCase())) {
+    errEl.textContent = 'Un autre prescripteur porte déjà ce nom.'; return;
   }
-
   const { data, error } = await _sb.rpc('update_prescripteur_admin', {
-    p_user_id:        _currentUser.id,
+    p_token:          TK(),
     p_prescr_id:      id,
-    p_nom:            nouveauNom.trim(),
-    p_specialite:     nouvelleSpec,
-    p_structure:      nouvelleStruct,
+    p_nom:            nom,
+    p_specialite:     spec,
+    p_structure:      struct,
     p_taux_ristourne: taux,
   });
-
-  if (error)                    { toast('Erreur serveur : ' + error.message, 'err'); return; }
-  if (data === 'forbidden')     { toast('Action réservée aux administrateurs', 'err'); return; }
-  if (data === 'not_found')     { toast('Prescripteur introuvable', 'err'); return; }
-  if (data === 'nom_required')  { toast('Le nom est obligatoire', 'err'); return; }
-  if (data === 'taux_invalid')  { toast('Taux invalide (0–100)', 'err'); return; }
-  if (data !== 'ok')            { toast('Erreur : ' + data, 'err'); return; }
-
+  if (error)                   { errEl.textContent = 'Erreur serveur : ' + error.message; return; }
+  if (data === 'forbidden')    { errEl.textContent = 'Action réservée aux administrateurs.'; return; }
+  if (data === 'not_found')    { errEl.textContent = 'Prescripteur introuvable.'; return; }
+  if (data === 'nom_required') { errEl.textContent = 'Le nom est obligatoire.'; return; }
+  if (data === 'taux_invalid') { errEl.textContent = 'Taux invalide (0 à 100).'; return; }
+  if (data !== 'ok')           { errEl.textContent = 'Erreur : ' + data; return; }
+  closePrescModal();
   toast('Prescripteur mis à jour ✓', 'ok');
   await loadPrescripteurs();
 }
@@ -7088,7 +7663,7 @@ async function renderRistournes(db) {
     </tr></thead>
     <tbody>
       ${rows.map(r => `<tr>
-        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${r.presc.nom}<br><span style="font-size:11px;color:var(--text-muted);font-weight:400">${r.presc.specialite||''}</span></td>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${esc(r.presc.nom)}<br><span style="font-size:11px;color:var(--text-muted);font-weight:400">${esc(r.presc.specialite||'')}</span></td>
         <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)">${r.bpn}</td>
         <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border);color:var(--text-muted);font-style:italic;font-size:11px">0 FCFA<br>(règle : pas de ristourne BPN)</td>
         <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)">${r.extraBPN}</td>
@@ -7158,8 +7733,75 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_pg',    label:'Prélèvement de gorge',              groupe:'🦠 Bactériologie', tab:'bacterio', prix:4000 },
   { id:'ex_pus',   label:'Prélèvement de pus / plaie',        groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000 },
   // ── Bilan prénatal ──
-  { id:'ex_bpn',   label:'Bilan prénatal complet',            groupe:'🤰 Bilan prénatal', tab:'bpn', prix:25000 },
+  { id:'ex_bpn',   label:'Bilan prénatal complet',            groupe:'🤰 Bilan prénatal', tab:'bpn', prix:20000 },
 ];
+
+// ✅ v12.4 — Paramètres attendus par examen coché (affichage "à compléter" sur la fiche)
+// Retourne [{key, name, unit, ref}] ; key = clé réelle dans l'objet resultats.
+function examExpectedRows(examId) {
+  const K = (arr) => arr.map(p => ({ key:p.name, name:p.name, unit:p.unit||'', ref:p.ref||p.refM||'' }));
+  const M = {
+    ex_nfs:   () => K([...HEMA_PARAMS.filter(p=>!['vs','ret'].includes(p.id)), ...HEMA_FL]),
+    ex_vs:    () => K(HEMA_PARAMS.filter(p=>p.id==='vs')),
+    ex_ephb:  () => EPHB_FRACTIONS.map(p=>({key:p.name,name:p.name,unit:'%',ref:p.ref||''})),
+    ex_gly:   () => K(BIO_GLUCIDES.filter(p=>p.id==='gly')),
+    ex_hba1c: () => K(BIO_GLUCIDES.filter(p=>p.id==='hba')),
+    ex_uree:  () => K(BIO_REIN.filter(p=>p.id==='uree')),
+    ex_crea:  () => K(BIO_REIN.filter(p=>p.id==='crea')),
+    ex_ua:    () => K(BIO_REIN.filter(p=>p.id==='ua')),
+    ex_asat:  () => K(BIO_FOIE.filter(p=>['asat','alat'].includes(p.id))),
+    ex_ggt:   () => K(BIO_FOIE.filter(p=>p.id==='ggt')),
+    ex_pal:   () => K(BIO_FOIE.filter(p=>p.id==='pal')),
+    ex_bili:  () => K(BIO_FOIE.filter(p=>['bili','bilid'].includes(p.id))),
+    ex_prot:  () => K(BIO_FOIE.filter(p=>['prot','alb'].includes(p.id))),
+    ex_chol:  () => K(BIO_LIPIDES.filter(p=>p.id==='chol')),
+    ex_trig:  () => K(BIO_LIPIDES.filter(p=>p.id==='trig')),
+    ex_hdl:   () => K(BIO_LIPIDES.filter(p=>['hdl','ldl'].includes(p.id))),
+    ex_iono:  () => K(BIO_IONO.filter(p=>['na','k','cl'].includes(p.id))),
+    ex_ca:    () => K(BIO_IONO.filter(p=>['ca','phos'].includes(p.id))),
+    ex_ge:    () => [{key:'GE - Résultat',name:'Résultat GE',unit:'',ref:''},{key:'GE - Espèce',name:'Espèce plasmodiale',unit:'',ref:''},{key:'GE - Densité parasitaire (/µL)',name:'Densité parasitaire',unit:'/µL',ref:''}],
+    ex_gs:    () => [{key:'GS - ABO',name:'Groupe ABO',unit:'',ref:''},{key:'GS - Rhésus',name:'Rhésus',unit:'',ref:''}],
+    ex_rai:   () => [{key:'GS - RAI',name:'RAI',unit:'',ref:''},{key:'GS - Phénotype',name:'Phénotype érythrocytaire',unit:'',ref:''}],
+    ex_crp:   () => [{key:'CRP - Valeur',name:'CRP — Protéine C-réactive',unit:'mg/L',ref:'< 6'}],
+    ex_widal: () => WIDAL_ANTIGENES.map(ag=>({key:'Widal - '+ag.name,name:ag.name,unit:'',ref:'< 1/80'})),
+    ex_vih:   () => [{key:'VIH 1 & 2',name:'Sérologie VIH 1 & 2',unit:'',ref:'Négatif'}],
+    ex_hbs:   () => [{key:'Ag HBs',name:'Ag HBs (Hépatite B)',unit:'',ref:'Négatif'}],
+    ex_hcv:   () => [{key:'Ac anti-VHC',name:'Ac anti-VHC (Hépatite C)',unit:'',ref:'Négatif'}],
+    ex_tpha:  () => [{key:'TPHA / VDRL (Syphilis)',name:'TPHA / VDRL (Syphilis)',unit:'',ref:'Négatif'}],
+    ex_toxo:  () => [{key:'Toxoplasmose IgG',name:'Toxoplasmose IgG',unit:'UI/mL',ref:''},{key:'Toxoplasmose IgM',name:'Toxoplasmose IgM',unit:'',ref:''}],
+    ex_rube:  () => [{key:'Rubéole IgG',name:'Rubéole IgG / IgM',unit:'UI/mL',ref:''}],
+    ex_ecbu:  () => [{key:'Germe identifié',name:'ECBU — Germe / Leucocytes / Culture',unit:'',ref:''}],
+    ex_hemo:  () => [{key:'Germe identifié',name:'Hémoculture — Germe',unit:'',ref:''}],
+    ex_copro: () => [{key:'Germe identifié',name:'Coproculture — Germe',unit:'',ref:''}],
+    ex_eps:   () => [{key:'EPS','name':'EPS — Examen parasitologique des selles',unit:'',ref:''}],
+  };
+  return M[examId] ? M[examId]() : [];
+}
+
+function isValFilled(v) {
+  if (v == null) return false;
+  if (typeof v === 'object') return !!(v.valeur || v.resultat || v.titre);
+  const s = String(v).trim();
+  return s !== '' && s !== '—';
+}
+
+// Examens cochés (demandés) dont AUCUN paramètre n'est rempli → à afficher vides
+function getPendingCheckedExams(record, type) {
+  const cat = getCatalogueComplet();
+  const coches = isDossierRecord(record)
+    ? (record.resultats?._examens_coches?.[type] || [])
+    : (record.resultats?.['_examens_coches'] || []);
+  const res = getRecordResultats(record, type) || {};
+  const out = [];
+  (coches || []).forEach(label => {
+    const ex = cat.find(e => e.label === label);
+    if (!ex) return;
+    const rows = examExpectedRows(ex.id);
+    if (!rows.length) return;
+    if (!rows.some(r => isValFilled(res[r.key]))) out.push({ label, rows });
+  });
+  return out;
+}
 
 function buildFicheExamens() {
   const grid = document.getElementById('fiche-examens-grid');
@@ -7421,7 +8063,7 @@ function hasValidSession() {
   if (!raw) return false;
   let parsed;
   try { parsed = JSON.parse(raw); } catch (e) { return false; }
-  if (!parsed || !parsed.expiresAt || Date.now() > parsed.expiresAt || !parsed.id) {
+  if (!parsed || !parsed.expiresAt || Date.now() > parsed.expiresAt || !parsed.id || !parsed.token) {
     localStorage.removeItem(SESSION_KEY);
     return false;
   }
@@ -7430,11 +8072,17 @@ function hasValidSession() {
 }
 
 function setSession(user) {
-  _currentUser = { id: user.id, username: user.username, role: user.role, expiresAt: Date.now() + SESSION_DURATION_MS };
+  _currentUser = { id: user.id, username: user.username, role: user.role, token: user.token, expiresAt: Date.now() + SESSION_DURATION_MS };
   localStorage.setItem(SESSION_KEY, JSON.stringify(_currentUser));
 }
 
+// ✅ v13 — jeton de session opaque : seule preuve d'authentification acceptée
+// côté serveur. Sans jeton valide, aucune donnée patient n'est accessible.
+function TK() { return _currentUser?.token || null; }
+
 function clearSession() {
+  const t = TK();
+  if (t && _sb) { try { _sb.rpc('logout_token', { p_token: t }); } catch(e){} }
   _currentUser = null;
   localStorage.removeItem(SESSION_KEY);
 }
@@ -7478,9 +8126,15 @@ async function doLogin() {
       }
       return;
     }
-    if (data && data.length > 0) {
-      setSession(data[0]);
+    // ✅ v13.3 — login_user renvoie un statut : ok / locked / invalid
+    const row = data && data[0];
+    if (row && row.status === 'ok') {
+      setSession(row);
       enterApp();
+    } else if (row && row.status === 'locked') {
+      const mins = Math.max(1, Math.ceil((row.locked_seconds || 0) / 60));
+      errEl.textContent = '🔒 Trop de tentatives. Compte verrouillé temporairement — réessayez dans ' + mins + ' min.';
+      pwdInput.value = '';
     } else {
       errEl.textContent = 'Nom d\'utilisateur ou mot de passe incorrect.';
       pwdInput.value = '';
@@ -7512,7 +8166,7 @@ function enterApp() {
   // Charger les valeurs de référence depuis Supabase au login
   (async () => {
     try {
-      const { data: remoteRefs } = await _sb.rpc('get_refs_config');
+      const { data: remoteRefs } = await _sb.rpc('get_refs_config', { p_token: TK() });
       if (remoteRefs && Object.keys(remoteRefs).length > 0) {
         _customRefsCache = remoteRefs;
         localStorage.setItem(LABO_REFS_KEY, JSON.stringify(remoteRefs));
@@ -7521,6 +8175,8 @@ function enterApp() {
     updateAllRefs();
   })();
   initApp();
+  updateSyncBanner();          // ✅ v13.4
+  flushSyncQueue(true);        // ✅ v13.4 — tenter la synchro silencieuse au démarrage
 }
 
 function updateUserBadge() {
@@ -7542,6 +8198,42 @@ function updateUserBadge() {
 // GESTION DES COMPTES (espace admin)
 // ============================================================
 
+// ✅ v13.2 — Consultation du journal d'audit (admin)
+const AUDIT_ACTION_LABELS = {
+  insert_resultat:'Création fiche', update_resultat:'Modification fiche', delete_resultat:'Suppression fiche',
+  clear_resultats:'Vidage historique', create_user:'Création compte', update_user:'Modification compte',
+  delete_user:'Suppression compte', insert_prescripteur:'Ajout prescripteur',
+  update_prescripteur:'Modif prescripteur', deactivate_prescripteur:'Désactivation prescripteur'
+};
+function auditDetails(action, d) {
+  if (!d) return '';
+  if (action.endsWith('_resultat') || action === 'delete_resultat')
+    return [d.dossier ? 'N°'+d.dossier : '', d.patient||'', d.montant!=null ? d.montant.toLocaleString('fr-FR')+' FCFA' : ''].filter(Boolean).join(' · ');
+  if (action === 'clear_resultats') return (d.supprimes||0) + ' fiche(s) supprimée(s)';
+  if (action.endsWith('_user')) return [d.username||'', d.role||d.new_role||'', d.password_changed ? 'mot de passe changé' : ''].filter(Boolean).join(' · ');
+  if (action.includes('prescripteur')) return [d.nom||'', d.taux!=null ? d.taux+' %' : ''].filter(Boolean).join(' · ');
+  return JSON.stringify(d);
+}
+async function renderAuditLog() {
+  if (!isAdmin()) { toast('Réservé aux administrateurs', 'err'); return; }
+  const body = document.getElementById('audit-body');
+  body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:14px">⏳ Chargement…</td></tr>';
+  const { data, error } = await _sb.rpc('get_audit_log', { p_token: TK(), p_limit: 300 });
+  if (error) { body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#b91c1c;padding:14px">Erreur de chargement (le script 5_audit_log.sql est-il installé ?)</td></tr>'; return; }
+  if (!data || !data.length) { body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:14px">Aucune entrée pour l\'instant.</td></tr>'; return; }
+  body.innerHTML = data.map(e => {
+    const dt = new Date(e.ts).toLocaleString('fr-FR');
+    const lbl = AUDIT_ACTION_LABELS[e.action] || e.action;
+    const isDelete = e.action.startsWith('delete') || e.action === 'clear_resultats';
+    return '<tr>'
+      + '<td style="white-space:nowrap;font-size:12px">' + esc(dt) + '</td>'
+      + '<td style="font-weight:600">' + esc(e.username || '—') + '</td>'
+      + '<td><span style="font-size:11.5px;font-weight:600;color:' + (isDelete ? '#b91c1c' : 'var(--accent)') + '">' + esc(lbl) + '</span></td>'
+      + '<td style="font-size:12px;color:var(--text-muted)">' + esc(auditDetails(e.action, e.details)) + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
 async function renderUsersList() {
   const b = document.getElementById('users-body');
   if (!b) return;
@@ -7550,7 +8242,7 @@ async function renderUsersList() {
     return;
   }
   b.innerHTML = `<tr><td colspan="4"><div class="empty-state">Chargement…</div></td></tr>`;
-  const { data, error } = await _sb.rpc('list_users_admin', { p_user_id: _currentUser.id });
+  const { data, error } = await _sb.rpc('list_users_admin', { p_token: TK() });
   if (error) {
     console.error('Erreur list_users_admin:', error);
     b.innerHTML = `<tr><td colspan="4"><div class="empty-state">Erreur de chargement</div></td></tr>`;
@@ -7589,13 +8281,14 @@ async function createUserAccount() {
     errEl.textContent = "Nom d'utilisateur et mot de passe obligatoires.";
     return;
   }
-  if (password.length < 4) {
-    errEl.textContent = 'Le mot de passe doit contenir au moins 4 caractères.';
+  // ✅ v13 — exigence de complexité (cohérente avec le minimum serveur)
+  if (password.length < 8 || !/[0-9]/.test(password) || !/[A-Za-z]/.test(password)) {
+    errEl.textContent = 'Mot de passe : au moins 8 caractères, avec au moins une lettre et un chiffre.';
     return;
   }
 
   const { data, error } = await _sb.rpc('create_user_admin', {
-    p_user_id: _currentUser.id,
+    p_token: TK(),
     p_new_username: username,
     p_new_password: password,
     p_new_role: role,
@@ -7633,7 +8326,7 @@ async function editUserAccount(id, username, currentRole) {
   if (newPassword === null) return; // annulé
 
   const { data, error } = await _sb.rpc('update_user_admin', {
-    p_user_id: _currentUser.id,
+    p_token: TK(),
     p_target_id: id,
     p_new_password: newPassword || null,
     p_new_role: newRole,
@@ -7661,7 +8354,7 @@ async function editUserAccount(id, username, currentRole) {
 
 async function deleteUserAccount(id, username) {
   if (!confirm(`Supprimer définitivement le compte "${username}" ?`)) return;
-  const { data, error } = await _sb.rpc('delete_user_admin', { p_user_id: _currentUser.id, p_target_id: id });
+  const { data, error } = await _sb.rpc('delete_user_admin', { p_token: TK(), p_target_id: id });
   if (error) {
     console.error('Erreur delete_user_admin:', error);
     toast('Erreur serveur', 'err');
@@ -7983,7 +8676,7 @@ function saveRefsConfig() {
   buildRefsEditor();
   // Persister en Supabase pour sync tous les postes
   if (_currentUser?.id) {
-    _sb.rpc('save_refs_config', { p_user_id: _currentUser.id, p_refs: custom })
+    _sb.rpc('save_refs_config', { p_token: TK(), p_refs: custom })
       .then(({ error }) => {
         if (!error) toast('✓ Valeurs de référence synchronisées sur tous les postes du labo', 'ok');
         else toast('✓ Valeurs enregistrées localement (sync Supabase indisponible)', 'ok');
@@ -8076,6 +8769,39 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  // ✅ v13 — Virgule décimale → point : sur clavier français, l'utilisateur
+  // tape souvent « 9,9 » ; les champs number rejetaient la virgule (valeur
+  // perdue). On convertit à la frappe pour préserver la justesse des résultats.
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === ',' || e.code === 'NumpadDecimal' && e.key === ',')) {
+      const el = e.target;
+      if (el && el.tagName === 'INPUT' &&
+          (el.type === 'number' || (el.getAttribute('inputmode') === 'decimal'))) {
+        e.preventDefault();
+        if (el.type === 'number') {
+          if (!el.value.includes('.')) el.value = el.value + '.';
+        } else {
+          const s = el.selectionStart ?? el.value.length;
+          const en = el.selectionEnd ?? el.value.length;
+          el.value = el.value.slice(0, s) + '.' + el.value.slice(en);
+          el.selectionStart = el.selectionEnd = s + 1;
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  });
+
+  // ✅ v13.4 — Bannière hors-ligne + synchronisation de la file au retour réseau
+  const offBar = document.getElementById('offline-banner');
+  const syncOffline = () => {
+    if (offBar) offBar.style.display = navigator.onLine ? 'none' : 'block';
+    if (navigator.onLine) flushSyncQueue(); // rejouer la file dès le retour
+  };
+  window.addEventListener('online', syncOffline);
+  window.addEventListener('offline', syncOffline);
+  syncOffline();
+  updateSyncBanner();
+
   if (hasValidSession()) {
     enterApp();
   } else {
@@ -8086,7 +8812,27 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </div><!-- /#app-root -->
 
-<!-- Loading overlay -->
+<!-- ✅ v13.1 — Modale d'édition prescripteur (remplace les prompt() en série) -->
+<div id="presc-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="presc-modal-title">
+  <div class="modal-box">
+    <div class="modal-title" id="presc-modal-title">Modifier le prescripteur</div>
+    <input type="hidden" id="pm_id">
+    <label class="modal-label" for="pm_nom">Nom</label>
+    <input class="modal-input" id="pm_nom" type="text" aria-label="Nom du prescripteur">
+    <label class="modal-label" for="pm_spec">Spécialité</label>
+    <input class="modal-input" id="pm_spec" type="text" aria-label="Spécialité">
+    <label class="modal-label" for="pm_struct">Structure</label>
+    <input class="modal-input" id="pm_struct" type="text" aria-label="Structure">
+    <label class="modal-label" for="pm_taux">Taux de ristourne (%)</label>
+    <input class="modal-input" id="pm_taux" type="number" min="0" max="100" step="0.5" aria-label="Taux de ristourne en pourcentage">
+    <div id="pm-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePrescModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitPrescModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-label" id="loading-label">Chargement…</div>
