@@ -2863,6 +2863,11 @@ function onParamInputColored(id) {
   valEl.classList.toggle('val-hi', interp === 'Élevé');
   valEl.classList.toggle('val-lo', interp === 'Bas');
   updateMontantCurrent();
+  // ✅ v13.8 — recalcul direct des constantes hématimétriques dès qu'un champ
+  // pilote change (robuste à l'édition, indépendant des addEventListener).
+  if (id === 'hb' || id === 'ht' || id === 'gr') { if (typeof calcConstantes === 'function') calcConstantes(); }
+  if (id === 'gbc') { if (typeof calcFLAbsolues === 'function') calcFLAbsolues(); }
+  if (id === 'bpn_hb' || id === 'bpn_ht' || id === 'bpn_gr') { if (typeof calcConstantesBPN === 'function') calcConstantesBPN(); }
 }
 
 
@@ -5542,13 +5547,14 @@ function buildProfessionalSheet(wb, r, sheetName) {
       pRow('CRP Latex',crpL,'','',crpI);
       row++;
     }
-    const widalData = WIDAL_ANTIGENES.filter(ag=>{const w=res['Widal - '+ag.name];return w&&w.titre&&w.titre!=='Négatif';});
-    const widalConcl = res['Widal - Conclusion']||'';
-    if (widalData.length||widalConcl) {
+    const _wid = widalReport(res);
+    if (_wid.show) {
       secHdr('Sérodiagnostic de Widal & Felix');
-      tblHdr('Antigène', 'Titre', 'Cinétique', 'Seuil significatif');
-      widalData.forEach(ag=>{const w=res['Widal - '+ag.name];pRow(ag.name,w.titre,'','1/'+ag.seuil,w.interp||'');});
-      if (widalConcl) nRow(widalConcl.replace(/^[^\w]+/,''), widalConcl.includes('ÉTAT')||widalConcl.includes('DÉBUT')?'FFFFF1F1':'FFFFFDE7');
+      if (_wid.rows.length) {
+        tblHdr('Antigène', 'Titre', 'Cinétique', 'Interprétation');
+        _wid.rows.forEach(w => pRow(w.name, w.titre, w.cinetique || '—', '', w.interp || ''));
+      }
+      if (_wid.concl) nRow(_wid.concl.replace(/^[^\w]+/, ''), _wid.concl.includes('ÉTAT') || _wid.concl.includes('DÉBUT') ? 'FFFFF1F1' : 'FFFFFDE7');
       row++;
     }
 
@@ -6502,20 +6508,15 @@ function buildPrintSections(type, res) {
         <tbody><tr><td>CRP Latex</td><td class="${crpCls}"><b>${crpLabel}</b></td><td>${crpInterp.replace(/^[🔥✓⚠]\s*/,'')}</td></tr></tbody></table>`);
     }
 
-    // Widal
-    const widalRows = [];
-    WIDAL_ANTIGENES.forEach(ag => {
-      const w = res['Widal - ' + ag.name];
-      if (w && w.titre && w.titre !== 'Négatif') {
-        widalRows.push([ag.name, w.titre, w.cinetique||'—', w.interp||'—']);
-      }
-    });
-    const widalConcl = res['Widal - Conclusion'] || '';
-    if (widalRows.length || widalConcl) {
+    // Widal — ✅ v13.9 : même logique que Excel/PDF (négatifs affichés si réalisé)
+    const _wid = widalReport(res);
+    const widalRows = _wid.rows.map(w => [w.name, w.titre, w.cinetique||'—', w.interp||'—']);
+    const widalConcl = _wid.concl;
+    if (_wid.show) {
       let wHtml = widalRows.length ? table(['Antigène','Titre','Cinétique','Interprétation'], widalRows) : '';
       if (widalConcl) {
         const cls = widalConcl.includes('ÉTAT') ? 'print-hi' : widalConcl.includes('DÉBUT') ? 'print-warn' : 'print-note';
-        wHtml += `<p class="print-conclusion ${cls}">${widalConcl.replace(/^[🔴🟠🟡⚪]\s*/,'')}</p>`;
+        wHtml += `<p class="print-conclusion ${cls}">${escHTML(widalConcl.replace(/^[🔴🟠🟡⚪]\s*/,''))}</p>`;
       }
       html += section('🦠 Sérodiagnostic de Widal & Félix', wHtml);
     }
@@ -6748,22 +6749,11 @@ async function exportPDF(id) {
     await ensureFull(record); // ✅ v13.5 — détail complet avant export PDF
 
     if (isDossierRecord(record)) {
-      // Dossier unifié : PDF multi-pages (une section par type)
+      // ✅ v13.10 — Dossier unifié : PDF multi-pages (une page par analyse)
       const types = getRecordTypes(record);
       if (!types.length) { toast('Dossier vide', 'err'); return; }
-      if (types.length === 1) {
-        // Un seul type → PDF standard
-        buildPDF({ ...record, type: types[0], resultats: getRecordResultats(record, types[0]) });
-      } else {
-        // Plusieurs types → générer les PDFs un par un
-        // (jsPDF ne supporte pas facilement le multi-doc, on génère le premier)
-        // Pour l'instant : PDF du premier type + toast d'info
-        const fakeR = { ...record, type: types[0], resultats: getRecordResultats(record, types[0]) };
-        buildPDF(fakeR);
-        if (types.length > 1) {
-          setTimeout(() => toast('Dossier multi-analyses : PDF généré pour "' + types[0] + '". Utilisez ⬇ Excel pour exporter toutes les analyses.', 'ok'), 500);
-        }
-      }
+      const analyses = types.map(t => ({ type: t, res: getRecordResultats(record, t) }));
+      buildPDF(record, analyses);
     } else {
       buildPDF(record);
     }
@@ -6846,23 +6836,25 @@ async function exportPDFFromForm(type) {
   showLoading('Génération du PDF…'); // ✅ v13
   await refreshDB();
   // Chercher dans les dossiers unifiés ET les anciens formats
-  let saved = getDB().find(r => isDossierRecord(r) && r.patient?.dossier === p.dossier);
-  if (saved) {
-    await ensureFull(saved); // ✅ v13.5 — détail complet avant export PDF
-    // Extraire le bon type depuis le dossier
-    const res = getRecordResultats(saved, type);
-    saved = { ...saved, type, resultats: res };
+  let dossier = getDB().find(r => isDossierRecord(r) && r.patient?.dossier === p.dossier);
+  if (dossier) {
+    await ensureFull(dossier); // ✅ v13.5 — détail complet avant export PDF
+    if (!confirmerSiExamensManquants(type, getRecordResultats(dossier, type))) return;
+    // ✅ v13.10 — exporter TOUTES les analyses du dossier (une page chacune)
+    const types = getRecordTypes(dossier);
+    const analyses = types.map(t => ({ type: t, res: getRecordResultats(dossier, t) }));
+    buildPDF(dossier, analyses);
   } else {
-    saved = getDB().find(r => r.type === type && r.patient?.dossier === p.dossier);
-    if (saved) await ensureFull(saved); // ✅ v13.5
+    let saved = getDB().find(r => r.type === type && r.patient?.dossier === p.dossier);
+    if (saved) await ensureFull(saved);
+    if (!saved) { toast('Enregistrez la fiche avant d\'exporter en PDF', 'err'); return; }
+    if (!confirmerSiExamensManquants(type, saved.resultats)) return;
+    buildPDF(saved);
   }
-  if (!saved) { toast('Enregistrez la fiche avant d\'exporter en PDF', 'err'); return; }
-  if (!confirmerSiExamensManquants(type, saved.resultats)) return;
-  buildPDF(saved);
   } catch(err) { console.error('exportPDFFromForm:', err); toast('Erreur PDF : ' + (err.message||err), 'err'); }
 }
 
-function buildPDF(r) {
+function buildPDF(r, analyses) {
   try {
   // Ordre des paramètres NFS pour le PDF (même ordre que l'écran)
   const HEMA_PARAMS_PRINT = HEMA_PARAMS.map(p => p.name);
@@ -6913,6 +6905,15 @@ function buildPDF(r) {
 
   const p = r.patient;
   const W = 210; const MARGIN = 14;
+
+  // ✅ v13.10 — Un dossier multi-analyses génère une PAGE par analyse.
+  const _analyses = (Array.isArray(analyses) && analyses.length)
+    ? analyses : [{ type: r.type, res: r.resultats || {} }];
+
+  _analyses.forEach((__a, __i) => {
+  const rType = __a.type;
+  const res = __a.res || {};
+  if (__i > 0) doc.addPage();
   let y = MARGIN;
 
   // ── En-tête bleu ─────────────────────────────────────────
@@ -6942,7 +6943,7 @@ function buildPDF(r) {
   // Type d'analyse
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('RÉSULTAT : ' + getDisplayType(r).toUpperCase(), MARGIN + 22, 33);
+  doc.text('RÉSULTAT : ' + getDisplayType({ type: rType, resultats: res }).toUpperCase(), MARGIN + 22, 33);
 
   // Liseré bleu clair bas
   doc.setFillColor(96, 165, 250);
@@ -7005,9 +7006,8 @@ function buildPDF(r) {
 
   // ── Tableau des résultats ─────────────────────────────────
   const rows = [];
-  const res = r.resultats || {};
 
-  if (r.type === 'Hématologie') {
+  if (rType === 'Hématologie') {
 
     const addTable = (head, body, opts={}) => {
       if (!body.length) return;
@@ -7124,15 +7124,10 @@ function buildPDF(r) {
     }
 
     // ── Widal & Félix ────────────────────────────────────────────
-    const widalRows = [];
-    WIDAL_ANTIGENES.forEach(ag => {
-      const wObj = res['Widal - ' + ag.name];
-      if (wObj && typeof wObj === 'object' && wObj.titre && wObj.titre !== 'Négatif') {
-        widalRows.push([ag.name, wObj.titre, wObj.cinetique || '—', wObj.interp || '—']);
-      }
-    });
-    const widalConclusion = res['Widal - Conclusion'] || '';
-    if (widalRows.length || widalConclusion) {
+    const _wid = widalReport(res);
+    const widalRows = _wid.rows.map(w => [w.name, w.titre, w.cinetique || '—', w.interp || '—']);
+    const widalConclusion = _wid.concl;
+    if (_wid.show) {
       sectionTitle('🦠 Sérodiagnostic de Widal & Félix');
       if (widalRows.length) {
         addTable(['Antigène','Titre','Cinétique','Interprétation'], widalRows);
@@ -7194,7 +7189,7 @@ function buildPDF(r) {
     });
     y = doc.lastAutoTable.finalY + 6;
   }
-  const pdfPending = getPendingCheckedExams(r, r.type);
+  const pdfPending = getPendingCheckedExams({ ...r, type: rType, resultats: res }, rType);
   if (pdfPending.length) {
     pdfSectionTitle('Examens demandés — résultats à compléter');
     pdfPending.forEach(ex => {
@@ -7240,7 +7235,9 @@ function buildPDF(r) {
 
   // Numéro de page
   doc.setTextColor(150); doc.setFont('helvetica','normal'); doc.setFontSize(7);
-  doc.text('Page 1/1', W - MARGIN, 290, { align: 'right' });
+  doc.text('Page ' + (__i+1) + '/' + _analyses.length, W - MARGIN, 290, { align: 'right' });
+
+  }); // ✅ v13.10 — fin de la boucle par analyse
 
   // Téléchargement — même convention de nommage que l'export Excel
   const filename = makeFilename(p.dossier, p.date, p.nom, getDisplayTypeShort(r)).replace(/\.xlsx$/, '.pdf');
@@ -7702,7 +7699,6 @@ async function renderRistournes(db) {
 const CATALOGUE_EXAMENS = [
   // ── Hématologie ──
   { id:'ex_nfs',   label:'NFS — Numération Formule Sanguine', groupe:'🩸 Hématologie', tab:'hema', prix:3500, section:'sec-nfs' },
-  { id:'ex_fl',    label:'Formule leucocytaire',               groupe:'🩸 Hématologie', tab:'hema', prix:0, note:'inclus NFS', section:'sec-nfs' },
   { id:'ex_ephb',  label:'Électrophorèse de l\'hémoglobine',  groupe:'🩸 Hématologie', tab:'hema', prix:7500, section:'sec-ephb' },
   { id:'ex_vs',    label:'VS — Vitesse de sédimentation',     groupe:'🩸 Hématologie', tab:'hema', prix:1500, section:'sec-nfs' },
   // ── Parasitologie ──
@@ -7815,6 +7811,25 @@ function collectPendingForType(res, coches) {
 // Examens cochés (demandés) qui doivent apparaître sur la fiche même vides.
 // ✅ v13.6 — gère le cas composite (impression d'un dossier multi-analyses),
 // et affiche TOUT examen coché, même sans correspondance de paramètres.
+// ✅ v13.9 — Rapport Widal partagé (Excel + PDF + impression), pour un rendu
+// IDENTIQUE partout. Règle : on affiche la section Widal si elle a été
+// réellement réalisée (au moins un antigène significatif, OU une conclusion,
+// OU l'examen Widal coché). Quand on l'affiche, on liste TOUS les antigènes
+// renseignés — y compris les négatifs, affichés « Négatif » (plus de case vide).
+function widalReport(res) {
+  const rows = WIDAL_ANTIGENES
+    .filter(ag => { const w = res['Widal - ' + ag.name]; return w && w.titre; })
+    .map(ag => { const w = res['Widal - ' + ag.name];
+      return { name: ag.name, titre: w.titre, cinetique: w.cinetique || '', interp: w.interp || '', seuil: ag.seuil }; });
+  let concl = (res['Widal - Conclusion'] || '').trim();
+  if (concl === '—') concl = '';
+  const anySignif = rows.some(r => r.titre && r.titre !== 'Négatif');
+  const coches = Array.isArray(res._examens_coches) ? res._examens_coches
+               : (res._examens_coches ? [].concat(...Object.values(res._examens_coches)) : []);
+  const checked = coches.some(l => /widal/i.test(l));
+  return { show: anySignif || !!concl || checked, rows, concl };
+}
+
 function getPendingCheckedExams(record, type) {
   const res0 = record.resultats || {};
   // Cas composite : dossier multi-analyses agrégé (impression) → tous les types
