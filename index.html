@@ -4128,6 +4128,7 @@ async function newPatient() {
   // Repartir sur une session propre : mode filtré réactivé, plus en mode édition
   _showAllExams = false;
   _editingRecordId = null;
+  _locksDisabled = false; // ✅ v13.14 — réactiver le verrouillage pour une nouvelle saisie
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
   // Effacer les infos patient
@@ -4507,11 +4508,15 @@ async function _saveRecordImpl(type) {
   if (_editingRecordId) {
     const existing = getDB().find(rr => rr.id === _editingRecordId);
     if (!existing) { toast('Fiche introuvable', 'err'); return; }
-    if (isDossierRecord(existing) && _editingType) type = _editingType;
+    // ✅ v13.15 — NE PLUS forcer le type : on enregistre l'analyse de l'onglet
+    // réellement sauvegardé (le bouton cliqué). Cela permet, en édition,
+    // d'AJOUTER une nouvelle analyse (ex. Bactério) au dossier sans écraser
+    // ni ranger les données sous le mauvais type.
 
     let newRes, newMontant;
     if (isDossierRecord(existing)) {
-      // Mise à jour d'une analyse dans le dossier
+      const estNouveauType = !(existing.resultats?._types || []).includes(type);
+      // Mise à jour / ajout d'une analyse dans le dossier
       newRes = { ...existing.resultats, [type]: typeResultats };
       if (!newRes._types) newRes._types = [];
       if (!newRes._types.includes(type)) newRes._types.push(type);
@@ -4521,17 +4526,16 @@ async function _saveRecordImpl(type) {
         if (!newRes._examens_prix) newRes._examens_prix = { ...(existing.resultats?._examens_prix || {}) };
         newRes._examens_prix[type] = examensPrixTab;
       }
-      // ✅ v13.11 — recalcul correct du total à l'édition : on retire l'ancien
-      // montant de CETTE analyse et on ajoute le nouveau (plus de montant figé
-      // qui ignorait l'ajout/retrait de tests facturables).
+      // ✅ v13.11/13.15 — total correct : mise à jour (retire l'ancien + ajoute)
+      // ou ajout d'une nouvelle analyse (ajoute son montant).
       if (!newRes._montants) newRes._montants = { ...(existing.resultats?._montants || {}) };
       const oldTypeMontant = existing.resultats?._montants?.[type];
       if (oldTypeMontant != null) {
         newMontant = Math.max(0, (existing.montant || 0) - oldTypeMontant + montant);
+      } else if (estNouveauType) {
+        newMontant = (existing.montant || 0) + montant; // nouvelle analyse → on ajoute
       } else {
-        // Ancien dossier sans montant par analyse mémorisé : on ne peut pas
-        // retrancher de façon fiable → on conserve le total pour ne pas fausser.
-        newMontant = existing.montant || 0;
+        newMontant = existing.montant || 0; // ancien dossier sans détail → on conserve
       }
       newRes._montants[type] = montant;
     } else {
@@ -4693,7 +4697,16 @@ async function editRecord(id, typeOverride) {
 
   loadResultsIntoForm(type, res);
   ensureInterpFresh(type); // ✅ v13.1 — recalcule les interp depuis les valeurs rechargées
-  if (typeof unlockAllFields === 'function') unlockAllFields(); // ✅ v13.13 — édition : champs libres
+  // ✅ v13.14 — En édition, on restaure les examens PAYÉS dans la fiche : leurs
+  // champs sont éditables, les autres restent 🔒 (il faut les cocher pour saisir).
+  if (typeof restoreFicheFromRecord === 'function' && restoreFicheFromRecord(record)) {
+    _locksDisabled = false;
+    if (typeof applyExamLocks === 'function') applyExamLocks();
+  } else {
+    // Ancien dossier sans information de paiement → on laisse tout éditable.
+    _locksDisabled = true;
+    if (typeof unlockAllFields === 'function') unlockAllFields();
+  }
   markRequiredSections();
 
   // Bandeau édition
@@ -7908,9 +7921,19 @@ function examFieldIds(examId) {
 
 function setFieldLocked(el, locked) {
   if (!el) return;
+  const wasUnlocked = !el.disabled;
   el.disabled = !!locked;
   el.classList.toggle('field-locked', !!locked);
   if (locked) {
+    // ✅ v13.16 — Examen décoché : on EFFACE la valeur. Un résultat non coché
+    // (donc non payé) ne doit être ni enregistré, ni imprimé, ni facturé.
+    if (wasUnlocked && el.value !== undefined && el.value !== '') {
+      el.value = '';
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+      el.classList.remove('val-hi', 'val-lo');
+      try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch(e) {}
+      try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
+    }
     if (el.dataset.phSaved === undefined) el.dataset.phSaved = el.getAttribute('placeholder') || '';
     if (el.tagName === 'INPUT' && el.type !== 'checkbox') el.setAttribute('placeholder', '🔒');
     el.title = 'Examen non coché — cochez-le sur la fiche d’examens pour pouvoir saisir';
@@ -7924,10 +7947,16 @@ function unlockAllFields() {
   document.querySelectorAll('.field-locked').forEach(el => setFieldLocked(el, false));
 }
 
+let _locksDisabled = false; // ✅ v13.14 — désactive les verrous (ex. ancien dossier sans info de paiement)
+let _applyingLocks = false; // ✅ v13.16 — garde anti-réentrance (l'effacement déclenche des events)
+
 function applyExamLocks() {
-  // En mode édition, on déverrouille tout : la fiche cochée n'est pas restaurée
-  // dans les cases, et il faut pouvoir corriger librement.
-  if (typeof _editingRecordId !== 'undefined' && _editingRecordId) { unlockAllFields(); return; }
+  // Verrous désactivés uniquement pour les anciens dossiers dont on ne connaît
+  // pas les examens payés (sinon impossible de les éditer). Sinon, on applique.
+  if (_applyingLocks) return;
+  if (_locksDisabled) { unlockAllFields(); return; }
+  _applyingLocks = true;
+  try {
   let cat;
   try { cat = getCatalogueComplet(); } catch(e) { return; }
   const checked = {};
@@ -7942,6 +7971,43 @@ function applyExamLocks() {
   const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
   document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
     .forEach(el => setFieldLocked(el, !bacOn));
+  } finally { _applyingLocks = false; }
+}
+
+// ✅ v13.14 — Restaure dans la fiche les examens payés (cases + prix) enregistrés
+// dans le dossier, pour l'édition. Retourne false si le dossier n'a aucune
+// information d'examens cochés (ancien format) → dans ce cas l'appelant
+// déverrouille tout pour permettre la correction.
+function restoreFicheFromRecord(record) {
+  const res = (record && record.resultats) || {};
+  const coches = res._examens_coches;
+  const prixSrc = res._examens_prix || {};
+  let labels = [], prix = {};
+  if (coches) {
+    if (Array.isArray(coches)) { labels = coches.slice(); Object.assign(prix, prixSrc); }
+    else {
+      Object.keys(coches).forEach(t => {
+        labels.push(...(coches[t] || []));
+        Object.assign(prix, prixSrc[t] || {});
+      });
+    }
+  }
+  if (!labels.length) return false;
+  const cat = getCatalogueComplet();
+  const labelSet = new Set(labels);
+  cat.forEach(ex => {
+    const chk = document.getElementById(ex.id);
+    if (!chk) return;
+    const on = labelSet.has(ex.label);
+    chk.checked = on;
+    if (on && prix[ex.label] != null) {
+      const px = document.getElementById('px_' + ex.id);
+      if (px) px.value = prix[ex.label];
+    }
+    if (typeof syncExamRowState === 'function') syncExamRowState(ex.id);
+  });
+  if (typeof calcFicheTotal === 'function') calcFicheTotal(); // recalcule le total + applique les verrous
+  return true;
 }
 
 function getPendingCheckedExams(record, type) {
