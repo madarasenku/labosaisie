@@ -2322,6 +2322,31 @@ function getPatientProfile() {
   return { age, sexe, tranche };
 }
 
+// ✅ v13.17 — Profil (âge/sexe/tranche) reconstruit depuis un patient ENREGISTRÉ
+// (pour recalculer les valeurs normales dans les exports Excel/PDF/impression).
+function profileFromPatient(pat) {
+  const ageRaw = parseFloat((pat && pat.age) || '0');
+  const age = isNaN(ageRaw) ? 0 : ageRaw;
+  const sexe = (pat && pat.sexe) || '';
+  let tranche = 'ADULTE';
+  if (age < 0.08) tranche = 'NN';
+  else if (age < 2)  tranche = 'NOURR';
+  else if (age < 15) tranche = 'ENFANT';
+  else if (age < 60) tranche = 'ADULTE';
+  else tranche = 'SENIOR';
+  return { age, sexe, tranche };
+}
+
+// Valeur normale affichable d'un paramètre (référence dynamique selon profil,
+// sinon référence par sexe, sinon référence générique).
+function refDisplayFor(p, profile) {
+  if (!p) return '';
+  const dynRef = getRef(p.id, profile);
+  if (dynRef && dynRef.ref) return dynRef.ref;
+  if (p.refM && p.refF) return (profile && profile.sexe === 'F') ? p.refF : p.refM;
+  return p.ref || '';
+}
+
 // Table de références par paramètre, tranche, sexe
 // Format : { ref, lo, hi }  — lo/hi pour l'interprétation auto
 const NORM = {
@@ -5300,6 +5325,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ── Helpers globaux ──────────────────────────────────────────
   const p = r.patient || {};
   const res = r.resultats || {};
+  const profile = profileFromPatient(p); // ✅ v13.17 — pour les valeurs normales
   const nomMAJ = (p.nom || 'PATIENT').toUpperCase();
   const dateF  = p.date ? p.date.split('-').reverse().join('/') : '—';
   const ageSexeF = [p.age ? p.age + ' ans' : '', p.sexe === 'M' ? 'Masculin' : p.sexe === 'F' ? 'Féminin' : p.sexe || ''].filter(Boolean).join(' · ');
@@ -5560,7 +5586,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       nfsVals.forEach(q => {
         const v=res[q.name];
         const val = v.absolu ? v.valeur+' ('+v.absolu+' G/L)' : v.valeur;
-        pRow(q.name, val, getUnit(q.id, v.unite||q.unit||''), '', v.interp||'');
+        pRow(q.name, val, getUnit(q.id, v.unite||q.unit||''), refDisplayFor(q, profile), v.interp||'');
       });
       row++;
     }
@@ -5626,7 +5652,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       if (!vals.length) return;
       secHdr('Biochimie — ' + sec.label);
       tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
-      vals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,getUnit(q.id,v.unite||q.unit||''),'',v.interp||'');});
+      vals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,getUnit(q.id,v.unite||q.unit||''),refDisplayFor(q,profile),v.interp||'');});
       row++;
     });
 
@@ -5725,7 +5751,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     if (bpnNfsVals.length) {
       secHdr('Bilan prénatal — NFS (normes femme enceinte)');
       tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
-      bpnNfsVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,getUnit(q.id,v.unite||q.unit||''),'',v.interp||'');});
+      bpnNfsVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,getUnit(q.id,v.unite||q.unit||''),refDisplayFor(q,profile),v.interp||'');});
       row++;
     }
     // Formule leucocytaire BPN
@@ -5748,7 +5774,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       if (!hasBio){ hasBio=true; }
       secHdr('Bilan prénatal — Biochimie : '+sec.label);
       tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
-      vals.forEach(q=>{const v=res['BIO_'+q.name]; pRow(q.name,v.valeur,v.unite||q.unit,'',v.interp||'');});
+      vals.forEach(q=>{const v=res['BIO_'+q.name]; pRow(q.name,v.valeur,v.unite||q.unit,refDisplayFor(q,profile),v.interp||'');});
       row++;
     });
     // Sérologies BPN
@@ -6421,7 +6447,7 @@ async function buildAndPrint(r) {
   }
 
   // ── Sections selon le type ──────────────────────────────────
-  html += buildPrintSections(r.type, res);
+  html += buildPrintSections(r.type, res, r.patient);
 
   // ✅ v12.4 — Composition BPN (forfait fixe)
   if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
@@ -6469,7 +6495,8 @@ async function buildAndPrint(r) {
   window.print();
 }
 
-function buildPrintSections(type, res) {
+function buildPrintSections(type, res, pat) {
+  const profile = profileFromPatient(pat || {}); // ✅ v13.17 — valeurs normales
   let html = '';
 
   // Dossier composite (impression multi-analyses) : itérer sur chaque type
@@ -6477,7 +6504,7 @@ function buildPrintSections(type, res) {
     res._types.forEach(t => {
       const typeRes = res[t] || {};
       html += `<div class="print-composite-section" style="margin-top:20px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--cpmi-deep);border-bottom:2px solid var(--cpmi-deep);padding-bottom:4px;margin-bottom:8px">${t}</div>`;
-      html += buildPrintSections(t, typeRes);
+      html += buildPrintSections(t, typeRes, r.patient);
       html += '</div>';
     });
     return html;
@@ -6509,9 +6536,9 @@ function buildPrintSections(type, res) {
       const v = res[p.name];
       if (!v || !v.valeur) return;
       const abs = v.absolu ? ` (${v.absolu} G/L)` : '';
-      nfsRows.push([p.name, v.valeur + abs, getUnit(p.id, v.unite||''), v.interp||'']);
+      nfsRows.push([p.name, v.valeur + abs, getUnit(p.id, v.unite||''), refDisplayFor(p, profile) || '—', v.interp||'']);
     });
-    if (nfsRows.length) html += section('🩸 NFS — Numération Formule Sanguine', table(['Paramètre','Valeur','Unité','Interprétation'], nfsRows));
+    if (nfsRows.length) html += section('🩸 NFS — Numération Formule Sanguine', table(['Paramètre','Valeur','Unité','Valeurs normales','Interprétation'], nfsRows));
 
     // Électrophorèse Hb
     const ephbRows = [];
@@ -6581,10 +6608,11 @@ function buildPrintSections(type, res) {
     // Rendu générique pour tous les autres types
     // Map nom de paramètre → id (pour getUnit)
     const _paramIdMap = {};
+    const _paramObjMap = {}; // ✅ v13.17
     [...(typeof BIO_GLUCIDES!=='undefined'?[...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO]:[]),
      ...(typeof BPN_NFS!=='undefined'?[...BPN_NFS,...BPN_FL]:[]),
      ...(typeof HEMA_PARAMS!=='undefined'?[...HEMA_PARAMS,...HEMA_FL]:[])
-    ].forEach(p => { _paramIdMap[p.name] = p.id; });
+    ].forEach(p => { _paramIdMap[p.name] = p.id; _paramObjMap[p.name] = p; });
 
     const rows = [];
     Object.entries(res).forEach(([k,v]) => {
@@ -6592,12 +6620,12 @@ function buildPrintSections(type, res) {
       if (typeof v === 'object') {
         const val = v.valeur || v.resultat || '';
         const pid = _paramIdMap[k];
-        if (val) rows.push([k, val, pid ? getUnit(pid, v.unite||'') : (v.unite||''), v.interp||v.obs||'']);
+        if (val) rows.push([k, val, pid ? getUnit(pid, v.unite||'') : (v.unite||''), refDisplayFor(_paramObjMap[k], profile) || '', v.interp||v.obs||'']);
       } else if (typeof v === 'string' && v && v !== '—' && !k.startsWith('ABG_') && !k.startsWith('AFG_')) {
-        rows.push([k, v, '', '']);
+        rows.push([k, v, '', '', '']);
       }
     });
-    if (rows.length) html += section('📋 Résultats', table(['Paramètre','Résultat','Unité','Observation'], rows));
+    if (rows.length) html += section('📋 Résultats', table(['Paramètre','Résultat','Unité','Valeurs normales','Observation'], rows));
 
     // Antibiogramme si bactériologie
     if (type === 'Bactériologie') {
@@ -6966,6 +6994,9 @@ function buildPDF(r, analyses) {
 
   const p = r.patient;
   const W = 210; const MARGIN = 14;
+  const profile = profileFromPatient(p); // ✅ v13.17 — valeurs normales
+  const _paramByName = {};
+  [...(typeof HEMA_PARAMS!=='undefined'?HEMA_PARAMS:[]), ...(typeof HEMA_FL!=='undefined'?HEMA_FL:[])].forEach(pp => { _paramByName[pp.name] = pp; });
 
   // ✅ v13.10 — Un dossier multi-analyses génère une PAGE par analyse.
   const _analyses = (Array.isArray(analyses) && analyses.length)
@@ -7072,15 +7103,17 @@ function buildPDF(r, analyses) {
 
     const addTable = (head, body, opts={}) => {
       if (!body.length) return;
+      const ic = (opts.interpCol !== undefined) ? opts.interpCol : 3; // ✅ v13.17
+      const o2 = { ...opts }; delete o2.interpCol;
       doc.autoTable({
         startY: y, head: [head], body,
         margin: { left: MARGIN, right: MARGIN },
         styles: { fontSize: 8, cellPadding: 2.5 },
         headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: [250,251,253] },
-        ...opts,
+        ...o2,
         didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index === 3) {
+          if (data.section === 'body' && data.column.index === ic) {
             const v = data.cell.raw || '';
             if (v.includes('Élevé') || v.includes('⚠'))   { data.cell.styles.textColor=[185,28,28];  data.cell.styles.fillColor=[253,232,232]; }
             else if (v.includes('Bas'))                     { data.cell.styles.textColor=[29,78,216];  data.cell.styles.fillColor=[229,238,253]; }
@@ -7103,11 +7136,11 @@ function buildPDF(r, analyses) {
       if (!v || typeof v !== 'object') return;
       if (!v.valeur) return;
       const absolu = v.absolu ? ` (${v.absolu} G/L)` : '';
-      nfsRows.push([name, v.valeur + absolu, v.unite || '', v.interp || '—']);
+      nfsRows.push([name, v.valeur + absolu, v.unite || '', refDisplayFor(_paramByName[name], profile) || '—', v.interp || '—']);
     });
     if (nfsRows.length) {
       sectionTitle('🩸 NFS — Numération Formule Sanguine');
-      addTable(['Paramètre','Valeur','Unité','Interprétation'], nfsRows);
+      addTable(['Paramètre','Valeur','Unité','Valeurs normales','Interprétation'], nfsRows, { interpCol: 4 });
     }
 
     // ── Électrophorèse Hb ────────────────────────────────────────
@@ -7209,19 +7242,24 @@ function buildPDF(r, analyses) {
 
   } else {
     // Pour les autres types : affichage générique clé/valeur
+    // ✅ v13.17 — index nom→paramètre pour les valeurs normales
+    const _pbn = {};
+    [...(typeof BIO_GLUCIDES!=='undefined'?[...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO]:[]),
+     ...(typeof HEMA_PARAMS!=='undefined'?[...HEMA_PARAMS,...HEMA_FL]:[])
+    ].forEach(pp => { _pbn[pp.name] = pp; });
     Object.entries(res).forEach(([k, v]) => {
       if (k.startsWith('_')) return; // ✅ v12 — ignorer clés techniques
       if (typeof v === 'object' && v !== null) {
         const val = v.valeur || v.resultat || '';
-        if (val) rows.push([k, val, v.unite || '', v.interp || v.obs || '']);
+        if (val) rows.push([k, val, v.unite || '', refDisplayFor(_pbn[k], profile) || '', v.interp || v.obs || '']);
       } else if (v && typeof v === 'string' && v !== '—') {
-        rows.push([k, v, '', '']);
+        rows.push([k, v, '', '', '']);
       }
     });
     if (rows.length) {
       doc.autoTable({
         startY: y,
-        head: [['Paramètre', 'Résultat', 'Unité', 'Observation']],
+        head: [['Paramètre', 'Résultat', 'Unité', 'Valeurs normales', 'Observation']],
         body: rows,
         margin: { left: MARGIN, right: MARGIN },
         styles: { fontSize: 8, cellPadding: 2.5 },
