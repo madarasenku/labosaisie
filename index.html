@@ -535,6 +535,8 @@ select {
 .modal-input:focus { outline:2px solid var(--cpmi-mid,#0891b2); outline-offset:-1px; }
 .modal-error { color:#b91c1c; font-size:12.5px; min-height:16px; margin-top:8px; }
 .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+.field-locked { background:#eef2f7 !important; color:#94a3b8 !important; cursor:not-allowed !important; opacity:.75; border-style:dashed !important; }
+.field-locked::placeholder { color:#94a3b8; }
 .empty-state { text-align: center; padding: 52px 20px; color: var(--text-muted); }
 
 /* ================================================================
@@ -3678,6 +3680,7 @@ function switchTab(name) {
   document.getElementById('panel-' + name).classList.add('active');
   // Construire le panneau au premier affichage seulement (perf)
   ensurePanelBuilt(name);
+  if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13 — verrouiller les champs non cochés
   // Ré-appliquer le filtrage/marquage des sections sur le nouvel onglet actif
   // (seulement si on est déjà en zone de saisie, pas lors de l'init de page)
   if (document.getElementById('zone-saisie')?.style.display !== 'none') {
@@ -4690,6 +4693,7 @@ async function editRecord(id, typeOverride) {
 
   loadResultsIntoForm(type, res);
   ensureInterpFresh(type); // ✅ v13.1 — recalcule les interp depuis les valeurs rechargées
+  if (typeof unlockAllFields === 'function') unlockAllFields(); // ✅ v13.13 — édition : champs libres
   markRequiredSections();
 
   // Bandeau édition
@@ -4747,6 +4751,7 @@ function cancelEdit() {
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
   newPatient();
+  if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
 }
 
 // Recharge les résultats sauvegardés dans les champs du formulaire (mode édition)
@@ -7873,6 +7878,72 @@ function widalReport(res) {
   return { show: anySignif || !!concl || checked, rows, concl };
 }
 
+// ✅ v13.13 — VERROUILLAGE DES CHAMPS NON COCHÉS
+// Un résultat n'est saisissable que si son examen est coché (donc facturé)
+// sur la fiche. Les champs des examens non cochés sont désactivés + 🔒.
+// Correspondance examen → champs de saisie (uniquement les champs sûrs ;
+// tout examen non listé laisse ses champs éditables, jamais de verrou erroné).
+function examFieldIds(examId) {
+  const V = ids => ids.map(i => 'v_' + i);
+  const S = ids => ids.flatMap(i => ['sr_' + i + '_r', 'sv_' + i]);
+  const M = {
+    ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt'].concat((typeof HEMA_FL!=='undefined'?HEMA_FL:[]).map(p=>p.id))),
+    ex_vs:    () => ['v_vs'],
+    ex_ge:    () => ['ge_result','ge_tdr','ge_espece','ge_para','ge_densite','ge_stade','ge_obs'],
+    ex_widal: () => (typeof WIDAL_ANTIGENES!=='undefined'?WIDAL_ANTIGENES:[]).flatMap(ag => ['widal_'+ag.id,'widal_cin_'+ag.id]),
+    ex_crp:   () => S(['crp']),
+    ex_gly:   () => ['v_gly'], ex_hba1c: () => ['v_hba'],
+    ex_uree:  () => ['v_uree'], ex_crea: () => ['v_crea'], ex_ua: () => ['v_ua'],
+    ex_asat:  () => ['v_asat','v_alat'], ex_ggt: () => ['v_ggt'], ex_pal: () => ['v_pal'],
+    ex_bili:  () => ['v_bili','v_bilid'], ex_prot: () => ['v_prot','v_alb'],
+    ex_chol:  () => ['v_chol'], ex_trig: () => ['v_trig'], ex_hdl: () => ['v_hdl','v_ldl'],
+    ex_iono:  () => ['v_na','v_k','v_cl'], ex_ca: () => ['v_ca','v_phos'],
+    ex_vih:   () => S(['vih1']), ex_hbs: () => S(['hbsag']), ex_hcv: () => S(['hcv']),
+    ex_tpha:  () => S(['syphil']), ex_toxo: () => S(['toxo','toxoig']), ex_rube: () => S(['rubig']),
+    ex_gs:    () => ['gs_abo_hema','gs_rh_hema'], ex_rai: () => ['gs_rai_hema','gs_phenotype_hema'],
+    ex_eps:   () => ['para_resultat','para_tdr','para_espece','para_densite','para_stade','para_type','para_coloration','para_indice','para_parasitemie','para_obs'],
+  };
+  return M[examId] ? M[examId]() : [];
+}
+
+function setFieldLocked(el, locked) {
+  if (!el) return;
+  el.disabled = !!locked;
+  el.classList.toggle('field-locked', !!locked);
+  if (locked) {
+    if (el.dataset.phSaved === undefined) el.dataset.phSaved = el.getAttribute('placeholder') || '';
+    if (el.tagName === 'INPUT' && el.type !== 'checkbox') el.setAttribute('placeholder', '🔒');
+    el.title = 'Examen non coché — cochez-le sur la fiche d’examens pour pouvoir saisir';
+  } else {
+    if (el.dataset.phSaved !== undefined) { el.setAttribute('placeholder', el.dataset.phSaved); delete el.dataset.phSaved; }
+    if (el.title && el.title.indexOf('Examen non coché') === 0) el.title = '';
+  }
+}
+
+function unlockAllFields() {
+  document.querySelectorAll('.field-locked').forEach(el => setFieldLocked(el, false));
+}
+
+function applyExamLocks() {
+  // En mode édition, on déverrouille tout : la fiche cochée n'est pas restaurée
+  // dans les cases, et il faut pouvoir corriger librement.
+  if (typeof _editingRecordId !== 'undefined' && _editingRecordId) { unlockAllFields(); return; }
+  let cat;
+  try { cat = getCatalogueComplet(); } catch(e) { return; }
+  const checked = {};
+  cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
+  cat.forEach(ex => {
+    examFieldIds(ex.id).forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el) setFieldLocked(el, !checked[ex.id]);
+    });
+  });
+  // Bactério : verrou global du panneau si aucun examen bactério coché
+  const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
+  document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
+    .forEach(el => setFieldLocked(el, !bacOn));
+}
+
 function getPendingCheckedExams(record, type) {
   const res0 = record.resultats || {};
   // Cas composite : dossier multi-analyses agrégé (impression) → tous les types
@@ -7920,6 +7991,7 @@ function buildFicheExamens() {
     </div>`).join('');
 
   rechargeFichePrix();
+  if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
 }
 
 // Permet de cocher/décocher une ligne d'examen en cliquant n'importe où dessus
@@ -7967,6 +8039,7 @@ function calcFicheTotal() {
     montantEl.dataset.montantParTab = JSON.stringify(montantParTab);
   }
   if (countEl) countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
+  if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
 }
 
 function demarrerSaisie() {
