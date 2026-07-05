@@ -5197,7 +5197,16 @@ function getRecordTypes(r) {
 // Retourne les résultats d'une analyse spécifique dans un enregistrement
 // (compatible ancien format et nouveau format dossier)
 function getRecordResultats(r, type) {
-  if (isDossierRecord(r)) return r.resultats?.[type] || {};
+  if (isDossierRecord(r)) {
+    const sub = r.resultats?.[type] || {};
+    // ✅ v13.6 — réinjecter les examens cochés de CE type (stockés au niveau
+    // du dossier) pour qu'ils apparaissent sur la fiche exportée/imprimée.
+    const coches = r.resultats?._examens_coches?.[type];
+    if (coches && coches.length && !sub._examens_coches) {
+      return { ...sub, _examens_coches: coches };
+    }
+    return sub;
+  }
   return r.resultats || {};
 }
 
@@ -7785,22 +7794,43 @@ function isValFilled(v) {
   return s !== '' && s !== '—';
 }
 
-// Examens cochés (demandés) dont AUCUN paramètre n'est rempli → à afficher vides
-function getPendingCheckedExams(record, type) {
+// Construit les lignes « à compléter » pour une liste d'examens cochés,
+// à partir du sous-objet de résultats d'un type donné.
+function collectPendingForType(res, coches) {
   const cat = getCatalogueComplet();
-  const coches = isDossierRecord(record)
-    ? (record.resultats?._examens_coches?.[type] || [])
-    : (record.resultats?.['_examens_coches'] || []);
-  const res = getRecordResultats(record, type) || {};
   const out = [];
   (coches || []).forEach(label => {
     const ex = cat.find(e => e.label === label);
-    if (!ex) return;
-    const rows = examExpectedRows(ex.id);
-    if (!rows.length) return;
-    if (!rows.some(r => isValFilled(res[r.key]))) out.push({ label, rows });
+    const rows = ex ? examExpectedRows(ex.id) : [];
+    if (rows.length) {
+      if (!rows.some(r => isValFilled(res[r.key]))) out.push({ label, rows });
+    } else {
+      out.push({ label, rows: [{ key: null, name: label, unit: '', ref: '' }] });
+    }
   });
   return out;
+}
+
+// Examens cochés (demandés) qui doivent apparaître sur la fiche même vides.
+// ✅ v13.6 — gère le cas composite (impression d'un dossier multi-analyses),
+// et affiche TOUT examen coché, même sans correspondance de paramètres.
+function getPendingCheckedExams(record, type) {
+  const res0 = record.resultats || {};
+  // Cas composite : dossier multi-analyses agrégé (impression) → tous les types
+  if (type === 'Dossier' || res0._dossier) {
+    let all = [];
+    (res0._types || []).forEach(t => {
+      const sub = res0[t] || {};
+      all = all.concat(collectPendingForType(sub, sub._examens_coches || []));
+    });
+    return all;
+  }
+  // Cas simple : un seul type
+  const coches = isDossierRecord(record)
+    ? (res0._examens_coches?.[type] || [])
+    : (res0['_examens_coches'] || []);
+  const res = getRecordResultats(record, type) || {};
+  return collectPendingForType(res, coches);
 }
 
 function buildFicheExamens() {
