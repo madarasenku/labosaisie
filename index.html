@@ -1153,10 +1153,9 @@ select {
     <button class="tab active" onclick="switchTab('hema')" id="tab-hema"><span class="tab-icon">🩸</span>Hématologie</button>
     <button class="tab" onclick="switchTab('bio')" id="tab-bio"><span class="tab-icon">🧪</span>Biochimie</button>
     <button class="tab" onclick="switchTab('bacterio')" id="tab-bacterio"><span class="tab-icon">🦠</span>Bactériologie</button>
-    <button class="tab" onclick="switchTab('sero')" id="tab-sero"><span class="tab-icon">💉</span>Sérologie</button>
+    <button class="tab" onclick="switchTab('sero')" id="tab-sero"><span class="tab-icon">💉</span>Immuno-Sérologie</button>
     <button class="tab" onclick="switchTab('parasito')" id="tab-parasito"><span class="tab-icon">🔬</span>Parasitologie</button>
     <button class="tab" onclick="switchTab('gs')" id="tab-gs"><span class="tab-icon">🩸</span>Groupe sanguin</button>
-    <button class="tab" onclick="switchTab('bpn')" id="tab-bpn"><span class="tab-icon">🤰</span>Bilan prénatal</button>
   </div>
 
   <!-- ===== HÉMATOLOGIE ===== -->
@@ -1180,7 +1179,7 @@ select {
         </table>
       </div>
       <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
-        💡 Les valeurs absolues (G/L) sont calculées automatiquement : % × GB / 100
+        💡 Les valeurs absolues (/µL) sont calculées automatiquement : % × GB / 100
       </div>
     </div>
 
@@ -1270,84 +1269,6 @@ select {
       </div>
     </div>
 
-    <!-- Groupe sanguin -->
-    <div class="card" id="sec-gs-hema">
-      <div class="card-title">🩸 Groupe sanguin ABO / Rhésus</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Groupe ABO</label>
-          <select id="gs_abo_hema">
-            <option value="">—</option>
-            <option>A</option><option>B</option><option>AB</option><option>O</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Rhésus</label>
-          <select id="gs_rh_hema">
-            <option value="">—</option>
-            <option>Positif (Rh+)</option>
-            <option>Négatif (Rh−)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>RAI</label>
-          <select id="gs_rai_hema">
-            <option value="">—</option>
-            <option>Négative</option>
-            <option>Positive</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Phénotype érythrocytaire</label>
-          <input type="text" id="gs_phenotype_hema" placeholder="ex: CCee, Kk...">
-        </div>
-      </div>
-    </div>
-
-    <!-- CRP -->
-    <div class="card" id="sec-crp">
-      <div class="card-title">🔥 CRP — Protéine C-réactive (Latex)</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Valeur CRP (mg/L)</label>
-          <select id="crp_valeur" onchange="interpretCRP()">
-            <option value="">—</option>
-            <option value="neg">Négatif (&lt; 6 mg/L)</option>
-            <option value="6">6 mg/L</option>
-            <option value="12">12 mg/L</option>
-            <option value="24">24 mg/L</option>
-            <option value="48">48 mg/L</option>
-            <option value="96">96 mg/L</option>
-            <option value="192">192 mg/L</option>
-            <option value="384">≥ 384 mg/L</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Interprétation</label>
-          <div id="crp_interp" style="padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-weight:600;min-height:38px;display:flex;align-items:center">—</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Widal -->
-    <div class="card" id="sec-widal">
-      <div class="card-title">🦠 Sérodiagnostic de Widal et Félix (SWF)</div>
-      <div class="table-wrap">
-        <table class="result-table" id="widal-table">
-          <thead>
-            <tr>
-              <th>Antigène</th>
-              <th>Titre</th>
-              <th>Cinétique</th>
-              <th>Interprétation</th>
-            </tr>
-          </thead>
-          <tbody id="widal-body"></tbody>
-        </table>
-      </div>
-      <div id="widal-conclusion" style="margin-top:12px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;display:none"></div>
-    </div>
-
     <div class="card">
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Hématologie')">💾 Enregistrer</button>
@@ -1359,7 +1280,6 @@ select {
   </div>
 
   <!-- ===== BIOCHIMIE ===== -->
-  <div class="panel" id="panel-bio">
     <div class="card">
       <div class="card-title">🧪 Biochimie sanguine</div>
       <div id="sec-bio-glucides-wrap">
@@ -1665,7 +1585,7 @@ select {
   <!-- ===== SÉROLOGIE ===== -->
   <div class="panel" id="panel-sero">
     <div class="card">
-      <div class="card-title">💉 Sérologie / Immunologie</div>
+      <div class="card-title">💉 Immuno-Sérologie</div>
       <div class="table-wrap">
         <table class="result-table">
           <thead><tr><th>Test</th><th>Résultat qualitatif</th><th>Valeur numérique</th><th>Valeurs normales</th><th>Commentaire</th></tr></thead>
@@ -1677,11 +1597,75 @@ select {
         <textarea id="sero_obs" placeholder="Contexte clinique, antécédents vaccinaux, résultats antérieurs..."></textarea>
       </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Sérologie')">💾 Enregistrer</button>
-        <button class="btn btn-success" onclick="exportSingle('Sérologie')">⬇ Excel</button>
-        <button class="btn" onclick="exportPDFFromForm('Sérologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-primary" onclick="saveRecord('Immuno-Sérologie')">💾 Enregistrer</button>
+        <button class="btn btn-success" onclick="exportSingle('Immuno-Sérologie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Immuno-Sérologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('sero')">↺ Effacer</button>
       </div>
+    </div>
+
+    <!-- ✅ v13.24 — GS/Rh, CRP et SWF déplacés sur Sérologie/Immuno -->
+    <div class="card" id="sec-gs-hema">
+      <div class="card-title">🩸 Groupe sanguin ABO / Rhésus</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Groupe ABO</label>
+          <select id="gs_abo_hema">
+            <option value="">—</option>
+            <option>A</option><option>B</option><option>AB</option><option>O</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rhésus</label>
+          <select id="gs_rh_hema">
+            <option value="">—</option>
+            <option>Positif (Rh+)</option>
+            <option>Négatif (Rh−)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="sec-crp">
+      <div class="card-title">🔥 CRP — Protéine C-réactive (Latex)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Valeur CRP (mg/L)</label>
+          <select id="crp_valeur" onchange="interpretCRP()">
+            <option value="">—</option>
+            <option value="neg">Négatif (&lt; 6 mg/L)</option>
+            <option value="6">6 mg/L</option>
+            <option value="12">12 mg/L</option>
+            <option value="24">24 mg/L</option>
+            <option value="48">48 mg/L</option>
+            <option value="96">96 mg/L</option>
+            <option value="192">192 mg/L</option>
+            <option value="384">≥ 384 mg/L</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Interprétation</label>
+          <div id="crp_interp" style="padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-weight:600;min-height:38px;display:flex;align-items:center">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="sec-widal">
+      <div class="card-title">🦠 Sérodiagnostic de Widal et Félix (SWF)</div>
+      <div class="table-wrap">
+        <table class="result-table" id="widal-table">
+          <thead>
+            <tr>
+              <th>Antigène</th>
+              <th>Titre</th>
+              <th>Cinétique</th>
+              <th>Interprétation</th>
+            </tr>
+          </thead>
+          <tbody id="widal-body"></tbody>
+        </table>
+      </div>
+      <div id="widal-conclusion" style="margin-top:12px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;display:none"></div>
     </div>
   </div>
 
@@ -1815,128 +1799,6 @@ select {
     </div>
   </div>
 
-  <div class="panel" id="panel-bpn">
-    <div class="card">
-      <div class="card-title">🤰 Bilan prénatal (BPN)</div>
-
-      <!-- ✅ v12.4 — Composition du BPN : checklist des examens réellement -->
-      <!-- inclus dans CE bilan. Le prix reste fixe (20 000 FCFA) quel que -->
-      <!-- soit le nombre d'examens cochés. Sert uniquement à la traçabilité. -->
-      <details id="bpn-compo-details" style="margin:6px 0 14px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-        <summary style="padding:10px 14px;background:var(--bg);cursor:pointer;font-weight:600;font-size:13.5px;user-select:none">
-          🧾 Composition de ce bilan prénatal — <span style="color:var(--accent)">forfait 20 000 FCFA</span>
-          <span style="font-size:11.5px;font-weight:400;color:var(--text-muted)"> (cliquer pour cocher les examens inclus)</span>
-        </summary>
-        <div style="padding:12px 14px">
-          <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">
-            Chaque bilan prénatal peut différer. Cochez les examens réalisés — le forfait reste à 20 000 FCFA.
-          </div>
-          <div id="bpn-compo-list" class="bpn-compo-grid"></div>
-        </div>
-      </details>
-
-      <div class="section-label">Informations obstétricales</div>
-      <div class="form-grid col-3">
-        <div class="form-group">
-          <label>Terme / Âge gestationnel (SA)</label>
-          <input type="number" id="bpn_sa" placeholder="ex. 16" min="1" max="42">
-        </div>
-        <div class="form-group">
-          <label>Gestité</label>
-          <input type="number" id="bpn_geste" placeholder="ex. 2" min="1">
-        </div>
-        <div class="form-group">
-          <label>Parité</label>
-          <input type="number" id="bpn_parite" placeholder="ex. 1" min="0">
-        </div>
-        <div class="form-group">
-          <label>Date des dernières règles (DDR)</label>
-          <input type="date" id="bpn_ddr">
-        </div>
-        <div class="form-group">
-          <label>Trimestre</label>
-          <select id="bpn_trimestre">
-            <option value="">— Choisir —</option>
-            <option>1er trimestre (1–13 SA)</option>
-            <option>2e trimestre (14–27 SA)</option>
-            <option>3e trimestre (28–42 SA)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="section-label">Groupe sanguin &amp; Rhésus</div>
-      <div class="form-grid col-3">
-        <div class="form-group">
-          <label>Groupe sanguin ABO</label>
-          <select id="bpn_gs">
-            <option value="">— Résultat —</option>
-            <option>A</option><option>B</option><option>AB</option><option>O</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Rhésus (Rh)</label>
-          <select id="bpn_rh">
-            <option value="">— Résultat —</option>
-            <option>Positif (+)</option>
-            <option>Négatif (−)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>RAI (Recherche Agglutinines Irrégulières)</label>
-          <select id="bpn_rai">
-            <option value="">— Résultat —</option>
-            <option>Négatif</option>
-            <option>Positif</option>
-            <option>Non réalisé</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Phénotype érythrocytaire</label>
-          <input type="text" id="bpn_phenotype" placeholder="ex. C+c−E−e+ Kell−">
-        </div>
-      </div>
-
-      <div class="section-label">NFS — Numération formule sanguine</div>
-      <div class="table-wrap">
-        <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales (femme enceinte)</th></tr></thead>
-          <tbody id="bpn-nfs-body"></tbody>
-        </table>
-      </div>
-
-      <div class="section-label">Formule leucocytaire</div>
-      <div class="table-wrap">
-        <table class="result-table">
-          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue</th><th>Valeurs normales</th></tr></thead>
-          <tbody id="bpn-fl-body"></tbody>
-        </table>
-      </div>
-      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
-        💡 Les valeurs absolues (G/L) sont calculées automatiquement : % × GB / 100
-      </div>
-
-      <div class="section-label">Biochimie</div>
-      <div id="bpn-clone-bio"></div>
-
-      <div class="section-label">ECBU / Bactériologie</div>
-      <div id="bpn-clone-bacterio"></div>
-
-      <div class="section-label">Sérologies</div>
-      <div id="bpn-clone-sero"></div>
-
-      <div class="form-group" style="margin-top:14px">
-        <label>Observations générales</label>
-        <textarea id="bpn_obs" placeholder="Remarques cliniques, antécédents, conduite à tenir..."></textarea>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Bilan prénatal')">💾 Enregistrer</button>
-        <button class="btn btn-success" onclick="exportSingle('Bilan prénatal')">⬇ Excel</button>
-        <button class="btn" onclick="exportPDFFromForm('Bilan prénatal')" style="background:#dc2626;color:#fff">📄 PDF</button>
-        <button class="btn btn-outline" onclick="resetPanel('bpn')">↺ Effacer</button>
-      </div>
-    </div>
-  </div>
 
   </div><!-- /zone-saisie -->
 
@@ -1962,7 +1824,7 @@ select {
         <select id="filter-type" onchange="renderHistory()" style="min-width:160px">
           <option value="">Tous les types</option>
           <option>Hématologie</option><option>Biochimie</option><option>Bactériologie</option>
-          <option>Sérologie</option><option>Parasitologie</option>
+          <option>Immuno-Sérologie</option><option>Parasitologie</option>
           <option>Groupe sanguin</option><option>Bilan prénatal</option>
         </select>
       </div>
@@ -2254,31 +2116,32 @@ select {
     <div id="refs-editor-grid"></div>
   </div>
 
-  <!-- Modal ajout d'examen -->
-  <div id="add-examen-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px">
+  <div id="add-examen-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;align-items:center;justify-content:center;padding:20px">
     <div style="background:white;border-radius:var(--radius-lg);padding:28px 32px;width:100%;max-width:480px;box-shadow:var(--shadow-lg)">
       <h3 style="font-size:15px;font-weight:700;color:var(--cpmi-deep);margin-bottom:18px">➕ Ajouter un examen personnalisé</h3>
       <div class="form-group" style="margin-bottom:12px">
         <label>Nom de l'examen <span class="req">*</span></label>
-        <input type="text" id="new_ex_label" placeholder="ex. Scanner thoracique, Ferritinémie...">
+        <input type="text" id="new_ex_label" placeholder="ex. Ferritinémie, HbA1c, Scanner...">
       </div>
       <div class="form-group" style="margin-bottom:12px">
-        <label>Groupe / Catégorie</label>
+        <label>Onglet de saisie</label>
         <select id="new_ex_groupe">
-          <option value="🩸 Hématologie">🩸 Hématologie</option>
-          <option value="🧪 Biochimie">🧪 Biochimie</option>
-          <option value="💉 Sérologie">💉 Sérologie</option>
-          <option value="🦠 Bactériologie">🦠 Bactériologie</option>
-          <option value="🦟 Parasitologie">🦟 Parasitologie</option>
-          <option value="🩸 Groupe sanguin">🩸 Groupe sanguin</option>
-          <option value="🤰 Bilan prénatal">🤰 Bilan prénatal</option>
-          <option value="🔬 Autres">🔬 Autres</option>
+          <option value="hema">🩸 Hématologie</option>
+          <option value="bio">🧪 Biochimie</option>
+          <option value="sero">💉 Immuno-Sérologie</option>
+          <option value="bacterio">🦠 Bactériologie</option>
+          <option value="parasito">🦟 Parasitologie</option>
+          <option value="gs">🩸 Groupe sanguin</option>
+          <option value="other">🔬 Autres (sur la fiche uniquement)</option>
         </select>
       </div>
       <div class="form-group" style="margin-bottom:18px">
         <label>Prix (FCFA)</label>
         <input type="number" id="new_ex_prix" value="0" min="0" step="100">
       </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">
+        💡 L'examen apparaîtra sur la fiche d'identification pour cocher et facturer. Le résultat se saisit dans le champ « Observations » de l'onglet correspondant.
+      </p>
       <div style="display:flex;gap:10px">
         <button class="btn btn-primary" onclick="addExamenPersonnalise()">Ajouter</button>
         <button class="btn btn-outline" onclick="document.getElementById('add-examen-modal').style.display='none'">Annuler</button>
@@ -2325,15 +2188,17 @@ function getPatientProfile() {
 // ✅ v13.17 — Profil (âge/sexe/tranche) reconstruit depuis un patient ENREGISTRÉ
 // (pour recalculer les valeurs normales dans les exports Excel/PDF/impression).
 function profileFromPatient(pat) {
-  const ageRaw = parseFloat((pat && pat.age) || '0');
-  const age = isNaN(ageRaw) ? 0 : ageRaw;
+  const ageRaw = parseFloat((pat && pat.age) || '');
+  const age = isNaN(ageRaw) ? null : ageRaw; // null = inconnu
   const sexe = (pat && pat.sexe) || '';
-  let tranche = 'ADULTE';
-  if (age < 0.08) tranche = 'NN';
-  else if (age < 2)  tranche = 'NOURR';
-  else if (age < 15) tranche = 'ENFANT';
-  else if (age < 60) tranche = 'ADULTE';
-  else tranche = 'SENIOR';
+  let tranche = 'ADULTE'; // défaut raisonnable si âge inconnu
+  if (age !== null) {
+    if (age < 0.08)      tranche = 'NN';
+    else if (age < 2)    tranche = 'NOURR';
+    else if (age < 15)   tranche = 'ENFANT';
+    else if (age < 60)   tranche = 'ADULTE';
+    else                 tranche = 'SENIOR';
+  }
   return { age, sexe, tranche };
 }
 
@@ -2343,7 +2208,12 @@ function refDisplayFor(p, profile) {
   if (!p) return '';
   const dynRef = getRef(p.id, profile);
   if (dynRef && dynRef.ref) return dynRef.ref;
-  if (p.refM && p.refF) return (profile && profile.sexe === 'F') ? p.refF : p.refM;
+  // Fallback sur les champs statiques refM/refF/ref du paramètre
+  if (p.refM && p.refF) {
+    if (profile && profile.sexe === 'F') return p.refF;
+    if (profile && profile.sexe === 'M') return p.refM;
+    return p.refM + ' / ' + p.refF; // sexe inconnu → affiche les deux
+  }
   return p.ref || '';
 }
 
@@ -2512,10 +2382,17 @@ const _getRefBase = function(paramId, profile) {
 };
 
 function buildRefObj(entry, profile) {
-  const isMale = profile.sexe === 'M';
-  const ref  = isMale ? (entry.M || entry.ref || '') : (entry.F || entry.ref || '');
-  const lo   = isMale ? (entry.loM ?? entry.lo ?? 0)  : (entry.loF ?? entry.lo ?? 0);
-  const hi   = isMale ? (entry.hiM ?? entry.hi ?? 999) : (entry.hiF ?? entry.hi ?? 999);
+  const isMale   = profile.sexe === 'M';
+  const isFemale = profile.sexe === 'F';
+  const sexeKnown = isMale || isFemale;
+  // Si sexe inconnu, on retourne les deux plages (M / F) séparées par " / "
+  const ref = sexeKnown
+    ? (isMale ? (entry.M || entry.ref || '') : (entry.F || entry.ref || ''))
+    : (entry.M && entry.F && entry.M !== entry.F
+        ? entry.M + ' / ' + entry.F
+        : (entry.M || entry.F || entry.ref || ''));
+  const lo   = isMale ? (entry.loM ?? entry.lo ?? 0)   : (entry.loF ?? entry.lo ?? 0);
+  const hi   = isMale ? (entry.hiM ?? entry.hi ?? 999)  : (entry.hiF ?? entry.hi ?? 999);
   return { ref: ref || entry.ref || '', lo, hi };
 }
 
@@ -2626,7 +2503,7 @@ const TARIFS_BASE_DEFAULT = {
   'Hématologie':      3500,
   'Biochimie':        0,
   'Bactériologie':    5000,
-  'Sérologie':        0,
+  'Immuno-Sérologie':        0,
   'Parasitologie':    2500,
   'Groupe sanguin':   3000,
   'Bilan prénatal':   20000,
@@ -2665,7 +2542,7 @@ function calculateMontant(type, resultats) {
   const base = getTarifsBase();
   const params = getTarifsParams();
   let total = base[type] || 0;
-  if (resultats && (type === 'Biochimie' || type === 'Sérologie')) {
+  if (resultats && (type === 'Biochimie' || type === 'Immuno-Sérologie')) {
     Object.entries(resultats).forEach(([nom, v]) => {
       const val = typeof v === 'object' ? (v.valeur || v.resultat || '') : (v || '');
       if (val && val !== '—' && params[nom]) total += params[nom];
@@ -2686,7 +2563,7 @@ function updateMontant(type) {
       const valEl = document.getElementById('v_' + p.id);
       if (valEl && valEl.value.trim() !== '' && params[p.name]) total += params[p.name];
     });
-  } else if (type === 'Sérologie') {
+  } else if (type === 'Immuno-Sérologie') {
     SERO_TESTS.forEach(p => {
       const sel = document.getElementById('sr_' + p.id + '_r');
       if (sel && sel.value && params[p.name]) total += params[p.name];
@@ -2697,24 +2574,24 @@ function updateMontant(type) {
 }
 
 const HEMA_PARAMS = [
-  { id:'gbc',  name:'Globules blancs (GB)',    unit:'10³/µL',refM:'4–10',    refF:'4–10',    lo:4,   hi:10  },
+  { id:'gbc',  name:'Globules blancs (GB)',    unit:'/µL',refM:'4–10',    refF:'4–10',    lo:4,   hi:10  },
   { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL',refM:'4.5–5.5', refF:'4.0–5.0', lo:4.0, hi:5.5 },
   { id:'hb',   name:'Hémoglobine (Hb)',        unit:'g/dL',  refM:'13–17',   refF:'12–16',   lo:12,  hi:17  },
   { id:'ht',   name:'Hématocrite (Ht)',         unit:'%',     refM:'40–54',   refF:'37–47',   lo:37,  hi:54  },
   { id:'vgm',  name:'VGM ⚙',                  unit:'fL',    refM:'80–100',  refF:'80–100',  lo:80,  hi:100, calc:true },
   { id:'tcmh', name:'TCMH ⚙',                 unit:'pg',    refM:'27–32',   refF:'27–32',   lo:27,  hi:32,  calc:true },
   { id:'ccmh', name:'CCMH ⚙',                unit:'g/dL',  refM:'32–36',   refF:'32–36',   lo:32,  hi:36,  calc:true },
-  { id:'plt',  name:'Plaquettes',              unit:'10³/µL',refM:'150–400', refF:'150–400', lo:150, hi:400 },
+  { id:'plt',  name:'Plaquettes',              unit:'/µL',refM:'150–400', refF:'150–400', lo:150, hi:400 },
   { id:'ret',  name:'Réticulocytes',           unit:'%',     refM:'0.5–1.5', refF:'0.5–1.5', lo:0.5, hi:1.5 },
   { id:'vs',   name:'VS (1ère heure)',         unit:'mm/h',  refM:'< 15',    refF:'< 20',    lo:0,   hiM:15, hiF:20 },
 ];
 
 const HEMA_FL = [
-  { id:'pnn',  name:'Polynucléaires neutrophiles (PNN)', unit:'%', ref:'50–70', lo:50, hi:70 },
-  { id:'pne',  name:'Polynucléaires éosinophiles (PNE)', unit:'%', ref:'1–5',   lo:1,  hi:5  },
-  { id:'pnb',  name:'Polynucléaires basophiles (PNB)',   unit:'%', ref:'0–1',   lo:0,  hi:1  },
-  { id:'lymp', name:'Lymphocytes',                       unit:'%', ref:'20–40', lo:20, hi:40 },
-  { id:'mono', name:'Monocytes',                         unit:'%', ref:'2–10',  lo:2,  hi:10 },
+  { id:'pnn',  name:'Polynucléaires neutrophiles (PNN)', unit:'%', ref:'1800–7500', lo:1800, hi:7500, unitAbs:'/µL' },
+  { id:'pne',  name:'Polynucléaires éosinophiles (PNE)', unit:'%', ref:'0–500',     lo:0,    hi:500,  unitAbs:'/µL' },
+  { id:'pnb',  name:'Polynucléaires basophiles (PNB)',   unit:'%', ref:'0–100',     lo:0,    hi:100,  unitAbs:'/µL' },
+  { id:'lymp', name:'Lymphocytes',                       unit:'%', ref:'1000–4000', lo:1000, hi:4000, unitAbs:'/µL' },
+  { id:'mono', name:'Monocytes',                         unit:'%', ref:'200–1000',  lo:200,  hi:1000, unitAbs:'/µL' },
 ];
 
 // Électrophorèse de l'hémoglobine
@@ -2774,7 +2651,6 @@ const SERO_TESTS = [
   { id:'toxo',  name:'Toxoplasmose IgG',      type:'quant', unit:'UI/mL' },
   { id:'toxoig',name:'Toxoplasmose IgM',      type:'qual' },
   { id:'rubig', name:'Rubéole IgG',           type:'quant', unit:'UI/mL' },
-  { id:'crp',   name:'CRP',                   type:'quant', unit:'mg/L' },
   { id:'aso',   name:'ASLO (Antistreptolysines)', type:'quant', unit:'UI/mL' },
   { id:'latex', name:'Latex (Waaler-Rose)',    type:'qual' },
   { id:'tsh',   name:'TSH',                   type:'quant', unit:'mUI/L' },
@@ -2886,12 +2762,18 @@ function onParamInputColored(id) {
     updateMontantCurrent();
     return;
   }
-  const interp = interprete(valEl.value, ref.lo, ref.hi);
+  // ✅ v13.26 — FL : interprétation sur la valeur absolue × 1000 (/µL)
+  const isFL = HEMA_FL && HEMA_FL.some(p => p.id === id);
+  let val = parseFloat(valEl.value);
+  if (isFL) {
+    const absEl = document.getElementById('abs_' + id);
+    const absVal = absEl ? parseFloat(absEl.textContent) : NaN;
+    if (!isNaN(absVal)) val = absVal * 1000; // convertir en /µL pour comparer aux refs
+  }
+  const interp = interprete(val, ref.lo, ref.hi);
   valEl.classList.toggle('val-hi', interp === 'Élevé');
   valEl.classList.toggle('val-lo', interp === 'Bas');
   updateMontantCurrent();
-  // ✅ v13.8 — recalcul direct des constantes hématimétriques dès qu'un champ
-  // pilote change (robuste à l'édition, indépendant des addEventListener).
   if (id === 'hb' || id === 'ht' || id === 'gr') { if (typeof calcConstantes === 'function') calcConstantes(); }
   if (id === 'gbc') { if (typeof calcFLAbsolues === 'function') calcFLAbsolues(); }
   if (id === 'bpn_hb' || id === 'bpn_ht' || id === 'bpn_gr') { if (typeof calcConstantesBPN === 'function') calcConstantesBPN(); }
@@ -2900,14 +2782,14 @@ function onParamInputColored(id) {
 
 
 const BPN_NFS = [
-  { id:'bpn_gb',   name:'Globules blancs (GB)', unit:'10³/µL', ref:'6–16',      lo:6,    hi:16   },
+  { id:'bpn_gb',   name:'Globules blancs (GB)', unit:'/µL', ref:'6–16',      lo:6,    hi:16   },
   { id:'bpn_gr',   name:'Globules rouges (GR)', unit:'10⁶/µL', ref:'3.5–5.0',   lo:3.5,  hi:5.0  },
   { id:'bpn_hb',   name:'Hémoglobine (Hb)',     unit:'g/dL',   ref:'≥ 11.0',    lo:11.0, hi:16.0 },
   { id:'bpn_ht',   name:'Hématocrite (Ht)',      unit:'%',      ref:'≥ 33',      lo:33,   hi:47   },
   { id:'bpn_vgm',  name:'VGM ⚙',               unit:'fL',     ref:'80–100',    lo:80,   hi:100, calc:true },
   { id:'bpn_tcmh', name:'TCMH ⚙',              unit:'pg',     ref:'27–32',     lo:27,   hi:32,  calc:true },
   { id:'bpn_ccmh', name:'CCMH ⚙',             unit:'g/dL',   ref:'32–36',     lo:32,   hi:36,  calc:true },
-  { id:'bpn_plt',  name:'Plaquettes',           unit:'10³/µL', ref:'150–400',   lo:150,  hi:400  },
+  { id:'bpn_plt',  name:'Plaquettes',           unit:'/µL', ref:'150–400',   lo:150,  hi:400  },
 ];
 
 // Formule leucocytaire BPN — identique à l'hémato
@@ -2940,33 +2822,27 @@ const BPN_SERO = [
 
 // ── Groupe sanguin seul ───────────────────────────────────────────────
 const GS_PARAMS = [
-  { id:'gs_abo',    name:'Groupe sanguin ABO',          type:'sel',   opts:['A','B','AB','O'] },
-  { id:'gs_rh',     name:'Rhésus (Rh D)',               type:'qual2',  opts:['Positif','Négatif'] },
-  { id:'gs_rai',    name:'RAI (Recherche agglutinines irrégulières)', type:'qual2', opts:['Positive','Négative'] },
-  { id:'gs_phen',   name:'Phénotype érythrocytaire (C,c,E,e,K,Fya,Fyb)', type:'text' },
-  { id:'gs_ctrl',   name:'Témoin auto-contrôle',        type:'qual2',  opts:['Négatif','Positif'] },
-  { id:'gs_tech',   name:'Technique utilisée',          type:'text' },
-  { id:'gs_note',   name:'Observations / Notes',        type:'text' },
+  { id:'gs_abo',  name:'Groupe sanguin ABO', type:'sel',   opts:['A','B','AB','O'] },
+  { id:'gs_rh',   name:'Rhésus (Rh D)',      type:'qual2', opts:['Positif','Négatif'] },
+  { id:'gs_obs',  name:'Commentaire',        type:'text' },
 ];
 
 // ✅ v12.4 — Examens couramment inclus dans un bilan prénatal.
 // Cochés par défaut = composition standard ; l'utilisateur ajuste par patient.
 // Le prix du BPN est un FORFAIT fixe (20 000 FCFA), indépendant de cette liste.
 const BPN_EXAMENS = [
-  { id:'bpnc_grsg',  label:'Groupe sanguin ABO / Rhésus', def:true },
-  { id:'bpnc_rai',   label:'RAI (Recherche d\'agglutinines irrégulières)', def:true },
   { id:'bpnc_nfs',   label:'NFS — Numération formule sanguine', def:true },
+  { id:'bpnc_grsg',  label:'Groupe sanguin ABO / Rhésus', def:true },
+  { id:'bpnc_uree',  label:'Urée', def:true },
   { id:'bpnc_gaj',   label:'Glycémie à jeun', def:true },
-  { id:'bpnc_ecbu',  label:'ECBU', def:true },
-  { id:'bpnc_albsuc',label:'Albumine / Sucre (bandelette urinaire)', def:true },
+  { id:'bpnc_crea',  label:'Créatinine', def:true },
+  { id:'bpnc_ephb',  label:'Électrophorèse de l\'hémoglobine', def:true },
+  { id:'bpnc_rube',  label:'Rubéole IgG / IgM', def:true },
+  { id:'bpnc_toxo',  label:'Toxoplasmose IgG / IgM', def:true },
   { id:'bpnc_vih',   label:'Sérologie VIH', def:true },
   { id:'bpnc_hbs',   label:'Ag HBs (Hépatite B)', def:true },
-  { id:'bpnc_hcv',   label:'Ac anti-VHC (Hépatite C)', def:false },
   { id:'bpnc_tpha',  label:'TPHA / VDRL (Syphilis)', def:true },
-  { id:'bpnc_toxo',  label:'Toxoplasmose IgG / IgM', def:true },
-  { id:'bpnc_rube',  label:'Rubéole IgG / IgM', def:true },
-  { id:'bpnc_emp',   label:'Goutte épaisse / TDR Paludisme', def:true },
-  { id:'bpnc_eps',   label:'EPS — Parasitologie des selles', def:false },
+  { id:'bpnc_ecbu',  label:'ECBU', def:true },
 ];
 
 function buildBpnCompo() {
@@ -2980,6 +2856,74 @@ function buildBpnCompo() {
 // Retourne la liste des examens BPN cochés (pour enregistrement / fiche)
 function collectBpnCompo() {
   return BPN_EXAMENS.filter(e => document.getElementById(e.id)?.checked).map(e => e.label);
+}
+
+// ✅ v13.22 — BPN : cocher les examens existants sur les onglets
+// Quand ex_bpn est coché, active les examens correspondants sur les
+// fiches déjà existantes (NFS, EPHB, Bio, GS, Sérologies, ECBU).
+function applyBpnSections() {
+  const on = !!document.getElementById('ex_bpn')?.checked;
+  // Examens à cocher automatiquement quand BPN est activé
+  const bpnExamIds = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_vih','ex_hbs','ex_tpha','ex_toxo','ex_rube','ex_ecbu'];
+  bpnExamIds.forEach(id => {
+    const chk = document.getElementById(id);
+    if (!chk) return;
+    if (on && !chk.checked) {
+      chk.checked = true;
+      if (typeof syncExamRowState === 'function') syncExamRowState(id);
+    }
+  });
+  if (typeof applyExamLocks === 'function') applyExamLocks();
+}
+
+// Biochimie BPN — champs dans #bpn-bio-body
+function buildBpnBio2() {
+  const wrap = document.getElementById('bpn-bio-body');
+  if (!wrap || wrap.innerHTML.trim()) return;
+  // Glycémie + Urée + Créatinine (normes femme enceinte)
+  const bpnBioParams = [
+    { id:'bpn_gly',  name:'Glycémie à jeun',  unit:'g/L',    ref:'0.70–0.92', lo:0.70, hi:0.92 },
+    { id:'bpn_uree', name:'Urée',              unit:'mmol/L', ref:'2.0–6.5',   lo:2.0,  hi:6.5  },
+    { id:'bpn_crea', name:'Créatinine',        unit:'µmol/L', ref:'35–90',     lo:35,   hi:90   },
+  ];
+  const div = document.createElement('div');
+  div.innerHTML = `<div class="table-wrap"><table class="result-table">
+    <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th></tr></thead>
+    <tbody id="bpn-bio-tbl"></tbody></table></div>`;
+  wrap.appendChild(div);
+  const b = document.getElementById('bpn-bio-tbl');
+  bpnBioParams.forEach(p => makeParamRow(p, b));
+}
+
+// Sérologies BPN — champs dans #bpn-sero-body
+function buildBpnSero2() {
+  const wrap = document.getElementById('bpn-sero-body');
+  if (!wrap || wrap.innerHTML.trim()) return;
+  // Sérologies BPN validées : VIH, HBs, Syphilis, Toxo, Rubéole
+  const BPN_SERO_LIST = [
+    { id:'bpn_vih',   name:'Sérologie VIH',               type:'qual' },
+    { id:'bpn_hbsag', name:'Ag HBs (Hépatite B)',         type:'qual' },
+    { id:'bpn_tpha',  name:'TPHA / VDRL (Syphilis)',      type:'qual' },
+    { id:'bpn_toxog', name:'Toxoplasmose IgG',            type:'quant', unit:'UI/mL', ref:'> 8 = immunisée' },
+    { id:'bpn_toxom', name:'Toxoplasmose IgM',            type:'qual' },
+    { id:'bpn_rubg',  name:'Rubéole IgG',                 type:'quant', unit:'UI/mL', ref:'> 10 = immunisée' },
+    { id:'bpn_rubm',  name:'Rubéole IgM',                 type:'qual' },
+  ];
+  const tbl = document.createElement('div');
+  tbl.innerHTML = `<div class="table-wrap"><table class="result-table">
+    <thead><tr><th>Test</th><th>Résultat qualitatif</th><th>Valeur numérique</th><th>Valeurs normales / Seuil</th></tr></thead>
+    <tbody id="bpn-sero-tbl"></tbody></table></div>`;
+  wrap.appendChild(tbl);
+  const b = document.getElementById('bpn-sero-tbl');
+  BPN_SERO_LIST.forEach(t => {
+    const tr = document.createElement('tr');
+    const refTxt = t.ref || (t.type === 'qual' ? 'Négatif attendu' : '');
+    tr.innerHTML = `<td style="font-size:13px">${t.name}</td>
+      <td><select id="sr_${t.id}_r"><option value="">—</option><option>Positif</option><option>Négatif</option><option>Non réalisé</option></select></td>
+      <td><input type="number" id="sv_${t.id}" step="any" style="width:80px" placeholder="${t.unit||''}"></td>
+      <td><span class="ref-range">${refTxt}</span></td>`;
+    b.appendChild(tr);
+  });
 }
 
 function buildBpnNfs() {
@@ -3186,12 +3130,16 @@ function calcLDL() {
 
 // Données Widal
 const WIDAL_ANTIGENES = [
-  { id:'to',  name:'Salmonella typhi O (TO)',        seuil: 80 },
-  { id:'th',  name:'Salmonella typhi H (TH)',         seuil: 80 },
-  { id:'ao',  name:'Salmonella paratyphi A O (AO)',  seuil: 80 },
-  { id:'bo',  name:'Salmonella paratyphi B O (BO)',  seuil: 80 },
+  { id:'to',  name:'Salmonella typhi O (TO)',           seuil: 80 },
+  { id:'th',  name:'Salmonella typhi H (TH)',            seuil: 80 },
+  { id:'ao',  name:'Salmonella paratyphi A O (AO)',     seuil: 80 },
+  { id:'ah',  name:'Salmonella paratyphi A H (AH)',     seuil: 80 },
+  { id:'bo',  name:'Salmonella paratyphi B O (BO)',     seuil: 80 },
+  { id:'bh',  name:'Salmonella paratyphi B H (BH)',     seuil: 80 },
+  { id:'co',  name:'Salmonella paratyphi C O (CO)',     seuil: 80 },
+  { id:'ch',  name:'Salmonella paratyphi C H (CH)',     seuil: 80 },
 ];
-const WIDAL_DILUTIONS = ['Négatif','1/40','1/80','1/160','1/320','1/640','1/1280'];
+const WIDAL_DILUTIONS = ['Non réalisé','Négatif','1/40','1/80','1/160','1/320'];
 
 function buildHema() {
   const b1 = document.getElementById('hema-body');
@@ -3243,9 +3191,6 @@ function buildHema() {
       <td colspan="2" style="font-size:11.5px;color:var(--text-muted)">Doit être égal à 100%</td>`;
     b3.appendChild(trTotal);
   }
-
-  // Widal
-  buildWidal();
 
   // Brancher calculs auto
   ['v_hb','v_ht','v_gr'].forEach(id => {
@@ -3358,7 +3303,12 @@ function interpretWidal() {
   const to = widalTitre(document.getElementById('widal_to')?.value);
   const th = widalTitre(document.getElementById('widal_th')?.value);
 
-  if (to === 0 && th === 0) {
+  // ✅ v13.23 — masquer si TOUS les 8 antigènes sont à zéro ou Non réalisé
+  const anyFilled = WIDAL_ANTIGENES.some(ag => {
+    const v = document.getElementById('widal_' + ag.id)?.value;
+    return v && v !== 'Non réalisé' && v !== '';
+  });
+  if (!anyFilled) {
     if (conclusionEl) conclusionEl.style.display = 'none';
     return;
   }
@@ -3576,6 +3526,9 @@ function buildSero() {
     `;
     b.appendChild(tr);
   });
+  // ✅ v13.24 — SWF et CRP sont maintenant sur l'onglet Sérologie
+  buildWidal();
+  if (typeof interpretCRP === 'function') interpretCRP();
 }
 
 // Interprétation en temps réel pour les sérologies quantitatives
@@ -3616,13 +3569,27 @@ function buildGS() {
     if (p.type === 'sel') {
       input = `<select id="${p.id}" style="width:120px"><option value="">—</option>${p.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
     } else if (p.type === 'qual2') {
-      input = `<select id="${p.id}" style="width:130px"><option value="">—</option>${p.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
+      // ✅ v13.24 — Rhésus : déclenche le commentaire automatique
+      const onch = p.id === 'gs_rh' ? ' onchange="autoCommentRh()"' : '';
+      input = `<select id="${p.id}" style="width:130px"${onch}><option value="">—</option>${p.opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
     } else {
-      input = `<input type="text" id="${p.id}" style="width:220px" placeholder="—">`;
+      input = `<input type="text" id="${p.id}" style="width:100%;max-width:320px" placeholder="—">`;
     }
-    tr.innerHTML = `<td style="font-size:13px">${p.name}</td><td>${input}</td><td colspan="2"><input type="text" id="obs_${p.id}" placeholder="obs..." style="width:100%"></td>`;
+    tr.innerHTML = `<td style="font-size:13px;white-space:nowrap">${p.name}</td><td colspan="3">${input}</td>`;
     b.appendChild(tr);
   });
+}
+
+// ✅ v13.24 — Commentaire automatique quand Rhésus est Négatif
+function autoCommentRh() {
+  const rh = document.getElementById('gs_rh')?.value;
+  const obs = document.getElementById('gs_obs');
+  if (!obs) return;
+  if (rh === 'Négatif' && !obs.value) {
+    obs.value = 'Sous réserve du Du';
+  } else if (rh !== 'Négatif' && obs.value === 'Sous réserve du Du') {
+    obs.value = '';
+  }
 }
 
 // Compatibilité avec les anciens appels (encore dans certains oninput générés)
@@ -3649,7 +3616,7 @@ function updateMontantCurrent() {
   const tabId = activeTab.id.replace('tab-', '');
   const typeMap = {
     hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
-    sero:'Sérologie', parasito:'Parasitologie',
+    sero:'Immuno-Sérologie', parasito:'Parasitologie',
     gs:'Groupe sanguin', bpn:'Bilan prénatal'
   };
   const type = typeMap[tabId];
@@ -3687,7 +3654,6 @@ const PANEL_BUILDERS = {
   sero:     () => { buildSero(); },
   parasito: () => { buildParaEPS(); },
   gs:       () => { buildGS(); },
-  bpn:      () => { buildBpnNfs(); buildBpnBio(); buildBpnBacterio(); buildBpnSero(); buildBpnCompo(); },
 };
 const _panelsBuilt = new Set();
 
@@ -4153,7 +4119,8 @@ async function newPatient() {
   // Repartir sur une session propre : mode filtré réactivé, plus en mode édition
   _showAllExams = false;
   _editingRecordId = null;
-  _locksDisabled = false; // ✅ v13.14 — réactiver le verrouillage pour une nouvelle saisie
+  _locksDisabled = false;
+
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
   // Effacer les infos patient
@@ -4162,7 +4129,7 @@ async function newPatient() {
   ['p_sexe','p_service'].forEach(id => { const el = document.getElementById(id); if(el) el.selectedIndex = 0; });
   document.getElementById('p_date').value = new Date().toISOString().slice(0,10);
   // Effacer tous les panneaux de résultats
-  ['hema','bio','bacterio','sero','parasito','bpn'].forEach(name => resetPanel(name));
+  ['hema','bio','bacterio','sero','parasito'].forEach(name => resetPanel(name));
   // Générer un nouveau numéro de dossier (vérifié contre l'historique réel)
   await regenDossier();
   // Remettre les prix de référence (les prix modifiés manuellement sont effacés)
@@ -4195,14 +4162,28 @@ function getValColorInterp(id) {
 function collectResults(type) {
   const data = {};
   if (type === 'Hématologie') {
-    // NFS
-    [...HEMA_PARAMS, ...HEMA_FL].forEach(p => {
+    // NFS — paramètres principaux
+    [...HEMA_PARAMS].forEach(p => {
       const valeur = document.getElementById('v_'+p.id)?.value || '';
-      const absEl  = document.getElementById('abs_'+p.id);
       data[p.name] = {
         valeur, unite: getUnit(p.id, p.unit),
         interp: getValColorInterp(p.id),
-        absolu: absEl ? absEl.textContent : '',
+        absolu: '',
+      };
+    });
+    // FL — stocker la valeur absolue (G/L) comme valeur principale, % en metadata
+    // ✅ v13.26 : export = valeur absolue × 1000 en /µL
+    HEMA_FL.forEach(p => {
+      const pct    = document.getElementById('v_'+p.id)?.value || '';
+      const absEl  = document.getElementById('abs_'+p.id);
+      const absVal = absEl ? parseFloat(absEl.textContent) : NaN;
+      const valUL  = !isNaN(absVal) ? Math.round(absVal * 1000) : '';
+      data[p.name] = {
+        valeur: valUL !== '' ? String(valUL) : pct,
+        unite:  valUL !== '' ? '/µL' : '%',
+        pct,
+        interp: getValColorInterp(p.id),
+        absolu: '',
       };
     });
     // Électrophorèse Hb
@@ -4284,9 +4265,8 @@ function collectResults(type) {
       const sel = document.querySelector('#' + id + ' select');
       data[keyPrefix + ab] = sel ? sel.value : 'nd';
     });
-  } else if (type === 'Sérologie') {
+  } else if (type === 'Immuno-Sérologie') {
     SERO_TESTS.forEach(t => {
-      // Les quant utilisent sr_<id>_r (buildSero v5), les qual utilisent sr_<id>
       const selId = t.type === 'quant' ? 'sr_'+t.id+'_r' : 'sr_'+t.id;
       data[t.name] = {
         resultat: document.getElementById(selId)?.value || '',
@@ -4296,6 +4276,21 @@ function collectResults(type) {
       };
     });
     data['Observations'] = document.getElementById('sero_obs')?.value || '';
+    // ✅ v13.24 — CRP, Widal et GS/Rh maintenant sur l'onglet Sérologie
+    data['CRP - Valeur'] = document.getElementById('crp_valeur')?.value || '';
+    data['CRP - Interprétation'] = document.getElementById('crp_interp')?.textContent || '';
+    if (typeof WIDAL_ANTIGENES !== 'undefined') {
+      WIDAL_ANTIGENES.forEach(ag => {
+        const titre = document.getElementById('widal_'+ag.id)?.value || '';
+        const cin   = document.getElementById('widal_cin_'+ag.id)?.value || '';
+        const interp = document.getElementById('widal_i_'+ag.id)?.textContent || '';
+        data['Widal - '+ag.name] = { titre, cinetique: cin, interp };
+      });
+      data['Widal - Conclusion'] = document.getElementById('widal-conclusion')?.textContent || '';
+    }
+    data['Groupe ABO'] = document.getElementById('gs_abo_hema')?.value || '';
+    data['Rhésus']     = document.getElementById('gs_rh_hema')?.value  || '';
+    data['Commentaire GS'] = '';
   } else if (type === 'Bilan prénatal') {
     data['_bpn_inclus'] = collectBpnCompo(); // ✅ v12.4 — traçabilité des examens inclus
     data['Terme (SA)'] = document.getElementById('bpn_sa')?.value || '';
@@ -4305,7 +4300,6 @@ function collectResults(type) {
     data['Trimestre'] = document.getElementById('bpn_trimestre')?.value || '';
     data['Groupe sanguin ABO'] = document.getElementById('bpn_gs')?.value || '';
     data['Rhésus'] = document.getElementById('bpn_rh')?.value || '';
-    data['RAI'] = document.getElementById('bpn_rai')?.value || '';
     data['Phénotype érythrocytaire'] = document.getElementById('bpn_phenotype')?.value || '';
     BPN_NFS.forEach(p => {
       data[p.name] = { valeur: document.getElementById('v_'+p.id)?.value || '', unite: p.unit, interp: getValColorInterp(p.id) };
@@ -4389,11 +4383,9 @@ function collectResults(type) {
     });
     data['Observations'] = document.getElementById('para_obs').value;
   } else if (type === 'Groupe sanguin') {
-    GS_PARAMS.forEach(p => {
-      const el = document.getElementById(p.id);
-      const obs = document.getElementById('obs_' + p.id);
-      data[p.name] = { valeur: el?.value || '', obs: obs?.value || '' };
-    });
+    data['Groupe ABO'] = document.getElementById('gs_abo')?.value || '';
+    data['Rhésus']     = document.getElementById('gs_rh')?.value  || '';
+    data['Commentaire GS'] = document.getElementById('gs_obs')?.value || '';
   }
   return data;
 }
@@ -4494,8 +4486,8 @@ async function _saveRecordImpl(type) {
 
   const TYPE_TO_TAB = {
     'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
-    'Sérologie': 'sero', 'Parasitologie': 'parasito',
-    'Groupe sanguin': 'gs', 'Bilan prénatal': 'bpn',
+    'Immuno-Sérologie': 'sero', 'Parasitologie': 'parasito',
+    'Groupe sanguin': 'gs', // BPN supprimé v13.21
   };
   const tabKey = TYPE_TO_TAB[type] || 'hema';
 
@@ -4660,7 +4652,7 @@ let _editingType     = null; // type de l'analyse en cours d'édition
 function ensureInterpFresh(type) {
   const MAP = {
     'Hématologie':'hema','Biochimie':'bio','Bactériologie':'bacterio',
-    'Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn'
+    'Immuno-Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn'
   };
   const panel = document.getElementById('panel-' + (MAP[type] || ''));
   if (!panel) return;
@@ -4710,7 +4702,7 @@ async function editRecord(id, typeOverride) {
 
   const TYPE_TO_TAB = {
     'Hématologie':'hema','Biochimie':'bio','Bactériologie':'bacterio',
-    'Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn',
+    'Immuno-Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs',// BPN supprimé v13.21
   };
   const tabKey = TYPE_TO_TAB[type] || 'hema';
   _showAllExams = true;
@@ -4798,9 +4790,17 @@ function loadResultsIntoForm(type, res) {
   const setSel = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
 
   if (type === 'Hématologie') {
-    [...HEMA_PARAMS, ...HEMA_FL].forEach(p => {
+    // NFS params normaux
+    [...HEMA_PARAMS].forEach(p => {
       const v = res[p.name];
       if (v && v.valeur) setVal('v_' + p.id, v.valeur);
+    });
+    // FL : le champ de saisie attend le % — on recharge pct s'il existe, sinon valeur
+    HEMA_FL.forEach(p => {
+      const v = res[p.name];
+      if (!v) return;
+      const val = v.pct !== undefined && v.pct !== '' ? v.pct : v.valeur;
+      if (val) setVal('v_' + p.id, val);
     });
     calcConstantes(); calcFLAbsolues();
     ['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].forEach(n => {
@@ -4818,10 +4818,8 @@ function loadResultsIntoForm(type, res) {
     setSel('ge_stade', res['GE - Stade']);
     setSel('ge_tdr', res['GE - TDR']);
     setVal('ge_obs', res['GE - Observation']);
-    setSel('gs_abo_hema', res['GS - ABO']);
-    setSel('gs_rh_hema', res['GS - Rhésus']);
-    setSel('gs_rai_hema', res['GS - RAI']);
-    setVal('gs_phenotype_hema', res['GS - Phénotype']);
+    setSel('gs_abo_hema', res['GS - ABO'] || res['Groupe ABO']);
+    setSel('gs_rh_hema',  res['GS - Rhésus'] || res['Rhésus']);
     setSel('crp_valeur', res['CRP - Valeur']);
     if (res['CRP - Valeur']) interpretCRP();
     WIDAL_ANTIGENES.forEach(ag => {
@@ -4877,7 +4875,7 @@ function loadResultsIntoForm(type, res) {
       if (sel && v) { sel.value = v; updateAbgColor(sel, ab); }
     });
   }
-  else if (type === 'Sérologie' && typeof SERO_TESTS !== 'undefined') {
+  else if (type === 'Immuno-Sérologie' && typeof SERO_TESTS !== 'undefined') {
     SERO_TESTS.forEach(t => {
       const v = res[t.name];
       if (!v) return;
@@ -4889,9 +4887,8 @@ function loadResultsIntoForm(type, res) {
   }
   else if (type === 'Groupe sanguin') {
     setSel('gs_abo', res['Groupe ABO']);
-    setSel('gs_rh', res['Rhésus']);
-    setSel('gs_rai', res['RAI']);
-    setVal('gs_phenotype', res['Phénotype']);
+    setSel('gs_rh',  res['Rhésus']);
+    setVal('gs_obs', res['Commentaire GS']);
   }
   else if (type === 'Parasitologie') {
     setSel('eps_aspect', res['Aspect des selles']);
@@ -5127,7 +5124,7 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Service">' + esc(r.patient.service || '—') + '</td>'
       + '<td data-label="Type">' + getRecordTypes(r).map(t => {
           const cls = t==='Hématologie'?'badge-hema':t==='Biochimie'?'badge-bio':
-            t==='Bactériologie'?'badge-bacterio':t==='Sérologie'?'badge-sero':
+            t==='Bactériologie'?'badge-bacterio':t==='Immuno-Sérologie'?'badge-sero':
             t==='Parasitologie'?'badge-parasito':t==='Groupe sanguin'?'badge-gs':
             t==='Bilan prénatal'?'badge-bpn':'';
           return '<span class="badge-type '+cls+'" style="margin:1px 2px;display:inline-block">'+t+'</span>';
@@ -5343,9 +5340,10 @@ function buildProfessionalSheet(wb, r, sheetName) {
   const TH_FG     = 'FFFFFFFF';
   const PAR_W     = 'FFFFFFFF'; // ligne paire
   const PAR_A     = 'FFF5F8FF'; // ligne impaire légère
-  const HI_BG     = 'FFFFF1F1'; const HI_FG = 'FFB91C1C';
-  const LO_BG     = 'FFF0F5FF'; const LO_FG = 'FF1D4ED8';
-  const OK_BG     = 'FFF0FDF4'; const OK_FG = 'FF15803D';
+  // ✅ v13.18 — couleurs anormales plus visibles
+  const HI_BG     = 'FFFDE8E8'; const HI_FG = 'FF991B1B'; // rouge
+  const LO_BG     = 'FFE8F0FE'; const LO_FG = 'FF1E40AF'; // bleu
+  const OK_BG     = 'FFE8F8EE'; const OK_FG = 'FF155724'; // vert
   const MUTED     = 'FF6B7280';
   const DARK      = 'FF111827';
   const BRD       = 'FFD1D9E6';
@@ -5502,23 +5500,24 @@ function buildProfessionalSheet(wb, r, sheetName) {
     if (!valeur || valeur.toString().trim() === '') return;
     alt = !alt;
     const bg = alt ? PAR_A : PAR_W;
-    // La case Valeur se colore si pathologique — pas de colonne séparée
-    let vBg = bg, vFg = 'FF0F172A';
+    // ✅ v13.18 — valeur colorée si anormale (pas de colonne Interprétation)
+    let vBg = bg, vFg = DARK;
     const il = (interp||'').toLowerCase();
     if (il.includes('élevé')||il.includes('eleve')||il.includes('positif')||il.includes('anormal'))
       { vBg = HI_BG; vFg = HI_FG; }
     else if (il.includes('bas'))
       { vBg = LO_BG; vFg = LO_FG; }
+    else if (il.includes('normal'))
+      { vBg = OK_BG; vFg = OK_FG; }
     const rr = ws.getRow(row);
-    // ✅ v12.2 — wrap activé + hauteur calculée sur le contenu réel
     rr.height = fitH([
       {text:nom, c1:1}, {text:valeur, c1:2}, {text:unite, c1:3}, {text:ref, c1:4, c2:NC}
     ], 16);
-    sC(rr.getCell(1), {bg,   fg:DARK,  size:9.5, border:true}); rr.getCell(1).value = nom;
-    sC(rr.getCell(2), {bg:vBg, fg:vFg, bold:true, size:11, ha:'center', border:true}); rr.getCell(2).value = valeur;
-    sC(rr.getCell(3), {bg,   fg:MUTED, size:9,   ha:'center', border:true}); rr.getCell(3).value = unite||'';
+    sC(rr.getCell(1), {bg,    fg:DARK,  size:9.5, border:true}); rr.getCell(1).value = nom;
+    sC(rr.getCell(2), {bg:vBg, fg:vFg,  bold:true, size:11, ha:'center', border:true}); rr.getCell(2).value = valeur;
+    sC(rr.getCell(3), {bg,    fg:MUTED, size:9,    ha:'center', border:true}); rr.getCell(3).value = unite||'';
     mg(row,4,row,NC);
-    sC(rr.getCell(4), {bg,   fg:MUTED, size:9,   ha:'center', border:true}); rr.getCell(4).value = ref||'';
+    sC(rr.getCell(4), {bg,    fg:MUTED, size:9,    ha:'center', border:true}); rr.getCell(4).value = ref||'';
     row++;
   }
 
@@ -5585,7 +5584,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
       nfsVals.forEach(q => {
         const v=res[q.name];
-        const val = v.absolu ? v.valeur+' ('+v.absolu+' G/L)' : v.valeur;
+        const val = v.valeur; // ✅ v13.25 — valeur absolue directement
         pRow(q.name, val, getUnit(q.id, v.unite||q.unit||''), refDisplayFor(q, profile), v.interp||'');
       });
       row++;
@@ -5611,13 +5610,12 @@ function buildProfessionalSheet(wb, r, sheetName) {
       if (res['GE - Observation']) nRow(res['GE - Observation']);
       row++;
     }
-    if (res['GS - ABO']||res['GS - Rhésus']) {
-      secHdr('Groupe Sanguin ABO / Rhesus');
+    if (res['Groupe ABO'] || res['Rhésus']) {
+      secHdr('Groupe Sanguin ABO / Rhésus');
       tblHdr('Paramètre', 'Résultat', '', '');
-      if (res['GS - ABO'])       pRow('Groupe ABO',res['GS - ABO'],'','','');
-      if (res['GS - Rhésus'])    pRow('Rhésus',res['GS - Rhésus'],'','','');
-      if (res['GS - RAI'])       pRow('RAI',res['GS - RAI'],'','','');
-      if (res['GS - Phénotype']) pRow('Phénotype',res['GS - Phénotype'],'','','');
+      if (res['Groupe ABO']) pRow('Groupe ABO', res['Groupe ABO'], '', '', '');
+      if (res['Rhésus'])     pRow('Rhésus',     res['Rhésus'],     '', '', '');
+      if (res['Commentaire GS']) nRow(res['Commentaire GS']);
       row++;
     }
     if (res['CRP - Valeur']) {
@@ -5625,7 +5623,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       tblHdr('Test', 'Résultat', '', '');
       const crpL = res['CRP - Valeur']==='neg'?'Négatif (< 6 mg/L)':res['CRP - Valeur']+' mg/L';
       const crpI = (res['CRP - Interprétation']||'').replace(/^[^\w]+/,'');
-      pRow('CRP Latex',crpL,'','',crpI);
+      pRow('CRP Latex', crpL, 'mg/L', '< 6', crpI);
       row++;
     }
     const _wid = widalReport(res);
@@ -5714,7 +5712,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       row++;
     }
 
-  } else if (r.type === 'Sérologie') {
+  } else if (r.type === 'Immuno-Sérologie') {
     const seroVals = (typeof SERO_TESTS!=='undefined') ? SERO_TESTS.filter(t=>{const v=res[t.name];return v&&(v.resultat||v.valeur);}) : [];
     if (seroVals.length) {
       secHdr('Sérologies');
@@ -5728,11 +5726,11 @@ function buildProfessionalSheet(wb, r, sheetName) {
     }
 
   } else if (r.type === 'Groupe sanguin') {
-    secHdr('Groupe Sanguin ABO / Rhesus');
-      tblHdr('Paramètre', 'Résultat', '', '');
-    const gsFields=[{k:'Groupe ABO',id:'gs_abo'},{k:'Rhésus',id:'gs_rh'},{k:'RAI',id:'gs_rai'},{k:'Phénotype',id:'gs_phen'}];
-    gsFields.forEach(f=>{ if(res[f.k]) pRow(f.k,res[f.k],'','',''); });
-    if (res['Observations / Notes']) nRow(res['Observations / Notes']);
+    secHdr('Groupe Sanguin ABO / Rhésus');
+    tblHdr('Paramètre', 'Résultat', '', '');
+    if (res['Groupe ABO']) pRow('Groupe ABO', res['Groupe ABO'], '', '', '');
+    if (res['Rhésus'])     pRow('Rhésus',     res['Rhésus'],     '', '', '');
+    if (res['Commentaire GS']) nRow(res['Commentaire GS']);
     row++;
 
   } else if (r.type === 'Parasitologie') {
@@ -5758,8 +5756,8 @@ function buildProfessionalSheet(wb, r, sheetName) {
     const bpnFlVals = BPN_FL.filter(q=>res[q.name]&&res[q.name].valeur);
     if (bpnFlVals.length) {
       secHdr('Bilan prénatal — Formule Leucocytaire');
-      tblHdr('Paramètre', '%', 'Absolu (G/L)', 'Valeurs normales');
-      bpnFlVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,v.absolu?v.absolu+' G/L':'',q.ref||'',v.interp||'');});
+      tblHdr('Paramètre', '%', 'Absolu (/µL)', 'Valeurs normales');
+      bpnFlVals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,v.unite||'/µL',refDisplayFor(q,profile),v.interp||'');});
       row++;
     }
     // Biochimie BPN
@@ -6041,7 +6039,7 @@ async function exportAllExcel() {
 // TABLEAU DE BORD — STATISTIQUES
 // ============================================================
 
-const TYPES_ANALYSES = ['Hématologie','Biochimie','Bactériologie','Sérologie','Parasitologie','Groupe sanguin','Bilan prénatal'];
+const TYPES_ANALYSES = ['Hématologie','Biochimie','Bactériologie','Immuno-Sérologie','Parasitologie','Groupe sanguin','Bilan prénatal'];
 const TYPE_COLORS = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#DC2626','#EA580C'];
 
 async function renderStats() {
@@ -6229,7 +6227,7 @@ async function renderStats() {
   // ── Graphiques Chart.js ──────────────────────────────────────
   if (window._charts) { Object.values(window._charts).forEach(ch => { try { ch.destroy(); } catch(e){} }); }
   window._charts = {};
-  const CHART_COLORS = {'Hématologie':'#b91c1c','Biochimie':'#854d0e','Bactériologie':'#166534','Sérologie':'#5b21b6','Parasitologie':'#9d174d','Groupe sanguin':'#9a3412','Bilan prénatal':'#155e75'};
+  const CHART_COLORS = {'Hématologie':'#b91c1c','Biochimie':'#854d0e','Bactériologie':'#166534','Immuno-Sérologie':'#5b21b6','Parasitologie':'#9d174d','Groupe sanguin':'#9a3412','Bilan prénatal':'#155e75'};
   const donutEl = document.getElementById('chartjs-donut');
   if (donutEl && typeof Chart !== 'undefined') {
     const dL=TYPES_ANALYSES.filter(t=>byType[t]>0), dD=dL.map(t=>byType[t]), dC=dL.map(t=>CHART_COLORS[t]||'#6b7280'), dT=dD.reduce((a,b)=>a+b,0);
@@ -6270,8 +6268,8 @@ async function renderStats() {
 function getExamensManquants(type, resultats) {
   const TYPE_TO_TAB = {
     'Hématologie': 'hema', 'Biochimie': 'bio', 'Bactériologie': 'bacterio',
-    'Sérologie': 'sero', 'Parasitologie': 'parasito',
-    'Groupe sanguin': 'gs', 'Bilan prénatal': 'bpn',
+    'Immuno-Sérologie': 'sero', 'Parasitologie': 'parasito',
+    'Groupe sanguin': 'gs', // BPN supprimé v13.21
   };
   const tabKey = TYPE_TO_TAB[type];
   if (!tabKey) return [];
@@ -6535,10 +6533,9 @@ function buildPrintSections(type, res, pat) {
     [...HEMA_PARAMS, ...HEMA_FL].forEach(p => {
       const v = res[p.name];
       if (!v || !v.valeur) return;
-      const abs = v.absolu ? ` (${v.absolu} G/L)` : '';
-      nfsRows.push([p.name, v.valeur + abs, getUnit(p.id, v.unite||''), refDisplayFor(p, profile) || '—', v.interp||'']);
+      nfsRows.push([p.name, v.valeur, v.unite||'/µL', refDisplayFor(p, profile) || '—', v.interp||'']); // ✅ v13.25
     });
-    if (nfsRows.length) html += section('🩸 NFS — Numération Formule Sanguine', table(['Paramètre','Valeur','Unité','Valeurs normales','Interprétation'], nfsRows));
+    if (nfsRows.length) html += section('🩸 NFS — Numération Formule Sanguine', table(['Paramètre','Valeur','Unité','Valeurs normales'], nfsRows.map(r => r.slice(0,4))));
 
     // Électrophorèse Hb
     const ephbRows = [];
@@ -6568,39 +6565,103 @@ function buildPrintSections(type, res, pat) {
       html += section('🦟 Goutte Épaisse / Parasitologie', table(['Paramètre','Résultat','Unité','Observation'], geRows));
     }
 
-    // Groupe sanguin
-    const gs = { abo:res['GS - ABO'], rh:res['GS - Rhésus'], rai:res['GS - RAI'], phen:res['GS - Phénotype'] };
-    if (gs.abo || gs.rh) {
+  }
+
+  else if (type === 'Immuno-Sérologie') {
+    // ✅ v13.24 — Sérologie : tests séro + GS/Rh + CRP + SWF sur la même page
+    // Tests sérologiques
+    if (typeof SERO_TESTS !== 'undefined') {
+      const seroRows = [];
+      SERO_TESTS.forEach(t => {
+        const v = res[t.name]; if (!v) return;
+        const val = v.resultat || v.valeur || ''; if (!val) return;
+        const numVal = v.valeur && v.valeur !== val ? v.valeur : '';
+        seroRows.push([t.name, val, numVal, v.obs||'']);
+      });
+      if (seroRows.length) html += section('💉 Immuno-Sérologie',
+        table(['Test','Résultat','Valeur numérique','Commentaire'], seroRows));
+      if (res['sero_obs'] || res['Observations']) {
+        const obs = res['sero_obs'] || res['Observations'];
+        html += `<p class="print-note">${escHTML(obs)}</p>`;
+      }
+    }
+    // Groupe sanguin (si renseigné)
+    const gsAboS = res['Groupe ABO'] || res['GS - ABO'] || '';
+    const gsRhS  = res['Rhésus']     || res['GS - Rhésus'] || '';
+    const gsObsS = res['Commentaire GS'] || '';
+    if (gsAboS || gsRhS) {
       const gsRows = [];
-      if (gs.abo)  gsRows.push(['Groupe ABO', gs.abo, '', '']);
-      if (gs.rh)   gsRows.push(['Rhésus', gs.rh, '', '']);
-      if (gs.rai)  gsRows.push(['RAI', gs.rai, '', '']);
-      if (gs.phen) gsRows.push(['Phénotype érythrocytaire', gs.phen, '', '']);
-      html += section('🩸 Groupe Sanguin ABO / Rhésus', table(['Paramètre','Résultat','',''], gsRows));
+      if (gsAboS) gsRows.push(['Groupe ABO', gsAboS, '', '']);
+      if (gsRhS)  gsRows.push(['Rhésus',     gsRhS,  '', '']);
+      let gsHtml = table(['Paramètre','Résultat','',''], gsRows);
+      if (gsObsS) gsHtml += `<p class="print-note">${escHTML(gsObsS)}</p>`;
+      html += section('🩸 Groupe Sanguin ABO / Rhésus', gsHtml);
     }
-
     // CRP
-    const crpVal   = res['CRP - Valeur'];
-    const crpInterp= res['CRP - Interprétation'] || '';
-    if (crpVal) {
-      const crpLabel = crpVal === 'neg' ? 'Négatif (< 6 mg/L)' : crpVal + ' mg/L';
-      const crpCls   = crpVal === 'neg' ? 'print-ok' : 'print-hi';
+    const crpValS = res['CRP - Valeur'];
+    if (crpValS) {
+      const crpLabel = crpValS === 'neg' ? 'Négatif (< 6 mg/L)' : crpValS + ' mg/L';
+      const crpCls   = crpValS === 'neg' ? 'print-ok' : 'print-hi';
       html += section('🔥 CRP — Protéine C-réactive (Latex)', `
-        <table class="print-table"><thead><tr><th>Test</th><th>Résultat</th><th>Interprétation</th></tr></thead>
-        <tbody><tr><td>CRP Latex</td><td class="${crpCls}"><b>${crpLabel}</b></td><td>${crpInterp.replace(/^[🔥✓⚠]\s*/,'')}</td></tr></tbody></table>`);
+        <table class="print-table"><thead><tr><th>Test</th><th>Résultat</th><th>Valeurs normales</th></tr></thead>
+        <tbody><tr><td>CRP Latex</td><td class="${crpCls}"><b>${crpLabel}</b></td><td>&lt; 6 mg/L</td></tr></tbody></table>`);
     }
-
-    // Widal — ✅ v13.9 : même logique que Excel/PDF (négatifs affichés si réalisé)
-    const _wid = widalReport(res);
-    const widalRows = _wid.rows.map(w => [w.name, w.titre, w.cinetique||'—', w.interp||'—']);
-    const widalConcl = _wid.concl;
-    if (_wid.show) {
-      let wHtml = widalRows.length ? table(['Antigène','Titre','Cinétique','Interprétation'], widalRows) : '';
-      if (widalConcl) {
-        const cls = widalConcl.includes('ÉTAT') ? 'print-hi' : widalConcl.includes('DÉBUT') ? 'print-warn' : 'print-note';
-        wHtml += `<p class="print-conclusion ${cls}">${escHTML(widalConcl.replace(/^[🔴🟠🟡⚪]\s*/,''))}</p>`;
+    // SWF
+    const _widS = widalReport(res);
+    if (_widS.show) {
+      const widalRowsS = _widS.rows.map(w => [w.name, w.titre, w.cinetique||'—', w.interp||'—']);
+      let wHtml = widalRowsS.length ? table(['Antigène','Titre','Cinétique','Interprétation'], widalRowsS) : '';
+      if (_widS.concl) {
+        const cls = _widS.concl.includes('ÉTAT') ? 'print-hi' : _widS.concl.includes('DÉBUT') ? 'print-warn' : 'print-note';
+        wHtml += `<p class="print-conclusion ${cls}">${escHTML(_widS.concl.replace(/^[🔴🟠🟡⚪]\s*/,''))}</p>`;
       }
       html += section('🦠 Sérodiagnostic de Widal & Félix', wHtml);
+    }
+  }
+
+  else if (type === 'Bilan prénatal') {
+    // ✅ v13.20 — BPN : même rendu que Hématologie (Paramètre · Valeur · Unité · Valeurs normales)
+    // NFS BPN
+    const bpnNfsRows = [];
+    if (typeof BPN_NFS !== 'undefined') [...BPN_NFS].forEach(p => {
+      const v = res[p.name]; if (!v || !v.valeur) return;
+      bpnNfsRows.push([p.name, v.valeur, v.unite||'/µL', refDisplayFor(p, profile) || '—']);
+    });
+    if (bpnNfsRows.length) html += section('🤰 BPN — NFS (normes femme enceinte)', table(['Paramètre','Valeur','Unité','Valeurs normales'], bpnNfsRows));
+
+    // FL BPN
+    const bpnFlRows = [];
+    if (typeof BPN_FL !== 'undefined') [...BPN_FL].forEach(p => {
+      const v = res[p.name]; if (!v || !v.valeur) return;
+      bpnFlRows.push([p.name, v.valeur, v.unite||'/µL', refDisplayFor(p, profile) || '—']);
+    });
+    if (bpnFlRows.length) html += section('🤰 BPN — Formule leucocytaire', table(['Paramètre','Valeur','Unité','Valeurs normales'], bpnFlRows));
+
+    // Biochimie BPN
+    const bpnBioSecs = [
+      {label:'Glucides', params:typeof BIO_GLUCIDES!=='undefined'?BIO_GLUCIDES:[]},
+      {label:'Fonction rénale', params:typeof BIO_REIN!=='undefined'?BIO_REIN:[]},
+      {label:'Fonction hépatique', params:typeof BIO_FOIE!=='undefined'?BIO_FOIE:[]},
+      {label:'Lipides', params:typeof BIO_LIPIDES!=='undefined'?BIO_LIPIDES:[]},
+      {label:'Ionogramme', params:typeof BIO_IONO!=='undefined'?BIO_IONO:[]},
+    ];
+    bpnBioSecs.forEach(sec => {
+      const bioRows = [];
+      sec.params.forEach(p => {
+        const v = res['BIO_'+p.name] || res[p.name]; if (!v || !v.valeur) return;
+        bioRows.push([p.name, v.valeur, getUnit(p.id, v.unite||p.unit||''), refDisplayFor(p, profile) || '—']);
+      });
+      if (bioRows.length) html += section('🤰 BPN — ' + sec.label, table(['Paramètre','Valeur','Unité','Valeurs normales'], bioRows));
+    });
+
+    // Groupe sanguin BPN
+    if (res['GS - ABO'] || res['GS - Rhésus']) {
+      let gsHtml = '<table class="print-table"><tbody>';
+      if (res['GS - ABO'])    gsHtml += `<tr><td>Groupe ABO</td><td><b>${escHTML(res['GS - ABO'])}</b></td></tr>`;
+      if (res['GS - Rhésus']) gsHtml += `<tr><td>Rhésus</td><td><b>${escHTML(res['GS - Rhésus'])}</b></td></tr>`;
+      if (res['GS - RAI'])    gsHtml += `<tr><td>RAI</td><td><b>${escHTML(res['GS - RAI'])}</b></td></tr>`;
+      gsHtml += '</tbody></table>';
+      html += section('🩸 Groupe sanguin', gsHtml);
     }
   }
 
@@ -6608,11 +6669,19 @@ function buildPrintSections(type, res, pat) {
     // Rendu générique pour tous les autres types
     // Map nom de paramètre → id (pour getUnit)
     const _paramIdMap = {};
-    const _paramObjMap = {}; // ✅ v13.17
-    [...(typeof BIO_GLUCIDES!=='undefined'?[...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO]:[]),
-     ...(typeof BPN_NFS!=='undefined'?[...BPN_NFS,...BPN_FL]:[]),
-     ...(typeof HEMA_PARAMS!=='undefined'?[...HEMA_PARAMS,...HEMA_FL]:[])
-    ].forEach(p => { _paramIdMap[p.name] = p.id; _paramObjMap[p.name] = p; });
+    const _paramObjMap = {}; // ✅ v13.17 — étendu à tous les catalogues (v13.19)
+    const _allCatalogues = [
+      ...(typeof BIO_GLUCIDES!=='undefined'?[...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO]:[]),
+      ...(typeof BPN_NFS!=='undefined'?[...BPN_NFS]:[]),
+      ...(typeof BPN_FL!=='undefined'?[...BPN_FL]:[]),
+      ...(typeof HEMA_PARAMS!=='undefined'?[...HEMA_PARAMS]:[]),
+      ...(typeof HEMA_FL!=='undefined'?[...HEMA_FL]:[]),
+      ...(typeof SERO_TESTS!=='undefined'?SERO_TESTS:[]),
+      ...(typeof getCatalogueComplet==='function'?getCatalogueComplet():[]),
+    ];
+    _allCatalogues.forEach(p => {
+      if (p && p.name) { _paramIdMap[p.name] = p.id; _paramObjMap[p.name] = p; }
+    });
 
     const rows = [];
     Object.entries(res).forEach(([k,v]) => {
@@ -6625,7 +6694,7 @@ function buildPrintSections(type, res, pat) {
         rows.push([k, v, '', '', '']);
       }
     });
-    if (rows.length) html += section('📋 Résultats', table(['Paramètre','Résultat','Unité','Valeurs normales','Observation'], rows));
+    if (rows.length) html += section('📋 Résultats', table(['Paramètre','Résultat','Unité','Valeurs normales'], rows.map(r => r.slice(0,4))));
 
     // Antibiogramme si bactériologie
     if (type === 'Bactériologie') {
@@ -6666,7 +6735,7 @@ async function printReceipt(id) {
   types.forEach(type => {
     const TYPE_TO_TAB = {
       'Hématologie':'hema','Biochimie':'bio','Bactériologie':'bacterio',
-      'Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn',
+      'Immuno-Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs',// BPN supprimé v13.21
     };
     const tabKey = TYPE_TO_TAB[type] || 'hema';
     // Examens cochés enregistrés dans le dossier
@@ -7103,7 +7172,6 @@ function buildPDF(r, analyses) {
 
     const addTable = (head, body, opts={}) => {
       if (!body.length) return;
-      const ic = (opts.interpCol !== undefined) ? opts.interpCol : 3; // ✅ v13.17
       const o2 = { ...opts }; delete o2.interpCol;
       doc.autoTable({
         startY: y, head: [head], body,
@@ -7112,13 +7180,15 @@ function buildPDF(r, analyses) {
         headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: [250,251,253] },
         ...o2,
+        // ✅ v13.18 — colorer la cellule Valeur (col 1) selon l'interprétation
+        // stockée en dernière colonne (même logique qu'Excel, sans afficher l'interp)
         didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index === ic) {
-            const v = data.cell.raw || '';
-            if (v.includes('Élevé') || v.includes('⚠'))   { data.cell.styles.textColor=[185,28,28];  data.cell.styles.fillColor=[253,232,232]; }
-            else if (v.includes('Bas'))                     { data.cell.styles.textColor=[29,78,216];  data.cell.styles.fillColor=[229,238,253]; }
-            else if (v.includes('Normal') || v.includes('✓')){ data.cell.styles.textColor=[21,128,61]; data.cell.styles.fillColor=[231,247,236]; }
-          }
+          if (data.section !== 'body' || data.column.index !== 1) return;
+          const rowData = data.row.raw;
+          const interp = String(rowData[rowData.length - 1] || '').toLowerCase();
+          if (interp.includes('élevé')||interp.includes('eleve'))       { data.cell.styles.textColor=[153,27,27];  data.cell.styles.fillColor=[253,232,232]; }
+          else if (interp.includes('bas'))                               { data.cell.styles.textColor=[30,64,175];  data.cell.styles.fillColor=[232,240,254]; }
+          else if (interp.includes('normal'))                            { data.cell.styles.textColor=[21,128,61];  data.cell.styles.fillColor=[232,248,238]; }
         }
       });
       y = doc.lastAutoTable.finalY + 5;
@@ -7135,12 +7205,13 @@ function buildPDF(r, analyses) {
       const v = res[name];
       if (!v || typeof v !== 'object') return;
       if (!v.valeur) return;
-      const absolu = v.absolu ? ` (${v.absolu} G/L)` : '';
-      nfsRows.push([name, v.valeur + absolu, v.unite || '', refDisplayFor(_paramByName[name], profile) || '—', v.interp || '—']);
+      nfsRows.push([name, v.valeur, v.unite || '/µL', refDisplayFor(_paramByName[name], profile) || '—', v.interp || '']); // ✅ v13.25
     });
     if (nfsRows.length) {
       sectionTitle('🩸 NFS — Numération Formule Sanguine');
-      addTable(['Paramètre','Valeur','Unité','Valeurs normales','Interprétation'], nfsRows, { interpCol: 4 });
+      // 4 colonnes affichées, 5e colonne = interp pour la colorisation (masquée via columnStyles)
+      addTable(['Paramètre','Valeur','Unité','Valeurs normales'], nfsRows,
+        { columnStyles: { 4: { cellWidth: 0.1, minCellWidth: 0, overflow: 'hidden' } } });
     }
 
     // ── Électrophorèse Hb ────────────────────────────────────────
@@ -7184,35 +7255,35 @@ function buildPDF(r, analyses) {
     }
 
     // ── Groupe sanguin ───────────────────────────────────────────
-    const gsAbo     = res['GS - ABO'] || '';
-    const gsRh      = res['GS - Rhésus'] || '';
-    const gsRai     = res['GS - RAI'] || '';
-    const gsPhenot  = res['GS - Phénotype'] || '';
-    if (gsAbo || gsRh || gsRai || gsPhenot) {
+    const gsAbo = res['Groupe ABO'] || res['GS - ABO'] || '';
+    const gsRh  = res['Rhésus']     || res['GS - Rhésus'] || '';
+    const gsObs = res['Commentaire GS'] || '';
+    if (gsAbo || gsRh) {
       sectionTitle('🩸 Groupe Sanguin ABO / Rhésus');
       const gsRows = [];
-      if (gsAbo)    gsRows.push(['Groupe ABO', gsAbo, '', '']);
-      if (gsRh)     gsRows.push(['Rhésus', gsRh, '', '']);
-      if (gsRai)    gsRows.push(['RAI', gsRai, '', '']);
-      if (gsPhenot) gsRows.push(['Phénotype érythrocytaire', gsPhenot, '', '']);
+      if (gsAbo) gsRows.push(['Groupe ABO', gsAbo, '', '']);
+      if (gsRh)  gsRows.push(['Rhésus',     gsRh,  '', '']);
       addTable(['Paramètre','Résultat','',''], gsRows);
+      if (gsObs) {
+        doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+        doc.text(pdfSafe(gsObs), MARGIN, y); y += 5; doc.setTextColor(0);
+      }
     }
 
     // ── CRP ──────────────────────────────────────────────────────
     const crpVal    = res['CRP - Valeur'] || '';
-    const crpInterp = res['CRP - Interprétation'] || '';
     if (crpVal) {
       sectionTitle('🔥 CRP — Protéine C-réactive');
       const crpLabel = crpVal === 'neg' ? 'Négatif (< 6 mg/L)' : crpVal + ' mg/L';
       const crpColor = crpVal === 'neg' ? [21,128,61] : [185,28,28];
       doc.autoTable({
         startY: y,
-        head: [['Test','Résultat','Interprétation']],
-        body: [['CRP Latex', crpLabel, crpInterp.replace(/^[🔥✓⚠]\s*/,'')]],
+        head: [['Test','Résultat','Valeurs normales']],
+        body: [['CRP Latex', crpLabel, '< 6 mg/L']],
         margin: { left: MARGIN, right: MARGIN },
         styles: { fontSize: 8, cellPadding: 2.5 },
         headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-        columnStyles: { 1:{ textColor: crpColor, fontStyle:'bold' }, 2:{ fontSize: 7.5 } },
+        columnStyles: { 1:{ textColor: crpColor, fontStyle:'bold' } },
       });
       y = doc.lastAutoTable.finalY + 5;
     }
@@ -7240,13 +7311,69 @@ function buildPDF(r, analyses) {
       }
     }
 
+  } else if (rType === 'Bilan prénatal') {
+    // ✅ v13.20 — BPN PDF : même rendu que Hématologie
+    // NFS BPN
+    const bpnNfsRows = [];
+    if (typeof BPN_NFS !== 'undefined') [...BPN_NFS].forEach(p => {
+      const v = res[p.name]; if (!v || !v.valeur) return;
+      bpnNfsRows.push([p.name, v.valeur, v.unite||'/µL', refDisplayFor(p, profile)||'—', v.interp||'']); // ✅ v13.25
+    });
+    if (bpnNfsRows.length) {
+      sectionTitle('🤰 BPN — NFS');
+      addTable(['Paramètre','Valeur','Unité','Valeurs normales'], bpnNfsRows.map(r=>r.slice(0,4)));
+    }
+
+    // FL BPN
+    const bpnFlRows = [];
+    if (typeof BPN_FL !== 'undefined') [...BPN_FL].forEach(p => {
+      const v = res[p.name]; if (!v || !v.valeur) return;
+      bpnFlRows.push([p.name, v.valeur, v.unite||'/µL', refDisplayFor(p, profile)||'—', v.interp||'']); // ✅ v13.25
+    });
+    if (bpnFlRows.length) {
+      sectionTitle('🤰 BPN — Formule leucocytaire');
+      addTable(['Paramètre','Valeur','Unité','Valeurs normales'], bpnFlRows.map(r=>r.slice(0,4)));
+    }
+
+    // Biochimie BPN
+    const bpnBioSecs = [
+      {label:'Glucides',params:typeof BIO_GLUCIDES!=='undefined'?BIO_GLUCIDES:[]},
+      {label:'Fonction rénale',params:typeof BIO_REIN!=='undefined'?BIO_REIN:[]},
+      {label:'Fonction hépatique',params:typeof BIO_FOIE!=='undefined'?BIO_FOIE:[]},
+      {label:'Lipides',params:typeof BIO_LIPIDES!=='undefined'?BIO_LIPIDES:[]},
+      {label:'Ionogramme',params:typeof BIO_IONO!=='undefined'?BIO_IONO:[]},
+    ];
+    bpnBioSecs.forEach(sec => {
+      const bioRows = [];
+      sec.params.forEach(p => {
+        const v = res['BIO_'+p.name] || res[p.name]; if (!v || !v.valeur) return;
+        bioRows.push([p.name, v.valeur, getUnit(p.id, v.unite||p.unit||''), refDisplayFor(p, profile)||'—', v.interp||'']);
+      });
+      if (bioRows.length) {
+        sectionTitle('🤰 BPN — ' + sec.label);
+        addTable(['Paramètre','Valeur','Unité','Valeurs normales'], bioRows.map(r=>r.slice(0,4)));
+      }
+    });
+
+    // Groupe sanguin BPN
+    const gsRows = [];
+    if (res['Groupe ABO'] || res['GS - ABO'])    gsRows.push(['Groupe ABO', res['Groupe ABO']||res['GS - ABO'], '', '']);
+    if (res['Rhésus']     || res['GS - Rhésus']) gsRows.push(['Rhésus',     res['Rhésus']||res['GS - Rhésus'],  '', '']);
+    if (gsRows.length) { sectionTitle('🩸 Groupe sanguin'); addTable(['Paramètre','Résultat','',''], gsRows);
+      const obs = res['Commentaire GS'];
+      if (obs) { doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(80,80,80); doc.text(pdfSafe(obs), MARGIN, y); y += 5; doc.setTextColor(0); }
+    }
+
   } else {
     // Pour les autres types : affichage générique clé/valeur
     // ✅ v13.17 — index nom→paramètre pour les valeurs normales
     const _pbn = {};
     [...(typeof BIO_GLUCIDES!=='undefined'?[...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO]:[]),
-     ...(typeof HEMA_PARAMS!=='undefined'?[...HEMA_PARAMS,...HEMA_FL]:[])
-    ].forEach(pp => { _pbn[pp.name] = pp; });
+     ...(typeof HEMA_PARAMS!=='undefined'?[...HEMA_PARAMS,...HEMA_FL]:[]),
+     ...(typeof BPN_NFS!=='undefined'?[...BPN_NFS]:[]),
+     ...(typeof BPN_FL!=='undefined'?[...BPN_FL]:[]),
+     ...(typeof SERO_TESTS!=='undefined'?SERO_TESTS:[]),
+    ].forEach(pp => { if (pp && pp.name) _pbn[pp.name] = pp; });
     Object.entries(res).forEach(([k, v]) => {
       if (k.startsWith('_')) return; // ✅ v12 — ignorer clés techniques
       if (typeof v === 'object' && v !== null) {
@@ -7259,8 +7386,8 @@ function buildPDF(r, analyses) {
     if (rows.length) {
       doc.autoTable({
         startY: y,
-        head: [['Paramètre', 'Résultat', 'Unité', 'Valeurs normales', 'Observation']],
-        body: rows,
+        head: [['Paramètre', 'Résultat', 'Unité', 'Valeurs normales']],
+        body: rows.map(r => r.slice(0,4)),
         margin: { left: MARGIN, right: MARGIN },
         styles: { fontSize: 8, cellPadding: 2.5 },
         headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
@@ -7403,22 +7530,31 @@ function addExamenPersonnalise() {
   const label = document.getElementById('new_ex_label')?.value?.trim();
   if (!label) { toast('Le nom de l\'examen est obligatoire', 'err'); return; }
 
-  const groupe = document.getElementById('new_ex_groupe')?.value || '🔬 Autres';
+  const tabVal = document.getElementById('new_ex_groupe')?.value || 'other';
   const prix   = parseInt(document.getElementById('new_ex_prix')?.value || '0');
   const id     = 'custom_' + Date.now();
 
+  const tabToGroupe = {
+    hema:'🩸 Hématologie', bio:'🧪 Biochimie', sero:'💉 Immuno-Sérologie',
+    bacterio:'🦠 Bactériologie', parasito:'🦟 Parasitologie',
+    gs:'🩸 Groupe sanguin', other:'🔬 Autres'
+  };
+  const groupe = tabToGroupe[tabVal] || '🔬 Autres';
+  const tab    = tabVal === 'other' ? 'hema' : tabVal;
+
   const custom = getExamensCustom();
-  custom.push({ id, label, groupe, prix, tab: 'hema', custom: true });
+  custom.push({ id, label, groupe, prix, tab, custom: true });
   saveExamensCustom(custom);
 
-  // Mettre à jour les prix de référence
   const ref = getTarifsRef();
   ref[id] = prix;
   saveTarifsRef(ref);
 
   document.getElementById('add-examen-modal').style.display = 'none';
+  document.getElementById('new_ex_label').value = '';
+  document.getElementById('new_ex_prix').value = '0';
   buildAdminExamensGrid();
-  buildFicheExamens(); // Recharger la fiche avec le nouvel examen
+  buildFicheExamens();
   toast('Examen "' + label + '" ajouté ✓', 'ok');
 }
 
@@ -7807,14 +7943,19 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_gs',    label:'Groupe sanguin ABO / Rhésus',       groupe:'🩸 Groupe sanguin', tab:'gs', prix:3000, section:'sec-gs-standalone' },
   { id:'ex_rai',   label:'RAI + Phénotypage érythrocytaire',  groupe:'🩸 Groupe sanguin', tab:'gs', prix:5000, section:'sec-gs-standalone' },
   // ── Sérologie ──
-  { id:'ex_crp',   label:'CRP — Protéine C-réactive',        groupe:'💉 Sérologie', tab:'hema', prix:2000, section:'sec-crp' },
-  { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Sérologie', tab:'hema', prix:3000, section:'sec-widal' },
-  { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
-  { id:'ex_hbs',   label:'Ag HBs (Hépatite B)',              groupe:'💉 Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
-  { id:'ex_hcv',   label:'Ac anti-VHC (Hépatite C)',         groupe:'💉 Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
-  { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Sérologie', tab:'sero', prix:2000, section:'sec-sero' },
-  { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
-  { id:'ex_rube',  label:'Rubéole IgG / IgM',                groupe:'💉 Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
+  { id:'ex_crp',   label:'CRP — Protéine C-réactive',        groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2000, section:'sec-crp' },
+  { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:3000, section:'sec-widal' },
+  { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
+  { id:'ex_hbs',   label:'Ag HBs (Hépatite B)',              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
+  { id:'ex_hcv',   label:'Ac anti-VHC (Hépatite C)',         groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
+  { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2000, section:'sec-sero' },
+  { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
+  { id:'ex_rube',  label:'Rubéole IgG / IgM',                groupe:'💉 Immuno-Sérologie', tab:'sero', prix:3500, section:'sec-sero' },
+  { id:'ex_aso',   label:'ASLO (Antistreptolysines)',         groupe:'💉 Immuno-Sérologie', tab:'sero', prix:3000, section:'sec-sero' },
+  { id:'ex_latex', label:'Latex (Waaler-Rose)',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
+  { id:'ex_tsh',   label:'TSH',                              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
+  { id:'ex_ft4',   label:'T4 libre (FT4)',                   groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
+  { id:'ex_psa',   label:'PSA total',                        groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
   // ── Biochimie ──
   { id:'ex_gly',   label:'Glycémie à jeun',                  groupe:'🧪 Biochimie', tab:'bio', prix:1000, section:'sec-bio-glucides-wrap' },
   { id:'ex_hba1c', label:'HbA1c',                             groupe:'🧪 Biochimie', tab:'bio', prix:7500, section:'sec-bio-glucides-wrap' },
@@ -7831,6 +7972,8 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_hdl',   label:'HDL-cholestérol',                   groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-lipides-wrap' },
   { id:'ex_iono',  label:'Ionogramme (Na, K, Cl)',            groupe:'🧪 Biochimie', tab:'bio', prix:4500, section:'sec-bio-iono-wrap' },
   { id:'ex_ca',    label:'Calcium / Phosphore',               groupe:'🧪 Biochimie', tab:'bio', prix:2500, section:'sec-bio-iono-wrap' },
+  { id:'ex_mg',    label:'Magnésium',                         groupe:'🧪 Biochimie', tab:'bio', prix:2500, section:'sec-bio-iono-wrap' },
+  { id:'ex_bic',   label:'Bicarbonates',                      groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-iono-wrap' },
   // ── Bactériologie ──
   { id:'ex_ecbu',  label:'ECBU',                              groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000, section:'sec-bacterio-title' },
   { id:'ex_hemo',  label:'Hémoculture',                       groupe:'🦠 Bactériologie', tab:'bacterio', prix:8000, section:'sec-bacterio-title' },
@@ -7917,7 +8060,7 @@ function collectPendingForType(res, coches) {
 // renseignés — y compris les négatifs, affichés « Négatif » (plus de case vide).
 function widalReport(res) {
   const rows = WIDAL_ANTIGENES
-    .filter(ag => { const w = res['Widal - ' + ag.name]; return w && w.titre; })
+    .filter(ag => { const w = res['Widal - ' + ag.name]; return w && w.titre && w.titre !== 'Non réalisé'; }) // ✅ v13.23
     .map(ag => { const w = res['Widal - ' + ag.name];
       return { name: ag.name, titre: w.titre, cinetique: w.cinetique || '', interp: w.interp || '', seuil: ag.seuil }; });
   let concl = (res['Widal - Conclusion'] || '').trim();
@@ -7938,21 +8081,64 @@ function examFieldIds(examId) {
   const V = ids => ids.map(i => 'v_' + i);
   const S = ids => ids.flatMap(i => ['sr_' + i + '_r', 'sv_' + i]);
   const M = {
-    ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt'].concat((typeof HEMA_FL!=='undefined'?HEMA_FL:[]).map(p=>p.id))),
+    // ── Hématologie ───────────────────────────────────────────
+    ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt']
+                    .concat((typeof HEMA_FL!=='undefined'?HEMA_FL:[]).map(p=>p.id))),
+    ex_ephb:  () => V(['ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e'])
+                    .concat(['ephb_profil','ephb_commentaire']),
     ex_vs:    () => ['v_vs'],
-    ex_ge:    () => ['ge_result','ge_tdr','ge_espece','ge_para','ge_densite','ge_stade','ge_obs'],
-    ex_widal: () => (typeof WIDAL_ANTIGENES!=='undefined'?WIDAL_ANTIGENES:[]).flatMap(ag => ['widal_'+ag.id,'widal_cin_'+ag.id]),
-    ex_crp:   () => S(['crp']),
-    ex_gly:   () => ['v_gly'], ex_hba1c: () => ['v_hba'],
-    ex_uree:  () => ['v_uree'], ex_crea: () => ['v_crea'], ex_ua: () => ['v_ua'],
-    ex_asat:  () => ['v_asat','v_alat'], ex_ggt: () => ['v_ggt'], ex_pal: () => ['v_pal'],
-    ex_bili:  () => ['v_bili','v_bilid'], ex_prot: () => ['v_prot','v_alb'],
-    ex_chol:  () => ['v_chol'], ex_trig: () => ['v_trig'], ex_hdl: () => ['v_hdl','v_ldl'],
-    ex_iono:  () => ['v_na','v_k','v_cl'], ex_ca: () => ['v_ca','v_phos'],
-    ex_vih:   () => S(['vih1']), ex_hbs: () => S(['hbsag']), ex_hcv: () => S(['hcv']),
-    ex_tpha:  () => S(['syphil']), ex_toxo: () => S(['toxo','toxoig']), ex_rube: () => S(['rubig']),
-    ex_gs:    () => ['gs_abo_hema','gs_rh_hema'], ex_rai: () => ['gs_rai_hema','gs_phenotype_hema'],
-    ex_eps:   () => ['para_resultat','para_tdr','para_espece','para_densite','para_stade','para_type','para_coloration','para_indice','para_parasitemie','para_obs'],
+    ex_crp:   () => ['crp_valeur'],                          // CRP Sérologie (latex)
+    ex_widal: () => (typeof WIDAL_ANTIGENES!=='undefined'
+                     ? WIDAL_ANTIGENES.flatMap(ag => ['widal_'+ag.id,'widal_cin_'+ag.id])
+                     : []),
+    ex_ge:    () => ['ge_result','ge_tdr','ge_espece','ge_para',
+                     'ge_densite','ge_stade','ge_obs'],
+    // ── Biochimie ─────────────────────────────────────────────
+    ex_gly:   () => ['v_gly'],
+    ex_hba1c: () => ['v_hba'],
+    ex_uree:  () => ['v_uree'],
+    ex_crea:  () => ['v_crea'],
+    ex_ua:    () => ['v_ua'],
+    ex_asat:  () => ['v_asat','v_alat'],
+    ex_ggt:   () => ['v_ggt'],
+    ex_pal:   () => ['v_pal'],
+    ex_bili:  () => ['v_bili','v_bilid'],
+    ex_prot:  () => ['v_prot','v_alb'],
+    ex_chol:  () => ['v_chol'],
+    ex_trig:  () => ['v_trig'],
+    ex_hdl:   () => ['v_hdl','v_ldl'],
+    ex_iono:  () => ['v_na','v_k','v_cl'],
+    ex_ca:    () => ['v_ca','v_phos'],
+    ex_mg:    () => ['v_mg'],
+    ex_bic:   () => ['v_bic'],
+    // ── Sérologie ─────────────────────────────────────────────
+    ex_vih:   () => S(['vih1']),
+    ex_hbs:   () => S(['hbsag','hbcac','hbsac']),
+    ex_hcv:   () => S(['hcv']),
+    ex_tpha:  () => S(['syphil']),
+    ex_toxo:  () => S(['toxo','toxoig']),
+    ex_rube:  () => S(['rubig']),
+    ex_aso:   () => S(['aso']),
+    ex_latex: () => S(['latex']),
+    ex_tsh:   () => S(['tsh']),
+    ex_ft4:   () => S(['ft4']),
+    ex_psa:   () => S(['psa']),
+    ex_rai:   () => S(['rai']),
+    // ── Groupe sanguin (panel GS) ──────────────────────────────
+    ex_gs:    () => ['gs_abo','gs_rh','gs_obs'],
+    // ── Groupe sanguin mini (sur Hémato) ──────────────────────
+    // Ces champs sont en lecture seule / contexte — pas de verrou
+    // ── Parasitologie ─────────────────────────────────────────
+    ex_eps:   () => ['para_resultat','para_tdr','para_espece','para_densite',
+                     'para_stade','para_type','para_coloration','para_indice',
+                     'para_parasitemie','para_obs'],
+    // ── Bactériologie ─────────────────────────────────────────
+    // panel-bacterio entier verrouillé en bloc via applyExamLocks
+    ex_ecbu:  () => [],   // géré par le bloc bacterio
+    ex_hemo:  () => [],
+    ex_copro: () => [],
+    ex_pg:    () => [],
+    ex_pus:   () => [],
   };
   return M[examId] ? M[examId]() : [];
 }
@@ -8144,6 +8330,7 @@ function calcFicheTotal() {
   }
   if (countEl) countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
   if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
+  if (typeof applyBpnSections === 'function') applyBpnSections(); // ✅ v13.21
 }
 
 function demarrerSaisie() {
@@ -8677,14 +8864,14 @@ function buildRefsEditor() {
     {
       label: '🩸 Hématologie — NFS', id: 'nfs',
       params: [
-        { id:'gbc',  name:'Globules blancs (GB)',         unit:'10³/µL', ref:'4–10',      lo:4,    hi:10   },
+        { id:'gbc',  name:'Globules blancs (GB)',         unit:'/µL', ref:'4–10',      lo:4,    hi:10   },
         { id:'gr',   name:'Globules rouges (GR)',         unit:'10⁶/µL', ref:'4.0–5.5',   lo:4.0,  hi:5.5  },
         { id:'hb',   name:'Hémoglobine (Hb)',             unit:'g/dL',   ref:'12–17',     lo:12,   hi:17   },
         { id:'ht',   name:'Hématocrite (Ht)',              unit:'%',      ref:'37–54',     lo:37,   hi:54   },
         { id:'vgm',  name:'VGM (calculé)',                unit:'fL',     ref:'80–100',    lo:80,   hi:100  },
         { id:'tcmh', name:'TCMH (calculé)',               unit:'pg',     ref:'27–32',     lo:27,   hi:32   },
         { id:'ccmh', name:'CCMH (calculé)',               unit:'g/dL',   ref:'32–36',     lo:32,   hi:36   },
-        { id:'plt',  name:'Plaquettes',                   unit:'10³/µL', ref:'150–400',   lo:150,  hi:400  },
+        { id:'plt',  name:'Plaquettes',                   unit:'/µL', ref:'150–400',   lo:150,  hi:400  },
         { id:'ret',  name:'Réticulocytes',                unit:'%',      ref:'0.5–1.5',   lo:0.5,  hi:1.5  },
         { id:'vs',   name:'VS (1ère heure)',              unit:'mm/h',   ref:'< 20',      lo:0,    hi:20   },
       ]
@@ -8787,14 +8974,14 @@ function buildRefsEditor() {
     {
       label: '🤰 Bilan prénatal — NFS', id: 'bpn_nfs',
       params: [
-        { id:'bpn_gb',   name:'Globules blancs (GB)',  unit:'10³/µL', ref:'6–16',     lo:6,    hi:16   },
+        { id:'bpn_gb',   name:'Globules blancs (GB)',  unit:'/µL', ref:'6–16',     lo:6,    hi:16   },
         { id:'bpn_gr',   name:'Globules rouges (GR)',  unit:'10⁶/µL', ref:'3.5–5.0',  lo:3.5,  hi:5.0  },
         { id:'bpn_hb',   name:'Hémoglobine (Hb)',      unit:'g/dL',   ref:'≥ 11.0',   lo:11.0, hi:16.0 },
         { id:'bpn_ht',   name:'Hématocrite (Ht)',       unit:'%',      ref:'≥ 33',     lo:33,   hi:47   },
         { id:'bpn_vgm',  name:'VGM (calculé)',          unit:'fL',     ref:'80–100',   lo:80,   hi:100  },
         { id:'bpn_tcmh', name:'TCMH (calculé)',         unit:'pg',     ref:'27–32',    lo:27,   hi:32   },
         { id:'bpn_ccmh', name:'CCMH (calculé)',         unit:'g/dL',   ref:'32–36',    lo:32,   hi:36   },
-        { id:'bpn_plt',  name:'Plaquettes',             unit:'10³/µL', ref:'150–400',  lo:150,  hi:400  },
+        { id:'bpn_plt',  name:'Plaquettes',             unit:'/µL', ref:'150–400',  lo:150,  hi:400  },
       ]
     },
     {
@@ -9018,7 +9205,7 @@ document.addEventListener('keydown', e => {
     const tabId = activeTab.dataset.tab;
     const TYPE_MAP = {
       hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
-      sero:'Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin', bpn:'Bilan prénatal',
+      sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin', bpn:'Bilan prénatal',
     };
     const type = TYPE_MAP[tabId];
     if (type) saveRecord(type);
