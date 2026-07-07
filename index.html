@@ -1310,6 +1310,29 @@ select {
         <button class="btn btn-outline" onclick="resetPanel('bio')">↺ Effacer</button>
       </div>
     </div>
+
+    <div class="card" id="sec-bio-fer-wrap">
+      <div class="card-title">🔴 Fer & Hémostase</div>
+      <div class="section-label">Métabolisme du fer</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-fer-body"></tbody></table></div>
+      <div class="section-label" style="margin-top:12px">Coagulation</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-coag-body"></tbody></table></div>
+    </div>
+
+    <div class="card" id="sec-bio-card-wrap">
+      <div class="card-title">❤️ Marqueurs cardiaques</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-card-body"></tbody></table></div>
+    </div>
+
+    <div class="card" id="sec-bio-horm-wrap">
+      <div class="card-title">🧬 Hormones & Vitamines</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-horm-body"></tbody></table></div>
+    </div>
+
+    <div class="card" id="sec-bio-autre-wrap">
+      <div class="card-title">🔬 Autres marqueurs</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-autre-body"></tbody></table></div>
+    </div>
   </div>
 
   <!-- ===== BACTÉRIOLOGIE / ECBU ===== -->
@@ -2286,10 +2309,10 @@ const NORM = {
     NN:     { M:'0.40–0.80', F:'0.40–0.80', lo:0.40, hi:0.80 },
     NOURR:  { M:'0.60–1.00', F:'0.60–1.00', lo:0.60, hi:1.00 },
     ENFANT: { M:'0.70–1.00', F:'0.70–1.00', lo:0.70, hi:1.00 },
-    ADULTE: { M:'0.70–1.10', F:'0.70–1.10', lo:0.70, hi:1.10 },
+    ADULTE: { M:'0.70–1.10', F:'0.70–1.10', lo:0.60, hi:1.10 },
     SENIOR: { M:'0.70–1.26', F:'0.70–1.26', lo:0.70, hi:1.26 },
   },
-  hba:  { _all: { ref:'< 5.7', lo:0, hi:5.7 } },
+  hba:  { _all: { ref:'< 6.0', lo:0, hi:6.0 } },
   crea: {
     NN:     { M:'25–90',  F:'25–90',  lo:25,  hi:90  },
     NOURR:  { M:'18–35',  F:'18–35',  lo:18,  hi:35  },
@@ -2608,38 +2631,90 @@ const EPHB_FRACTIONS = [
 
 
 const BIO_GLUCIDES = [
-  { id:'gly', name:'Glycémie à jeun',           unit:'g/L',   ref:'0.70–1.10', lo:0.70, hi:1.10 },
-  { id:'hba', name:'HbA1c',                     unit:'%',     ref:'< 5.7',     lo:0,    hi:5.7  },
+  { id:'gly',  name:'Glycémie à jeun',           unit:'g/L',    ref:'0.60–1.10',  lo:0.60, hi:1.10 },
+  { id:'hba',  name:'HbA1c',                     unit:'%',      ref:'< 6.0',      lo:0,    hi:6.0  },
 ];
 const BIO_REIN = [
-  { id:'crea', name:'Créatinine',               unit:'µmol/L',ref:'50–115',    lo:50,   hi:115  },
-  { id:'uree', name:'Urée',                     unit:'mmol/L',ref:'2.5–7.5',   lo:2.5,  hi:7.5  },
-  { id:'ua',   name:'Acide urique',             unit:'µmol/L',ref:'150–420',   lo:150,  hi:420  },
+  { id:'crea', name:'Créatinine',                unit:'mg/L',   ref:'4–16',       lo:4,    hi:16   },
+  { id:'uree', name:'Urée',                      unit:'g/L',    ref:'0.15–0.45',  lo:0.15, hi:0.45 },
+  { id:'ua',   name:'Acide urique',              unit:'mg/L',   ref:'25–70',      lo:25,   hi:70   },
+  { id:'malb', name:'Microalbuminurie',          unit:'mg/24h', ref:'30–300',     lo:30,   hi:300  },
+  { id:'dfg',  name:'Clairance créatinine (DFG)',unit:'mL/min/1.73m²',ref:'> 90', lo:90,   hi:999  },
 ];
 const BIO_FOIE = [
-  { id:'asat', name:'ASAT (TGO)',               unit:'UI/L',  ref:'< 40',      lo:0,    hi:40   },
-  { id:'alat', name:'ALAT (TGP)',               unit:'UI/L',  ref:'< 40',      lo:0,    hi:40   },
-  { id:'ggt',  name:'Gamma GT',                 unit:'UI/L',  ref:'< 55',      lo:0,    hi:55   },
-  { id:'pal',  name:'Phosphatases alcalines',   unit:'UI/L',  ref:'40–130',    lo:40,   hi:130  },
-  { id:'bili', name:'Bilirubine totale',        unit:'µmol/L',ref:'< 20',      lo:0,    hi:20   },
-  { id:'bilid',name:'Bilirubine directe',       unit:'µmol/L',ref:'< 5',       lo:0,    hi:5    },
-  { id:'prot', name:'Protéines totales',        unit:'g/L',   ref:'65–80',     lo:65,   hi:80   },
-  { id:'alb',  name:'Albumine',                 unit:'g/L',   ref:'35–50',     lo:35,   hi:50   },
+  { id:'asat', name:'ASAT (TGO)',                unit:'UI/L',   ref:'< 40',       lo:0,    hi:40   },
+  { id:'alat', name:'ALAT (TGP)',                unit:'UI/L',   ref:'< 40',       lo:0,    hi:40   },
+  { id:'ggt',  name:'Gamma GT',                  unit:'UI/L',   ref:'< 55',       lo:0,    hi:55   },
+  { id:'pal',  name:'Phosphatases alcalines',    unit:'UI/L',   ref:'44–147',     lo:44,   hi:147  },
+  { id:'bili', name:'Bilirubine totale',         unit:'mg/L',   ref:'< 10',       lo:0,    hi:10   },
+  { id:'bilid',name:'Bilirubine directe',        unit:'mg/L',   ref:'< 3',        lo:0,    hi:3    },
+  { id:'prot', name:'Protéines totales',         unit:'g/L',    ref:'60–80',      lo:60,   hi:80   },
+  { id:'alb',  name:'Albumine',                  unit:'g/L',    ref:'35–50',      lo:35,   hi:50   },
+  { id:'ldh',  name:'LDH (Lactate déshydrogénase)',unit:'UI/L', ref:'100–200',    lo:100,  hi:200  },
+  { id:'amy',  name:'Amylase',                   unit:'UI/L',   ref:'10–90',      lo:10,   hi:90   },
+  { id:'lip',  name:'Lipase',                    unit:'UI/L',   ref:'< 60',       lo:0,    hi:60   },
 ];
 const BIO_LIPIDES = [
-  { id:'chol', name:'Cholestérol total',        unit:'g/L',   ref:'< 2.0',     lo:0,    hi:2.0  },
-  { id:'trig', name:'Triglycérides',            unit:'g/L',   ref:'< 1.5',     lo:0,    hi:1.5  },
-  { id:'hdl',  name:'HDL-cholestérol',          unit:'g/L',   ref:'> 0.40',    lo:0.40, hi:99   },
-  { id:'ldl',  name:'LDL-cholestérol ⚙',        unit:'g/L',   ref:'< 1.60',    lo:0,    hi:1.60, calc:true },
+  { id:'chol', name:'Cholestérol total',         unit:'g/L',    ref:'< 2.0',      lo:0,    hi:2.0  },
+  { id:'trig', name:'Triglycérides',             unit:'g/L',    ref:'< 1.7',      lo:0,    hi:1.7  },
+  { id:'hdl',  name:'HDL-cholestérol',           unit:'g/L',    ref:'> 0.50',     lo:0.50, hi:99   },
+  { id:'ldl',  name:'LDL-cholestérol ⚙',         unit:'g/L',    ref:'< 1.30',     lo:0,    hi:1.30, calc:true },
+  { id:'apoa', name:'Apolipoprotéine A1',        unit:'g/L',    ref:'1.1–2.1',    lo:1.1,  hi:2.1  },
+  { id:'apob', name:'Apolipoprotéine B',         unit:'g/L',    ref:'0.5–1.3',    lo:0.5,  hi:1.3  },
+  { id:'lpa',  name:'Lipoprotéine (a)',          unit:'mg/dL',  ref:'< 30',       lo:0,    hi:30   },
 ];
 const BIO_IONO = [
-  { id:'na',   name:'Sodium (Na⁺)',             unit:'mEq/L', ref:'136–145',   lo:136,  hi:145  },
-  { id:'k',    name:'Potassium (K⁺)',           unit:'mEq/L', ref:'3.5–5.0',   lo:3.5,  hi:5.0  },
-  { id:'cl',   name:'Chlore (Cl⁻)',             unit:'mEq/L', ref:'98–107',    lo:98,   hi:107  },
-  { id:'ca',   name:'Calcium (Ca²⁺)',           unit:'mmol/L',ref:'2.2–2.6',   lo:2.2,  hi:2.6  },
-  { id:'phos', name:'Phosphore',                unit:'mmol/L',ref:'0.8–1.5',   lo:0.8,  hi:1.5  },
-  { id:'mg',   name:'Magnésium (Mg²⁺)',         unit:'mmol/L',ref:'0.75–1.0',  lo:0.75, hi:1.0  },
-  { id:'bic',  name:'Bicarbonates (HCO₃⁻)',    unit:'mEq/L', ref:'22–28',     lo:22,   hi:28   },
+  { id:'na',   name:'Sodium (Na⁺)',              unit:'mmol/L', ref:'135–145',    lo:135,  hi:145  },
+  { id:'k',    name:'Potassium (K⁺)',            unit:'mmol/L', ref:'3.5–5.0',    lo:3.5,  hi:5.0  },
+  { id:'cl',   name:'Chlore (Cl⁻)',              unit:'mmol/L', ref:'98–107',     lo:98,   hi:107  },
+  { id:'ca',   name:'Calcium (Ca²⁺)',            unit:'mg/L',   ref:'88–104',     lo:88,   hi:104  },
+  { id:'phos', name:'Phosphore',                 unit:'mg/L',   ref:'25–45',      lo:25,   hi:45   },
+  { id:'mg',   name:'Magnésium (Mg²⁺)',          unit:'mg/L',   ref:'17–24',      lo:17,   hi:24   },
+  { id:'bic',  name:'Bicarbonates (HCO₃⁻)',     unit:'mmol/L', ref:'22–28',      lo:22,   hi:28   },
+  { id:'zinc', name:'Zinc',                      unit:'µmol/L', ref:'11–22',      lo:11,   hi:22   },
+  { id:'cuiv', name:'Cuivre',                    unit:'µmol/L', ref:'11–22',      lo:11,   hi:22   },
+];
+const BIO_FER = [
+  { id:'fer',  name:'Fer sérique',               unit:'µmol/L', ref:'10–30',      lo:10,   hi:30   },
+  { id:'ferr', name:'Ferritine',                 unit:'µg/L',   ref:'20–300',     lo:20,   hi:300  },
+  { id:'ddim', name:'D-Dimères',                 unit:'µg/L',   ref:'< 500',      lo:0,    hi:500  },
+];
+const BIO_CARD = [
+  { id:'trop', name:'Troponine I/T',             unit:'ng/L',   ref:'< 14',       lo:0,    hi:14   },
+  { id:'bnp',  name:'BNP / NT-proBNP',          unit:'pg/mL',  ref:'< 125',      lo:0,    hi:125  },
+  { id:'ck',   name:'CK (Créatine kinase)',      unit:'UI/L',   ref:'< 170',      lo:0,    hi:170  },
+  { id:'ckmb', name:'CK-MB',                     unit:'UI/L',   ref:'< 25',       lo:0,    hi:25   },
+  { id:'myog', name:'Myoglobine',                unit:'µg/L',   ref:'< 90',       lo:0,    hi:90   },
+];
+const BIO_HORM = [
+  { id:'cort', name:'Cortisol (8h)',             unit:'nmol/L', ref:'170–550',    lo:170,  hi:550  },
+  { id:'acth', name:'ACTH',                      unit:'pg/mL',  ref:'10–60',      lo:10,   hi:60   },
+  { id:'lh',   name:'LH',                        unit:'UI/L',   ref:'',           lo:0,    hi:999  },
+  { id:'fsh',  name:'FSH',                       unit:'UI/L',   ref:'',           lo:0,    hi:999  },
+  { id:'e2',   name:'Estradiol (E2)',            unit:'ng/mL',  ref:'3–15',       lo:3,    hi:15   },
+  { id:'prog', name:'Progestérone',              unit:'ng/mL',  ref:'',           lo:0,    hi:999  },
+  { id:'test', name:'Testostérone',              unit:'ng/mL',  ref:'',           lo:0,    hi:999  },
+  { id:'prl',  name:'Prolactine',                unit:'mUI/L',  ref:'< 500',      lo:0,    hi:500  },
+  { id:'amh',  name:'AMH',                       unit:'ng/mL',  ref:'1–7',        lo:1,    hi:7    },
+  { id:'vitd', name:'Vitamine D (25-OH)',        unit:'ng/mL',  ref:'30–100',     lo:30,   hi:100  },
+  { id:'b12',  name:'Vitamine B12',              unit:'pg/mL',  ref:'200–950',    lo:200,  hi:950  },
+  { id:'fol',  name:'Folates (B9)',              unit:'ng/mL',  ref:'5–20',       lo:5,    hi:20   },
+  { id:'pth',  name:'PTH (parathormone)',        unit:'ng/L',   ref:'15–65',      lo:15,   hi:65   },
+];
+const BIO_COAG = [
+  { id:'tp',   name:'TP / INR',                  unit:'%',      ref:'70–100',     lo:70,   hi:100  },
+  { id:'tca',  name:'TCA',                       unit:'s',      ref:'28–38',      lo:28,   hi:38   },
+  { id:'fibr', name:'Fibrinogène',               unit:'g/L',    ref:'2.0–4.0',    lo:2.0,  hi:4.0  },
+  { id:'ddim2',name:'D-Dimères',                 unit:'µg/L',   ref:'< 500',      lo:0,    hi:500  },
+];
+const BIO_AUTRE = [
+  { id:'pct',  name:'Procalcitonine (PCT)',      unit:'µg/L',   ref:'< 0.1',      lo:0,    hi:0.1  },
+  { id:'hcrp', name:'CRP ultra-sensible (hs-CRP)',unit:'mg/L',  ref:'< 1.0',      lo:0,    hi:1.0  },
+  { id:'osm',  name:'Osmolarité',               unit:'mOsm/L', ref:'275–295',    lo:275,  hi:295  },
+  { id:'hcy',  name:'Homocystéine',             unit:'µmol/L', ref:'5–15',       lo:5,    hi:15   },
+  { id:'amm',  name:'Ammoniaque',               unit:'µmol/L', ref:'10–50',      lo:10,   hi:50   },
+  { id:'lact', name:'Acide lactique',            unit:'mmol/L', ref:'0.5–1.8',    lo:0.5,  hi:1.8  },
+  { id:'bhcg', name:'Beta-HCG',                 unit:'UI/L',   ref:'< 5',        lo:0,    hi:5    },
 ];
 
 const SERO_TESTS = [
@@ -3374,7 +3449,10 @@ function interpretWidal() {
 function buildBio() {
   [['bio-glucides-body', BIO_GLUCIDES],['bio-rein-body', BIO_REIN],
    ['bio-foie-body', BIO_FOIE],['bio-lipides-body', BIO_LIPIDES],
-   ['bio-iono-body', BIO_IONO]].forEach(([id, arr]) => {
+   ['bio-iono-body', BIO_IONO],['bio-fer-body', BIO_FER],
+   ['bio-card-body', BIO_CARD],['bio-horm-body', BIO_HORM],
+   ['bio-coag-body', BIO_COAG],['bio-autre-body', BIO_AUTRE],
+  ].forEach(([id, arr]) => {
     const b = document.getElementById(id); b.innerHTML = '';
     arr.forEach(p => makeParamRow(p, b));
   });
@@ -7975,6 +8053,47 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_ca',    label:'Calcium / Phosphore',               groupe:'🧪 Biochimie', tab:'bio', prix:2500, section:'sec-bio-iono-wrap' },
   { id:'ex_mg',    label:'Magnésium',                         groupe:'🧪 Biochimie', tab:'bio', prix:2500, section:'sec-bio-iono-wrap' },
   { id:'ex_bic',   label:'Bicarbonates',                      groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-iono-wrap' },
+  { id:'ex_zinc',  label:'Zinc',                              groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-iono-wrap' },
+  { id:'ex_cuiv',  label:'Cuivre',                           groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-iono-wrap' },
+  { id:'ex_malb',  label:'Microalbuminurie',                 groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-rein-wrap' },
+  { id:'ex_dfg',   label:'Clairance créatinine (DFG)',       groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-rein-wrap' },
+  { id:'ex_ldh',   label:'LDH',                              groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
+  { id:'ex_amy',   label:'Amylase',                          groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
+  { id:'ex_lip',   label:'Lipase',                           groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
+  { id:'ex_apoa',  label:'Apolipoprotéine A1',               groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_apob',  label:'Apolipoprotéine B',                groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_lpa',   label:'Lipoprotéine (a)',                 groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_fer',   label:'Fer sérique',                      groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_ferr',  label:'Ferritine',                        groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-fer-wrap' },
+  { id:'ex_ddim',  label:'D-Dimères',                        groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-fer-wrap' },
+  { id:'ex_tp',    label:'TP / INR',                         groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_tca',   label:'TCA',                              groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_fibr',  label:'Fibrinogène',                      groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-fer-wrap' },
+  { id:'ex_trop',  label:'Troponine I/T',                    groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-card-wrap' },
+  { id:'ex_bnp',   label:'BNP / NT-proBNP',                 groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-card-wrap' },
+  { id:'ex_ck',    label:'CK (Créatine kinase)',             groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-card-wrap' },
+  { id:'ex_ckmb',  label:'CK-MB',                           groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-card-wrap' },
+  { id:'ex_myog',  label:'Myoglobine',                       groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-card-wrap' },
+  { id:'ex_cort',  label:'Cortisol',                         groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-horm-wrap' },
+  { id:'ex_acth',  label:'ACTH',                             groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-horm-wrap' },
+  { id:'ex_lh',    label:'LH',                               groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_fsh',   label:'FSH',                              groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_e2',    label:'Estradiol (E2)',                   groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
+  { id:'ex_prog',  label:'Progestérone',                     groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
+  { id:'ex_test',  label:'Testostérone',                     groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
+  { id:'ex_prl',   label:'Prolactine',                       groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_amh',   label:'AMH',                              groupe:'🧪 Biochimie', tab:'bio', prix:15000, section:'sec-bio-horm-wrap' },
+  { id:'ex_vitd',  label:'Vitamine D (25-OH)',               groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-horm-wrap' },
+  { id:'ex_b12',   label:'Vitamine B12',                     groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_fol',   label:'Folates (B9)',                     groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_pth',   label:'PTH (parathormone)',               groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-horm-wrap' },
+  { id:'ex_pct',   label:'Procalcitonine (PCT)',             groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-autre-wrap' },
+  { id:'ex_hcrp',  label:'CRP ultra-sensible (hs-CRP)',     groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-autre-wrap' },
+  { id:'ex_osm',   label:'Osmolarité',                       groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-autre-wrap' },
+  { id:'ex_hcy',   label:'Homocystéine',                     groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-autre-wrap' },
+  { id:'ex_amm',   label:'Ammoniaque',                       groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-autre-wrap' },
+  { id:'ex_lact',  label:'Acide lactique',                   groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-autre-wrap' },
+  { id:'ex_bhcg',  label:'Beta-HCG',                        groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-autre-wrap' },
   // ── Bactériologie ──
   { id:'ex_ecbu',  label:'ECBU',                              groupe:'🦠 Bactériologie', tab:'bacterio', prix:5000, section:'sec-bacterio-title' },
   { id:'ex_hemo',  label:'Hémoculture',                       groupe:'🦠 Bactériologie', tab:'bacterio', prix:8000, section:'sec-bacterio-title' },
@@ -8112,6 +8231,47 @@ function examFieldIds(examId) {
     ex_ca:    () => ['v_ca','v_phos'],
     ex_mg:    () => ['v_mg'],
     ex_bic:   () => ['v_bic'],
+    ex_zinc:  () => ['v_zinc'],
+    ex_cuiv:  () => ['v_cuiv'],
+    ex_malb:  () => ['v_malb'],
+    ex_dfg:   () => ['v_dfg'],
+    ex_ldh:   () => ['v_ldh'],
+    ex_amy:   () => ['v_amy'],
+    ex_lip:   () => ['v_lip'],
+    ex_apoa:  () => ['v_apoa'],
+    ex_apob:  () => ['v_apob'],
+    ex_lpa:   () => ['v_lpa'],
+    ex_fer:   () => ['v_fer'],
+    ex_ferr:  () => ['v_ferr'],
+    ex_ddim:  () => ['v_ddim'],
+    ex_tp:    () => ['v_tp'],
+    ex_tca:   () => ['v_tca'],
+    ex_fibr:  () => ['v_fibr'],
+    ex_trop:  () => ['v_trop'],
+    ex_bnp:   () => ['v_bnp'],
+    ex_ck:    () => ['v_ck'],
+    ex_ckmb:  () => ['v_ckmb'],
+    ex_myog:  () => ['v_myog'],
+    ex_cort:  () => ['v_cort'],
+    ex_acth:  () => ['v_acth'],
+    ex_lh:    () => ['v_lh'],
+    ex_fsh:   () => ['v_fsh'],
+    ex_e2:    () => ['v_e2'],
+    ex_prog:  () => ['v_prog'],
+    ex_test:  () => ['v_test'],
+    ex_prl:   () => ['v_prl'],
+    ex_amh:   () => ['v_amh'],
+    ex_vitd:  () => ['v_vitd'],
+    ex_b12:   () => ['v_b12'],
+    ex_fol:   () => ['v_fol'],
+    ex_pth:   () => ['v_pth'],
+    ex_pct:   () => ['v_pct'],
+    ex_hcrp:  () => ['v_hcrp'],
+    ex_osm:   () => ['v_osm'],
+    ex_hcy:   () => ['v_hcy'],
+    ex_amm:   () => ['v_amm'],
+    ex_lact:  () => ['v_lact'],
+    ex_bhcg:  () => ['v_bhcg'],
     // ── Sérologie ─────────────────────────────────────────────
     ex_vih:   () => S(['vih1']),
     ex_hbs:   () => S(['hbsag','hbcac','hbsac']),
@@ -8912,8 +9072,8 @@ function buildRefsEditor() {
     {
       label: '🧪 Biochimie — Glucides', id: 'bio_glu',
       params: [
-        { id:'gly', name:'Glycémie à jeun', unit:'g/L',   ref:'0.70–1.10', lo:0.70, hi:1.10 },
-        { id:'hba', name:'HbA1c',           unit:'%',     ref:'< 5.7',     lo:0,    hi:5.7  },
+        { id:'gly', name:'Glycémie à jeun', unit:'g/L',   ref:'0.60–1.10', lo:0.60, hi:1.10 },
+        { id:'hba', name:'HbA1c',           unit:'%',     ref:'< 6.0',     lo:0,    hi:6.0  },
       ]
     },
     {
