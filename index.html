@@ -1280,6 +1280,7 @@ select {
   </div>
 
   <!-- ===== BIOCHIMIE ===== -->
+  <div class="panel" id="panel-bio">
     <div class="card">
       <div class="card-title">🧪 Biochimie sanguine</div>
       <div id="sec-bio-glucides-wrap">
@@ -2574,14 +2575,14 @@ function updateMontant(type) {
 }
 
 const HEMA_PARAMS = [
-  { id:'gbc',  name:'Globules blancs (GB)',    unit:'/µL',refM:'4–10',    refF:'4–10',    lo:4,   hi:10  },
+  { id:'gbc',  name:'Globules blancs (GB)',    unit:'10³/µL',refM:'4–10',    refF:'4–10',    lo:4,   hi:10  },
   { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL',refM:'4.5–5.5', refF:'4.0–5.0', lo:4.0, hi:5.5 },
   { id:'hb',   name:'Hémoglobine (Hb)',        unit:'g/dL',  refM:'13–17',   refF:'12–16',   lo:12,  hi:17  },
   { id:'ht',   name:'Hématocrite (Ht)',         unit:'%',     refM:'40–54',   refF:'37–47',   lo:37,  hi:54  },
   { id:'vgm',  name:'VGM ⚙',                  unit:'fL',    refM:'80–100',  refF:'80–100',  lo:80,  hi:100, calc:true },
   { id:'tcmh', name:'TCMH ⚙',                 unit:'pg',    refM:'27–32',   refF:'27–32',   lo:27,  hi:32,  calc:true },
   { id:'ccmh', name:'CCMH ⚙',                unit:'g/dL',  refM:'32–36',   refF:'32–36',   lo:32,  hi:36,  calc:true },
-  { id:'plt',  name:'Plaquettes',              unit:'/µL',refM:'150–400', refF:'150–400', lo:150, hi:400 },
+  { id:'plt',  name:'Plaquettes',              unit:'10³/µL',refM:'150–400', refF:'150–400', lo:150, hi:400 },
   { id:'ret',  name:'Réticulocytes',           unit:'%',     refM:'0.5–1.5', refF:'0.5–1.5', lo:0.5, hi:1.5 },
   { id:'vs',   name:'VS (1ère heure)',         unit:'mm/h',  refM:'< 15',    refF:'< 20',    lo:0,   hiM:15, hiF:20 },
 ];
@@ -8864,7 +8865,7 @@ function buildRefsEditor() {
     {
       label: '🩸 Hématologie — NFS', id: 'nfs',
       params: [
-        { id:'gbc',  name:'Globules blancs (GB)',         unit:'/µL', ref:'4–10',      lo:4,    hi:10   },
+        { id:'gbc',  name:'Globules blancs (GB)',         unit:'10³/µL', ref:'4–10',      lo:4,    hi:10   },
         { id:'gr',   name:'Globules rouges (GR)',         unit:'10⁶/µL', ref:'4.0–5.5',   lo:4.0,  hi:5.5  },
         { id:'hb',   name:'Hémoglobine (Hb)',             unit:'g/dL',   ref:'12–17',     lo:12,   hi:17   },
         { id:'ht',   name:'Hématocrite (Ht)',              unit:'%',      ref:'37–54',     lo:37,   hi:54   },
