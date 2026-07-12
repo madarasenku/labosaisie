@@ -6099,7 +6099,7 @@ async function renderStats() {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
     const label = d.toLocaleDateString('fr-FR', { month: 'short' });
-    months.push({ key, label, count: dbPeriode.filter(r => (r.savedAt||'').startsWith(key) || (r.patient?.date||'').startsWith(key)).length });
+    months.push({ key, label, count: dbPeriode.filter(r => (r.patient?.date||r.savedAt||'').startsWith(key)).length });
   }
   const maxMonth = Math.max(...months.map(m => m.count), 1);
 
@@ -6159,7 +6159,7 @@ async function renderStats() {
 
   // ── KPI Financiers ────────────────────────────────────────────
   const recettesTotal = db.reduce((s, r) => s + (r.montant || 0), 0);
-  const recettesMonth = db.filter(r => (r.savedAt || '').startsWith(thisMonth))
+  const recettesMonth = db.filter(r => (r.patient?.date||r.savedAt||'').startsWith(thisMonth))
     .reduce((s, r) => s + (r.montant || 0), 0);
 
   const kpiRM = document.getElementById('kpi-recettes-month');
@@ -6227,13 +6227,13 @@ async function renderStats() {
   const barRecEl = document.getElementById('chartjs-bar-recettes');
   if (barRecEl && typeof Chart !== 'undefined') {
     const bL=[],bD=[];
-    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');bL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));bD.push(db.filter(r=>(r.savedAt||'').startsWith(k)).reduce((s,r)=>s+(r.montant||0),0));}
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');bL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));bD.push(db.filter(r=>(r.patient?.date||r.savedAt||'').startsWith(k)).reduce((s,r)=>s+(r.montant||0),0));}
     window._charts.barRec = new Chart(barRecEl,{type:'bar',data:{labels:bL,datasets:[{label:'FCFA',data:bD,backgroundColor:'rgba(30,58,138,.75)',borderColor:'#1e3a8a',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.raw.toLocaleString('fr-FR')+' FCFA'}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}},x:{ticks:{font:{size:10}}}}}});
   }
   const lineEl = document.getElementById('chartjs-line-evolution');
   if (lineEl && typeof Chart !== 'undefined') {
     const lL=[],lD=[];
-    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');lL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));lD.push(db.filter(r=>(r.savedAt||'').startsWith(k)).length);}
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');lL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));lD.push(db.filter(r=>(r.patient?.date||r.savedAt||'').startsWith(k)).length);}
     window._charts.line = new Chart(lineEl,{type:'line',data:{labels:lL,datasets:[{data:lD,borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',borderWidth:2,tension:.35,pointRadius:4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},stepSize:1}},x:{ticks:{font:{size:10}}}}}});
   }
   const el_ts=document.getElementById('kpi-total-sub'); if(el_ts){const n=Object.values(byType).reduce((a,b)=>a+b,0);el_ts.textContent=n+' analyse'+(n>1?'s':'')+' enregistrée'+(n>1?'s':'');}
@@ -7742,11 +7742,15 @@ function getStatsDateRange() {
 function filterByDateRange(db, from, to) {
   const fromTs = from ? new Date(from + 'T00:00:00').getTime() : null;
   const toTs   = to   ? new Date(to   + 'T23:59:59.999').getTime() : null;
-  // Si aucune borne n'est active, aucun filtrage à appliquer
   if (fromTs === null && toTs === null) return db;
   return db.filter(r => {
-    const ts = r.savedAt ? new Date(r.savedAt).getTime() : NaN;
-    if (isNaN(ts)) return false; // pas d'horodatage exploitable = exclu uniquement quand un filtre de période est actif
+    // ✅ v13.28 — filtrer sur la date du PATIENT (date de consultation saisie),
+    // avec savedAt (date d'enregistrement) comme fallback si patient.date absent.
+    const dateStr = r.patient?.date || '';
+    const ts = dateStr
+      ? new Date(dateStr + 'T00:00:00').getTime()
+      : (r.savedAt ? new Date(r.savedAt).getTime() : NaN);
+    if (isNaN(ts)) return false;
     if (fromTs !== null && ts < fromTs) return false;
     if (toTs   !== null && ts > toTs)   return false;
     return true;
@@ -7825,7 +7829,7 @@ async function renderRistournes(db) {
 const CATALOGUE_EXAMENS = [
   // ── Hématologie ──
   { id:'ex_nfs',   label:'NFS — Numération Formule Sanguine', groupe:'🩸 Hématologie', tab:'hema', prix:3000, section:'sec-nfs' },
-  { id:'ex_ephb',  label:'Électrophorèse de l\'hémoglobine',  groupe:'🩸 Hématologie', tab:'hema', prix:6000, section:'sec-ephb' },
+  { id:'ex_ephb',  label:"Électrophorèse de l'hémoglobine",  groupe:'🩸 Hématologie', tab:'hema', prix:6000, section:'sec-ephb' },
   { id:'ex_vs',    label:'VS — Vitesse de sédimentation',     groupe:'🩸 Hématologie', tab:'hema', prix:0, section:'sec-nfs' },
   // ── Parasitologie ──
   { id:'ex_ge',    label:'Goutte épaisse / TDR Paludisme',    groupe:'🦟 Parasitologie', tab:'hema', prix:0, section:'sec-ge' },
@@ -7833,7 +7837,9 @@ const CATALOGUE_EXAMENS = [
   // ── Groupe sanguin ──
   { id:'ex_gs',    label:'Groupe sanguin ABO / Rhésus',       groupe:'🩸 Groupe sanguin', tab:'gs', prix:2000, section:'sec-gs-standalone' },
   { id:'ex_rai',   label:'RAI + Phénotypage érythrocytaire',  groupe:'🩸 Groupe sanguin', tab:'gs', prix:5000, section:'sec-gs-standalone' },
-  // ── Sérologie ──
+  // ── Bilan prénatal ──
+  { id:'ex_bpn',   label:'Bilan prénatal complet (forfait)',  groupe:'🤰 Bilan prénatal', tab:'hema', prix:20000 },
+  // ── Immuno-Sérologie ──
   { id:'ex_crp',   label:'CRP — Protéine C-réactive',        groupe:'💉 Immuno-Sérologie', tab:'sero', prix:3500, section:'sec-crp' },
   { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:4500, section:'sec-widal' },
   { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2000, section:'sec-sero' },
@@ -7853,67 +7859,65 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_uree',  label:'Urée',                              groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-rein-wrap' },
   { id:'ex_crea',  label:'Créatinine',                        groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-rein-wrap' },
   { id:'ex_ua',    label:'Acide urique',                      groupe:'🧪 Biochimie', tab:'bio', prix:3500, section:'sec-bio-rein-wrap' },
+  { id:'ex_malb',  label:'Microalbuminurie',                  groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-rein-wrap' },
+  { id:'ex_dfg',   label:'Clairance créatinine (DFG)',        groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-rein-wrap' },
   { id:'ex_asat',  label:'ASAT / ALAT (Transaminases)',       groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-foie-wrap' },
   { id:'ex_ggt',   label:'Gamma GT',                          groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-foie-wrap' },
   { id:'ex_pal',   label:'Phosphatases alcalines',            groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-foie-wrap' },
   { id:'ex_bili',  label:'Bilirubine totale & directe',       groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-foie-wrap' },
   { id:'ex_prot',  label:'Protéines totales / Albumine',      groupe:'🧪 Biochimie', tab:'bio', prix:0, section:'sec-bio-foie-wrap' },
+  { id:'ex_ldh',   label:'LDH',                              groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
+  { id:'ex_amy',   label:'Amylase',                           groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
+  { id:'ex_lip',   label:'Lipase',                            groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
   { id:'ex_chol',  label:'Cholestérol total',                 groupe:'🧪 Biochimie', tab:'bio', prix:3500, section:'sec-bio-lipides-wrap' },
   { id:'ex_trig',  label:'Triglycérides',                     groupe:'🧪 Biochimie', tab:'bio', prix:3500, section:'sec-bio-lipides-wrap' },
   { id:'ex_hdl',   label:'HDL-cholestérol',                   groupe:'🧪 Biochimie', tab:'bio', prix:3500, section:'sec-bio-lipides-wrap' },
+  { id:'ex_apoa',  label:'Apolipoprotéine A1',                groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_apob',  label:'Apolipoprotéine B',                 groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
+  { id:'ex_lpa',   label:'Lipoprotéine (a)',                  groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
   { id:'ex_iono',  label:'Ionogramme (Na, K, Cl)',            groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-iono-wrap' },
   { id:'ex_ca',    label:'Calcium / Phosphore',               groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-iono-wrap' },
   { id:'ex_mg',    label:'Magnésium',                         groupe:'🧪 Biochimie', tab:'bio', prix:2500, section:'sec-bio-iono-wrap' },
   { id:'ex_bic',   label:'Bicarbonates',                      groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-iono-wrap' },
   { id:'ex_zinc',  label:'Zinc',                              groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-iono-wrap' },
-  { id:'ex_cuiv',  label:'Cuivre',                           groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-iono-wrap' },
-  { id:'ex_malb',  label:'Microalbuminurie',                 groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-rein-wrap' },
-  { id:'ex_dfg',   label:'Clairance créatinine (DFG)',       groupe:'🧪 Biochimie', tab:'bio', prix:2000, section:'sec-bio-rein-wrap' },
-  { id:'ex_ldh',   label:'LDH',                              groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
-  { id:'ex_amy',   label:'Amylase',                          groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
-  { id:'ex_lip',   label:'Lipase',                           groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-foie-wrap' },
-  { id:'ex_apoa',  label:'Apolipoprotéine A1',               groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
-  { id:'ex_apob',  label:'Apolipoprotéine B',                groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
-  { id:'ex_lpa',   label:'Lipoprotéine (a)',                 groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-lipides-wrap' },
-  { id:'ex_fer',   label:'Fer sérique',                      groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
-  { id:'ex_ferr',  label:'Ferritine',                        groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-fer-wrap' },
-  { id:'ex_ddim',  label:'D-Dimères',                        groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-fer-wrap' },
-  { id:'ex_tp',    label:'TP / INR',                         groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
-  { id:'ex_tca',   label:'TCA',                              groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
-  { id:'ex_fibr',  label:'Fibrinogène',                      groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-fer-wrap' },
-  { id:'ex_trop',  label:'Troponine I/T',                    groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-card-wrap' },
-  { id:'ex_bnp',   label:'BNP / NT-proBNP',                 groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-card-wrap' },
-  { id:'ex_ck',    label:'CK (Créatine kinase)',             groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-card-wrap' },
-  { id:'ex_ckmb',  label:'CK-MB',                           groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-card-wrap' },
-  { id:'ex_myog',  label:'Myoglobine',                       groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-card-wrap' },
-  { id:'ex_cort',  label:'Cortisol',                         groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-horm-wrap' },
-  { id:'ex_acth',  label:'ACTH',                             groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-horm-wrap' },
-  { id:'ex_lh',    label:'LH',                               groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
-  { id:'ex_fsh',   label:'FSH',                              groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
-  { id:'ex_e2',    label:'Estradiol (E2)',                   groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
-  { id:'ex_prog',  label:'Progestérone',                     groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
-  { id:'ex_test',  label:'Testostérone',                     groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
-  { id:'ex_prl',   label:'Prolactine',                       groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
-  { id:'ex_amh',   label:'AMH',                              groupe:'🧪 Biochimie', tab:'bio', prix:15000, section:'sec-bio-horm-wrap' },
-  { id:'ex_vitd',  label:'Vitamine D (25-OH)',               groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-horm-wrap' },
-  { id:'ex_b12',   label:'Vitamine B12',                     groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
-  { id:'ex_fol',   label:'Folates (B9)',                     groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
-  { id:'ex_pth',   label:'PTH (parathormone)',               groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-horm-wrap' },
-  { id:'ex_pct',   label:'Procalcitonine (PCT)',             groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-autre-wrap' },
-  { id:'ex_hcrp',  label:'CRP ultra-sensible (hs-CRP)',     groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-autre-wrap' },
-  { id:'ex_osm',   label:'Osmolarité',                       groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-autre-wrap' },
-  { id:'ex_hcy',   label:'Homocystéine',                     groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-autre-wrap' },
-  { id:'ex_amm',   label:'Ammoniaque',                       groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-autre-wrap' },
-  { id:'ex_lact',  label:'Acide lactique',                   groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-autre-wrap' },
-  { id:'ex_bhcg',  label:'Beta-HCG',                        groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-autre-wrap' },
+  { id:'ex_cuiv',  label:'Cuivre',                            groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-iono-wrap' },
+  { id:'ex_fer',   label:'Fer sérique',                       groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_ferr',  label:'Ferritine',                         groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-fer-wrap' },
+  { id:'ex_ddim',  label:'D-Dimères',                         groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-fer-wrap' },
+  { id:'ex_tp',    label:'TP / INR',                          groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_tca',   label:'TCA',                               groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_fibr',  label:'Fibrinogène',                       groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-fer-wrap' },
+  { id:'ex_trop',  label:'Troponine I/T',                     groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-card-wrap' },
+  { id:'ex_bnp',   label:'BNP / NT-proBNP',                  groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-card-wrap' },
+  { id:'ex_ck',    label:'CK (Créatine kinase)',              groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-card-wrap' },
+  { id:'ex_ckmb',  label:'CK-MB',                            groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-card-wrap' },
+  { id:'ex_myog',  label:'Myoglobine',                        groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-card-wrap' },
+  { id:'ex_cort',  label:'Cortisol',                          groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-horm-wrap' },
+  { id:'ex_acth',  label:'ACTH',                              groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-horm-wrap' },
+  { id:'ex_lh',    label:'LH',                                groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_fsh',   label:'FSH',                               groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_e2',    label:'Estradiol (E2)',                    groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
+  { id:'ex_prog',  label:'Progestérone',                      groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
+  { id:'ex_test',  label:'Testostérone',                      groupe:'🧪 Biochimie', tab:'bio', prix:7000, section:'sec-bio-horm-wrap' },
+  { id:'ex_prl',   label:'Prolactine',                        groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_amh',   label:'AMH',                               groupe:'🧪 Biochimie', tab:'bio', prix:15000, section:'sec-bio-horm-wrap' },
+  { id:'ex_vitd',  label:'Vitamine D (25-OH)',                groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-horm-wrap' },
+  { id:'ex_b12',   label:'Vitamine B12',                      groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_fol',   label:'Folates (B9)',                      groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-horm-wrap' },
+  { id:'ex_pth',   label:'PTH (parathormone)',                groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-horm-wrap' },
+  { id:'ex_pct',   label:'Procalcitonine (PCT)',              groupe:'🧪 Biochimie', tab:'bio', prix:8000, section:'sec-bio-autre-wrap' },
+  { id:'ex_hcrp',  label:'CRP ultra-sensible (hs-CRP)',       groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-autre-wrap' },
+  { id:'ex_osm',   label:'Osmolarité',                        groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-autre-wrap' },
+  { id:'ex_hcy',   label:'Homocystéine',                      groupe:'🧪 Biochimie', tab:'bio', prix:6000, section:'sec-bio-autre-wrap' },
+  { id:'ex_amm',   label:'Ammoniaque',                        groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-autre-wrap' },
+  { id:'ex_lact',  label:'Acide lactique',                    groupe:'🧪 Biochimie', tab:'bio', prix:4000, section:'sec-bio-autre-wrap' },
+  { id:'ex_bhcg',  label:'Beta-HCG',                         groupe:'🧪 Biochimie', tab:'bio', prix:5000, section:'sec-bio-autre-wrap' },
   // ── Bactériologie ──
-  { id:'ex_ecbu',  label:'ECBU',                              groupe:'🦠 Bactériologie', tab:'bacterio', prix:10000, section:'sec-bacterio-title' },
-  { id:'ex_hemo',  label:'Hémoculture',                       groupe:'🦠 Bactériologie', tab:'bacterio', prix:15000, section:'sec-bacterio-title' },
-  { id:'ex_copro', label:'Coproculture',                      groupe:'🦠 Bactériologie', tab:'bacterio', prix:10000, section:'sec-bacterio-title' },
+  { id:'ex_ecbu',  label:'ECBU',                              groupe:'🦠 Bactériologie', tab:'bacterio', prix:10000 },
+  { id:'ex_hemo',  label:'Hémoculture',                       groupe:'🦠 Bactériologie', tab:'bacterio', prix:15000 },
+  { id:'ex_copro', label:'Coproculture',                      groupe:'🦠 Bactériologie', tab:'bacterio', prix:10000 },
   { id:'ex_pg',    label:'Prélèvement de gorge',              groupe:'🦠 Bactériologie', tab:'bacterio', prix:0 },
   { id:'ex_pus',   label:'Prélèvement de pus / plaie',        groupe:'🦠 Bactériologie', tab:'bacterio', prix:0 },
-  // ── Bilan prénatal ──
-
 ];
 
 // ✅ v12.4 — Paramètres attendus par examen coché (affichage "à compléter" sur la fiche)
