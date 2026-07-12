@@ -1303,12 +1303,6 @@ select {
         <div class="section-label" id="sec-bio-iono">Ionogramme</div>
         <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-iono-body"></tbody></table></div>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Biochimie')">💾 Enregistrer</button>
-        <button class="btn btn-success" onclick="exportSingle('Biochimie')">⬇ Excel</button>
-        <button class="btn" onclick="exportPDFFromForm('Biochimie')" style="background:#dc2626;color:#fff">📄 PDF</button>
-        <button class="btn btn-outline" onclick="resetPanel('bio')">↺ Effacer</button>
-      </div>
     </div>
 
     <div class="card" id="sec-bio-fer-wrap">
@@ -1332,6 +1326,15 @@ select {
     <div class="card" id="sec-bio-autre-wrap">
       <div class="card-title">🔬 Autres marqueurs</div>
       <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-autre-body"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveRecord('Biochimie')">💾 Enregistrer</button>
+        <button class="btn btn-success" onclick="exportSingle('Biochimie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Biochimie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('bio')">↺ Effacer</button>
+      </div>
     </div>
   </div>
 
@@ -1620,12 +1623,6 @@ select {
         <label>Observations / Commentaires</label>
         <textarea id="sero_obs" placeholder="Contexte clinique, antécédents vaccinaux, résultats antérieurs..."></textarea>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Immuno-Sérologie')">💾 Enregistrer</button>
-        <button class="btn btn-success" onclick="exportSingle('Immuno-Sérologie')">⬇ Excel</button>
-        <button class="btn" onclick="exportPDFFromForm('Immuno-Sérologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
-        <button class="btn btn-outline" onclick="resetPanel('sero')">↺ Effacer</button>
-      </div>
     </div>
 
     <!-- ✅ v13.24 — GS/Rh, CRP et SWF déplacés sur Sérologie/Immuno -->
@@ -1690,6 +1687,15 @@ select {
         </table>
       </div>
       <div id="widal-conclusion" style="margin-top:12px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;display:none"></div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveRecord('Immuno-Sérologie')">💾 Enregistrer</button>
+        <button class="btn btn-success" onclick="exportSingle('Immuno-Sérologie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Immuno-Sérologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('sero')">↺ Effacer</button>
+      </div>
     </div>
   </div>
 
@@ -1866,8 +1872,8 @@ select {
       <span style="font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap">Période :</span>
       <button class="btn btn-outline" id="hist-btn-jour" onclick="setHistPeriode('jour')" style="padding:5px 12px;font-size:11.5px">Aujourd'hui</button>
       <button class="btn btn-outline" id="hist-btn-semaine" onclick="setHistPeriode('semaine')" style="padding:5px 12px;font-size:11.5px">Cette semaine</button>
-      <button class="btn btn-outline" id="hist-btn-mois" onclick="setHistPeriode('mois')" style="padding:5px 12px;font-size:11.5px">Ce mois</button>
-      <button class="btn btn-outline active" id="hist-btn-tout" onclick="setHistPeriode('tout')" style="padding:5px 12px;font-size:11.5px">Tout</button>
+      <button class="btn btn-outline active" id="hist-btn-mois" onclick="setHistPeriode('mois')" style="padding:5px 12px;font-size:11.5px">Ce mois</button>
+      <button class="btn btn-outline" id="hist-btn-tout" onclick="setHistPeriode('tout')" style="padding:5px 12px;font-size:11.5px">Tout</button>
       <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <label style="font-size:11.5px;color:var(--text-muted)">Du</label>
@@ -3844,13 +3850,24 @@ function hideLoading() {
 }
 
 async function refreshDB(force) {
-  // ✅ v13.5 — chargement ALLÉGÉ : la liste sans le gros JSONB des résultats.
-  // Le détail par analyse est récupéré à la demande via ensureFull().
+  // ✅ v13.28 — filtrage côté serveur : on passe la période active au RPC
+  // pour ne charger que les dossiers de la période demandée (max 500).
   if (!force && _dbCache.length) return _dbCache;
   if (!navigator.onLine) return _dbCache;
   let data, error;
   try {
-    ({ data, error } = await _sb.rpc('get_resultats_light', { p_token: TK() }));
+    // Récupérer la plage de dates active
+    let from, to;
+    if (_histPeriode === 'custom') {
+      from = document.getElementById('filter-date-from')?.value || '';
+      to   = document.getElementById('filter-date-to')?.value   || '';
+    } else {
+      ({ from, to } = computeHistDateRange(_histPeriode || 'mois'));
+    }
+    const params = { p_token: TK() };
+    if (from) params.p_date_from = from;
+    if (to)   params.p_date_to   = to;
+    ({ data, error } = await _sb.rpc('get_resultats_light', params));
   } catch (e) {
     if (isNetworkError(e)) return _dbCache;
     console.error('Erreur de chargement Supabase:', e);
@@ -4967,7 +4984,7 @@ function clearSearchFilters() {
   });
   const fs = document.getElementById('filter-sort'); if (fs) fs.value = 'desc';
   _sortCol = 'date';
-  _histPeriode = 'tout';
+  _histPeriode = 'mois';
   ['jour','semaine','mois','tout'].forEach(p => {
     const btn = document.getElementById('hist-btn-' + p);
     if (btn) btn.classList.toggle('active', p === 'tout');
@@ -4976,7 +4993,7 @@ function clearSearchFilters() {
 }
 
 // ── Raccourcis de période pour l'Historique (même logique que Statistiques) ──
-let _histPeriode = 'tout'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
+let _histPeriode = 'mois'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
 
 function setHistPeriode(periode) {
   _histPeriode = periode;
@@ -4985,8 +5002,6 @@ function setHistPeriode(periode) {
     if (btn) btn.classList.toggle('active', p === periode);
   });
 
-  // Si on choisit un raccourci (pas "custom"), on remplit/efface les champs de date
-  // pour qu'ils restent visuellement cohérents avec le raccourci actif
   if (periode !== 'custom') {
     const { from, to } = computeHistDateRange(periode);
     const fromEl = document.getElementById('filter-date-from');
@@ -4994,7 +5009,14 @@ function setHistPeriode(periode) {
     if (fromEl) fromEl.value = from || '';
     if (toEl)   toEl.value   = (periode === 'tout') ? '' : (to || '');
   }
-  renderHistory();
+
+  // ✅ v13.28 — recharger depuis le serveur avec les nouvelles dates
+  _dbCache = [];
+  showLoading();
+  refreshDB(true).then(() => {
+    hideLoading();
+    renderHistory();
+  });
 }
 
 // Calcule la plage [from, to] pour un raccourci donné (réutilise la même
