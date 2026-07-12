@@ -2946,42 +2946,35 @@ function collectBpnCompo() {
 // ✅ v13.22 — BPN : cocher les examens existants sur les onglets
 // Quand ex_bpn est coché, active les examens correspondants sur les
 // fiches déjà existantes (NFS, EPHB, Bio, GS, Sérologies, ECBU).
+// ✅ v13.28 — BPN forfaitaire : les 12 examens inclus passent à 0 F
+// (compris dans le forfait 20 000). Décocher BPN restaure les tarifs.
 function applyBpnSections() {
   const on = !!document.getElementById('ex_bpn')?.checked;
-  // Examens à cocher automatiquement quand BPN est activé
   const bpnExamIds = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_vih','ex_hbs','ex_tpha','ex_toxo','ex_rube','ex_ecbu'];
-  let changed = false;
   bpnExamIds.forEach(id => {
     const chk = document.getElementById(id);
-    if (!chk) return;
-    if (on && !chk.checked) {
+    if (chk && on && !chk.checked) {
       chk.checked = true;
-      changed = true;
       if (typeof syncExamRowState === 'function') syncExamRowState(id);
+    }
+    const px = document.getElementById('px_' + id);
+    if (px) {
+      if (on) {
+        if (px.value !== '0' && px.dataset.prevPrix === undefined) px.dataset.prevPrix = px.value;
+        px.value = '0';
+        px.readOnly = true;
+        px.style.opacity = '0.5';
+      } else if (px.dataset.prevPrix !== undefined) {
+        px.value = px.dataset.prevPrix;
+        delete px.dataset.prevPrix;
+        px.readOnly = false;
+        px.style.opacity = '';
+      }
     }
   });
   if (typeof applyExamLocks === 'function') applyExamLocks();
-  // ✅ v13.28 — si on vient de cocher des examens, recalculer le total
-  // (sans re-boucler : on lit directement les cases, pas via calcFicheTotal
-  //  qui rappellerait applyBpnSections).
-  if (changed) {
-    let total = 0;
-    const bpnInclus = new Set(bpnExamIds);
-    getCatalogueComplet().forEach(ex => {
-      const c = document.getElementById(ex.id);
-      if (c && c.checked) {
-        if (on && bpnInclus.has(ex.id)) return; // inclus dans le forfait → 0
-        const px = document.getElementById('px_' + ex.id);
-        total += parseInt(px?.value || '0');
-      }
-    });
-    const el = document.getElementById('montant-preview');
-    if (el) {
-      el.textContent = total.toLocaleString('fr-FR') + ' FCFA';
-      el.dataset.montant = total;
-    }
-  }
 }
+
 
 // Biochimie BPN — champs dans #bpn-bio-body
 function buildBpnBio2() {
@@ -7920,7 +7913,7 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_pg',    label:'Prélèvement de gorge',              groupe:'🦠 Bactériologie', tab:'bacterio', prix:0 },
   { id:'ex_pus',   label:'Prélèvement de pus / plaie',        groupe:'🦠 Bactériologie', tab:'bacterio', prix:0 },
   // ── Bilan prénatal ──
-  { id:'ex_bpn',   label:'Bilan prénatal complet',            groupe:'🤰 Bilan prénatal', tab:'bpn', prix:20000 },
+
 ];
 
 // ✅ v12.4 — Paramètres attendus par examen coché (affichage "à compléter" sur la fiche)
@@ -8301,20 +8294,12 @@ function calcFicheTotal() {
   let total = 0, count = 0;
   const montantParTab = {}; // ex: { hema: 5500, bio: 1000, ... }
 
-  // ✅ v13.28 — BPN forfaitaire : si coché, les 12 examens inclus comptent 0,
-  // seul le forfait BPN (20 000) est facturé.
-  const bpnOn = !!document.getElementById('ex_bpn')?.checked;
-  const bpnInclus = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs',
-                     'ex_vih','ex_hbs','ex_tpha','ex_toxo','ex_rube','ex_ecbu'];
-
   getCatalogueComplet().forEach(ex => {
     const chk  = document.getElementById(ex.id);
     const pxEl = document.getElementById('px_' + ex.id);
     const row  = document.getElementById('row_' + ex.id);
     if (chk && chk.checked) {
-      let prix = parseInt(pxEl?.value || '0');
-      // Si BPN actif et cet examen est inclus dans le forfait → prix 0
-      if (bpnOn && bpnInclus.includes(ex.id)) prix = 0;
+      const prix = parseInt(pxEl?.value || '0');
       total += prix;
       count++;
       const tab = ex.tab || 'hema';
