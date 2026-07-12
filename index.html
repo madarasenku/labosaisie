@@ -8454,12 +8454,90 @@ function toggleShowAllExams() {
   markRequiredSections();
 }
 
-function enregistrerFicheIdentif() {
-  // Cette fonction valide simplement le nom avant de passer à la saisie
-  const nom = document.getElementById('p_nom')?.value?.trim();
-  if (!nom) { toast('Veuillez saisir le nom du patient', 'err'); return; }
-  // La fiche est enregistrée en base au moment de l'enregistrement de chaque analyse
-  toast('Identification validée — Passez à la saisie des analyses', 'ok');
+async function enregistrerFicheIdentif() {
+  // ✅ v13.28 — Enregistre le dossier (patient + examens cochés + montant)
+  // SANS résultats. Le dossier apparaît en base avec sa facture ; les
+  // résultats pourront être complétés plus tard en éditant le dossier.
+  const p = getPatient();
+  if (!validatePatient(p)) return;
+
+  // Récupérer tous les examens cochés (tous onglets confondus)
+  const catalogue = getCatalogueComplet();
+  const cochesParTab = {};
+  const prixParTab = {};
+  let montantTotal = 0;
+  catalogue.forEach(ex => {
+    const cb = document.getElementById(ex.id);
+    if (cb && cb.checked) {
+      const tab = ex.tab || 'hema';
+      (cochesParTab[tab] = cochesParTab[tab] || []).push(ex.label);
+      const prixEl = document.getElementById('px_' + ex.id);
+      const prix = prixEl ? (parseInt(prixEl.value) || 0) : (ex.prix || 0);
+      (prixParTab[tab] = prixParTab[tab] || {})[ex.label] = prix;
+      montantTotal += prix;
+    }
+  });
+
+  const nbCoches = Object.values(cochesParTab).reduce((s, a) => s + a.length, 0);
+  if (nbCoches === 0) {
+    toast('Cochez au moins un examen pour enregistrer la facture', 'err');
+    return;
+  }
+
+  if (_saving) return;
+  _saving = true;
+  showLoading('Enregistrement de la facture…');
+
+  try {
+    // Construire un dossier "facture seule" : métadonnées, pas de résultats
+    const TAB_TO_TYPE = {
+      hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
+      sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin'
+    };
+    // Type principal = celui du premier onglet ayant des examens cochés
+    const premierTab = Object.keys(cochesParTab)[0];
+    const typePrincipal = TAB_TO_TYPE[premierTab] || 'Hématologie';
+
+    const _montants = {};
+    const _examens_coches = {};
+    const _examens_prix = {};
+    Object.keys(cochesParTab).forEach(tab => {
+      const t = TAB_TO_TYPE[tab] || 'Hématologie';
+      const m = Object.values(prixParTab[tab]).reduce((s, v) => s + v, 0);
+      _montants[t] = m;
+      _examens_coches[t] = cochesParTab[tab];
+      _examens_prix[t] = prixParTab[tab];
+    });
+
+    const resultats = {
+      _types: Object.keys(_montants),
+      _montants,
+      _examens_coches,
+      _examens_prix,
+      _facture_seule: true, // marqueur : résultats non encore saisis
+    };
+
+    const record = {
+      type: typePrincipal,
+      patient: p,
+      resultats,
+      montant: montantTotal,
+      prescripteur_id: document.getElementById('p_prescripteur_id')?.value || null,
+      est_bpn: false,
+    };
+
+    await insertRecordRemote(record);
+    hideLoading();
+    toast('Facture enregistrée ✓ — résultats à compléter plus tard', 'ok');
+    await refreshDB(true);
+    newPatient();
+  } catch (e) {
+    hideLoading();
+    console.error('Erreur enregistrement facture:', e);
+    toast('Erreur : ' + (e.message || e), 'err');
+  } finally {
+    _saving = false;
+  }
 }
 
 // ============================================================
