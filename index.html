@@ -477,6 +477,7 @@ select {
   margin-bottom: 6px; padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
+.accordion-header:hover { background: var(--bg-alt); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
 
 /* ================================================================
    ANTIBIOGRAMME
@@ -1880,6 +1881,7 @@ select {
         <input type="date" id="filter-date-from" onchange="setHistPeriode('custom')" style="width:auto">
         <label style="font-size:11.5px;color:var(--text-muted)">au</label>
         <input type="date" id="filter-date-to" onchange="setHistPeriode('custom')" style="width:auto">
+        <button class="btn btn-outline" onclick="appliquerFiltreCustom()" style="padding:4px 10px;font-size:11.5px">🔍 Appliquer</button>
       </div>
     </div>
 
@@ -3876,9 +3878,10 @@ async function refreshDB(force) {
     if (_histPeriode === 'custom') {
       from = document.getElementById('filter-date-from')?.value || '';
       to   = document.getElementById('filter-date-to')?.value   || '';
-    } else {
+    } else if (_histPeriode !== 'tout') {
       ({ from, to } = computeHistDateRange(_histPeriode || 'mois'));
     }
+    // mode 'tout' → pas de filtre date → charger tout
     const params = { p_token: TK() };
     if (from) params.p_date_from = from;
     if (to)   params.p_date_to   = to;
@@ -5023,9 +5026,18 @@ function setHistPeriode(periode) {
     const toEl   = document.getElementById('filter-date-to');
     if (fromEl) fromEl.value = from || '';
     if (toEl)   toEl.value   = (periode === 'tout') ? '' : (to || '');
+  } else {
+    // ✅ v13.28 — custom : ne recharger que si les deux dates sont renseignées
+    // Sinon, juste filtrer localement sur le cache existant
+    const from = document.getElementById('filter-date-from')?.value || '';
+    const to   = document.getElementById('filter-date-to')?.value   || '';
+    if (!from || !to) {
+      renderHistory(); // filtre local sans recharger
+      return;
+    }
   }
 
-  // ✅ v13.28 — recharger depuis le serveur avec les nouvelles dates
+  // Recharger depuis le serveur avec les nouvelles dates
   _dbCache = [];
   showLoading();
   refreshDB(true).then(() => {
@@ -5037,6 +5049,33 @@ function setHistPeriode(periode) {
 // Calcule la plage [from, to] pour un raccourci donné (réutilise la même
 // logique que les Statistiques pour que "Aujourd'hui" ait toujours le même
 // sens partout dans l'application : depuis 00h00 du jour en cours)
+function appliquerFiltreCustom() {
+  const from = document.getElementById('filter-date-from')?.value || '';
+  const to   = document.getElementById('filter-date-to')?.value   || '';
+  if (!from && !to) { toast('Saisissez au moins une date', 'err'); return; }
+  _histPeriode = 'custom';
+  _dbCache = [];
+  showLoading();
+  refreshDB(true).then(db => {
+    hideLoading();
+    if (db.length === 0) {
+      // ✅ Fallback : le RPC avec filtres date n'est pas encore installé
+      // → recharger sans filtre et filtrer côté client
+      console.warn('[LaboSaisie] Filtre date serveur inactif — fallback client');
+      _dbCache = [];
+      // Passer en mode "tout" pour charger sans filtre
+      const savedPeriode = _histPeriode;
+      _histPeriode = 'tout';
+      refreshDB(true).then(() => {
+        _histPeriode = savedPeriode;
+        renderHistory(); // filterByDateRange s'applique côté client
+      });
+    } else {
+      renderHistory();
+    }
+  });
+}
+
 function computeHistDateRange(periode) {
   const now = new Date();
   const today = now.toISOString().slice(0,10);
@@ -8250,17 +8289,29 @@ function buildFicheExamens() {
   const grid = document.getElementById('fiche-examens-grid');
   if (!grid) return;
 
-  // Grouper par catégorie (catalogue complet = défauts + personnalisés)
+  // Groupes ouverts par défaut
+  const OUVERTS_PAR_DEFAUT = new Set([
+    '🩸 Hématologie', '🤰 Bilan prénatal'
+  ]);
+
+  // Grouper par catégorie
   const groupes = {};
   getCatalogueComplet().forEach(ex => {
     if (!groupes[ex.groupe]) groupes[ex.groupe] = [];
     groupes[ex.groupe].push(ex);
   });
 
-  grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => `
+  grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => {
+    const ouvert = OUVERTS_PAR_DEFAUT.has(groupe);
+    const gid = 'grp_' + groupe.replace(/[^a-z0-9]/gi, '_');
+    return `
     <div class="exam-group-card">
-      <div class="exam-group-title">${groupe}</div>
-      ${examens.map(ex => `
+      <div class="exam-group-title accordion-header" onclick="toggleAccordion('${gid}')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
+        <span>${groupe}</span>
+        <span id="${gid}_arrow" style="font-size:12px;transition:transform .2s;display:inline-block;transform:${ouvert ? 'rotate(0deg)' : 'rotate(-90deg)'}">▼</span>
+      </div>
+      <div id="${gid}" style="display:${ouvert ? 'block' : 'none'}">
+        ${examens.map(ex => `
         <div class="exam-row" id="row_${ex.id}" onclick="toggleExamRow(event,'${ex.id}')">
           <input type="checkbox" id="${ex.id}" onchange="calcFicheTotal();syncExamRowState('${ex.id}')" onclick="event.stopPropagation()">
           <label for="${ex.id}" onclick="event.stopPropagation()">
@@ -8271,10 +8322,21 @@ function buildFicheExamens() {
             oninput="calcFicheTotal()" onclick="event.stopPropagation()">
           <span class="exam-unit">F</span>
         </div>`).join('')}
-    </div>`).join('');
+      </div>
+    </div>`;
+  }).join('');
 
   rechargeFichePrix();
-  if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
+  if (typeof applyExamLocks === 'function') applyExamLocks();
+}
+
+function toggleAccordion(gid) {
+  const body  = document.getElementById(gid);
+  const arrow = document.getElementById(gid + '_arrow');
+  if (!body) return;
+  const ouvert = body.style.display !== 'none';
+  body.style.display  = ouvert ? 'none' : 'block';
+  if (arrow) arrow.style.transform = ouvert ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
 // Permet de cocher/décocher une ligne d'examen en cliquant n'importe où dessus
@@ -8650,7 +8712,17 @@ async function doLogin() {
       return;
     }
     // ✅ v13.3 — login_user renvoie un statut : ok / locked / invalid
-    const row = data && data[0];
+    // v13.28 : type composite → colonnes uname/urole/utoken/ustatus
+    const raw = data && (Array.isArray(data) ? data[0] : data);
+    // Normaliser : accepte les deux formats (ancien et nouveau)
+    const row = raw ? {
+      id:             raw.id             ?? raw.id,
+      username:       raw.username       ?? raw.uname,
+      role:           raw.role           ?? raw.urole,
+      token:          raw.token          ?? raw.utoken,
+      status:         raw.status         ?? raw.ustatus,
+      locked_seconds: raw.locked_seconds ?? raw.ulocked_secs ?? 0,
+    } : null;
     if (row && row.status === 'ok') {
       setSession(row);
       enterApp();
