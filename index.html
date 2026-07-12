@@ -2950,15 +2950,37 @@ function applyBpnSections() {
   const on = !!document.getElementById('ex_bpn')?.checked;
   // Examens à cocher automatiquement quand BPN est activé
   const bpnExamIds = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_vih','ex_hbs','ex_tpha','ex_toxo','ex_rube','ex_ecbu'];
+  let changed = false;
   bpnExamIds.forEach(id => {
     const chk = document.getElementById(id);
     if (!chk) return;
     if (on && !chk.checked) {
       chk.checked = true;
+      changed = true;
       if (typeof syncExamRowState === 'function') syncExamRowState(id);
     }
   });
   if (typeof applyExamLocks === 'function') applyExamLocks();
+  // ✅ v13.28 — si on vient de cocher des examens, recalculer le total
+  // (sans re-boucler : on lit directement les cases, pas via calcFicheTotal
+  //  qui rappellerait applyBpnSections).
+  if (changed) {
+    let total = 0;
+    const bpnInclus = new Set(bpnExamIds);
+    getCatalogueComplet().forEach(ex => {
+      const c = document.getElementById(ex.id);
+      if (c && c.checked) {
+        if (on && bpnInclus.has(ex.id)) return; // inclus dans le forfait → 0
+        const px = document.getElementById('px_' + ex.id);
+        total += parseInt(px?.value || '0');
+      }
+    });
+    const el = document.getElementById('montant-preview');
+    if (el) {
+      el.textContent = total.toLocaleString('fr-FR') + ' FCFA';
+      el.dataset.montant = total;
+    }
+  }
 }
 
 // Biochimie BPN — champs dans #bpn-bio-body
@@ -8279,15 +8301,22 @@ function calcFicheTotal() {
   let total = 0, count = 0;
   const montantParTab = {}; // ex: { hema: 5500, bio: 1000, ... }
 
+  // ✅ v13.28 — BPN forfaitaire : si coché, les 12 examens inclus comptent 0,
+  // seul le forfait BPN (20 000) est facturé.
+  const bpnOn = !!document.getElementById('ex_bpn')?.checked;
+  const bpnInclus = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs',
+                     'ex_vih','ex_hbs','ex_tpha','ex_toxo','ex_rube','ex_ecbu'];
+
   getCatalogueComplet().forEach(ex => {
     const chk  = document.getElementById(ex.id);
     const pxEl = document.getElementById('px_' + ex.id);
     const row  = document.getElementById('row_' + ex.id);
     if (chk && chk.checked) {
-      const prix = parseInt(pxEl?.value || '0');
+      let prix = parseInt(pxEl?.value || '0');
+      // Si BPN actif et cet examen est inclus dans le forfait → prix 0
+      if (bpnOn && bpnInclus.includes(ex.id)) prix = 0;
       total += prix;
       count++;
-      // Accumuler par tab
       const tab = ex.tab || 'hema';
       montantParTab[tab] = (montantParTab[tab] || 0) + prix;
     }
