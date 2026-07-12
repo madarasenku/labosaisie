@@ -7565,9 +7565,8 @@ async function savePrescripteur() {
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; } // ✅ v12
   const nom = document.getElementById('presc_nom')?.value?.trim();
   if (!nom) { toast('Nom du prescripteur obligatoire', 'err'); return; }
-  if (_prescripteurs.some(p => (p.nom||'').trim().toLowerCase() === nom.toLowerCase())) { // ✅ v12 anti-doublon
-    toast('Un prescripteur porte déjà ce nom', 'err'); return;
-  }
+  // ✅ v13.28 — L'anti-doublon est géré côté serveur (qui réactive un
+  // prescripteur désactivé portant le même nom au lieu de le rejeter).
   const { data: res, error } = await _sb.rpc('insert_prescripteur', {
     p_token: TK(),
     p_nom: nom,
