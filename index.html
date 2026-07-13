@@ -11,11 +11,19 @@
      puis : integrity="sha384-<RÉSULTAT>" (crossorigin est déjà présent).
      Alternative plus robuste : héberger ces 6 fichiers dans le dépôt GitHub.
      ⚠ N'ajoutez PAS de hash au hasard : un hash erroné bloque le chargement. -->
+<!-- ✅ v13.28 — CDN tiers : crossorigin="anonymous" pour permettre la vérification d'intégrité (SRI).
+     Ajoutez integrity="sha384-…" une fois les hachages officiels confirmés (voir audit_report.md). -->
+<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" crossorigin="anonymous"></script>
+<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
 <style>
 /* ============================================================
@@ -57,6 +65,54 @@
   --shadow-lg:    0 8px 32px rgba(26,68,128,.16), 0 2px 8px rgba(26,68,128,.08);
   --shadow-sm:    0 1px 3px rgba(26,68,128,.08);
 }
+
+
+/* ── Mode sombre ── */
+[data-theme="dark"] {
+  --bg:           #0f172a;
+  --surface:      #1e293b;
+  --border:       #334155;
+  --text:         #e2e8f0;
+  --text-muted:   #94a3b8;
+  --text-label:   #cbd5e1;
+  --accent:       #60a5fa;
+  --accent-hover: #93c5fd;
+  --accent-light: #1e3a5f;
+  --danger:       #f87171;
+  --danger-light: #2d1515;
+  --success:      #34d399;
+  --success-light:#0d2d1f;
+  --warning:      #fbbf24;
+  --warning-light:#2d1f00;
+  --cpmi-deep:    #93c5fd;
+  --cpmi-mid:     #60a5fa;
+  --cpmi-soft:    #1e3a5f;
+}
+[data-theme="dark"] body { background-color: #0a0f1e; }
+[data-theme="dark"] .card { background: var(--surface); }
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+  background: #1e293b; color: var(--text); border-color: var(--border);
+}
+[data-theme="dark"] .exam-group-card { background: #1e293b; }
+[data-theme="dark"] body::before, [data-theme="dark"] body::after { opacity: 0.03; }
+
+
+/* ── Statuts dossier ── */
+.badge-rendu   { background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer }
+.badge-attente { background:#fef9c3;color:#854d0e;border:1px solid #fde047;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer }
+.badge-urgent  { background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer }
+.hist-row-rendu td:first-child { border-left: 3px solid #22c55e; }
+.hist-row-attente td:first-child { border-left: 3px solid #eab308; }
+.hist-row-urgent td:first-child { border-left: 3px solid #ef4444; }
+
+/* ── Aperçu survol ── */
+.record-preview {
+  position:fixed; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:14px 18px; box-shadow:var(--shadow-lg);
+  font-size:12px; z-index:9999; max-width:280px; pointer-events:none;
+  transition:opacity .15s; opacity:0;
+}
+.record-preview.visible { opacity:1; }
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -871,6 +927,37 @@ select {
 /* Masquer print-render hors impression */
 #print-render { display: none; }
 
+/* ✅ v13.28 — Modèles rapides d'examens */
+.btn-modele {
+  font-family: inherit; font-size: 11.5px; font-weight: 700;
+  background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;
+  border-radius: 99px; padding: 5px 12px; cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.btn-modele:hover { background: #bae6fd; transform: translateY(-1px); }
+.btn-modele:active { transform: translateY(0); }
+.btn-modele-clear { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+.btn-modele-clear:hover { background: #fecaca; }
+
+/* ✅ v13.28 — Alerte valeurs critiques (non bloquante) */
+#critical-alert-box {
+  display: none; margin-bottom: 16px; padding: 12px 16px;
+  background: var(--danger-light); border: 2px solid var(--danger);
+  border-radius: var(--radius); color: var(--danger); font-size: 13px; font-weight: 600;
+  animation: critPulse 1.4s ease-in-out infinite;
+}
+@keyframes critPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.25); } 50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); } }
+.badge-critique {
+  display: inline-block; background: var(--danger); color: #fff;
+  font-size: 9.5px; font-weight: 800; border-radius: 4px; padding: 1px 6px; margin-left: 4px;
+  vertical-align: middle; white-space: nowrap;
+}
+.nav-badge {
+  display: inline-block; min-width: 16px; padding: 0 5px; margin-left: 4px;
+  background: var(--warning); color: #fff; border-radius: 99px;
+  font-size: 10px; font-weight: 800; line-height: 16px; text-align: center;
+}
+
 </style>
 </head>
 <body>
@@ -967,6 +1054,8 @@ select {
 })();
 </script>
 
+  <div id="record-preview" class="record-preview"></div>
+
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">
@@ -1021,10 +1110,12 @@ select {
   <nav>
     <span id="user-badge" style="font-size:12px;opacity:.85;margin-right:6px;white-space:nowrap"></span>
     <button class="nav-btn active" data-view="saisie" onclick="showView('saisie')">Nouvelle saisie</button>
-    <button class="nav-btn" data-view="historique" onclick="showView('historique')">Historique</button>
+    <button id="btn-nav-historique" class="nav-btn" data-view="historique" onclick="showView('historique')">Historique<span id="hist-badge" class="nav-badge" style="display:none"></span></button>
     <button class="nav-btn" data-view="stats" onclick="showView('stats')">📊 Statistiques</button>
+    <button id="btn-nav-caisse" class="nav-btn" data-view="caisse" onclick="showView('caisse')">💰 Caisse</button>
     <button id="btn-nav-users" class="nav-btn" data-view="comptes" onclick="showView('comptes')" style="display:none">👤 Comptes</button>
     <button class="nav-btn" onclick="exportAllExcel()">⬇ Exporter tout</button>
+    <button class="nav-btn" onclick="toggleDarkMode()" id="btn-dark-mode" title="Mode sombre/clair" style="font-size:16px;padding:5px 10px">🌙</button>
     <button class="nav-btn logout-btn" onclick="doLogout()" title="Se déconnecter">⎋ Déconnexion</button>
   </nav>
 </header>
@@ -1058,7 +1149,8 @@ select {
       </div>
       <div class="form-group">
         <label>Nom complet<span class="req">*</span></label>
-        <input type="text" id="p_nom" placeholder="Nom et prénom" autocomplete="off" list="patient-suggestions" oninput="onPatientNameInput()">
+        <input type="text" id="p_nom" placeholder="Nom et prénom" autocomplete="off" list="patient-suggestions" oninput="onPatientNameInput();checkPatientExistant()">
+        <div id="patient-existant-notif" style="display:none;margin-top:4px;padding:6px 10px;background:#fef9c3;border:1px solid #fde047;border-radius:6px;font-size:12px;color:#854d0e"></div>
         <datalist id="patient-suggestions"></datalist>
       </div>
       <div class="form-group">
@@ -1081,7 +1173,8 @@ select {
           </select>
           <button type="button" onclick="showAddPrescripteur()" title="Ajouter un prescripteur" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
         </div>
-        <input type="text" id="p_medecin" placeholder="Ou saisir manuellement..." style="margin-top:6px;font-size:12px" oninput="updateMontantCurrent()">
+        <input type="text" id="p_medecin" placeholder="Ou saisir manuellement..." style="margin-top:6px;font-size:12px" list="medecin-datalist" oninput="updateMontantCurrent()">
+        <datalist id="medecin-datalist"></datalist>
       </div>
       <div class="form-group">
         <label>Service / provenance</label>
@@ -1110,6 +1203,21 @@ select {
     <div style="font-size:11.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">
       📋 Examens demandés & Facturation
     </div>
+
+    <!-- ✅ v13.28 — Modèles rapides : cochent d'un clic un ensemble d'examens fréquents -->
+    <div id="modeles-rapides-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;padding:10px 12px;background:var(--accent-light);border:1px solid var(--border);border-radius:var(--radius)">
+      <span style="font-size:11px;font-weight:800;color:var(--cpmi-deep);align-self:center;margin-right:4px">⚡ Modèles rapides :</span>
+      <button type="button" class="btn-modele" onclick="appliquerModele('nfs')">🩸 NFS complète</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('renal')">💧 Bilan rénal</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('hepatique')">🫀 Bilan hépatique</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('lipidique')">🧈 Bilan lipidique</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('infectieux')">🦠 Bilan infectieux</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('groupe')">🩸 Groupe sanguin</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('ecbu')">🧫 ECBU</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('serologie')">💉 Sérologie</button>
+      <button type="button" class="btn-modele btn-modele-clear" onclick="decocherTousExamens()">✕ Tout décocher</button>
+    </div>
+
     <div id="fiche-examens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px"></div>
 
     <!-- Total facture -->
@@ -1139,6 +1247,9 @@ select {
        ZONE DE SAISIE DES RÉSULTATS (masquée au départ)
        ═══════════════════════════════════════════════════ -->
   <div id="zone-saisie" style="display:none">
+
+    <!-- ✅ v13.28 — Alerte valeurs critiques (non bloquante, mise à jour en direct) -->
+    <div id="critical-alert-box"></div>
 
     <!-- Rappel patient compact -->
     <div id="rappel-patient" style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,.85);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;flex-wrap:wrap;backdrop-filter:blur(4px)">
@@ -1926,6 +2037,7 @@ select {
           <th>Âge</th><th>Sexe</th><th>Service</th>
           <th>Type d'analyse</th><th>Saisi par</th>
           <th onclick="setSortCol('montant')" style="cursor:pointer">Montant <span id="sort-montant"></span></th>
+          <th>Statut</th>
           <th>Actions</th>
         </tr></thead>
         <tbody id="history-body"></tbody>
@@ -2028,6 +2140,15 @@ select {
       Les ristournes s'appliquent uniquement sur les examens hors-BPN.
     </p>
     <div id="ristournes-table"></div>
+
+    <!-- Top 10 examens les plus demandés -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">🔬 Top 10 examens les plus demandés</div>
+      <table class="result-table" style="width:100%">
+        <thead><tr><th>#</th><th>Examen</th><th>Nb demandes</th></tr></thead>
+        <tbody id="top-examens-body"><tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Chargement…</td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Gestion des prescripteurs -->
@@ -2093,6 +2214,20 @@ select {
         </thead>
         <tbody id="users-body"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ✅ v13.28 — Rapport d'activité mensuel (PDF automatique) -->
+  <div class="card" id="rapport-mensuel-card">
+    <div class="card-title">📑 Rapport d'activité mensuel</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Génère un rapport PDF complet (statistiques globales, répartitions, top prescripteurs,
+      courbe d'activité et alertes critiques) pour le mois sélectionné.
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="rapport-mois" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
+      <select id="rapport-annee" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
+      <button class="btn" onclick="genererRapportMensuel()" style="padding:7px 16px;font-size:12.5px;background:#dc2626;color:#fff">📄 Générer le rapport PDF</button>
     </div>
   </div>
 
@@ -2181,6 +2316,88 @@ select {
         <button class="btn btn-primary" onclick="addExamenPersonnalise()">Ajouter</button>
         <button class="btn btn-outline" onclick="document.getElementById('add-examen-modal').style.display='none'">Annuler</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ✅ v13.28 — VUE CAISSE (tableau de bord financier)
+     ═══════════════════════════════════════════════════ -->
+<div id="view-caisse" style="display:none">
+
+  <!-- Sélecteur de période -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">💰 Caisse — Sélection de période</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-outline active" id="caisse-btn-jour" onclick="setCaissePeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
+      <button class="btn btn-outline" id="caisse-btn-semaine" onclick="setCaissePeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
+      <button class="btn btn-outline" id="caisse-btn-mois" onclick="setCaissePeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
+      <div style="display:flex;align-items:center;gap:6px;margin-left:8px">
+        <label style="font-size:12px;color:var(--text-muted)">Du</label>
+        <input type="date" id="caisse-date-from" style="width:auto">
+        <label style="font-size:12px;color:var(--text-muted)">Au</label>
+        <input type="date" id="caisse-date-to" style="width:auto">
+        <button class="btn btn-primary" onclick="setCaissePeriode('custom')" style="padding:6px 12px;font-size:12px">Appliquer</button>
+      </div>
+      <span id="caisse-periode-label" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="stats-kpi-row" id="caisse-kpi-row">
+    <div class="stats-kpi" style="border-left:3px solid #15803d"><div class="kpi-val" id="caisse-kpi-total" style="color:#15803d">—</div><div class="kpi-label">Total encaissé (FCFA)</div></div>
+    <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-nb">—</div><div class="kpi-label">Nombre de dossiers</div></div>
+    <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-moy">—</div><div class="kpi-label">Moyenne / dossier (FCFA)</div></div>
+    <div class="stats-kpi" style="border-left:3px solid var(--warning)"><div class="kpi-val" id="caisse-kpi-attente" style="color:var(--warning)">—</div><div class="kpi-label">Dossiers en attente de paiement</div></div>
+  </div>
+
+  <!-- Graphique recettes par jour -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📊 Recettes par jour (période sélectionnée)</div>
+    <div style="position:relative;height:240px"><canvas id="caisse-chart-jour"></canvas></div>
+  </div>
+
+  <div class="stats-grid">
+    <!-- Répartition par type d'examen -->
+    <div class="card stats-card">
+      <div class="card-title">🔬 Répartition par type d'analyse</div>
+      <div class="table-wrap">
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>Type</th><th style="text-align:center">Nb dossiers</th><th style="text-align:right">Total FCFA</th><th style="text-align:right">%</th></tr></thead>
+          <tbody id="caisse-type-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Top 5 prescripteurs -->
+    <div class="card stats-card">
+      <div class="card-title">🏆 Top 5 prescripteurs par volume</div>
+      <div class="table-wrap">
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>#</th><th>Prescripteur</th><th style="text-align:center">Nb dossiers</th><th style="text-align:right">Total FCFA</th></tr></thead>
+          <tbody id="caisse-top-presc-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ v13.28 — Ristournes prescripteurs (Feature 6) : calcul mensuel + export PDF/Excel -->
+  <div class="card" style="margin-top:16px" id="caisse-ristournes-card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>💊 Ristournes prescripteurs</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="rist-mois" onchange="renderRistournesMois()" style="width:auto;padding:5px 8px;font-size:12px"></select>
+        <select id="rist-annee" onchange="renderRistournesMois()" style="width:auto;padding:5px 8px;font-size:12px"></select>
+        <button class="btn" onclick="exportRistournesPDF()" style="padding:5px 12px;font-size:12px;background:#dc2626;color:#fff">📄 Export PDF</button>
+        <button class="btn btn-success" onclick="exportRistournesExcel()" style="padding:5px 12px;font-size:12px">⬇ Export Excel</button>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Ristourne = montant des examens du mois × taux du prescripteur / 100.
+      Modifiez le taux directement dans le tableau puis cliquez « Enregistrer les taux ».
+    </p>
+    <div id="rist-mois-table"></div>
+    <div style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveRistourneTaux()" style="padding:6px 14px;font-size:12.5px">💾 Enregistrer les taux</button>
     </div>
   </div>
 </div>
@@ -3740,10 +3957,13 @@ function showView(v) {
   if (viewStats) viewStats.style.display = v === 'stats' ? '' : 'none';
   const viewComptes = document.getElementById('view-comptes');
   if (viewComptes) viewComptes.style.display = v === 'comptes' ? '' : 'none';
+  const viewCaisse = document.getElementById('view-caisse');
+  if (viewCaisse) viewCaisse.style.display = v === 'caisse' ? '' : 'none';
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v === 'historique') renderHistory(true);
-  if (v === 'comptes') { renderUsersList(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
+  if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
+  if (v === 'caisse') renderCaisse();
 }
 
 // ── Construction paresseuse des panneaux ──────────────────────
@@ -3795,16 +4015,30 @@ function resetPanel(name) {
 // PATIENT DATA
 // ============================================================
 
+// Génère un token de partage unique (32 hex) utilisé pour le QR de vérification
+function genShareToken() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID)
+    return crypto.randomUUID().replace(/-/g, '');
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+// _shareTokenCurrent : conservé entre les onglets de la même saisie pour
+// que tous les enregistrements d'un même dossier partagent le même token.
+let _shareTokenCurrent = null;
+
 function getPatient() {
+  // Réutiliser le token existant (édition ou dossier multi-analyses)
+  if (!_shareTokenCurrent) _shareTokenCurrent = genShareToken();
   return {
-    dossier: document.getElementById('p_dossier').value.trim(),
-    date: document.getElementById('p_date').value,
-    nom: document.getElementById('p_nom').value.trim(),
-    age: document.getElementById('p_age').value,
-    sexe: document.getElementById('p_sexe').value,
-    medecin: document.getElementById('p_medecin').value.trim(),
-    service: document.getElementById('p_service').value,
-    clinique: document.getElementById('p_clinique').value.trim(),
+    dossier:      document.getElementById('p_dossier').value.trim(),
+    date:         document.getElementById('p_date').value,
+    nom:          document.getElementById('p_nom').value.trim(),
+    age:          document.getElementById('p_age').value,
+    sexe:         document.getElementById('p_sexe').value,
+    medecin:      document.getElementById('p_medecin').value.trim(),
+    service:      document.getElementById('p_service').value,
+    clinique:     document.getElementById('p_clinique').value.trim(),
+    share_token:  _shareTokenCurrent,
   };
 }
 
@@ -3827,6 +4061,14 @@ function validatePatient(p) {
 // ════════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://uvxxbihlagfncraokqlg.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_RPgz6piVcNONZOOcLmOCQw_5YPxZTd6';
+
+// ── URL publique de l'application (pour les QR codes de vérification) ──
+// Remplacez par votre propre URL si vous hébergez l'app (GitHub Pages, Netlify…)
+// Exemple : 'https://mon-labo.github.io/labosaisie'
+const APP_PUBLIC_URL = (() => {
+  const u = window.location;
+  return u.origin + u.pathname.replace(/\/[^/]*$/, '') + '/index.html';
+})();
 
 // Initialisation robuste : vérifie que la librairie est chargée
 let _sb = null;
@@ -3907,6 +4149,8 @@ async function refreshDB(force) {
     _light: true, // ✅ v13.5 — détail non encore chargé
   })).concat(pendings);
   if (typeof buildPatientCache === 'function') buildPatientCache();
+  if (typeof refreshMedecinDatalist === 'function') refreshMedecinDatalist(); // ✅ v13.28 F2
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();    // ✅ v13.28 F10
   return _dbCache;
 }
 
@@ -3942,6 +4186,8 @@ async function refreshDBFull() {
       _light: false,
     })).concat(pendings);
     if (typeof buildPatientCache === 'function') buildPatientCache();
+    if (typeof refreshMedecinDatalist === 'function') refreshMedecinDatalist(); // ✅ v13.28 F2
+    if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();    // ✅ v13.28 F10
   } catch (e) { /* garder le cache */ }
   return _dbCache;
 }
@@ -4043,9 +4289,12 @@ async function flushSyncQueue(silent) {
           p_resultats: item.record.resultats, p_montant: item.record.montant || 0,
           p_prescripteur_id: item.record.prescripteur_id || null, p_est_bpn: item.est_bpn });
         if (error) throw error;
-        const saved = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats,
-          savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0,
-          prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
+        // ✅ v13.28 — insert_resultat retourne jsonb {id, dossier}
+        const newId = data?.id || (Array.isArray(data) ? data[0]?.id : null);
+        const saved = { id: newId, type: item.record.type, patient: item.record.patient,
+          resultats: item.record.resultats, savedAt: new Date().toISOString(),
+          createdBy: item.record.createdBy || '', montant: item.record.montant || 0,
+          prescripteur_id: item.record.prescripteur_id, est_bpn: item.est_bpn };
         const idx = _dbCache.findIndex(r => r.id === item.tempId);
         if (idx >= 0) _dbCache[idx] = saved; else _dbCache.push(saved);
         removeFromQueue(item.qid); ok++;
@@ -4090,7 +4339,12 @@ async function insertRecordRemote(record) {
       p_est_bpn: est_bpn,
     });
     if (error) throw error;
-    const saved = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
+    // ✅ v13.28 — insert_resultat retourne jsonb {id, dossier}
+    const newId = data?.id || (Array.isArray(data) ? data[0]?.id : null);
+    const saved = { id: newId, type: record.type, patient: record.patient,
+      resultats: record.resultats, savedAt: new Date().toISOString(),
+      createdBy: record.createdBy || '', montant: record.montant || 0,
+      prescripteur_id: record.prescripteur_id, est_bpn: est_bpn };
     _dbCache.push(saved);
     return saved;
   } catch (e) {
@@ -4237,6 +4491,7 @@ async function newPatient() {
   _showAllExams = false;
   _editingRecordId = null;
   _locksDisabled = false;
+  _shareTokenCurrent = null; // Nouveau patient → nouveau token de partage
 
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
@@ -4536,6 +4791,9 @@ async function _saveRecordImpl(type) {
   ensureInterpFresh(type); // ✅ v13.7 — garantir des interprétations à jour avant collecte
   const typeResultats = collectResults(type);
 
+  // ✅ v13.28 F4 — marquage des valeurs critiques (persisté dans patient.has_critical)
+  try { if (checkValeursCritiques(typeResultats).length) p.has_critical = true; } catch (e) {}
+
   // Montant pour cette analyse
   let montant = 0;
   try {
@@ -4724,6 +4982,8 @@ async function editRecord(id, typeOverride) {
 
   _editingRecordId = id;
   _editingType     = type;
+  // Conserver le token existant du dossier (évite de générer un nouveau token à l'édition)
+  _shareTokenCurrent = record.patient?.share_token || null;
 
   showView('saisie');
   await new Promise(res => setTimeout(res, 50));
@@ -5094,11 +5354,38 @@ function computeHistDateRange(periode) {
   return { from: null, to: null }; // 'tout'
 }
 
+// ── Surbrillance des termes recherchés ───────────────────────────────
+function highlight(str, q) {
+  if (!q || !str) return esc(str || '');
+  const safe = esc(str);
+  const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safe.replace(new RegExp('(' + esc(safeQ) + ')', 'gi'),
+    '<mark style="background:#fde68a;color:#78350f;border-radius:2px;padding:0 1px">$1</mark>');
+}
+
 // Debounce pour la recherche texte (évite appels Supabase à chaque frappe)
 let _histDebounce = null;
 function renderHistoryDebounced() {
   clearTimeout(_histDebounce);
-  _histDebounce = setTimeout(renderHistory, 220);
+  const q = (document.getElementById('search-input')?.value || '').trim();
+  // Si une recherche texte est active, on charge TOUT l'historique
+  // pour ne pas manquer des fiches hors de la période affichée
+  if (q && _histPeriode !== 'tout') {
+    _histDebounce = setTimeout(() => {
+      _histPeriode = 'tout';
+      ['jour','semaine','mois','tout'].forEach(p => {
+        const btn = document.getElementById('hist-btn-' + p);
+        if (btn) btn.classList.toggle('active', p === 'tout');
+      });
+      document.getElementById('filter-date-from').value = '';
+      document.getElementById('filter-date-to').value   = '';
+      _dbCache = [];
+      showLoading();
+      refreshDB(true).then(() => { hideLoading(); renderHistory(); });
+    }, 400);
+  } else {
+    _histDebounce = setTimeout(renderHistory, 220);
+  }
 }
 
 async function renderHistory(forceRefresh) {
@@ -5189,18 +5476,24 @@ async function renderHistory(forceRefresh) {
     ? '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="deleteRecord(' + id + ')">🗑</button>'
     : '';
 
+  const hl = q ? (s => highlight(s, q)) : esc;
+
   b.innerHTML = filtered.map(r => {
     const dossierMulti = '';
     const montantStr = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
-    return '<tr>'
+    const recPreview = {id:r.id,patient:r.patient,montant:r.montant,resultats:{_examens_coches:r.resultats?._examens_coches}};
+    return '<tr id="row-' + r.id + '" class="hist-row-' + getStatut(r.id) + '" onmousemove="showPreview(event,' + JSON.stringify(recPreview).replace(/\\/g,'\\\\').replace(/'/g,"\\'") + ')" onmouseleave="hidePreview()">'
       + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
-      + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong>'
+      + '<td data-label="N° Dossier"><strong>' + hl(r.patient.dossier) + '</strong>'
         + (r._pending ? ' <span title="En attente de synchronisation" style="font-size:10px;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">⏳ à synchroniser</span>' : '')
       + '</td>'
-      + '<td data-label="Patient">' + esc(r.patient.nom) + '</td>'
+      + '<td data-label="Patient">' + hl(r.patient.nom)
+          + (hasCriticalValues(r) ? '<span class="badge-critique" title="Valeur critique détectée">🔴 CRITIQUE</span>' : '')
+          + (r.patient.medecin ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px">' + hl(r.patient.medecin) + '</div>' : '')
+        + '</td>'
       + '<td data-label="Âge">' + esc(r.patient.age || '—') + '</td>'
       + '<td data-label="Sexe">' + esc(r.patient.sexe || '—') + '</td>'
-      + '<td data-label="Service">' + esc(r.patient.service || '—') + '</td>'
+      + '<td data-label="Service">' + hl(r.patient.service || '—') + '</td>'
       + '<td data-label="Type">' + getRecordTypes(r).map(t => {
           const cls = t==='Hématologie'?'badge-hema':t==='Biochimie'?'badge-bio':
             t==='Bactériologie'?'badge-bacterio':t==='Immuno-Sérologie'?'badge-sero':
@@ -5208,12 +5501,14 @@ async function renderHistory(forceRefresh) {
             t==='Bilan prénatal'?'badge-bpn':'';
           return '<span class="badge-type '+cls+'" style="margin:1px 2px;display:inline-block">'+t+'</span>';
         }).join('') + '</td>'
-      + '<td data-label="Saisi par">' + esc(r.createdBy || '—') + '</td>'
+      + '<td data-label="Saisi par">' + hl(r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
+      + '<td data-label="Statut">' + statutBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats" aria-label="Modifier les résultats">✏️</button>'
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF" aria-label="Exporter en PDF">📄</button>'
+        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
         + dossierMulti
         + (isAdmin() && isDossierRecord(r) && getRecordTypes(r).length > 0
             ? getRecordTypes(r).map(t =>
@@ -5224,6 +5519,7 @@ async function renderHistory(forceRefresh) {
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="printReceipt(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
       + '</td></tr>';
   }).join('');
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge(); // ✅ v13.28 F10
 }
 
 
@@ -6280,6 +6576,7 @@ async function renderStats() {
   const el_as=document.getElementById('kpi-agents-sub'); if(el_as){const n=new Set(db.map(r=>r.createdBy).filter(Boolean)).size;el_as.textContent=n+' agent'+(n>1?'s':'')+' au total';}
 
   await renderRistournes(dbPeriode);
+  renderTopExamens();
   // Section admin prescripteurs
   const adminCard = document.getElementById('prescripteurs-admin-card');
   if (adminCard) adminCard.style.display = isAdmin() ? '' : 'none';
@@ -6464,13 +6761,19 @@ async function buildAndPrint(r) {
       </table>
     </div>`;
 
-  // ── QR Code (si disponible) ────────────────────────────────
-  const qrText = `CPMI Grand-Bassam\nDossier: ${p?.dossier||'—'}\nPatient: ${(p?.nom||'').toUpperCase()}\nDate: ${p?.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}\nAnalyses: ${getDisplayType(r)}`;
-  const qrUrl = await generateQRDataURL(qrText, 100);
+  // ── QR Code de vérification ────────────────────────────────
+  // Si le dossier a un share_token, le QR pointe vers la page publique de l'app.
+  // Sinon, fallback sur les infos texte (anciens dossiers sans token).
+  const shareToken = p?.share_token;
+  const qrContent = shareToken
+    ? `${APP_PUBLIC_URL}?share=${shareToken}`
+    : `CPMI Grand-Bassam\nDossier: ${p?.dossier||'—'}\nPatient: ${(p?.nom||'').toUpperCase()}\nDate: ${p?.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}\nAnalyses: ${getDisplayType(r)}`;
+  const qrUrl = await generateQRDataURL(qrContent, 100);
   if (qrUrl) {
+    const qrLabel = shareToken ? 'Vérifier en ligne' : 'Scan = info dossier';
     html += `<div style="float:right;margin:-80px 0 10px 10px;text-align:center">
       <img src="${qrUrl}" width="80" height="80" style="display:block;border:1px solid #e5e7eb;border-radius:4px">
-      <div style="font-size:8px;color:#9ca3af;margin-top:2px">Scan = info dossier</div>
+      <div style="font-size:8px;color:#9ca3af;margin-top:2px">${qrLabel}</div>
     </div>`;
   }
 
@@ -7814,9 +8117,14 @@ async function renderRistournes(db) {
 
   // Pour chaque prescripteur, calculer BPN + extra-BPN
   const rows = _prescripteurs.map(presc => {
-    const fiches = db.filter(r => Number(r.prescripteur_id) === Number(presc.id)); // ✅ v2: comparaison stricte ID uniquement
-    const bpn      = fiches.filter(r => getRecordTypes(r).includes('Bilan prénatal'));
-    const extraBPN = fiches.filter(r => !getRecordTypes(r).includes('Bilan prénatal'));
+    const fiches = db.filter(r => Number(r.prescripteur_id) === Number(presc.id));
+    // ✅ v13.28 — BPN détecté via est_bpn OU type 'Bilan prénatal' (rétrocompat)
+    // OU présence de ex_bpn dans les examens cochés
+    const isBpn = r => r.est_bpn
+      || getRecordTypes(r).includes('Bilan prénatal')
+      || Object.values(r.resultats?._examens_coches || {}).flat().includes('Bilan prénatal complet (forfait)');
+    const bpn      = fiches.filter(r => isBpn(r));
+    const extraBPN = fiches.filter(r => !isBpn(r));
     const montantExtraBPN = extraBPN.reduce((s, r) => s + (r.montant || 0), 0);
     const ristourne = Math.round(montantExtraBPN * (presc.taux_ristourne || 0) / 100);
     return { presc, bpn: bpn.length, extraBPN: extraBPN.length, montantExtraBPN, ristourne };
@@ -8747,6 +9055,7 @@ async function doLogin() {
 
 function doLogout() {
   if (!confirm('Se déconnecter ?')) return;
+  if (typeof stopTokenRefresh === 'function') stopTokenRefresh(); // ✅ v13.28 F9
   clearSession();
   document.getElementById('app-root').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -8772,6 +9081,10 @@ function enterApp() {
   initApp();
   updateSyncBanner();          // ✅ v13.4
   flushSyncQueue(true);        // ✅ v13.4 — tenter la synchro silencieuse au démarrage
+  // ✅ v13.28 — heartbeat jeton (F9), 1re connexion (F8), permission notifications (F10)
+  if (typeof startTokenRefresh === 'function') startTokenRefresh();
+  if (typeof checkFirstLogin === 'function') checkFirstLogin();
+  if (typeof requestNotifPermission === 'function') requestNotifPermission();
 }
 
 function updateUserBadge() {
@@ -9485,6 +9798,837 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-username').focus();
   }
 });
+
+// ════════════════════════════════════════════════════════════════
+// AMÉLIORATIONS v13.28
+// ════════════════════════════════════════════════════════════════
+
+// ── Mode sombre ──
+function toggleDarkMode() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('btn-dark-mode').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('labosaisie_theme', isDark ? 'light' : 'dark');
+}
+function initTheme() {
+  const saved = localStorage.getItem('labosaisie_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('btn-dark-mode');
+  if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
+}
+
+// ── Statuts dossier (localStorage) ──
+// ── Statuts dossier — stockés en base (patient.statut) + localStorage offline ──
+// SQL requis (à exécuter une fois dans Supabase SQL Editor) :
+// drop function if exists public.set_dossier_statut(text,bigint,text) cascade;
+// create function public.set_dossier_statut(p_token text, p_id bigint, p_statut text)
+// returns text language plpgsql security definer set search_path = public as $$
+// declare v_uid bigint;
+// begin
+//   v_uid := public.uid_from_token(p_token);
+//   if v_uid is null then return 'unauthorized'; end if;
+//   if p_statut not in ('attente','rendu','urgent') then return 'invalid_statut'; end if;
+//   update public.labo_resultats
+//     set patient = patient || jsonb_build_object('statut', p_statut)
+//   where id = p_id;
+//   perform public.log_action(v_uid, 'set_statut', p_id, jsonb_build_object('statut', p_statut));
+//   return 'ok';
+// end; $$;
+// grant execute on function public.set_dossier_statut(text,bigint,text) to anon;
+
+const STATUTS_KEY = 'labosaisie_statuts';
+function getStatuts() { try { return JSON.parse(localStorage.getItem(STATUTS_KEY)||'{}'); } catch { return {}; } }
+
+// Lit le statut depuis le cache DB (prioritaire) ou localStorage (fallback hors-ligne)
+function getStatut(id) {
+  const r = (_dbCache || []).find(r => r.id === id);
+  if (r?.patient?.statut) return r.patient.statut;
+  return getStatuts()[id] || 'attente';
+}
+
+// Écrit le statut : mise à jour optimiste du cache + localStorage + Supabase async
+function setStatut(id, statut) {
+  // 1. Mise à jour immédiate dans _dbCache (UI réactive sans attendre Supabase)
+  const r = (_dbCache || []).find(r => r.id === id);
+  if (r) r.patient = {...(r.patient || {}), statut};
+  // 2. localStorage (rétrocompat + mode hors-ligne)
+  const s = getStatuts(); s[id] = statut; localStorage.setItem(STATUTS_KEY, JSON.stringify(s));
+  // 3. Persistance en base (async, ne bloque pas l'UI)
+  if (typeof _sb !== 'undefined' && _sb && TK()) {
+    _sb.rpc('set_dossier_statut', {p_token: TK(), p_id: id, p_statut: statut})
+      .then(({error}) => {
+        if (error) console.warn('[LaboSaisie] set_statut:', error.message);
+      });
+  }
+  // ✅ v13.28 F10 — notification web quand un résultat passe à « rendu »
+  if (statut === 'rendu' && r && typeof notifyResultatPret === 'function') notifyResultatPret(r);
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+  renderHistory();
+}
+
+function cycleStatut(id) {
+  const order = ['attente','rendu','urgent'];
+  const next = order[(order.indexOf(getStatut(id))+1) % order.length];
+  setStatut(id, next);
+}
+function statutBadge(id) {
+  const s = getStatut(id);
+  const labels = {rendu:'✅ Rendu', attente:'⏳ Attente', urgent:'🔴 Urgent'};
+  const cls    = {rendu:'badge-rendu', attente:'badge-attente', urgent:'badge-urgent'};
+  return `<span class="${cls[s]}" onclick="event.stopPropagation();cycleStatut(${id})" title="Cliquer pour changer">${labels[s]}</span>`;
+}
+
+// ── Aperçu rapide au survol ──
+let _previewTimer = null;
+function showPreview(e, record) {
+  clearTimeout(_previewTimer);
+  _previewTimer = setTimeout(() => {
+    const p = record.patient||{};
+    const types = getRecordTypes(record).join(', ');
+    const examens = Object.values(record.resultats?._examens_coches||{}).flat().slice(0,5);
+    const div = document.getElementById('record-preview');
+    if (!div) return;
+    div.innerHTML = `
+      <div style="font-weight:800;color:var(--cpmi-deep);margin-bottom:6px">${escHTML((p.nom||'').toUpperCase())}</div>
+      <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">📁 ${escHTML(p.dossier||'—')} · ${escHTML(p.date||'—')}</div>
+      <div style="font-size:11px;margin-bottom:4px">🔬 ${escHTML(types)}</div>
+      ${examens.length?`<div style="font-size:11px;color:var(--text-muted)">${examens.map(e=>escHTML(e)).join('<br>')}</div>`:''}
+      <div style="margin-top:6px;font-weight:700;color:var(--success)">${(record.montant||0).toLocaleString('fr-FR')} FCFA</div>`;
+    div.style.left = Math.min(e.clientX+12, window.innerWidth-300)+'px';
+    div.style.top  = Math.min(e.clientY+12, window.innerHeight-200)+'px';
+    div.classList.add('visible');
+  }, 400);
+}
+function hidePreview() {
+  clearTimeout(_previewTimer);
+  const div = document.getElementById('record-preview');
+  if (div) div.classList.remove('visible');
+}
+
+// ── Notification patient déjà vu ce mois ──
+function checkPatientExistant() {
+  const nom = document.getElementById('p_nom')?.value?.trim().toLowerCase();
+  if (!nom || nom.length < 3) return;
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const existant = getDB().find(r => {
+    const n = (r.patient?.nom||'').toLowerCase();
+    const d = r.patient?.date || r.savedAt || '';
+    return n.includes(nom) && d.startsWith(thisMonth);
+  });
+  const el = document.getElementById('patient-existant-notif');
+  if (!el) return;
+  if (existant) {
+    const p = existant.patient||{};
+    el.innerHTML = `⚠️ <strong>${escHTML((p.nom||'').toUpperCase())}</strong> a déjà un dossier ce mois : <strong>${escHTML(p.dossier||'—')}</strong>
+      <button class="btn btn-outline" style="padding:2px 8px;font-size:11px;margin-left:8px" onclick="editRecord(${existant.id})">Voir</button>`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── Dupliquer un dossier ──
+function dupliquerDossier(id) {
+  const record = getDB().find(r => r.id === id);
+  if (!record) return;
+  const p = {...record.patient};
+  p.date = new Date().toISOString().slice(0,10);
+  delete p.dossier;
+  newPatient();
+  showView('saisie');
+  setTimeout(() => {
+    // ── Infos patient ──────────────────────────────────────
+    ['nom','age','sexe','telephone','medecin','clinique','service'].forEach(k => {
+      const el = document.getElementById('p_'+k);
+      if (el && p[k]) el.value = p[k];
+    });
+    const dateEl = document.getElementById('p_date');
+    if (dateEl) dateEl.value = p.date;
+
+    // Prescripteur lié
+    if (record.prescripteur_id) {
+      const sel = document.getElementById('p_prescripteur_id');
+      if (sel) { sel.value = record.prescripteur_id; onPrescripteurChange(); }
+    }
+
+    // ── Examens cochés + prix ──────────────────────────────
+    const restored = restoreFicheFromRecord(record);
+    if (restored) {
+      // Ouvrir les accordéons des groupes qui ont au moins un examen coché
+      const cat = getCatalogueComplet();
+      const groupesOuverts = new Set();
+      cat.forEach(ex => {
+        const chk = document.getElementById(ex.id);
+        if (chk && chk.checked) {
+          const gid = 'grp_' + (ex.groupe || '').replace(/[^a-z0-9]/gi, '_');
+          if (!groupesOuverts.has(gid)) {
+            const body = document.getElementById(gid);
+            const arrow = document.getElementById(gid + '_arrow');
+            if (body && body.style.display === 'none') {
+              body.style.display = 'block';
+              if (arrow) arrow.style.transform = 'rotate(0deg)';
+            }
+            groupesOuverts.add(gid);
+          }
+        }
+      });
+      toast('✅ Patient + ' + groupesOuverts.size + ' groupe(s) d\'examens restaurés — ajustez si besoin', 'ok');
+    } else {
+      toast('Patient dupliqué — vérifiez et complétez la fiche', 'ok');
+    }
+  }, 350);
+}
+
+// ── Top examens ──
+function renderTopExamens() {
+  const counts = {};
+  getDB().forEach(r => {
+    Object.values(r.resultats?._examens_coches||{}).flat()
+      .forEach(label => { counts[label] = (counts[label]||0)+1; });
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const el = document.getElementById('top-examens-body');
+  if (!el) return;
+  if (!sorted.length) { el.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Aucune donnée</td></tr>'; return; }
+  el.innerHTML = sorted.map(([label,count],i) =>
+    `<tr><td style="padding:6px 8px;font-weight:700;color:var(--text-muted)">${i+1}</td>
+     <td style="padding:6px 8px">${escHTML(label)}</td>
+     <td style="padding:6px 8px;font-weight:700;color:var(--cpmi-mid)">${count}</td></tr>`
+  ).join('');
+}
+
+document.addEventListener('DOMContentLoaded', initTheme);
+
+// ============================================================
+// VUE PUBLIQUE DE VÉRIFICATION (?share=TOKEN)
+// Accessible sans connexion — lit le résultat via share_token
+// ============================================================
+
+async function checkShareMode() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('share');
+  if (!token) return false;
+
+  // Masquer login et app, afficher l'overlay de vérification
+  const loginEl = document.getElementById('login-screen');
+  const appEl   = document.getElementById('app-root');
+  if (loginEl) loginEl.style.display = 'none';
+  if (appEl)   appEl.style.display   = 'none';
+
+  const overlay = document.getElementById('share-view');
+  if (!overlay) return true;
+  overlay.style.display = 'flex';
+
+  if (!initSupabase()) {
+    overlay.innerHTML = buildShareCard('⚠ Connexion impossible', '<p>Impossible de contacter la base de données. Vérifiez votre connexion.</p>');
+    return true;
+  }
+
+  try {
+    const { data, error } = await _sb.rpc('get_public_result', { p_share_token: token });
+    if (error || !data || !data.length) {
+      overlay.innerHTML = buildShareCard('Dossier introuvable',
+        '<p style="color:#b91c1c">Ce lien de vérification n\'est pas valide ou a expiré.</p>');
+      return true;
+    }
+    const r = data[0];
+    const p = typeof r.patient === 'string' ? JSON.parse(r.patient) : (r.patient || {});
+    const dateF = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—';
+    const types = Array.isArray(r.types) ? r.types.join(' · ') : (r.type || '—');
+    overlay.innerHTML = buildShareCard(
+      '✅ Résultat vérifié — CPMI Grand-Bassam',
+      `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:14px">
+        <div style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Informations patient</div>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0;white-space:nowrap">N° Dossier</td><td><strong style="font-size:15px;color:#1a4480">${escHTML(p.dossier||'—')}</strong></td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Patient</td><td><strong style="text-transform:uppercase">${escHTML(p.nom||'—')}</strong></td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Âge / Sexe</td><td>${escHTML(p.age||'—')} ans / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Date</td><td>${escHTML(dateF)}</td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Prescripteur</td><td>${escHTML(p.medecin||'—')}</td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Analyses</td><td><strong>${escHTML(types)}</strong></td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Saisi par</td><td>${escHTML(r.saisi_par||'—')}</td></tr>
+        </table>
+      </div>
+      <div style="font-size:12px;color:#6b7280;text-align:center;font-style:italic">
+        Ce document a été émis par le Laboratoire du CPMI de Grand-Bassam.<br>
+        Pour toute question, contactez directement l'établissement.
+      </div>`
+    );
+  } catch(e) {
+    overlay.innerHTML = buildShareCard('Erreur', '<p>' + escHTML(e.message) + '</p>');
+  }
+  return true;
+}
+
+function buildShareCard(title, body) {
+  return `<div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Nunito',sans-serif">
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#1a4480,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 10px">🔬</div>
+      <div style="font-size:18px;font-weight:800;color:#1a4480">${escHTML(title)}</div>
+      <div style="font-size:11px;color:#9ca3af;margin-top:2px">CPMI · Centre de Protection Mère et Infantile · Grand-Bassam</div>
+    </div>
+    ${body}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// ✅ v13.28 — NOUVELLES FONCTIONNALITÉS (features 2 à 10)
+// ════════════════════════════════════════════════════════════════
+
+const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+function _fmtF(n) { return (Number(n) || 0).toLocaleString('fr-FR'); }
+function _recDate(r) { return r?.patient?.date || (r?.savedAt || '').slice(0,10) || ''; }
+
+// ── FEATURE 2 : auto-complétion médecins ──────────────────────────
+function refreshMedecinDatalist() {
+  const dl = document.getElementById('medecin-datalist');
+  if (!dl) return;
+  const noms = new Set();
+  (getDB() || []).forEach(r => {
+    const m = (r.patient?.medecin || '').trim();
+    if (m) noms.add(m);
+  });
+  (_prescripteurs || []).forEach(p => { if (p?.nom) noms.add(String(p.nom).trim()); });
+  // Complément asynchrone via la table prescripteurs (best-effort)
+  if (_sb && TK()) {
+    _sb.from('labo_prescripteurs').select('nom').then(({ data }) => {
+      if (Array.isArray(data)) {
+        let added = false;
+        data.forEach(row => { if (row?.nom && !noms.has(row.nom.trim())) { noms.add(row.nom.trim()); added = true; } });
+        if (added) _writeMedecinDatalist(dl, noms);
+      }
+    }).catch(() => {});
+  }
+  _writeMedecinDatalist(dl, noms);
+}
+function _writeMedecinDatalist(dl, nomsSet) {
+  dl.innerHTML = [...nomsSet].sort((a, b) => a.localeCompare(b, 'fr'))
+    .map(n => `<option value="${esc(n)}"></option>`).join('');
+}
+
+// ── FEATURE 3 : modèles rapides d'examens ─────────────────────────
+const MODELES_EXAMENS = {
+  nfs:        { label: 'NFS complète',     mots: ['nfs','numération','hémoglobine','plaquette','leucocyte'] },
+  renal:      { label: 'Bilan rénal',      mots: ['créatinine','urée','acide urique','ionogramme'] },
+  hepatique:  { label: 'Bilan hépatique',  mots: ['transaminase','alat','asat','bilirubine','phosphatase'] },
+  lipidique:  { label: 'Bilan lipidique',  mots: ['cholestérol','triglycéride','hdl','ldl'] },
+  infectieux: { label: 'Bilan infectieux', mots: ['crp','vs ','fibrinogène','procalcitonine'] },
+  groupe:     { label: 'Groupe sanguin',   mots: ['groupe','rhésus','rai'] },
+  ecbu:       { label: 'ECBU',             mots: ['ecbu','examen cytobactériologique','uroculture'] },
+  serologie:  { label: 'Sérologie',        mots: ['sérologie','elisa','hiv','vih','hépatite','syphilis'] },
+};
+function appliquerModele(key) {
+  const modele = MODELES_EXAMENS[key];
+  if (!modele) return;
+  let n = 0;
+  const groupesAOuvrir = new Set();
+  getCatalogueComplet().forEach(ex => {
+    const hay = ((ex.label || '') + ' ' + (ex.groupe || '')).toLowerCase();
+    if (modele.mots.some(m => hay.includes(m))) {
+      const chk = document.getElementById(ex.id);
+      if (chk && !chk.checked) { chk.checked = true; n++; }
+      else if (chk) n++;
+      if (ex.groupe) groupesAOuvrir.add('grp_' + ex.groupe.replace(/[^a-z0-9]/gi, '_'));
+    }
+  });
+  // Ouvrir les accordéons concernés
+  groupesAOuvrir.forEach(gid => {
+    const body = document.getElementById(gid);
+    const arrow = document.getElementById(gid + '_arrow');
+    if (body) { body.style.display = 'block'; if (arrow) arrow.style.transform = 'rotate(0deg)'; }
+  });
+  calcFicheTotal();
+  toast(n + ' examen' + (n > 1 ? 's' : '') + ' coché' + (n > 1 ? 's' : '') + ' (' + modele.label + ')', 'ok');
+}
+function decocherTousExamens() {
+  let n = 0;
+  getCatalogueComplet().forEach(ex => {
+    const chk = document.getElementById(ex.id);
+    if (chk && chk.checked) { chk.checked = false; n++; }
+    syncExamRowState(ex.id);
+  });
+  calcFicheTotal();
+  toast(n + ' examen' + (n > 1 ? 's' : '') + ' décoché' + (n > 1 ? 's' : ''), '');
+}
+
+// ── FEATURE 4 : valeurs critiques ─────────────────────────────────
+const VALEURS_CRITIQUES = {
+  'hémoglobine': { min: 7, max: 20, unite: 'g/dL', label: 'Hémoglobine' },
+  'plaquettes':  { min: 50000, max: 1000000, unite: '/mm³', label: 'Plaquettes' },
+  'leucocytes':  { min: 2000, max: 30000, unite: '/mm³', label: 'Leucocytes' },
+  'glycémie':    { min: 0.5, max: 5.0, unite: 'g/L', label: 'Glycémie' },
+  'créatinine':  { min: 0, max: 200, unite: 'µmol/L', label: 'Créatinine' },
+  'potassium':   { min: 2.5, max: 6.5, unite: 'mmol/L', label: 'Kaliémie' },
+  'sodium':      { min: 120, max: 160, unite: 'mmol/L', label: 'Natrémie' },
+};
+// Reçoit un objet resultats (nom -> {valeur} ou valeur) → renvoie les alertes
+function checkValeursCritiques(resultats) {
+  const alerts = [];
+  if (!resultats || typeof resultats !== 'object') return alerts;
+  Object.entries(resultats).forEach(([nom, v]) => {
+    if (!nom || nom.startsWith('_')) return;
+    const key = nom.toLowerCase();
+    for (const [cle, crit] of Object.entries(VALEURS_CRITIQUES)) {
+      if (key.includes(cle) || key.includes(crit.label.toLowerCase())) {
+        const brut = (typeof v === 'object' && v) ? (v.valeur ?? v.resultat ?? '') : v;
+        const num = parseFloat(String(brut).replace(',', '.'));
+        if (!isNaN(num) && (num < crit.min || num > crit.max)) {
+          alerts.push({ label: crit.label, valeur: num, unite: crit.unite, min: crit.min, max: crit.max,
+            sens: num < crit.min ? 'bas' : 'élevé' });
+        }
+        break;
+      }
+    }
+  });
+  return alerts;
+}
+function hasCriticalValues(record) {
+  if (!record) return false;
+  if (record.patient && record.patient.has_critical === true) return true;
+  if (record.resultats) {
+    if (checkValeursCritiques(record.resultats).length) return true;
+    // dossiers unifiés : parcourir chaque type
+    for (const t of (record.resultats._types || [])) {
+      if (checkValeursCritiques(record.resultats[t]).length) return true;
+    }
+  }
+  return false;
+}
+// Vérification en direct pendant la saisie (non bloquante)
+function checkCriticalLive() {
+  const box = document.getElementById('critical-alert-box');
+  if (!box) return;
+  const alerts = [];
+  document.querySelectorAll('#zone-saisie input[type="number"]').forEach(inp => {
+    const num = parseFloat((inp.value || '').replace(',', '.'));
+    if (isNaN(num)) return;
+    const label = (inp.closest('tr')?.cells?.[0]?.textContent || '').toLowerCase();
+    if (!label) return;
+    for (const [cle, crit] of Object.entries(VALEURS_CRITIQUES)) {
+      if (label.includes(cle) || label.includes(crit.label.toLowerCase())) {
+        if (num < crit.min || num > crit.max) {
+          alerts.push({ label: crit.label, valeur: num, unite: crit.unite, sens: num < crit.min ? 'bas' : 'élevé' });
+        }
+        break;
+      }
+    }
+  });
+  if (alerts.length) {
+    box.innerHTML = '🔴 <strong>VALEUR' + (alerts.length > 1 ? 'S' : '') + ' CRITIQUE' + (alerts.length > 1 ? 'S' : '') + ' détectée' + (alerts.length > 1 ? 's' : '') + ' :</strong> '
+      + alerts.map(a => `${esc(a.label)} = ${a.valeur} ${esc(a.unite)} (${a.sens})`).join(' · ');
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+}
+// Écoute déléguée : toute saisie numérique dans la zone de saisie déclenche le contrôle
+document.addEventListener('input', e => {
+  if (e.target && e.target.matches && e.target.matches('#zone-saisie input[type="number"]')) checkCriticalLive();
+});
+
+// ── FEATURE 10 : notifications + badge de navigation ──────────────
+async function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    try { await Notification.requestPermission(); } catch (e) {}
+  }
+}
+function notifyResultatPret(record) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const p = record?.patient || {};
+  const icon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#1a4480"/><text x="32" y="42" font-size="32" text-anchor="middle" fill="#fff">✓</text></svg>');
+  try {
+    new Notification('✅ Résultat prêt — CPMI Grand-Bassam', {
+      body: `${p.nom || 'Patient'} — Dossier ${p.dossier || '—'}`,
+      icon, tag: 'resultat-' + record.id,
+    });
+  } catch (e) { /* navigateurs restreignant les notifications hors contexte HTTPS */ }
+}
+function updateHistoriqueBadge() {
+  const badge = document.getElementById('hist-badge');
+  if (!badge) return;
+  const n = (getDB() || []).filter(r => getStatut(r.id) === 'attente').length;
+  if (n > 0) { badge.textContent = n; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+
+// ── FEATURE 9 : rafraîchissement automatique du jeton ─────────────
+let _tokenRefreshInterval = null;
+function setToken(newToken) {
+  if (!newToken || !_currentUser) return;
+  _currentUser.token = newToken;
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(_currentUser)); } catch (e) {}
+}
+function startTokenRefresh() {
+  clearInterval(_tokenRefreshInterval);
+  _tokenRefreshInterval = setInterval(async () => {
+    if (!TK()) return;
+    try {
+      const { data, error } = await _sb.rpc('refresh_token', { p_token: TK() });
+      if (error || !data?.token) {
+        clearInterval(_tokenRefreshInterval);
+        toast('⏱ Session expirée — reconnexion requise', 'error');
+        setTimeout(() => { doLogout(); }, 2000);
+        return;
+      }
+      setToken(data.token);
+    } catch (e) { console.warn('[LaboSaisie] refresh_token:', e); }
+  }, 20 * 60 * 1000); // toutes les 20 minutes
+}
+function stopTokenRefresh() {
+  clearInterval(_tokenRefreshInterval);
+  _tokenRefreshInterval = null;
+}
+
+// ── FEATURE 8 : changement de mot de passe à la première connexion ─
+async function checkFirstLogin() {
+  if (!_sb || !TK()) return;
+  try {
+    const { data, error } = await _sb.rpc('check_first_login', { p_token: TK() });
+    if (error) return;
+    const first = Array.isArray(data) ? data[0]?.first_login : data?.first_login;
+    if (first === true) {
+      const modal = document.getElementById('first-login-modal');
+      if (modal) modal.style.display = 'flex';
+    }
+  } catch (e) { /* RPC absente → ignorer */ }
+}
+async function submitFirstLoginPassword() {
+  const oldEl = document.getElementById('fl_old');
+  const newEl = document.getElementById('fl_new');
+  const confEl = document.getElementById('fl_confirm');
+  const errEl = document.getElementById('fl-error');
+  errEl.textContent = '';
+  const oldPwd = oldEl.value, newPwd = newEl.value, conf = confEl.value;
+  if (newPwd.length < 8) { errEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.'; return; }
+  if (!/\d/.test(newPwd)) { errEl.textContent = 'Le mot de passe doit contenir au moins 1 chiffre.'; return; }
+  if (newPwd !== conf) { errEl.textContent = 'Les deux mots de passe ne correspondent pas.'; return; }
+  try {
+    const { data, error } = await _sb.rpc('change_password', { p_token: TK(), p_old_password: oldPwd, p_new_password: newPwd });
+    const ok = !error && (data === true || data?.success === true || (Array.isArray(data) ? data[0]?.success : false) || data === 'ok');
+    if (error || !ok) { errEl.textContent = (error?.message) || 'Ancien mot de passe incorrect.'; return; }
+    document.getElementById('first-login-modal').style.display = 'none';
+    oldEl.value = newEl.value = confEl.value = '';
+    toast('Mot de passe modifié ✓', 'ok');
+  } catch (e) { errEl.textContent = 'Erreur : ' + (e.message || 'inconnue'); }
+}
+
+// ── FEATURE 5 : tableau de bord Caisse ────────────────────────────
+let _caissePeriode = 'jour';
+let _caisseChart = null;
+function setCaissePeriode(p) {
+  _caissePeriode = p;
+  ['jour','semaine','mois'].forEach(k => {
+    const b = document.getElementById('caisse-btn-' + k);
+    if (b) b.classList.toggle('active', k === p);
+  });
+  renderCaisse();
+}
+function getCaisseRange() {
+  if (_caissePeriode === 'custom') {
+    return {
+      from: document.getElementById('caisse-date-from')?.value || '',
+      to:   document.getElementById('caisse-date-to')?.value || '',
+    };
+  }
+  return computeHistDateRange(_caissePeriode || 'jour');
+}
+async function renderCaisse() {
+  await refreshDB();
+  const db = getDB();
+  const { from, to } = getCaisseRange();
+  const rows = filterByDateRange(db, from, to);
+  const labelEl = document.getElementById('caisse-periode-label');
+  if (labelEl) labelEl.textContent = (from || '…') + ' → ' + (to || '…');
+
+  const total = rows.reduce((s, r) => s + (r.montant || 0), 0);
+  const nb = rows.length;
+  const moy = nb ? Math.round(total / nb) : 0;
+  const attente = rows.filter(r => getStatut(r.id) === 'attente').length;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('caisse-kpi-total', _fmtF(total));
+  set('caisse-kpi-nb', nb);
+  set('caisse-kpi-moy', _fmtF(moy));
+  set('caisse-kpi-attente', attente);
+
+  // Recettes par jour
+  const parJour = {};
+  rows.forEach(r => { const d = _recDate(r); if (d) parJour[d] = (parJour[d] || 0) + (r.montant || 0); });
+  const jours = Object.keys(parJour).sort();
+  const canvas = document.getElementById('caisse-chart-jour');
+  if (_caisseChart) { try { _caisseChart.destroy(); } catch (e) {} _caisseChart = null; }
+  if (canvas && typeof Chart !== 'undefined') {
+    _caisseChart = new Chart(canvas, {
+      type: 'bar',
+      data: { labels: jours.map(j => j.slice(5)), datasets: [{ label: 'FCFA', data: jours.map(j => parJour[j]), backgroundColor: 'rgba(21,128,61,.75)', borderColor: '#15803d', borderWidth: 1, borderRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + _fmtF(c.raw) + ' FCFA' } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v } }, x: { ticks: { font: { size: 10 } } } } }
+    });
+  }
+
+  // Répartition par type
+  const byType = {};
+  TYPES_ANALYSES.forEach(t => byType[t] = { nb: 0, total: 0 });
+  rows.forEach(r => {
+    const types = isDossierRecord(r) ? (r.resultats?._types || []) : [r.type];
+    const montants = r.resultats?._montants || null;
+    types.forEach(t => {
+      if (!byType[t]) byType[t] = { nb: 0, total: 0 };
+      byType[t].nb++;
+      byType[t].total += montants ? (Number(montants[t]) || 0) : (types.length === 1 ? (r.montant || 0) : 0);
+    });
+  });
+  const tbodyT = document.getElementById('caisse-type-body');
+  if (tbodyT) {
+    const entries = Object.entries(byType).filter(([, v]) => v.nb > 0).sort((a, b) => b[1].total - a[1].total);
+    tbodyT.innerHTML = entries.length ? entries.map(([t, v]) =>
+      `<tr><td>${esc(t)}</td><td style="text-align:center">${v.nb}</td><td style="text-align:right">${_fmtF(v.total)}</td><td style="text-align:right">${total ? Math.round(v.total / total * 100) : 0}%</td></tr>`
+    ).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Aucune donnée</td></tr>';
+  }
+
+  // Top 5 prescripteurs
+  const byPresc = {};
+  rows.forEach(r => {
+    const pid = r.prescripteur_id;
+    const nom = (_prescripteurs.find(p => Number(p.id) === Number(pid))?.nom) || r.patient?.medecin || 'Inconnu';
+    if (!byPresc[nom]) byPresc[nom] = { nb: 0, total: 0 };
+    byPresc[nom].nb++;
+    byPresc[nom].total += (r.montant || 0);
+  });
+  const topPresc = Object.entries(byPresc).sort((a, b) => b[1].nb - a[1].nb).slice(0, 5);
+  const tbodyP = document.getElementById('caisse-top-presc-body');
+  if (tbodyP) {
+    tbodyP.innerHTML = topPresc.length ? topPresc.map(([nom, v], i) =>
+      `<tr><td>${i + 1}</td><td>${esc(nom)}</td><td style="text-align:center">${v.nb}</td><td style="text-align:right">${_fmtF(v.total)}</td></tr>`
+    ).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Aucune donnée</td></tr>';
+  }
+
+  populateMoisAnneeSelectors();
+  renderRistournesMois();
+}
+
+// ── FEATURE 6 : ristournes mensuelles + export PDF/Excel ──────────
+const RISTOURNE_TAUX_KEY = 'ristourne_taux_override';
+function getRistourneOverrides() { try { return JSON.parse(localStorage.getItem(RISTOURNE_TAUX_KEY) || '{}'); } catch (e) { return {}; } }
+function tauxFor(presc) {
+  const ov = getRistourneOverrides();
+  if (ov[presc.id] !== undefined) return Number(ov[presc.id]) || 0;
+  return Number(presc.taux_ristourne) || 0;
+}
+function populateMoisAnneeSelectors() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const annees = [y, y - 1, y - 2];
+  [['rist-mois', 'rist-annee'], ['rapport-mois', 'rapport-annee']].forEach(([mId, aId]) => {
+    const mEl = document.getElementById(mId), aEl = document.getElementById(aId);
+    if (mEl && !mEl.dataset.filled) { mEl.innerHTML = MOIS_FR.map((m, i) => `<option value="${i + 1}">${m}</option>`).join(''); mEl.value = now.getMonth() + 1; mEl.dataset.filled = '1'; }
+    if (aEl && !aEl.dataset.filled) { aEl.innerHTML = annees.map(a => `<option value="${a}">${a}</option>`).join(''); aEl.value = y; aEl.dataset.filled = '1'; }
+  });
+}
+function computeRistournesData(mois, annee) {
+  const prefix = annee + '-' + String(mois).padStart(2, '0');
+  const db = getDB();
+  return (_prescripteurs || []).map(presc => {
+    const fiches = db.filter(r => Number(r.prescripteur_id) === Number(presc.id) && _recDate(r).startsWith(prefix));
+    const montantBrut = fiches.reduce((s, r) => s + (r.montant || 0), 0);
+    const taux = tauxFor(presc);
+    const ristourne = Math.round(montantBrut * taux / 100);
+    return { presc, nb: fiches.length, montantBrut, taux, ristourne };
+  }).filter(r => r.nb > 0);
+}
+function renderRistournesMois() {
+  const el = document.getElementById('rist-mois-table');
+  if (!el) return;
+  const mois = parseInt(document.getElementById('rist-mois')?.value || (new Date().getMonth() + 1));
+  const annee = parseInt(document.getElementById('rist-annee')?.value || new Date().getFullYear());
+  const rows = computeRistournesData(mois, annee);
+  if (!rows.length) { el.innerHTML = '<p style="font-size:12.5px;color:var(--text-muted)">Aucune activité prescripteur pour ' + MOIS_FR[mois - 1] + ' ' + annee + '.</p>'; return; }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr style="background:var(--bg)">
+      <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">Prescripteur</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border)">Nb dossiers</th>
+      <th style="padding:8px;text-align:right;border-bottom:1px solid var(--border)">Montant brut</th>
+      <th style="padding:8px;text-align:center;border-bottom:1px solid var(--border)">Taux (%)</th>
+      <th style="padding:8px;text-align:right;border-bottom:1px solid var(--border);color:#15803d">Ristourne</th>
+    </tr></thead><tbody>
+      ${rows.map(r => `<tr>
+        <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${esc(r.presc.nom)}</td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)">${r.nb}</td>
+        <td style="padding:7px 8px;text-align:right;border-bottom:1px solid var(--border)">${_fmtF(r.montantBrut)} F</td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)"><input type="number" id="rist_taux_${r.presc.id}" value="${r.taux}" min="0" max="100" step="0.5" style="width:70px;padding:3px 6px;font-size:12px" onchange="_previewRistourne(${r.presc.id},${r.montantBrut})"></td>
+        <td id="rist_val_${r.presc.id}" style="padding:7px 8px;text-align:right;border-bottom:1px solid var(--border);font-weight:700;color:#15803d">${_fmtF(r.ristourne)} F</td>
+      </tr>`).join('')}
+      <tr style="background:var(--bg)"><td colspan="4" style="padding:8px;font-weight:700;text-align:right">Total ristournes :</td>
+      <td id="rist-total-cell" style="padding:8px;font-weight:800;color:#15803d;text-align:right">${_fmtF(rows.reduce((s, r) => s + r.ristourne, 0))} FCFA</td></tr>
+    </tbody></table>`;
+}
+function _previewRistourne(id, brut) {
+  const taux = Number(document.getElementById('rist_taux_' + id)?.value) || 0;
+  const cell = document.getElementById('rist_val_' + id);
+  if (cell) cell.textContent = _fmtF(Math.round(brut * taux / 100)) + ' F';
+}
+function saveRistourneTaux() {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  const ov = getRistourneOverrides();
+  (_prescripteurs || []).forEach(p => {
+    const inp = document.getElementById('rist_taux_' + p.id);
+    if (inp) ov[p.id] = Number(inp.value) || 0;
+  });
+  localStorage.setItem(RISTOURNE_TAUX_KEY, JSON.stringify(ov));
+  toast('Taux de ristourne enregistrés ✓', 'ok');
+  renderRistournesMois();
+}
+function exportRistournesPDF() {
+  if (!window.jspdf?.jsPDF) { toast('Bibliothèque PDF non disponible', 'err'); return; }
+  const mois = parseInt(document.getElementById('rist-mois')?.value || (new Date().getMonth() + 1));
+  const annee = parseInt(document.getElementById('rist-annee')?.value || new Date().getFullYear());
+  const rows = computeRistournesData(mois, annee);
+  const { doc } = _newPDFDoc();
+  doc.setFontSize(14); doc.setFont(undefined, 'bold');
+  doc.text('CPMI Grand-Bassam — Ristournes prescripteurs', 14, 16);
+  doc.setFontSize(11); doc.setFont(undefined, 'normal');
+  doc.text(MOIS_FR[mois - 1] + ' ' + annee, 14, 23);
+  doc.autoTable({
+    startY: 28,
+    head: [['Prescripteur', 'Nb dossiers', 'Montant brut', 'Taux %', 'Ristourne']],
+    body: rows.map(r => [r.presc.nom, String(r.nb), _fmtF(r.montantBrut) + ' F', String(r.taux), _fmtF(r.ristourne) + ' F']),
+    styles: { fontSize: 9 }, headStyles: { fillColor: [26, 68, 128] },
+  });
+  const totBrut = rows.reduce((s, r) => s + r.montantBrut, 0);
+  const totRist = rows.reduce((s, r) => s + r.ristourne, 0);
+  const y = (doc.lastAutoTable?.finalY || 40) + 8;
+  doc.setFont(undefined, 'bold');
+  doc.text('Total général : ' + _fmtF(totBrut) + ' F brut — ' + _fmtF(totRist) + ' F de ristournes', 14, y);
+  doc.save('Ristournes_' + MOIS_FR[mois - 1] + '_' + annee + '.pdf');
+}
+async function exportRistournesExcel() {
+  if (!window.ExcelJS) { toast('Bibliothèque Excel non disponible', 'err'); return; }
+  const mois = parseInt(document.getElementById('rist-mois')?.value || (new Date().getMonth() + 1));
+  const annee = parseInt(document.getElementById('rist-annee')?.value || new Date().getFullYear());
+  const rows = computeRistournesData(mois, annee);
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Ristournes');
+  ws.mergeCells('A1:E1');
+  ws.getCell('A1').value = 'CPMI Grand-Bassam — Ristournes prescripteurs — ' + MOIS_FR[mois - 1] + ' ' + annee;
+  ws.getCell('A1').font = { bold: true, size: 13 };
+  ws.addRow([]);
+  const hdr = ws.addRow(['Prescripteur', 'Nb dossiers', 'Montant brut', 'Taux (%)', 'Ristourne']);
+  hdr.font = { bold: true }; hdr.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A4480' } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; });
+  rows.forEach(r => {
+    const row = ws.addRow([r.presc.nom, r.nb, r.montantBrut, r.taux, r.ristourne]);
+    row.getCell(3).numFmt = '#,##0" FCFA"'; row.getCell(5).numFmt = '#,##0" FCFA"';
+  });
+  const tot = ws.addRow(['TOTAL', rows.reduce((s, r) => s + r.nb, 0), rows.reduce((s, r) => s + r.montantBrut, 0), '', rows.reduce((s, r) => s + r.ristourne, 0)]);
+  tot.font = { bold: true }; tot.getCell(3).numFmt = '#,##0" FCFA"'; tot.getCell(5).numFmt = '#,##0" FCFA"';
+  ws.columns.forEach(c => c.width = 18); ws.getColumn(1).width = 30;
+  await downloadWorkbook(wb, 'Ristournes_' + MOIS_FR[mois - 1] + '_' + annee + '.xlsx');
+}
+
+// ── FEATURE 7 : rapport d'activité mensuel (PDF) ──────────────────
+function _newPDFDoc() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pdfSafe = s => s == null ? '' : String(s)
+    .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/µ/g, 'u').replace(/²/g, '2').replace(/³/g, '3')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '').trim();
+  const _rawText = doc.text.bind(doc);
+  doc.text = function (t, x, y, o) { t = Array.isArray(t) ? t.map(pdfSafe) : pdfSafe(t); return _rawText(t, x, y, o); };
+  if (doc.autoTable) {
+    const _rawAT = doc.autoTable.bind(doc);
+    doc.autoTable = function (o) {
+      if (o) { if (Array.isArray(o.head)) o.head = o.head.map(r => r.map(pdfSafe)); if (Array.isArray(o.body)) o.body = o.body.map(r => r.map(pdfSafe)); }
+      return _rawAT(o);
+    };
+  }
+  return { doc, jsPDF };
+}
+async function genererRapportMensuel() {
+  if (!window.jspdf?.jsPDF) { toast('Bibliothèque PDF non disponible', 'err'); return; }
+  await refreshDB();
+  const mois = parseInt(document.getElementById('rapport-mois')?.value || (new Date().getMonth() + 1));
+  const annee = parseInt(document.getElementById('rapport-annee')?.value || new Date().getFullYear());
+  const prefix = annee + '-' + String(mois).padStart(2, '0');
+  const db = getDB().filter(r => _recDate(r).startsWith(prefix));
+  const { doc } = _newPDFDoc();
+  const W = 210, M = 14;
+
+  // Page de garde
+  doc.setFillColor(26, 68, 128); doc.rect(0, 0, W, 60, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont(undefined, 'bold');
+  doc.text('CPMI GRAND-BASSAM', W / 2, 28, { align: 'center' });
+  doc.setFontSize(13); doc.setFont(undefined, 'normal');
+  doc.text("Rapport d'activité du laboratoire", W / 2, 40, { align: 'center' });
+  doc.setTextColor(0, 0, 0); doc.setFontSize(18); doc.setFont(undefined, 'bold');
+  doc.text(MOIS_FR[mois - 1] + ' ' + annee, W / 2, 85, { align: 'center' });
+  doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.setTextColor(120, 120, 120);
+  doc.text('Généré le ' + new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }), W / 2, 95, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  // Statistiques globales
+  const nbFiches = db.length;
+  const totalMontant = db.reduce((s, r) => s + (r.montant || 0), 0);
+  const joursDistincts = new Set(db.map(r => _recDate(r)).filter(Boolean)).size || 1;
+  let y = 115;
+  doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.text('1. Statistiques globales', M, y); y += 8;
+  doc.setFontSize(11); doc.setFont(undefined, 'normal');
+  doc.text('Nombre de dossiers : ' + nbFiches, M, y); y += 6;
+  doc.text('Montant total encaissé : ' + _fmtF(totalMontant) + ' FCFA', M, y); y += 6;
+  doc.text('Moyenne par jour actif : ' + _fmtF(Math.round(totalMontant / joursDistincts)) + ' FCFA', M, y); y += 6;
+
+  // Répartition par type
+  const byType = {}; TYPES_ANALYSES.forEach(t => byType[t] = 0);
+  db.forEach(r => { const types = isDossierRecord(r) ? (r.resultats?._types || []) : [r.type]; types.forEach(t => { if (byType[t] !== undefined) byType[t]++; }); });
+  const totType = Object.values(byType).reduce((a, b) => a + b, 0) || 1;
+  doc.setFont(undefined, 'bold'); doc.setFontSize(13); doc.text('2. Répartition par type d\'analyse', M, y + 4);
+  doc.autoTable({ startY: y + 8, head: [['Type', 'Nombre', '%']], body: TYPES_ANALYSES.filter(t => byType[t] > 0).map(t => [t, String(byType[t]), Math.round(byType[t] / totType * 100) + '%']), styles: { fontSize: 9 }, headStyles: { fillColor: [26, 68, 128] } });
+
+  // Répartition par service
+  const byService = {};
+  db.forEach(r => { const s = r.patient?.service || 'Non précisé'; byService[s] = (byService[s] || 0) + 1; });
+  doc.setFont(undefined, 'bold'); doc.setFontSize(13); doc.text('3. Répartition par service', M, doc.lastAutoTable.finalY + 10);
+  doc.autoTable({ startY: doc.lastAutoTable.finalY + 14, head: [['Service', 'Nombre']], body: Object.entries(byService).sort((a, b) => b[1] - a[1]).map(([s, n]) => [s, String(n)]), styles: { fontSize: 9 }, headStyles: { fillColor: [13, 148, 136] } });
+
+  // Top prescripteurs
+  const byPresc = {};
+  db.forEach(r => { const nom = (_prescripteurs.find(p => Number(p.id) === Number(r.prescripteur_id))?.nom) || r.patient?.medecin || 'Inconnu'; if (!byPresc[nom]) byPresc[nom] = { nb: 0, total: 0 }; byPresc[nom].nb++; byPresc[nom].total += (r.montant || 0); });
+  const topP = Object.entries(byPresc).sort((a, b) => b[1].nb - a[1].nb).slice(0, 10);
+  doc.setFont(undefined, 'bold'); doc.setFontSize(13); doc.text('4. Top prescripteurs', M, doc.lastAutoTable.finalY + 10);
+  doc.autoTable({ startY: doc.lastAutoTable.finalY + 14, head: [['Prescripteur', 'Nb dossiers', 'Montant']], body: topP.map(([nom, v]) => [nom, String(v.nb), _fmtF(v.total) + ' F']), styles: { fontSize: 9 }, headStyles: { fillColor: [26, 68, 128] } });
+
+  // Courbe d'activité quotidienne (image du canvas)
+  doc.addPage();
+  doc.setFont(undefined, 'bold'); doc.setFontSize(13); doc.text('5. Courbe d\'activité quotidienne', M, 20);
+  try {
+    const parJour = {};
+    db.forEach(r => { const d = _recDate(r); if (d) parJour[d] = (parJour[d] || 0) + 1; });
+    const jours = Object.keys(parJour).sort();
+    if (jours.length && typeof Chart !== 'undefined') {
+      const cv = document.createElement('canvas'); cv.width = 800; cv.height = 360;
+      const ch = new Chart(cv, { type: 'line', data: { labels: jours.map(j => j.slice(8)), datasets: [{ data: jours.map(j => parJour[j]), borderColor: '#1a4480', backgroundColor: 'rgba(26,68,128,.1)', fill: true, tension: .3 }] }, options: { responsive: false, animation: false, plugins: { legend: { display: false } } } });
+      await new Promise(res => setTimeout(res, 250));
+      doc.addImage(cv.toDataURL('image/png'), 'PNG', M, 26, 180, 80);
+      ch.destroy();
+    } else { doc.setFont(undefined, 'normal'); doc.setFontSize(10); doc.text('Données insuffisantes pour tracer la courbe.', M, 30); }
+  } catch (e) { doc.setFont(undefined, 'normal'); doc.setFontSize(10); doc.text('Courbe non disponible.', M, 30); }
+
+  // Alertes critiques
+  const critiques = [];
+  db.forEach(r => { if (hasCriticalValues(r)) { const al = checkValeursCritiques(r.resultats); (r.resultats?._types || []).forEach(t => al.push(...checkValeursCritiques(r.resultats[t]))); critiques.push({ p: r.patient, al }); } });
+  const yc = 120;
+  doc.setFont(undefined, 'bold'); doc.setFontSize(13); doc.text('6. Alertes valeurs critiques du mois', M, yc);
+  if (critiques.length) {
+    doc.autoTable({ startY: yc + 4, head: [['Patient', 'Dossier', 'Alertes']], body: critiques.slice(0, 40).map(c => [c.p?.nom || '—', c.p?.dossier || '—', c.al.map(a => a.label + '=' + a.valeur + ' ' + a.unite).join('; ') || 'signalé']), styles: { fontSize: 8 }, headStyles: { fillColor: [220, 38, 38] } });
+  } else { doc.setFont(undefined, 'normal'); doc.setFontSize(10); doc.text('Aucune alerte critique enregistrée ce mois.', M, yc + 8); }
+
+  doc.save('Rapport_activite_' + MOIS_FR[mois - 1] + '_' + annee + '.pdf');
+  toast('Rapport mensuel généré ✓', 'ok');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const isShare = await checkShareMode();
+  // Si ce n'est pas un lien de partage, le flux normal (login) prend le relais
+});
+
 </script>
 </div><!-- /#app-root -->
 
@@ -9526,6 +10670,34 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="modal-actions">
       <button class="btn" onclick="closePrescModal()">Annuler</button>
       <button class="btn btn-primary" onclick="submitPrescModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vue publique de vérification (QR code) -->
+<div id="share-view" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a4480,#2563eb,#0d9488);align-items:center;justify-content:center;z-index:3000;padding:20px">
+  <div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Nunito',sans-serif;text-align:center">
+    <div style="width:44px;height:44px;border:4px solid #e0eaff;border-top-color:#1a4480;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px"></div>
+    <div style="font-size:14px;color:#4a5c82;font-weight:600">Vérification du dossier…</div>
+  </div>
+</div>
+
+<!-- ✅ v13.28 — Modale de changement de mot de passe obligatoire (première connexion) -->
+<div id="first-login-modal" class="modal-backdrop" style="display:none;z-index:3200" role="dialog" aria-modal="true" aria-labelledby="fl-title">
+  <div class="modal-box">
+    <div class="modal-title" id="fl-title">🔐 Changement de mot de passe obligatoire</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+      Pour votre sécurité, vous devez définir un nouveau mot de passe avant d'accéder à l'application.
+    </p>
+    <label class="modal-label" for="fl_old">Mot de passe actuel</label>
+    <input class="modal-input" id="fl_old" type="password" autocomplete="current-password">
+    <label class="modal-label" for="fl_new">Nouveau mot de passe <span style="font-weight:400;color:var(--text-muted)">(min. 8 caractères, au moins 1 chiffre)</span></label>
+    <input class="modal-input" id="fl_new" type="password" autocomplete="new-password">
+    <label class="modal-label" for="fl_confirm">Confirmer le mot de passe</label>
+    <input class="modal-input" id="fl_confirm" type="password" autocomplete="new-password">
+    <div id="fl-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="submitFirstLoginPassword()">Changer le mot de passe</button>
     </div>
   </div>
 </div>
