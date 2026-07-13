@@ -1145,7 +1145,7 @@ select {
       </div>
       <div class="form-group">
         <label>Date de prélèvement<span class="req">*</span></label>
-        <input type="date" id="p_date">
+        <input type="date" id="p_date" onchange="regenDossier()" title="Changer la date régénère automatiquement le numéro de dossier pour ce mois">
       </div>
       <div class="form-group">
         <label>Nom complet<span class="req">*</span></label>
@@ -2031,6 +2031,12 @@ select {
     <div class="table-wrap">
       <table id="history-table">
         <thead><tr>
+          <!-- ✅ v13.30 — colonne sélection en masse -->
+          <th style="width:36px;text-align:center;padding:6px 4px">
+            <input type="checkbox" id="select-all-chk" title="Tout sélectionner / désélectionner"
+              onchange="toggleSelectAll(this.checked)"
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+          </th>
           <th onclick="setSortCol('date')" style="cursor:pointer">Date <span id="sort-date">↓</span></th>
           <th>N° Dossier</th>
           <th onclick="setSortCol('nom')" style="cursor:pointer">Patient <span id="sort-nom"></span></th>
@@ -2043,6 +2049,42 @@ select {
         <tbody id="history-body"></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- ✅ v13.30 — Barre d'actions en masse (apparaît quand des lignes sont cochées) -->
+  <div id="bulk-toolbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:#1e293b;color:#f1f5f9;border-radius:14px;padding:10px 18px;
+    box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:9999;
+    display:none;align-items:center;gap:10px;flex-wrap:wrap;min-width:340px;max-width:90vw">
+    <span id="bulk-count" style="font-weight:700;font-size:13px;white-space:nowrap;color:#94a3b8">0 sélectionnée(s)</span>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Statut -->
+    <button onclick="bulkSetStatut('attente')"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e"
+      title="Marquer comme En attente">⏳ Attente</button>
+    <button onclick="bulkSetStatut('en cours')"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#dbeafe;color:#1d4ed8"
+      title="Marquer comme En cours">🔵 En cours</button>
+    <button onclick="bulkSetStatut('rendu')"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#dcfce7;color:#166534"
+      title="Marquer comme Rendu">✅ Rendu</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Restriction -->
+    <button onclick="bulkLock()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e"
+      title="Masquer aux autres profils">🔒 Verrouiller</button>
+    <button onclick="bulkUnlock()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#f0fdf4;color:#166534"
+      title="Rendre visible à tous les profils">🔓 Déverrouiller</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Suppression (admin) -->
+    <button id="bulk-delete-btn" onclick="bulkDelete()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#dc2626;color:#fff"
+      title="Supprimer les fiches sélectionnées (admin)">🗑 Supprimer</button>
+    <!-- Fermer -->
+    <button onclick="clearBulkSelection()"
+      style="padding:5px 10px;border-radius:8px;border:1px solid #475569;cursor:pointer;font-size:13px;font-weight:700;background:transparent;color:#94a3b8;margin-left:4px"
+      title="Annuler la sélection">✕</button>
   </div>
 </div>
 
@@ -3960,6 +4002,7 @@ function showView(v) {
   const viewCaisse = document.getElementById('view-caisse');
   if (viewCaisse) viewCaisse.style.display = v === 'caisse' ? '' : 'none';
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
   if (v === 'historique') renderHistory(true);
   if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
@@ -4093,7 +4136,14 @@ initSupabase();
 // Cache local pour affichage instantané ; toujours resynchronisé avec Supabase
 let _dbCache = [];
 
-function getDB() { return _dbCache; }
+function getDB() {
+  // ✅ v13.30 — visibilité par profil : admin voit tout, les autres profils
+  // ne voient que leurs fiches non-restreintes + les fiches qu'ils ont eux-mêmes restreintes
+  if (isAdmin()) return _dbCache;
+  const uid = _currentUser?.username;
+  if (!uid) return [];
+  return _dbCache.filter(r => !r.restrictedBy || r.restrictedBy === uid);
+}
 
 
 // ── Loading overlay ──────────────────────────────────────────────────
@@ -4146,6 +4196,7 @@ async function refreshDB(force) {
     createdBy: row.created_by, montant: row.montant || 0,
     prescripteur_id: row.prescripteur_id,
     est_bpn: row.est_bpn || false,
+    restrictedBy: row.restricted_by || null, // ✅ v13.30 — visibilité profil
     _light: true, // ✅ v13.5 — détail non encore chargé
   })).concat(pendings);
   if (typeof buildPatientCache === 'function') buildPatientCache();
@@ -4183,6 +4234,7 @@ async function refreshDBFull() {
       resultats: row.resultats || {}, savedAt: row.created_at,
       createdBy: row.created_by, montant: row.montant || 0,
       prescripteur_id: row.prescripteur_id, est_bpn: row.est_bpn || false,
+      restrictedBy: row.restricted_by || null, // ✅ v13.30
       _light: false,
     })).concat(pendings);
     if (typeof buildPatientCache === 'function') buildPatientCache();
@@ -4429,9 +4481,12 @@ function esc(s) {
 }
 
 function formatDossier(n) {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const yy = String(now.getFullYear()).slice(-2);
+  // ✅ v13.30 — utiliser la date saisie dans le formulaire (résultats passés)
+  // plutôt que la date système, afin que le suffixe -MMYY corresponde au mois du patient
+  const dateVal = document.getElementById('p_date')?.value;
+  const ref = (dateVal && dateVal.length === 10) ? new Date(dateVal + 'T00:00:00') : new Date();
+  const mm = String(ref.getMonth() + 1).padStart(2, '0');
+  const yy = String(ref.getFullYear()).slice(-2);
   return String(n).padStart(4, '0') + '-' + mm + yy;
 }
 
@@ -4443,9 +4498,11 @@ function formatDossier(n) {
 // le numéro proposé soit toujours juste, même après suppression d'une
 // fiche ou changement de poste/navigateur.
 async function getNextDossierNum() {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const yy = String(now.getFullYear()).slice(-2);
+  // ✅ v13.30 — calculer le suffixe depuis p_date (résultats passés/futurs) et non la date système
+  const dateVal = document.getElementById('p_date')?.value;
+  const ref = (dateVal && dateVal.length === 10) ? new Date(dateVal + 'T00:00:00') : new Date();
+  const mm = String(ref.getMonth() + 1).padStart(2, '0');
+  const yy = String(ref.getFullYear()).slice(-2);
   const suffix = '-' + mm + yy;
 
   // ── Essayer la RPC atomique Supabase en priorité (évite les doublons) ──
@@ -4490,16 +4547,31 @@ async function newPatient() {
   // Repartir sur une session propre : mode filtré réactivé, plus en mode édition
   _showAllExams = false;
   _editingRecordId = null;
+  _editingFicheId  = null; // ✅ v13.29
   _locksDisabled = false;
   _shareTokenCurrent = null; // Nouveau patient → nouveau token de partage
 
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
+  const ficheBanner = document.getElementById('fiche-edit-banner');
+  if (ficheBanner) ficheBanner.style.display = 'none';
+  const dossEl = document.getElementById('p_dossier');
+  if (dossEl) dossEl.style.outline = '';
+  const btnSaveF = document.querySelector('button[onclick="enregistrerFicheIdentif()"]');
+  if (btnSaveF) btnSaveF.innerHTML = '💾 Enregistrer sans saisie';
   // Effacer les infos patient
   ['p_nom','p_medecin','p_clinique'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['p_age'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['p_sexe','p_service'].forEach(id => { const el = document.getElementById(id); if(el) el.selectedIndex = 0; });
-  document.getElementById('p_date').value = new Date().toISOString().slice(0,10);
+  // ✅ v13.29 — re-synchroniser p_medecin depuis le prescripteur encore sélectionné
+  // (évite que le médecin reste vide pour les patients consécutifs du même prescripteur)
+  if (typeof onPrescripteurChange === 'function') onPrescripteurChange();
+  // ✅ v13.30 — NE PAS écraser la date : si l'utilisateur saisit des résultats passés,
+  // la date reste inchangée pour tous les patients consécutifs de la même session.
+  // Si le champ est vide (premier lancement), on met la date du jour comme fallback.
+  if (!document.getElementById('p_date').value) {
+    document.getElementById('p_date').value = new Date().toISOString().slice(0,10);
+  }
   // Effacer tous les panneaux de résultats
   ['hema','bio','bacterio','sero','parasito'].forEach(name => resetPanel(name));
   // Générer un nouveau numéro de dossier (vérifié contre l'historique réel)
@@ -4941,6 +5013,8 @@ async function _saveRecordImpl(type) {
 
 let _editingRecordId = null;
 let _editingType     = null; // type de l'analyse en cours d'édition
+let _editingFicheId  = null; // ✅ v13.29 — id du dossier en cours de modification fiche d'accueil
+let _selectedIds     = new Set(); // ✅ v13.30 — IDs sélectionnés pour actions en masse
 
 // ✅ v13.1 — Recalcule les interprétations d'un panneau en redéclenchant les
 // gestionnaires oninput. Corrige le cas « édition → ré-enregistrement » où les
@@ -5080,6 +5154,134 @@ function cancelEdit() {
   if (banner) banner.style.display = 'none';
   newPatient();
   if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
+}
+
+// ✅ v13.29 — Modifier la fiche d'accueil (patient + examens) sans changer le numéro de dossier
+async function editFicheIdentif(id) {
+  let record = getDB().find(x => x.id === id);
+  if (!record) {
+    showLoading('Chargement…');
+    await refreshDB();
+    hideLoading();
+    record = getDB().find(x => x.id === id);
+  }
+  if (!record) { toast('Fiche introuvable', 'err'); return; }
+
+  await ensureFull(record); // charge le dossier complet si nécessaire
+
+  _editingFicheId     = id;
+  _editingRecordId    = null; // s'assurer qu'on n'est pas en mode résultats
+  _shareTokenCurrent  = record.patient?.share_token || null;
+
+  showView('saisie');
+  await new Promise(r => setTimeout(r, 60));
+
+  // Afficher la fiche d'identification, masquer la zone de saisie de résultats
+  document.getElementById('fiche-identification').style.display = '';
+  document.getElementById('zone-saisie').style.display = 'none';
+
+  // Remplir les champs patient
+  const p = record.patient || {};
+  ['dossier','date','nom','age','sexe','medecin','service','clinique'].forEach(k => {
+    const el = document.getElementById('p_' + k);
+    if (el) el.value = p[k] || '';
+  });
+
+  // Téléphone si présent
+  const telEl = document.getElementById('p_telephone');
+  if (telEl && p.telephone) telEl.value = p.telephone;
+
+  // Prescripteur
+  const prescEl = document.getElementById('p_prescripteur_id');
+  if (prescEl && record.prescripteur_id) {
+    prescEl.value = record.prescripteur_id;
+    if (typeof onPrescripteurChange === 'function') onPrescripteurChange();
+  }
+
+  // Mettre à jour les références (âge/sexe)
+  if (typeof updateAllRefs === 'function') updateAllRefs();
+
+  // Restaurer les examens cochés et leurs prix depuis le dossier existant
+  if (typeof restoreFicheFromRecord === 'function') restoreFicheFromRecord(record);
+
+  if (typeof updateMontantCurrent === 'function') updateMontantCurrent();
+
+  // Bandeau d'édition sur la fiche d'accueil
+  let banner = document.getElementById('fiche-edit-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'fiche-edit-banner';
+    banner.style.cssText = [
+      'background:#f0fdf4','border:2px solid #16a34a','color:#166534',
+      'padding:10px 16px','border-radius:var(--radius)','margin:10px 0 14px',
+      'font-size:13px','font-weight:600','display:flex','align-items:center','gap:10px'
+    ].join(';');
+    // Insérer juste sous le titre de la card
+    const titleEl = document.getElementById('fiche-identif-title');
+    if (titleEl) titleEl.insertAdjacentElement('afterend', banner);
+    else document.getElementById('fiche-identification').prepend(banner);
+  }
+  banner.innerHTML = '🗂 Modification fiche d\'accueil — <strong>N° ' + esc(p.dossier || '') + '</strong>'
+    + ' &nbsp;·&nbsp; ' + esc((p.nom || '').toUpperCase())
+    + ' <button onclick="cancelEditFiche()" style="margin-left:auto;background:none;border:1.5px solid #16a34a;color:#166534;padding:3px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700">✕ Annuler</button>';
+  banner.style.display = 'flex';
+
+  // Adapter le bouton "Enregistrer sans saisie"
+  const btnSave = document.querySelector('button[onclick="enregistrerFicheIdentif()"]');
+  if (btnSave) btnSave.innerHTML = '💾 Mettre à jour la fiche';
+
+  // Verrouiller le champ numéro de dossier (lecture seule, déjà readonly)
+  const dossEl = document.getElementById('p_dossier');
+  if (dossEl) dossEl.style.outline = '2px solid #16a34a';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('🗂 Fiche chargée — modifiez et cliquez "Mettre à jour"', 'ok');
+}
+
+function cancelEditFiche() {
+  _editingFicheId = null;
+  const banner = document.getElementById('fiche-edit-banner');
+  if (banner) banner.style.display = 'none';
+  const dossEl = document.getElementById('p_dossier');
+  if (dossEl) dossEl.style.outline = '';
+  const btnSave = document.querySelector('button[onclick="enregistrerFicheIdentif()"]');
+  if (btnSave) btnSave.innerHTML = '💾 Enregistrer sans saisie';
+  newPatient();
+}
+
+// ✅ v13.30 — Restriction de visibilité par profil
+async function toggleRestriction(id) {
+  const record = _dbCache.find(r => r.id === id); // chercher dans _dbCache (pas getDB filtré)
+  if (!record) { toast('Fiche introuvable', 'err'); return; }
+
+  const canToggle = isAdmin() || record.createdBy === _currentUser?.username;
+  if (!canToggle) { toast('Vous ne pouvez pas modifier la restriction de cette fiche', 'err'); return; }
+
+  const isRestricted = !!record.restrictedBy;
+  const confirmMsg = isRestricted
+    ? '🔓 Lever la restriction ?\nCette fiche redeviendra visible pour tous les profils.'
+    : '🔒 Masquer cette fiche aux autres profils ?\nElle n\'apparaîtra plus dans leur historique ni dans leurs calculs.';
+  if (!confirm(confirmMsg)) return;
+
+  showLoading(isRestricted ? 'Levée de la restriction…' : 'Masquage en cours…');
+  const { data, error } = await _sb.rpc('toggle_restriction', { p_token: TK(), p_id: id });
+  hideLoading();
+
+  if (error) { toast('Erreur : ' + error.message, 'err'); return; }
+  if (data === 'unauthorized') { toast('Session expirée — reconnectez-vous', 'err'); return; }
+  if (data === 'forbidden')    { toast('Action non autorisée', 'err'); return; }
+  if (data === 'not_found')    { toast('Fiche introuvable en base', 'err'); return; }
+
+  if (data === 'restricted') {
+    record.restrictedBy = _currentUser?.username;
+    toast('🔒 Fiche masquée — les autres profils ne la verront plus', 'ok');
+  } else if (data === 'unrestricted') {
+    record.restrictedBy = null;
+    toast('🔓 Restriction levée — fiche à nouveau visible par tous', 'ok');
+  } else {
+    toast('Réponse inattendue : ' + data, 'err'); return;
+  }
+  await renderHistorique();
 }
 
 // Recharge les résultats sauvegardés dans les champs du formulaire (mode édition)
@@ -5476,6 +5678,24 @@ async function renderHistory(forceRefresh) {
     ? '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="deleteRecord(' + id + ')">🗑</button>'
     : '';
 
+  // ✅ v13.30 — bouton de restriction de visibilité
+  const lockBtn = (r) => {
+    const canRestrict = isAdmin() || r.createdBy === _currentUser?.username;
+    if (!canRestrict) return '';
+    const locked = !!r.restrictedBy;
+    const style = locked
+      ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
+      : 'background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0';
+    const tip = locked
+      ? 'Fiche masquée (cliquer pour lever la restriction)'
+      : 'Masquer aux autres profils';
+    // Pour l'admin : afficher aussi le nom du profil qui a restreint
+    const adminInfo = (isAdmin() && locked && r.restrictedBy)
+      ? ' title="Restreint par ' + r.restrictedBy + '"' : ' title="' + tip + '"';
+    return '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;' + style + '"'
+      + adminInfo + ' onclick="toggleRestriction(' + r.id + ')">' + (locked ? '🔒' : '🔓') + '</button>';
+  };
+
   const hl = q ? (s => highlight(s, q)) : esc;
 
   b.innerHTML = filtered.map(r => {
@@ -5483,9 +5703,13 @@ async function renderHistory(forceRefresh) {
     const montantStr = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
     const recPreview = {id:r.id,patient:r.patient,montant:r.montant,resultats:{_examens_coches:r.resultats?._examens_coches}};
     return '<tr id="row-' + r.id + '" class="hist-row-' + getStatut(r.id) + '" onmousemove="showPreview(event,' + JSON.stringify(recPreview).replace(/\\/g,'\\\\').replace(/'/g,"\\'") + ')" onmouseleave="hidePreview()">'
+      + '<td style="text-align:center;padding:4px;vertical-align:middle"><input type="checkbox" class="bulk-chk" data-id="' + r.id + '" '
+        + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
+        + ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)"></td>'
       + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
       + '<td data-label="N° Dossier"><strong>' + hl(r.patient.dossier) + '</strong>'
         + (r._pending ? ' <span title="En attente de synchronisation" style="font-size:10px;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">⏳ à synchroniser</span>' : '')
+        + (isAdmin() && r.restrictedBy ? ' <span title="Restreint par ' + esc(r.restrictedBy) + '" style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px">🔒</span>' : '')
       + '</td>'
       + '<td data-label="Patient">' + hl(r.patient.nom)
           + (hasCriticalValues(r) ? '<span class="badge-critique" title="Valeur critique détectée">🔴 CRITIQUE</span>' : '')
@@ -5505,7 +5729,9 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
       + '<td data-label="Statut">' + statutBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats" aria-label="Modifier les résultats">✏️</button>'
+        + lockBtn(r)
+        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="editFicheIdentif(' + r.id + ')" title="Modifier la fiche d\'accueil (patient + examens)" aria-label="Modifier la fiche d\'accueil">🗂</button>'
+        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats" aria-label="Modifier les résultats">✏️</button>'
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF" aria-label="Exporter en PDF">📄</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
@@ -5578,6 +5804,138 @@ async function deleteRecord(id) {
     renderHistory();
     toast('Fiche supprimée');
   }
+}
+
+// ============================================================
+// ✅ v13.30 — ACTIONS EN MASSE (sélection par cases à cocher)
+// ============================================================
+
+function toggleRowSelect(id, checked) {
+  if (checked) _selectedIds.add(id); else _selectedIds.delete(id);
+  updateBulkToolbar();
+}
+
+function toggleSelectAll(checked) {
+  // Sélectionner/décocher uniquement les lignes actuellement visibles
+  document.querySelectorAll('.bulk-chk').forEach(chk => {
+    const id = Number(chk.dataset.id);
+    chk.checked = checked;
+    if (checked) _selectedIds.add(id); else _selectedIds.delete(id);
+  });
+  updateBulkToolbar();
+}
+
+function updateBulkToolbar() {
+  const toolbar = document.getElementById('bulk-toolbar');
+  const countEl = document.getElementById('bulk-count');
+  const delBtn  = document.getElementById('bulk-delete-btn');
+  const selectAll = document.getElementById('select-all-chk');
+  const n = _selectedIds.size;
+  if (toolbar) toolbar.style.display = n > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = n + ' fiche' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '');
+  if (delBtn) delBtn.style.display = isAdmin() ? '' : 'none';
+  // État de la case "tout sélectionner"
+  if (selectAll) {
+    const total = document.querySelectorAll('.bulk-chk').length;
+    selectAll.indeterminate = n > 0 && n < total;
+    selectAll.checked = total > 0 && n === total;
+  }
+}
+
+function clearBulkSelection() {
+  _selectedIds.clear();
+  document.querySelectorAll('.bulk-chk').forEach(chk => chk.checked = false);
+  const sel = document.getElementById('select-all-chk');
+  if (sel) { sel.checked = false; sel.indeterminate = false; }
+  updateBulkToolbar();
+}
+
+async function bulkSetStatut(statut) {
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  const labels = { attente: 'En attente', 'en cours': 'En cours', rendu: 'Rendu' };
+  if (!confirm('Marquer ' + ids.length + ' fiche(s) comme "' + (labels[statut] || statut) + '" ?')) return;
+  showLoading('Mise à jour du statut…');
+  let ok = 0, err = 0;
+  for (const id of ids) {
+    try {
+      await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: id, p_statut: statut });
+      setStatut(id, statut); // mise à jour locale immédiate
+      ok++;
+    } catch (e) { err++; }
+  }
+  hideLoading();
+  clearBulkSelection();
+  renderHistorique();
+  toast(ok + ' fiche(s) mises à jour' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+}
+
+async function bulkLock() {
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  const eligible = ids.filter(id => {
+    const r = _dbCache.find(x => x.id === id);
+    return r && (!r.restrictedBy) && (isAdmin() || r.createdBy === _currentUser?.username);
+  });
+  if (!eligible.length) { toast('Aucune fiche éligible au verrouillage', 'err'); return; }
+  if (!confirm('Masquer ' + eligible.length + ' fiche(s) aux autres profils ?')) return;
+  showLoading('Verrouillage…');
+  let ok = 0, err = 0;
+  for (const id of eligible) {
+    const { data, error } = await _sb.rpc('toggle_restriction', { p_token: TK(), p_id: id });
+    if (!error && data === 'restricted') {
+      const r = _dbCache.find(x => x.id === id);
+      if (r) r.restrictedBy = _currentUser?.username;
+      ok++;
+    } else err++;
+  }
+  hideLoading();
+  clearBulkSelection();
+  renderHistorique();
+  toast(ok + ' fiche(s) verrouillée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+}
+
+async function bulkUnlock() {
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  const eligible = ids.filter(id => {
+    const r = _dbCache.find(x => x.id === id);
+    return r && r.restrictedBy && (isAdmin() || r.restrictedBy === _currentUser?.username);
+  });
+  if (!eligible.length) { toast('Aucune fiche verrouillée dans la sélection', 'err'); return; }
+  if (!confirm('Lever la restriction sur ' + eligible.length + ' fiche(s) ?')) return;
+  showLoading('Déverrouillage…');
+  let ok = 0, err = 0;
+  for (const id of eligible) {
+    const { data, error } = await _sb.rpc('toggle_restriction', { p_token: TK(), p_id: id });
+    if (!error && data === 'unrestricted') {
+      const r = _dbCache.find(x => x.id === id);
+      if (r) r.restrictedBy = null;
+      ok++;
+    } else err++;
+  }
+  hideLoading();
+  clearBulkSelection();
+  renderHistorique();
+  toast(ok + ' fiche(s) déverrouillée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+}
+
+async function bulkDelete() {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  if (!confirm('⚠ Supprimer définitivement ' + ids.length + ' fiche(s) ?\nCette action est irréversible.')) return;
+  showLoading('Suppression en cours…');
+  let ok = 0, err = 0;
+  for (const id of ids) {
+    const success = await deleteRecordRemote(id);
+    if (success) ok++; else err++;
+  }
+  hideLoading();
+  clearBulkSelection();
+  await refreshDB(true);
+  renderHistorique();
+  toast(ok + ' fiche(s) supprimée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
 async function clearHistory() {
@@ -7909,7 +8267,7 @@ function onPrescripteurChange() {
   const presc = _prescripteurs.find(p => p.id == id);
   if (presc) {
     const medEl = document.getElementById('p_medecin');
-    if (medEl && !medEl.value) medEl.value = presc.nom;
+    if (medEl) medEl.value = presc.nom; // ✅ v13.29 — toujours synchroniser, même si déjà rempli
   }
 }
 
@@ -8905,20 +9263,55 @@ async function enregistrerFicheIdentif() {
       _facture_seule: true, // marqueur : résultats non encore saisis
     };
 
-    const record = {
-      type: typePrincipal,
-      patient: p,
-      resultats,
-      montant: montantTotal,
-      prescripteur_id: document.getElementById('p_prescripteur_id')?.value || null,
-      est_bpn: false,
-    };
+    const prescripteur_id = document.getElementById('p_prescripteur_id')?.value || null;
 
-    await insertRecordRemote(record);
-    hideLoading();
-    toast('Facture enregistrée ✓ — résultats à compléter plus tard', 'ok');
-    await refreshDB(true);
-    newPatient();
+    if (_editingFicheId) {
+      // ✅ v13.29 — MODE MISE À JOUR : on préserve les résultats existants,
+      // on ne met à jour que le patient + métadonnées de facturation.
+      showLoading('Mise à jour de la fiche…');
+      const existing = getDB().find(rr => rr.id === _editingFicheId);
+      const mergedResultats = {
+        ...(existing?.resultats || {}),        // garde les résultats déjà saisis
+        _types:          resultats._types,
+        _montants:       resultats._montants,
+        _examens_coches: resultats._examens_coches,
+        _examens_prix:   resultats._examens_prix,
+        _facture_seule:  !(existing?.resultats) || existing.resultats._facture_seule,
+      };
+      const updatedRecord = {
+        type: typePrincipal,
+        patient: p,
+        resultats: mergedResultats,
+        montant: montantTotal,
+        prescripteur_id,
+        est_bpn: false,
+      };
+      await updateRecordRemote(_editingFicheId, updatedRecord);
+      hideLoading();
+      toast('✅ Fiche d\'accueil mise à jour — N° ' + (p.dossier || ''), 'ok');
+      _editingFicheId = null;
+      // Nettoyer le bandeau et le bouton
+      const fBanner = document.getElementById('fiche-edit-banner');
+      if (fBanner) fBanner.style.display = 'none';
+      const btnSave = document.querySelector('[onclick="enregistrerFicheIdentif()"]');
+      if (btnSave) btnSave.innerHTML = '💾 Enregistrer sans saisie';
+      await refreshDB(true);
+      showView('historique');
+    } else {
+      const record = {
+        type: typePrincipal,
+        patient: p,
+        resultats,
+        montant: montantTotal,
+        prescripteur_id,
+        est_bpn: false,
+      };
+      await insertRecordRemote(record);
+      hideLoading();
+      toast('Facture enregistrée ✓ — résultats à compléter plus tard', 'ok');
+      await refreshDB(true);
+      newPatient();
+    }
   } catch (e) {
     hideLoading();
     console.error('Erreur enregistrement facture:', e);
@@ -10411,7 +10804,10 @@ async function renderCaisse() {
 const RISTOURNE_TAUX_KEY = 'ristourne_taux_override';
 function getRistourneOverrides() { try { return JSON.parse(localStorage.getItem(RISTOURNE_TAUX_KEY) || '{}'); } catch (e) { return {}; } }
 function tauxFor(presc) {
-  const ov = getRistourneOverrides();
+  // ✅ v13.29 — priorité à la valeur en base (_prescripteurs déjà chargé depuis DB)
+  // Le localStorage n'est plus la source de vérité ; on l'ignore si la base est disponible.
+  if (_prescripteurs.length) return Number(presc.taux_ristourne) || 0;
+  const ov = getRistourneOverrides(); // fallback hors-ligne uniquement
   if (ov[presc.id] !== undefined) return Number(ov[presc.id]) || 0;
   return Number(presc.taux_ristourne) || 0;
 }
@@ -10428,12 +10824,18 @@ function populateMoisAnneeSelectors() {
 function computeRistournesData(mois, annee) {
   const prefix = annee + '-' + String(mois).padStart(2, '0');
   const db = getDB();
+  // ✅ v13.29 — même règle que Statistiques : 0 % sur les BPN
+  const isBpn = r => r.est_bpn
+    || getRecordTypes(r).includes('Bilan prénatal')
+    || Object.values(r.resultats?._examens_coches || {}).flat().includes('Bilan prénatal complet (forfait)');
   return (_prescripteurs || []).map(presc => {
-    const fiches = db.filter(r => Number(r.prescripteur_id) === Number(presc.id) && _recDate(r).startsWith(prefix));
-    const montantBrut = fiches.reduce((s, r) => s + (r.montant || 0), 0);
-    const taux = tauxFor(presc);
+    const fiches    = db.filter(r => Number(r.prescripteur_id) === Number(presc.id) && _recDate(r).startsWith(prefix));
+    const bpn       = fiches.filter(r => isBpn(r));
+    const extraBPN  = fiches.filter(r => !isBpn(r));
+    const montantBrut = extraBPN.reduce((s, r) => s + (r.montant || 0), 0); // base hors-BPN
+    const taux      = tauxFor(presc);
     const ristourne = Math.round(montantBrut * taux / 100);
-    return { presc, nb: fiches.length, montantBrut, taux, ristourne };
+    return { presc, nb: fiches.length, nbBpn: bpn.length, nbExtraBPN: extraBPN.length, montantBrut, taux, ristourne };
   }).filter(r => r.nb > 0);
 }
 function renderRistournesMois() {
@@ -10467,15 +10869,32 @@ function _previewRistourne(id, brut) {
   const cell = document.getElementById('rist_val_' + id);
   if (cell) cell.textContent = _fmtF(Math.round(brut * taux / 100)) + ' F';
 }
-function saveRistourneTaux() {
+async function saveRistourneTaux() {
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
-  const ov = getRistourneOverrides();
-  (_prescripteurs || []).forEach(p => {
+  showLoading('Enregistrement des taux…');
+  let errCount = 0;
+  for (const p of (_prescripteurs || [])) {
     const inp = document.getElementById('rist_taux_' + p.id);
-    if (inp) ov[p.id] = Number(inp.value) || 0;
-  });
-  localStorage.setItem(RISTOURNE_TAUX_KEY, JSON.stringify(ov));
-  toast('Taux de ristourne enregistrés ✓', 'ok');
+    if (!inp) continue;
+    const nouveauTaux = Number(inp.value) || 0;
+    if (nouveauTaux === (p.taux_ristourne || 0)) continue; // pas de changement
+    // ✅ v13.29 — persister en base via RPC (synchronise Statistiques + Caisse)
+    const { data, error } = await _sb.rpc('update_prescripteur_admin', {
+      p_token: TK(), p_id: p.id,
+      p_nom: p.nom, p_specialite: p.specialite || '',
+      p_structure: p.structure || '', p_taux_ristourne: nouveauTaux,
+    });
+    if (error || (data && data !== 'ok')) { errCount++; }
+    else { p.taux_ristourne = nouveauTaux; } // mise à jour locale immédiate
+  }
+  // Supprimer les surcharges localStorage obsolètes (source de divergence)
+  localStorage.removeItem(RISTOURNE_TAUX_KEY);
+  hideLoading();
+  if (errCount) {
+    toast('⚠ ' + errCount + ' taux non enregistré(s) — vérifiez la connexion', 'err');
+  } else {
+    toast('Taux de ristourne enregistrés en base ✓', 'ok');
+  }
   renderRistournesMois();
 }
 function exportRistournesPDF() {
