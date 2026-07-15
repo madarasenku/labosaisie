@@ -69,32 +69,32 @@
 
 /* ── Mode sombre ── */
 [data-theme="dark"] {
-  --bg:           #0f172a;
-  --surface:      #1e293b;
-  --border:       #334155;
-  --text:         #e2e8f0;
-  --text-muted:   #94a3b8;
-  --text-label:   #cbd5e1;
-  --accent:       #60a5fa;
-  --accent-hover: #93c5fd;
-  --accent-light: #1e3a5f;
-  --danger:       #f87171;
-  --danger-light: #2d1515;
-  --success:      #34d399;
-  --success-light:#0d2d1f;
-  --warning:      #fbbf24;
-  --warning-light:#2d1f00;
-  --cpmi-deep:    #93c5fd;
-  --cpmi-mid:     #60a5fa;
-  --cpmi-soft:    #1e3a5f;
+  --bg:           #12141a;
+  --surface:      #1c1f27;
+  --border:       #2c3040;
+  --text:         #cdd2dc;
+  --text-muted:   #868d9c;
+  --text-label:   #a5adb8;
+  --accent:       #6d8fac;
+  --accent-hover: #87a7c0;
+  --accent-light: #1a2635;
+  --danger:       #a86868;
+  --danger-light: #221616;
+  --success:      #528a70;
+  --success-light:#0e2018;
+  --warning:      #907a38;
+  --warning-light:#1e1900;
+  --cpmi-deep:    #87a7c0;
+  --cpmi-mid:     #6d8fac;
+  --cpmi-soft:    #1a2635;
 }
-[data-theme="dark"] body { background-color: #0a0f1e; }
+[data-theme="dark"] body { background-color: #0d0f14; }
 [data-theme="dark"] .card { background: var(--surface); }
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
-  background: #1e293b; color: var(--text); border-color: var(--border);
+  background: #1c1f27; color: var(--text); border-color: var(--border);
 }
-[data-theme="dark"] .exam-group-card { background: #1e293b; }
-[data-theme="dark"] body::before, [data-theme="dark"] body::after { opacity: 0.03; }
+[data-theme="dark"] .exam-group-card { background: #1c1f27; }
+[data-theme="dark"] body::before, [data-theme="dark"] body::after { opacity: 0.02; }
 
 
 /* ── Statuts dossier ── */
@@ -1149,9 +1149,14 @@ select {
       </div>
       <div class="form-group">
         <label>Nom complet<span class="req">*</span></label>
-        <input type="text" id="p_nom" placeholder="Nom et prénom" autocomplete="off" list="patient-suggestions" oninput="onPatientNameInput();checkPatientExistant()">
+        <div style="position:relative">
+          <input type="text" id="p_nom" placeholder="Nom et prénom" autocomplete="off"
+                 oninput="onPatientNameInput();checkPatientExistant()"
+                 onblur="setTimeout(closePatientDropdown,200)"
+                 onkeydown="onPatientNameKey(event)">
+          <div id="patient-suggestions" style="display:none;position:absolute;z-index:2000;left:0;right:0;top:calc(100% + 2px);background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.13);max-height:260px;overflow-y:auto"></div>
+        </div>
         <div id="patient-existant-notif" style="display:none;margin-top:4px;padding:6px 10px;background:#fef9c3;border:1px solid #fde047;border-radius:6px;font-size:12px;color:#854d0e"></div>
-        <datalist id="patient-suggestions"></datalist>
       </div>
       <div class="form-group">
         <label>Âge</label>
@@ -2002,10 +2007,18 @@ select {
         <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Agent</label>
         <select id="filter-agent" onchange="renderHistory()"><option value="">Tous les agents</option></select>
       </div>
-      <div style="display:flex;gap:8px;align-items:flex-end;padding-top:18px">
+      <div style="display:flex;gap:8px;align-items:flex-end;padding-top:18px;flex-wrap:wrap">
         <button class="btn btn-outline" onclick="clearSearchFilters()"
           style="padding:8px 14px;font-size:12.5px;display:flex;align-items:center;gap:6px">
           ↺ Réinitialiser
+        </button>
+        <button id="btn-verrouillee" onclick="toggleVerrouillees()"
+          style="display:none;padding:8px 14px;font-size:12.5px;border-radius:8px;cursor:pointer;border:1.5px solid #fbbf24;background:#fef3c7;color:#92400e;font-weight:600;align-items:center;gap:6px">
+          🔒 Fiches verrouillées&nbsp;<span id="verrouillee-badge" style="background:#d97706;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px">0</span>
+        </button>
+        <button id="btn-corbeille" onclick="toggleCorbeille()"
+          style="display:none;padding:8px 14px;font-size:12.5px;border-radius:8px;cursor:pointer;border:1.5px solid #f87171;background:#fef2f2;color:#b91c1c;font-weight:600;align-items:center;gap:6px">
+          🗑️ Corbeille&nbsp;<span id="corbeille-badge" style="background:#dc2626;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px">0</span>
         </button>
         <button id="btn-clear-history" class="btn btn-danger" onclick="clearHistory()"
           style="display:none;padding:8px 14px;font-size:12.5px">🗑 Vider l'historique</button>
@@ -2383,6 +2396,9 @@ select {
       </div>
       <span id="caisse-periode-label" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
     </div>
+
+    <!-- v13.32 — Fiches verrouillées exclues de la comptabilité (voir section Fiches verrouillées) -->
+    <div id="caisse-cles-toggle" style="display:none"></div>
   </div>
 
   <!-- KPI -->
@@ -4136,13 +4152,40 @@ initSupabase();
 // Cache local pour affichage instantané ; toujours resynchronisé avec Supabase
 let _dbCache = [];
 
+// ✅ v13.31 — Corbeille : mode admin affichant les fiches supprimées (soft-delete)
+let _filterCorbeille = false;
+
+// ✅ v13.32 — Fiches verrouillées : section admin dédiée (les fiches 🔒 disparaissent
+// de la vue normale pour tout le monde, y compris leur propriétaire).
+let _filterVerrouillees = false;
+
 function getDB() {
-  // ✅ v13.30 — visibilité par profil : admin voit tout, les autres profils
-  // ne voient que leurs fiches non-restreintes + les fiches qu'ils ont eux-mêmes restreintes
-  if (isAdmin()) return _dbCache;
-  const uid = _currentUser?.username;
-  if (!uid) return [];
-  return _dbCache.filter(r => !r.restrictedBy || r.restrictedBy === uid);
+  // ✅ v13.32 — Modes spéciaux admin
+  if (_filterCorbeille    && isAdmin()) return _dbCache.filter(r => !!r.deletedAt);
+  if (_filterVerrouillees && isAdmin()) return _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy);
+  // Mode normal (tout profil) : exclure les fiches supprimées ET verrouillées.
+  // Les fiches verrouillées disparaissent de la vue de leur propriétaire (ils pensent qu'elles
+  // sont supprimées) ; seul l'admin les retrouve dans la section « Fiches verrouillées ».
+  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
+}
+
+// ✅ v13.32 — Fiches verrouillées toujours exclues des calculs (elles ont leur propre total
+// dans la section admin « Fiches verrouillées »).
+function isExcludedFromCalc(r) {
+  return !!(r && r.restrictedBy);
+}
+
+function getCalcDB() {
+  // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
+  // Les fiches verrouillées et supprimées sont toujours exclues.
+  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
+}
+
+// Stub conservé pour compatibilité (anciens appels éventuels)
+function toggleClesComptabilite() {}
+function updateClesToggleUI() {
+  const box = document.getElementById('caisse-cles-toggle');
+  if (box) box.style.display = 'none';
 }
 
 
@@ -4196,12 +4239,44 @@ async function refreshDB(force) {
     createdBy: row.created_by, montant: row.montant || 0,
     prescripteur_id: row.prescripteur_id,
     est_bpn: row.est_bpn || false,
-    restrictedBy: row.restricted_by || null, // ✅ v13.30 — visibilité profil
-    _light: true, // ✅ v13.5 — détail non encore chargé
+    restrictedBy: row.restricted_by || null, // présent si le RPC retourne la colonne
+    _light: true,
   })).concat(pendings);
   if (typeof buildPatientCache === 'function') buildPatientCache();
-  if (typeof refreshMedecinDatalist === 'function') refreshMedecinDatalist(); // ✅ v13.28 F2
-  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();    // ✅ v13.28 F10
+  if (typeof refreshMedecinDatalist === 'function') refreshMedecinDatalist();
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+
+  // ✅ v13.30 — Merger les restrictions depuis un RPC dédié.
+  // Nécessaire car get_resultats_light a été créé avant la colonne restricted_by
+  // et ne la retourne pas forcément. On récupère les fiches restreintes séparément
+  // et on met à jour le cache, ce qui rend getDB() fonctionnel pour tous les profils.
+  try {
+    const { data: rests } = await _sb.rpc('get_restriction_status', { p_token: TK() });
+    if (rests && Array.isArray(rests)) {
+      const restrictMap = {};
+      rests.forEach(x => { if (x.id) restrictMap[x.id] = x.restricted_by || null; });
+      _dbCache.forEach(r => {
+        // Si le RPC dédié retourne une info, elle prime sur la valeur éventuelle du cache
+        if (restrictMap[r.id] !== undefined) r.restrictedBy = restrictMap[r.id];
+        // Si l'id n'est pas dans la map → fiche non restreinte
+        else if (!r._pending) r.restrictedBy = null;
+      });
+    }
+  } catch (e) { /* RPC absent ou réseau — on garde la valeur courante du cache */ }
+
+  // ✅ v13.31 — Merger le statut soft-delete depuis get_deleted_status
+  try {
+    const { data: delRows } = await _sb.rpc('get_deleted_status', { p_token: TK() });
+    if (delRows && Array.isArray(delRows)) {
+      const delMap = {};
+      delRows.forEach(x => { if (x.id) delMap[x.id] = { deletedAt: x.deleted_at, deletedBy: x.deleted_by }; });
+      _dbCache.forEach(r => {
+        if (delMap[r.id]) { r.deletedAt = delMap[r.id].deletedAt; r.deletedBy = delMap[r.id].deletedBy; }
+        else if (!r._pending) { r.deletedAt = null; r.deletedBy = null; }
+      });
+    }
+  } catch (e) { /* RPC absent — on garde la valeur courante */ }
+
   return _dbCache;
 }
 
@@ -4515,7 +4590,10 @@ async function getNextDossierNum() {
 
   // ── Fallback : calcul local (base déjà chargée) ──
   await refreshDB();
-  const db = getDB();
+  // ✅ v13.30 — Utiliser le cache COMPLET (_dbCache), pas getDB() : les numéros de
+  //   dossier doivent rester uniques même face aux fiches verrouillées par d'autres
+  //   profils (invisibles via getDB) — sinon risque de collision de numéro.
+  const db = _dbCache;
 
   // Construire l'ensemble des numéros déjà utilisés ce mois-ci dans l'historique
   const numerosExistants = new Set();
@@ -4543,7 +4621,11 @@ async function regenDossier() {
 }
 
 async function newPatient() {
-  if (!confirm('Effacer les informations du patient et tous les résultats en cours ? (Les fiches déjà enregistrées ne sont pas supprimées)')) return;
+  if (!await showConfirmModal({
+    icon: '🆕', title: 'Nouveau patient ?',
+    message: 'Les informations en cours seront effacées. Les fiches déjà enregistrées ne sont pas supprimées.',
+    confirmText: 'Confirmer', cancelText: 'Annuler'
+  })) return;
   // Repartir sur une session propre : mode filtré réactivé, plus en mode édition
   _showAllExams = false;
   _editingRecordId = null;
@@ -4766,13 +4848,19 @@ function buildPatientCache() {
   const db = getDB();
   const seen = new Set();
   _patientCache = [];
-  db.forEach(r => {
+  // Tri anti-chronologique : on garde la visite la plus récente pour chaque profil distinct
+  const sorted = [...db].sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
+  sorted.forEach(r => {
     const p = r.patient;
     if (!p?.nom) return;
-    const key = (p.nom||'').toUpperCase().trim();
+    const nom = (p.nom||'').toUpperCase().trim();
+    // Clé composite : nom + âge + sexe + médecin
+    // → deux homonymes avec des données différentes donnent deux entrées distinctes
+    // → deux homonymes VRAIMENT identiques donnent une seule entrée (correct)
+    const key = [nom, String(p.age||''), (p.sexe||'').toUpperCase(), (p.medecin||'').toUpperCase().trim()].join('|');
     if (!seen.has(key)) {
       seen.add(key);
-      _patientCache.push({ ...p, nom: p.nom.toUpperCase().trim() });
+      _patientCache.push({ ...p, nom, _lastVisit: r.created_at });
     }
   });
   _patientCache.sort((a,b) => a.nom.localeCompare(b.nom));
@@ -4782,32 +4870,94 @@ function onPatientNameInput() {
   const val = (document.getElementById('p_nom')?.value || '').toUpperCase().trim();
   const dl  = document.getElementById('patient-suggestions');
   if (!dl) return;
-  dl.innerHTML = '';
-  if (!val || val.length < 2) return;
+  if (!val || val.length < 2) { dl.style.display = 'none'; dl.innerHTML = ''; return; }
+
   const matches = _patientCache.filter(p => p.nom.includes(val)).slice(0, 10);
+  if (!matches.length) { dl.style.display = 'none'; dl.innerHTML = ''; return; }
+
+  dl.innerHTML = '';
   matches.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.nom;
-    opt.dataset.patient = JSON.stringify(p);
-    dl.appendChild(opt);
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:9px 13px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .1s';
+
+    // Nombre de profils distincts avec ce même nom (pour décider si on affiche les détails)
+    const sameNameCount = _patientCache.filter(x => x.nom === p.nom).length;
+
+    const parts = [];
+    if (p.age)    parts.push(p.age + ' ans');
+    if (p.sexe)   parts.push(p.sexe === 'M' ? 'Homme' : 'Femme');
+    if (p.medecin) parts.push('Dr ' + p.medecin);
+    // Si plusieurs profils portent ce nom → afficher la date de la dernière visite pour distinguer
+    if (sameNameCount > 1 && p._lastVisit) {
+      const d = new Date(p._lastVisit);
+      parts.push('dernière visite : ' + d.toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric'}));
+    }
+    const subtitle = parts.join(' · ');
+
+    item.innerHTML =
+      '<div style="font-weight:600;color:#1e293b;font-size:13px">' + p.nom + '</div>' +
+      (subtitle ? '<div style="font-size:11px;color:#64748b;margin-top:2px">' + subtitle + '</div>' : '');
+
+    item.addEventListener('mouseover', () => { item.style.background = '#f0f9ff'; });
+    item.addEventListener('mouseout',  () => { item.style.background = ''; });
+    item.addEventListener('mousedown', e => {
+      e.preventDefault(); // évite que onblur ferme le dropdown avant le click
+      document.getElementById('p_nom').value = p.nom;
+      _fillPatient(p);
+      dl.style.display = 'none';
+      dl.innerHTML = '';
+    });
+    dl.appendChild(item);
   });
+
+  // Auto-sélection silencieuse si un seul profil correspond exactement au nom tapé
+  const exactMatches = _patientCache.filter(p => p.nom === val);
+  if (exactMatches.length === 1) {
+    // Pré-remplir discrètement sans fermer le dropdown (l'utilisateur n'a pas encore confirmé)
+  }
+
+  dl.style.display = 'block';
 }
 
-// Quand l'utilisateur sélectionne une suggestion → autofill
-document.addEventListener('change', e => {
-  if (e.target.id !== 'p_nom') return;
-  const val = e.target.value.toUpperCase().trim();
-  const match = _patientCache.find(p => p.nom === val);
-  if (!match) return;
-  const setV = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
-  setV('p_age', match.age);
-  setV('p_sexe', match.sexe);
-  setV('p_medecin', match.medecin);
-  setV('p_service', match.service);
-  setV('p_clinique', match.clinique);
-  if (match.sexe || match.age) updateAllRefs();
-  toast('Patient reconnu — informations pré-remplies', 'ok');
-});
+function closePatientDropdown() {
+  const dl = document.getElementById('patient-suggestions');
+  if (dl) { dl.style.display = 'none'; dl.innerHTML = ''; }
+}
+
+function onPatientNameKey(e) {
+  const dl = document.getElementById('patient-suggestions');
+  if (!dl || dl.style.display === 'none') return;
+  const items = [...dl.children];
+  const activeIdx = items.findIndex(i => i.dataset.active === '1');
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    let next = e.key === 'ArrowDown'
+      ? (activeIdx < 0 ? 0 : Math.min(activeIdx + 1, items.length - 1))
+      : (activeIdx < 0 ? items.length - 1 : Math.max(activeIdx - 1, 0));
+    items.forEach((it, i) => {
+      it.style.background = i === next ? '#f0f9ff' : '';
+      it.dataset.active = i === next ? '1' : '';
+    });
+  } else if (e.key === 'Enter' && activeIdx >= 0) {
+    e.preventDefault();
+    items[activeIdx].dispatchEvent(new MouseEvent('mousedown', {bubbles:true}));
+  } else if (e.key === 'Escape') {
+    closePatientDropdown();
+  }
+}
+
+// Remplit le formulaire patient depuis un objet de _patientCache
+function _fillPatient(p) {
+  const setV = (id, v) => { const el = document.getElementById(id); if (el && v != null && String(v) !== '') el.value = v; };
+  setV('p_age',      p.age);
+  setV('p_sexe',     p.sexe);
+  setV('p_medecin',  p.medecin);
+  setV('p_service',  p.service);
+  setV('p_clinique', p.clinique);
+  if (p.sexe || p.age) updateAllRefs();
+  toast('Patient reconnu — informations pré-remplies ✓', 'ok');
+}
 
 
 // Met à jour le bandeau patient + indicateur d'analyses déjà sauvegardées
@@ -5015,6 +5165,7 @@ let _editingRecordId = null;
 let _editingType     = null; // type de l'analyse en cours d'édition
 let _editingFicheId  = null; // ✅ v13.29 — id du dossier en cours de modification fiche d'accueil
 let _selectedIds     = new Set(); // ✅ v13.30 — IDs sélectionnés pour actions en masse
+let _filterMasquees  = false;     // ✅ v13.30 — filtre "Mes fiches masquées" actif
 
 // ✅ v13.1 — Recalcule les interprétations d'un panneau en redéclenchant les
 // gestionnaires oninput. Corrige le cas « édition → ré-enregistrement » où les
@@ -5249,38 +5400,69 @@ function cancelEditFiche() {
   newPatient();
 }
 
-// ✅ v13.30 — Restriction de visibilité par profil
+// ✅ v13.30 — Met à jour le bouton de verrouillage sans re-render complet
+function _updateLockBtn(id, record) {
+  const btn = document.getElementById('lock-btn-' + id);
+  if (!btn) return;
+  const locked = !!record.restrictedBy;
+  btn.style.cssText = 'padding:4px 8px;font-size:11px;margin-left:3px;' + (locked
+    ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
+    : 'background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0');
+  btn.title = (isAdmin() && locked && record.restrictedBy)
+    ? 'Restreint par ' + record.restrictedBy
+    : (locked ? 'Fiche masquée (cliquer pour lever la restriction)' : 'Masquer aux autres profils');
+  btn.textContent = locked ? '🔒' : '🔓';
+}
+
+// ✅ v13.30 — Restriction de visibilité par profil (optimiste + modal custom)
 async function toggleRestriction(id) {
-  const record = _dbCache.find(r => r.id === id); // chercher dans _dbCache (pas getDB filtré)
+  const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Fiche introuvable', 'err'); return; }
 
   const canToggle = isAdmin() || record.createdBy === _currentUser?.username;
   if (!canToggle) { toast('Vous ne pouvez pas modifier la restriction de cette fiche', 'err'); return; }
 
   const isRestricted = !!record.restrictedBy;
-  const confirmMsg = isRestricted
-    ? '🔓 Lever la restriction ?\nCette fiche redeviendra visible pour tous les profils.'
-    : '🔒 Masquer cette fiche aux autres profils ?\nElle n\'apparaîtra plus dans leur historique ni dans leurs calculs.';
-  if (!confirm(confirmMsg)) return;
+  const confirmed = await showConfirmModal({
+    icon: isRestricted ? '🔓' : '🔒',
+    title: isRestricted ? 'Lever la restriction ?' : 'Masquer cette fiche ?',
+    message: isRestricted
+      ? 'Cette fiche redeviendra visible pour tous les profils.'
+      : 'Elle n\'apparaîtra plus dans l\'historique ni dans les calculs des autres profils.',
+    confirmText: isRestricted ? 'Lever' : 'Masquer',
+    cancelText: 'Annuler'
+  });
+  if (!confirmed) return;
 
-  showLoading(isRestricted ? 'Levée de la restriction…' : 'Masquage en cours…');
+  // ✅ Mise à jour optimiste — effet immédiat sans attendre la DB
+  const prevRestricted = record.restrictedBy;
+  record.restrictedBy = isRestricted ? null : (_currentUser?.username || '');
+  _updateLockBtn(id, record);
+
+  // Appel RPC en arrière-plan
   const { data, error } = await _sb.rpc('toggle_restriction', { p_token: TK(), p_id: id });
-  hideLoading();
 
-  if (error) { toast('Erreur : ' + error.message, 'err'); return; }
-  if (data === 'unauthorized') { toast('Session expirée — reconnectez-vous', 'err'); return; }
-  if (data === 'forbidden')    { toast('Action non autorisée', 'err'); return; }
-  if (data === 'not_found')    { toast('Fiche introuvable en base', 'err'); return; }
+  if (error || (data !== 'restricted' && data !== 'unrestricted')) {
+    // Annuler la mise à jour optimiste
+    record.restrictedBy = prevRestricted;
+    _updateLockBtn(id, record);
+    if (data === 'unauthorized') { toast('Session expirée — reconnectez-vous', 'err'); return; }
+    if (data === 'forbidden')    { toast('Action non autorisée', 'err'); return; }
+    if (data === 'not_found')    { toast('Fiche introuvable en base', 'err'); return; }
+    toast(error ? 'Erreur : ' + error.message : 'Réponse inattendue : ' + data, 'err');
+    return;
+  }
 
   if (data === 'restricted') {
     record.restrictedBy = _currentUser?.username;
     toast('🔒 Fiche masquée — les autres profils ne la verront plus', 'ok');
-  } else if (data === 'unrestricted') {
+  } else {
     record.restrictedBy = null;
     toast('🔓 Restriction levée — fiche à nouveau visible par tous', 'ok');
-  } else {
-    toast('Réponse inattendue : ' + data, 'err'); return;
   }
+  _updateLockBtn(id, record);
+  // ✅ v13.30 — Re-render : la fiche masquée reste visible mais grisée,
+  //   et le total en bas est recalculé sans elle. Met aussi à jour le bouton "Mes fiches masquées".
   await renderHistorique();
 }
 
@@ -5465,6 +5647,8 @@ function clearSearchFilters() {
   const fs = document.getElementById('filter-sort'); if (fs) fs.value = 'desc';
   _sortCol = 'date';
   _histPeriode = 'mois';
+  _filterMasquees    = false; // kept for compatibility
+  _filterVerrouillees = false; // ✅ v13.32
   ['jour','semaine','mois','tout'].forEach(p => {
     const btn = document.getElementById('hist-btn-' + p);
     if (btn) btn.classList.toggle('active', p === 'tout');
@@ -5598,6 +5782,10 @@ async function renderHistory(forceRefresh) {
   if (forceRefresh || !getDB().length) await refreshDB();
   const db = getDB();
 
+  // ✅ v13.32 — Mettre à jour les boutons admin
+  updateVerrouilleeBtn();
+  updateCorbeilleBtn();
+
   const agentSel = document.getElementById('filter-agent');
   const currentAgent = agentSel ? agentSel.value : '';
   const agents = [...new Set(db.map(r => r.createdBy).filter(Boolean))].sort();
@@ -5611,13 +5799,10 @@ async function renderHistory(forceRefresh) {
   const dateTo    =  document.getElementById('filter-date-to')?.value   || '';
   const sortDir   =  document.getElementById('filter-sort')?.value    || 'desc';
 
-  // Filtrage par période : basé sur l'horodatage réel d'enregistrement (savedAt),
-  // à partir de 00h00:00 du jour "from" jusqu'à 23h59:59 du jour "to" inclus.
+  // Filtrage normal par période (getDB() gère déjà l'exclusion des fiches verrouillées/supprimées)
   let filtered = filterByDateRange(db, dateFrom, dateTo);
-
   filtered = filtered.filter(r => {
     if (ft) {
-      // Pour les dossiers unifiés, vérifier dans _types ; pour les anciens, vérifier r.type
       const types = isDossierRecord(r) ? (r.resultats?._types || []) : [r.type];
       if (!types.includes(ft)) return false;
     }
@@ -5646,14 +5831,30 @@ async function renderHistory(forceRefresh) {
   if (sortNomEl)     sortNomEl.textContent     = _sortCol==='nom'     ? (sortDir==='asc'?'↑':'↓') : '';
   if (sortMontantEl) sortMontantEl.textContent = _sortCol==='montant' ? (sortDir==='asc'?'↑':'↓') : '';
 
+  // Total de la vue courante (fiches verrouillées ont leur propre total dans leur section)
   const totalMontant = filtered.reduce((s, r) => s + (r.montant || 0), 0);
   const countEl = document.getElementById('search-count');
   const totalBar = document.getElementById('search-total-bar');
+  const countBar = document.getElementById('search-count-bar');
   if (countEl) {
-    const isFull = filtered.length === db.length;
-    countEl.textContent = isFull
-      ? db.length + ' fiche' + (db.length>1?'s':'') + ' au total'
-      : filtered.length + ' résultat' + (filtered.length>1?'s':'') + ' sur ' + db.length + ' fiche' + (db.length>1?'s':'');
+    if (_filterCorbeille) {
+      countEl.textContent = '🗑️ ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' dans la corbeille';
+    } else if (_filterVerrouillees) {
+      countEl.textContent = '🔒 ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' verrouillée' + (filtered.length>1?'s':'');
+    } else {
+      const isFull = filtered.length === db.length;
+      countEl.textContent = isFull
+        ? db.length + ' fiche' + (db.length>1?'s':'') + ' au total'
+        : filtered.length + ' résultat' + (filtered.length>1?'s':'') + ' sur ' + db.length + ' fiche' + (db.length>1?'s':'');
+    }
+  }
+  if (countBar) {
+    countBar.style.background = _filterCorbeille
+      ? 'linear-gradient(to right,#fff5f5,#fef2f2)'
+      : _filterVerrouillees
+        ? 'linear-gradient(to right,#fefce8,#fef9c3)'
+        : 'linear-gradient(to right,var(--accent-light),#f0f9ff)';
+    countBar.style.borderColor = _filterCorbeille ? '#f87171' : _filterVerrouillees ? '#fbbf24' : 'var(--border)';
   }
   if (totalBar) {
     totalBar.textContent = totalMontant > 0 ? '💰 ' + totalMontant.toLocaleString('fr-FR') + ' FCFA' : '';
@@ -5674,42 +5875,98 @@ async function renderHistory(forceRefresh) {
     return;
   }
 
+  // ✅ v13.31 — Bouton suppression douce (propriétaire ou admin, mode normal)
+  // En mode Corbeille admin : boutons restaurer + suppression définitive à la place
+  const softDeleteBtn = (r) => {
+    if (_filterCorbeille) return ''; // handled separately in corbeille row
+    const uid = _currentUser?.username;
+    const canDel = isAdmin() || r.createdBy === uid;
+    if (!canDel) return '';
+    return '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px;opacity:.85" '
+      + 'title="Supprimer (envoyé dans la corbeille)" onclick="softDeleteDossier(' + r.id + ')">🗑️</button>';
+  };
   const deleteBtn = (id) => isAdmin()
     ? '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="deleteRecord(' + id + ')">🗑</button>'
     : '';
 
-  // ✅ v13.30 — bouton de restriction de visibilité
+  // ✅ v13.32 — Bouton verrouillage : visible uniquement pour le propriétaire de la fiche,
+  // en mode normal (les fiches déjà verrouillées disparaissent de cette vue).
+  // L'admin déverrouille depuis la section "Fiches verrouillées".
   const lockBtn = (r) => {
-    const canRestrict = isAdmin() || r.createdBy === _currentUser?.username;
-    if (!canRestrict) return '';
-    const locked = !!r.restrictedBy;
-    const style = locked
-      ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
-      : 'background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0';
-    const tip = locked
-      ? 'Fiche masquée (cliquer pour lever la restriction)'
-      : 'Masquer aux autres profils';
-    // Pour l'admin : afficher aussi le nom du profil qui a restreint
-    const adminInfo = (isAdmin() && locked && r.restrictedBy)
-      ? ' title="Restreint par ' + r.restrictedBy + '"' : ' title="' + tip + '"';
-    return '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;' + style + '"'
-      + adminInfo + ' onclick="toggleRestriction(' + r.id + ')">' + (locked ? '🔒' : '🔓') + '</button>';
+    if (_filterVerrouillees || _filterCorbeille) return ''; // géré par les rows spéciaux
+    const uid = _currentUser?.username;
+    if (!uid || r.createdBy !== uid || isAdmin()) return '';
+    return '<button class="btn" id="lock-btn-' + r.id + '" '
+      + 'style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0" '
+      + 'title="Verrouiller — la fiche sera masquée (seul l\'admin peut la retrouver)" '
+      + 'onclick="toggleRestriction(' + r.id + ')">🔒</button>';
   };
 
   const hl = q ? (s => highlight(s, q)) : esc;
 
   b.innerHTML = filtered.map(r => {
+    // ✅ v13.32 — En mode Fiches verrouillées (admin), afficher qui a verrouillé + bouton déverrouiller
+    if (_filterVerrouillees && isAdmin()) {
+      const lockedBy  = r.restrictedBy || '?';
+      const montantStr2 = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
+      return '<tr style="background:#fffbeb;border-left:3px solid #fbbf24">'
+        + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.3"></td>'
+        + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+        + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong></td>'
+        + '<td data-label="Patient">' + esc(r.patient.nom)
+            + '<div style="font-size:10px;color:#d97706;margin-top:2px">Verrouillé par <strong>' + esc(lockedBy) + '</strong></div>'
+          + '</td>'
+        + '<td data-label="Âge">' + esc(r.patient.age || '—') + '</td>'
+        + '<td data-label="Sexe">' + esc(r.patient.sexe || '—') + '</td>'
+        + '<td data-label="Service">' + esc(r.patient.service || '—') + '</td>'
+        + '<td data-label="Type">' + getRecordTypes(r).map(t => '<span class="badge-type" style="margin:1px 2px;display:inline-block">'+t+'</span>').join('') + '</td>'
+        + '<td data-label="Saisi par">' + esc(r.createdBy || '—') + '</td>'
+        + '<td data-label="Montant" style="font-weight:700;color:#92400e;white-space:nowrap">' + montantStr2 + '</td>'
+        + '<td data-label="Statut">—</td>'
+        + '<td data-label="Actions">'
+          + '<button class="btn" style="padding:4px 9px;font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;margin-right:4px" '
+            + 'title="Déverrouiller ce dossier" onclick="toggleRestriction(' + r.id + ')">🔓 Déverrouiller</button>'
+          + '<button class="btn" style="padding:4px 8px;font-size:11px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" '
+            + 'onclick="showEditPatientModal(' + r.id + ')" title="Modifier patient">👤</button>'
+        + '</td></tr>';
+    }
+
+    // ✅ v13.31 — En mode Corbeille, remplacer toutes les actions par restaurer + supprimer définitivement
+    if (_filterCorbeille) {
+      const deletedDate = r.deletedAt ? new Date(r.deletedAt).toLocaleDateString('fr-FR') : '?';
+      const deletedBy   = r.deletedBy || '?';
+      return '<tr style="opacity:.85;background:#fff5f5">'
+        + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.3"></td>'
+        + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+        + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong></td>'
+        + '<td data-label="Patient">' + esc(r.patient.nom)
+            + '<div style="font-size:10px;color:#dc2626;margin-top:2px">Supprimé le ' + deletedDate + ' par <strong>' + esc(deletedBy) + '</strong></div>'
+          + '</td>'
+        + '<td data-label="Âge">' + esc(r.patient.age || '—') + '</td>'
+        + '<td data-label="Sexe">' + esc(r.patient.sexe || '—') + '</td>'
+        + '<td data-label="Service">' + esc(r.patient.service || '—') + '</td>'
+        + '<td data-label="Type">' + getRecordTypes(r).map(t => '<span class="badge-type" style="margin:1px 2px;display:inline-block">'+t+'</span>').join('') + '</td>'
+        + '<td data-label="Saisi par">' + esc(r.createdBy || '—') + '</td>'
+        + '<td data-label="Montant" style="font-weight:700;color:#94a3b8">' + (r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—') + '</td>'
+        + '<td data-label="Statut">—</td>'
+        + '<td data-label="Actions">'
+          + '<button class="btn" style="padding:4px 9px;font-size:11px;background:#dcfce7;color:#166534;border:1px solid #86efac;margin-right:4px" '
+            + 'title="Restaurer ce dossier" onclick="restoreDossier(' + r.id + ')">↩️ Restaurer</button>'
+          + '<button class="btn btn-danger" style="padding:4px 9px;font-size:11px" '
+            + 'title="Supprimer définitivement (irréversible)" onclick="deleteRecord(' + r.id + ')">🗑 Supprimer</button>'
+        + '</td></tr>';
+    }
     const dossierMulti = '';
     const montantStr = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
     const recPreview = {id:r.id,patient:r.patient,montant:r.montant,resultats:{_examens_coches:r.resultats?._examens_coches}};
-    return '<tr id="row-' + r.id + '" class="hist-row-' + getStatut(r.id) + '" onmousemove="showPreview(event,' + JSON.stringify(recPreview).replace(/\\/g,'\\\\').replace(/'/g,"\\'") + ')" onmouseleave="hidePreview()">'
+    return '<tr id="row-' + r.id + '" class="hist-row-' + getStatut(r.id) + '"'
+      + ' onmousemove="showPreview(event,' + JSON.stringify(recPreview).replace(/\\/g,'\\\\').replace(/'/g,"\\'") + ')" onmouseleave="hidePreview()">'
       + '<td style="text-align:center;padding:4px;vertical-align:middle"><input type="checkbox" class="bulk-chk" data-id="' + r.id + '" '
         + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
         + ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)"></td>'
       + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
       + '<td data-label="N° Dossier"><strong>' + hl(r.patient.dossier) + '</strong>'
         + (r._pending ? ' <span title="En attente de synchronisation" style="font-size:10px;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">⏳ à synchroniser</span>' : '')
-        + (isAdmin() && r.restrictedBy ? ' <span title="Restreint par ' + esc(r.restrictedBy) + '" style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px">🔒</span>' : '')
       + '</td>'
       + '<td data-label="Patient">' + hl(r.patient.nom)
           + (hasCriticalValues(r) ? '<span class="badge-critique" title="Valeur critique détectée">🔴 CRITIQUE</span>' : '')
@@ -5730,6 +5987,13 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Statut">' + statutBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
         + lockBtn(r)
+        + (() => {
+            const uid = _currentUser?.username;
+            const canEdit = isAdmin() || r.createdBy === uid;
+            return canEdit
+              ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'
+              : '';
+          })()
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="editFicheIdentif(' + r.id + ')" title="Modifier la fiche d\'accueil (patient + examens)" aria-label="Modifier la fiche d\'accueil">🗂</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats" aria-label="Modifier les résultats">✏️</button>'
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
@@ -5740,7 +6004,8 @@ async function renderHistory(forceRefresh) {
             ? getRecordTypes(r).map(t =>
                 '<button class="btn btn-danger" style="padding:3px 7px;font-size:10px;margin-left:2px;opacity:.75" title="Supprimer ' + t + '" onclick="deleteAnalyseFromDossier(' + r.id + ',\'' + t.replace(/'/g,"\\'") + '\')">✕ ' + t.substring(0,4) + '</button>'
               ).join('')
-            : deleteBtn(r.id))
+            : '')
+        + softDeleteBtn(r)
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer résultats" aria-label="Imprimer les résultats">🖨</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="printReceipt(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
       + '</td></tr>';
@@ -5760,12 +6025,20 @@ async function deleteAnalyseFromDossier(recordId, type) {
   }
   const types = getRecordTypes(record);
   if (types.length <= 1) {
-    if (!confirm('C\'est la dernière analyse de ce dossier. Supprimer le dossier entier ?')) return;
+    if (!await showConfirmModal({
+      icon: '🗑️', title: 'Supprimer le dossier ?',
+      message: 'C\'est la dernière analyse de ce dossier. Le dossier entier sera supprimé.',
+      confirmText: 'Supprimer', cancelText: 'Annuler', confirmClass: 'btn-danger'
+    })) return;
     const ok = await deleteRecordRemote(recordId);
     if (ok) { renderHistory(); toast('Dossier supprimé'); }
     return;
   }
-  if (!confirm('Supprimer "' + type + '" du dossier ? Les autres analyses seront conservées.')) return;
+  if (!await showConfirmModal({
+    icon: '🗑️', title: 'Supprimer cette analyse ?',
+    message: 'Supprimer « ' + type + ' » du dossier ? Les autres analyses seront conservées.',
+    confirmText: 'Supprimer', cancelText: 'Annuler', confirmClass: 'btn-danger'
+  })) return;
   // ✅ v12 — retrancher le montant de l'analyse supprimée :
   // 1) montant mémorisé à la saisie (_montants) si disponible ;
   // 2) sinon (anciens dossiers) : répartition proportionnelle du total facturé
@@ -5798,7 +6071,11 @@ async function deleteAnalyseFromDossier(recordId, type) {
 }
 
 async function deleteRecord(id) {
-  if (!confirm('Supprimer cette fiche ?')) return;
+  if (!await showConfirmModal({
+    icon: '🗑️', title: 'Supprimer cette fiche ?',
+    message: 'Cette action est irréversible.',
+    confirmText: 'Supprimer', cancelText: 'Annuler', confirmClass: 'btn-danger'
+  })) return;
   const ok = await deleteRecordRemote(id);
   if (ok) {
     renderHistory();
@@ -5850,11 +6127,269 @@ function clearBulkSelection() {
   updateBulkToolbar();
 }
 
+// ✅ v13.30 — Filtre "Mes fiches masquées"
+// ✅ v13.32 — Bouton "Fiches verrouillées" : admin uniquement
+function updateVerrouilleeBtn() {
+  const btn   = document.getElementById('btn-verrouillee');
+  const badge = document.getElementById('verrouillee-badge');
+  if (!btn) return;
+  if (!isAdmin()) { btn.style.display = 'none'; return; }
+  const count   = _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy).length;
+  if (badge) badge.textContent = count;
+  btn.style.display   = count > 0 ? 'flex' : 'none';
+  btn.style.opacity   = _filterVerrouillees ? '1' : '0.75';
+  btn.style.boxShadow = _filterVerrouillees ? '0 0 0 2px #d97706' : 'none';
+}
+
+// Stub — l'ancien bouton "Mes fiches masquées" n'existe plus
+function updateMasqueesBtn() {}
+function toggleMasquees() {}
+
+function toggleVerrouillees() {
+  _filterVerrouillees = !_filterVerrouillees;
+  if (_filterVerrouillees) { _filterCorbeille = false; updateCorbeilleBtn(); }
+  updateVerrouilleeBtn();
+  renderHistorique();
+}
+
+// ✅ v13.31 — Corbeille admin
+function updateCorbeilleBtn() {
+  const btn   = document.getElementById('btn-corbeille');
+  const badge = document.getElementById('corbeille-badge');
+  if (!btn) return;
+  if (!isAdmin()) { btn.style.display = 'none'; return; }
+  const count = _dbCache.filter(r => !!r.deletedAt).length;
+  if (badge) badge.textContent = count;
+  btn.style.display = count > 0 ? 'flex' : 'none';
+  btn.style.opacity   = _filterCorbeille ? '1' : '0.75';
+  btn.style.boxShadow = _filterCorbeille ? '0 0 0 2px #f87171' : 'none';
+}
+
+function toggleCorbeille() {
+  _filterCorbeille = !_filterCorbeille;
+  if (_filterCorbeille) { _filterVerrouillees = false; updateVerrouilleeBtn(); }
+  updateCorbeilleBtn();
+  renderHistorique();
+}
+
+async function softDeleteDossier(id) {
+  const record = _dbCache.find(r => r.id === id);
+  if (!record) { toast('Dossier introuvable', 'err'); return; }
+  const uid = _currentUser?.username;
+  const canDel = isAdmin() || record.createdBy === uid;
+  if (!canDel) { toast('Action non autorisée', 'err'); return; }
+
+  if (!await showConfirmModal({
+    icon: '🗑️',
+    title: 'Supprimer ce dossier ?',
+    message: 'Le dossier sera masqué et placé dans la corbeille. L\'administrateur pourra le restaurer à tout moment.',
+    confirmText: 'Supprimer',
+    cancelText: 'Annuler',
+    confirmClass: 'btn-danger'
+  })) return;
+
+  const { data, error } = await _sb.rpc('soft_delete_dossier', { p_token: TK(), p_id: id });
+  if (error || data !== 'ok') {
+    toast('Erreur : ' + (error?.message || data || 'inconnue'), 'err');
+    return;
+  }
+  // Mise à jour optimiste du cache
+  record.deletedAt = new Date().toISOString();
+  record.deletedBy = uid;
+
+  updateCorbeilleBtn();
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+  renderHistorique();
+  toast('Dossier déplacé dans la corbeille 🗑️', 'ok');
+}
+
+async function restoreDossier(id) {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  const record = _dbCache.find(r => r.id === id);
+  if (!record) { toast('Dossier introuvable', 'err'); return; }
+
+  if (!await showConfirmModal({
+    icon: '↩️',
+    title: 'Restaurer ce dossier ?',
+    message: 'Le dossier de ' + (record.patient?.nom || '?') + ' sera restauré et redeviendra visible.',
+    confirmText: 'Restaurer',
+    cancelText: 'Annuler'
+  })) return;
+
+  const { data, error } = await _sb.rpc('restore_dossier', { p_token: TK(), p_id: id });
+  if (error || data !== 'ok') {
+    toast('Erreur : ' + (error?.message || data || 'inconnue'), 'err');
+    return;
+  }
+  record.deletedAt = null;
+  record.deletedBy = null;
+
+  updateCorbeilleBtn();
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+  renderHistorique();
+  toast('Dossier restauré ✓', 'ok');
+}
+
+// ✅ v13.31 — Modal d'édition rapide des informations patient
+// Accessible au propriétaire de la fiche et à l'admin.
+function showEditPatientModal(id) {
+  const record = _dbCache.find(r => r.id === id);
+  if (!record) { toast('Dossier introuvable', 'err'); return; }
+  const uid = _currentUser?.username;
+  if (!isAdmin() && record.createdBy !== uid) { toast('Action non autorisée', 'err'); return; }
+
+  const old = document.getElementById('edit-patient-modal-bd');
+  if (old) old.remove();
+
+  const p = record.patient || {};
+
+  const sexeOptions = ['', 'M', 'F'].map(v =>
+    '<option value="' + v + '"' + (p.sexe === v ? ' selected' : '') + '>'
+    + (v === '' ? '— Choisir —' : v === 'M' ? 'Masculin' : 'Féminin') + '</option>'
+  ).join('');
+
+  const bd = document.createElement('div');
+  bd.id = 'edit-patient-modal-bd';
+  bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  bd.innerHTML = `
+    <div style="background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.22);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;padding:28px 28px 20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <span style="font-size:24px">👤</span>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#1e293b">Modifier les informations patient</div>
+          <div style="font-size:12px;color:#64748b">N° ${esc(p.dossier || '?')} · ${esc((p.nom || '').toUpperCase())}</div>
+        </div>
+        <button onclick="document.getElementById('edit-patient-modal-bd').remove()"
+          style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;line-height:1">✕</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="grid-column:1/-1">
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Nom complet <span style="color:#e11d48">*</span></label>
+          <input id="ep_nom" type="text" value="${esc(p.nom || '')}"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Date de la visite</label>
+          <input id="ep_date" type="date" value="${esc(p.date || '')}"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Âge</label>
+          <input id="ep_age" type="number" min="0" max="120" value="${esc(p.age || '')}"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Sexe</label>
+          <select id="ep_sexe" style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+            ${sexeOptions}
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Médecin prescripteur</label>
+          <input id="ep_medecin" type="text" value="${esc(p.medecin || '')}"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Service</label>
+          <input id="ep_service" type="text" value="${esc(p.service || '')}"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Clinique / Hôpital</label>
+          <input id="ep_clinique" type="text" value="${esc(p.clinique || '')}"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Téléphone</label>
+          <input id="ep_telephone" type="tel" value="${esc(p.telephone || '')}"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+        </div>
+      </div>
+
+      <div id="ep_err" style="display:none;margin-top:12px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12.5px;color:#b91c1c"></div>
+
+      <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+        <button onclick="document.getElementById('edit-patient-modal-bd').remove()"
+          style="padding:9px 20px;border:1.5px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#475569;font-size:13px;font-weight:600;cursor:pointer">
+          Annuler
+        </button>
+        <button onclick="savePatientEdit(${id})"
+          style="padding:9px 22px;border:none;border-radius:8px;background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px">
+          💾 Enregistrer
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(bd);
+  bd.addEventListener('click', e => { if (e.target === bd) bd.remove(); });
+  document.getElementById('ep_nom').focus();
+}
+
+async function savePatientEdit(id) {
+  const record = _dbCache.find(r => r.id === id);
+  if (!record) { toast('Dossier introuvable', 'err'); return; }
+
+  const nom = (document.getElementById('ep_nom')?.value || '').trim().toUpperCase();
+  if (!nom) {
+    const errEl = document.getElementById('ep_err');
+    if (errEl) { errEl.textContent = 'Le nom du patient est obligatoire.'; errEl.style.display = 'block'; }
+    document.getElementById('ep_nom')?.focus();
+    return;
+  }
+
+  const updatedPatient = {
+    ...record.patient,
+    nom,
+    date:      document.getElementById('ep_date')?.value      || record.patient?.date      || '',
+    age:       document.getElementById('ep_age')?.value       || record.patient?.age       || '',
+    sexe:      document.getElementById('ep_sexe')?.value      || record.patient?.sexe      || '',
+    medecin:   (document.getElementById('ep_medecin')?.value  || '').trim(),
+    service:   (document.getElementById('ep_service')?.value  || '').trim(),
+    clinique:  (document.getElementById('ep_clinique')?.value || '').trim(),
+    telephone: (document.getElementById('ep_telephone')?.value|| '').trim(),
+  };
+
+  // Griser le bouton d'enregistrement pendant la sauvegarde
+  const saveBtn = document.querySelector('#edit-patient-modal-bd button[onclick*="savePatientEdit"]');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Enregistrement…'; }
+
+  try {
+    const updated = await updateRecordRemote(id, {
+      type:           record.type,
+      patient:        updatedPatient,
+      resultats:      record.resultats,
+      montant:        record.montant,
+      prescripteur_id: record.prescripteur_id,
+    });
+
+    if (!updated) throw new Error('La mise à jour a échoué.');
+
+    // Rafraîchir le cache local (updateRecordRemote le fait déjà, on re-patch pour être sûr)
+    const idx = _dbCache.findIndex(r => r.id === id);
+    if (idx >= 0) _dbCache[idx].patient = updatedPatient;
+
+    document.getElementById('edit-patient-modal-bd')?.remove();
+    buildPatientCache();
+    renderHistorique();
+    toast('Informations patient mises à jour ✓', 'ok');
+  } catch (e) {
+    const errEl = document.getElementById('ep_err');
+    if (errEl) { errEl.textContent = 'Erreur : ' + (e.message || e); errEl.style.display = 'block'; }
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '💾 Enregistrer'; }
+  }
+}
+
 async function bulkSetStatut(statut) {
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const labels = { attente: 'En attente', 'en cours': 'En cours', rendu: 'Rendu' };
-  if (!confirm('Marquer ' + ids.length + ' fiche(s) comme "' + (labels[statut] || statut) + '" ?')) return;
+  if (!await showConfirmModal({
+    icon: '📋',
+    title: 'Changer le statut ?',
+    message: 'Marquer ' + ids.length + ' fiche(s) comme « ' + (labels[statut] || statut) + ' » ?',
+    confirmText: 'Confirmer', cancelText: 'Annuler'
+  })) return;
   showLoading('Mise à jour du statut…');
   let ok = 0, err = 0;
   for (const id of ids) {
@@ -5878,7 +6413,12 @@ async function bulkLock() {
     return r && (!r.restrictedBy) && (isAdmin() || r.createdBy === _currentUser?.username);
   });
   if (!eligible.length) { toast('Aucune fiche éligible au verrouillage', 'err'); return; }
-  if (!confirm('Masquer ' + eligible.length + ' fiche(s) aux autres profils ?')) return;
+  if (!await showConfirmModal({
+    icon: '🔒',
+    title: 'Masquer ' + eligible.length + ' fiche(s) ?',
+    message: 'Ces fiches n\'apparaîtront plus dans l\'historique ni les calculs des autres profils.',
+    confirmText: 'Masquer', cancelText: 'Annuler'
+  })) return;
   showLoading('Verrouillage…');
   let ok = 0, err = 0;
   for (const id of eligible) {
@@ -5903,7 +6443,12 @@ async function bulkUnlock() {
     return r && r.restrictedBy && (isAdmin() || r.restrictedBy === _currentUser?.username);
   });
   if (!eligible.length) { toast('Aucune fiche verrouillée dans la sélection', 'err'); return; }
-  if (!confirm('Lever la restriction sur ' + eligible.length + ' fiche(s) ?')) return;
+  if (!await showConfirmModal({
+    icon: '🔓',
+    title: 'Lever la restriction ?',
+    message: eligible.length + ' fiche(s) redeviendront visibles pour tous les profils.',
+    confirmText: 'Lever', cancelText: 'Annuler'
+  })) return;
   showLoading('Déverrouillage…');
   let ok = 0, err = 0;
   for (const id of eligible) {
@@ -5924,7 +6469,12 @@ async function bulkDelete() {
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
   const ids = [..._selectedIds];
   if (!ids.length) return;
-  if (!confirm('⚠ Supprimer définitivement ' + ids.length + ' fiche(s) ?\nCette action est irréversible.')) return;
+  if (!await showConfirmModal({
+    icon: '⚠️',
+    title: 'Supprimer définitivement ?',
+    message: ids.length + ' fiche(s) seront supprimée(s) de façon irréversible.',
+    confirmText: 'Supprimer', cancelText: 'Annuler', confirmClass: 'btn-danger'
+  })) return;
   showLoading('Suppression en cours…');
   let ok = 0, err = 0;
   for (const id of ids) {
@@ -5939,7 +6489,12 @@ async function bulkDelete() {
 }
 
 async function clearHistory() {
-  if (!confirm('Vider tout l\'historique ? Cette action est irréversible.')) return;
+  if (!await showConfirmModal({
+    icon: '⚠️',
+    title: 'Vider tout l\'historique ?',
+    message: 'Cette action est irréversible. Toutes les fiches seront supprimées.',
+    confirmText: 'Vider', cancelText: 'Annuler', confirmClass: 'btn-danger'
+  })) return;
   const ok = await clearAllRemote();
   if (ok) {
     renderHistory();
@@ -6733,7 +7288,7 @@ async function renderStats() {
   });
 
   await refreshDB();
-  const db = getDB();
+  const db = getCalcDB(); // ✅ v13.30 — exclut les fiches verrouillées des statistiques
 
   // Appliquer le filtre de période
   const dbPeriode = filterDbByPeriode(db);
@@ -9335,6 +9890,35 @@ function toast(msg, type='') {
 }
 
 // ============================================================
+// MODAL DE CONFIRMATION — remplace confirm() natif  ✅ v13.30
+// ============================================================
+function showConfirmModal({ icon = '❓', title = 'Confirmer', message = '', confirmText = 'Confirmer', cancelText = 'Annuler', confirmClass = '' } = {}) {
+  return new Promise(resolve => {
+    const old = document.getElementById('confirm-modal-backdrop');
+    if (old) old.remove();
+    const bd = document.createElement('div');
+    bd.id = 'confirm-modal-backdrop';
+    bd.className = 'modal-backdrop';
+    bd.innerHTML =
+      '<div class="modal-box" style="max-width:380px;text-align:center">' +
+        '<div style="font-size:36px;margin-bottom:10px">' + icon + '</div>' +
+        '<div class="modal-title" style="text-align:center">' + title + '</div>' +
+        (message ? '<p style="font-size:13.5px;color:var(--text-muted,#64748b);margin:0 0 18px;line-height:1.5">' + message + '</p>' : '') +
+        '<div class="modal-actions" style="justify-content:center">' +
+          '<button class="btn" id="cm-cancel" style="padding:9px 20px;font-size:13px">' + cancelText + '</button>' +
+          '<button class="btn ' + confirmClass + '" id="cm-ok" style="padding:9px 20px;font-size:13px' +
+            (confirmClass ? '' : ';background:var(--cpmi-mid,#0891b2);color:#fff;border-color:transparent') + '">' + confirmText + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(bd);
+    const cleanup = val => { bd.remove(); resolve(val); };
+    document.getElementById('cm-ok').addEventListener('click',     () => cleanup(true));
+    document.getElementById('cm-cancel').addEventListener('click', () => cleanup(false));
+    bd.addEventListener('click', e => { if (e.target === bd) cleanup(false); });
+  });
+}
+
+// ============================================================
 // AUTHENTIFICATION — comptes multi-utilisateurs
 // ============================================================
 
@@ -10375,7 +10959,7 @@ function dupliquerDossier(id) {
 // ── Top examens ──
 function renderTopExamens() {
   const counts = {};
-  getDB().forEach(r => {
+  getCalcDB().forEach(r => { // ✅ v13.30 — cohérent avec les autres statistiques (exclut les verrouillées)
     Object.values(r.resultats?._examens_coches||{}).flat()
       .forEach(label => { counts[label] = (counts[label]||0)+1; });
   });
@@ -10729,7 +11313,8 @@ function getCaisseRange() {
 }
 async function renderCaisse() {
   await refreshDB();
-  const db = getDB();
+  updateVerrouilleeBtn(); // ✅ v13.32 — bouton admin fiches verrouillées
+  const db = getCalcDB(); // exclut les fiches verrouillées selon le choix admin
   const { from, to } = getCaisseRange();
   const rows = filterByDateRange(db, from, to);
   const labelEl = document.getElementById('caisse-periode-label');
@@ -10823,7 +11408,7 @@ function populateMoisAnneeSelectors() {
 }
 function computeRistournesData(mois, annee) {
   const prefix = annee + '-' + String(mois).padStart(2, '0');
-  const db = getDB();
+  const db = getCalcDB(); // ✅ v13.30 — exclut les fiches verrouillées des ristournes
   // ✅ v13.29 — même règle que Statistiques : 0 % sur les BPN
   const isBpn = r => r.est_bpn
     || getRecordTypes(r).includes('Bilan prénatal')
@@ -10967,7 +11552,7 @@ async function genererRapportMensuel() {
   const mois = parseInt(document.getElementById('rapport-mois')?.value || (new Date().getMonth() + 1));
   const annee = parseInt(document.getElementById('rapport-annee')?.value || new Date().getFullYear());
   const prefix = annee + '-' + String(mois).padStart(2, '0');
-  const db = getDB().filter(r => _recDate(r).startsWith(prefix));
+  const db = getCalcDB().filter(r => _recDate(r).startsWith(prefix)); // ✅ v13.30 — exclut les fiches verrouillées du rapport PDF
   const { doc } = _newPDFDoc();
   const W = 210, M = 14;
 
