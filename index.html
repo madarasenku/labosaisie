@@ -168,13 +168,186 @@ body::before {
   0%   { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
-/* ── Animation d'entrée sur les cartes ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── ✅ v13.33 — Animations retravaillées (login + header) ──────────
+   Thème CPMI : protection, douceur, soin. Mouvements lents et
+   organiques ; aucun clignotement d'opacité sur les logos.
+   ------------------------------------------------------------------ */
+
+/* Voiles lumineux dérivant lentement en fond du login (aurora) */
+@keyframes aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%      { transform: translate3d(3%, -2.5%, 0) scale(1.09); }
+  66%      { transform: translate3d(-2.5%, 3%, 0) scale(1.04); }
+}
+@keyframes aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); }
+  50%      { transform: translate3d(-3.5%, -3%, 0) scale(1); }
+}
+
+/* Halo de protection : anneaux concentriques émanant du logo */
+@keyframes halo-ring {
+  0%   { transform: scale(1);    opacity: .5; }
+  70%  { opacity: 0; }
+  100% { transform: scale(2.15); opacity: 0; }
+}
+
+/* Respiration du logo — échelle seule, jamais l'opacité */
+@keyframes logo-breathe {
+  0%, 100% { transform: scale(1);     box-shadow: 0 8px 24px rgba(26,68,128,.35); }
+  50%      { transform: scale(1.045); box-shadow: 0 13px 32px rgba(26,68,128,.48); }
+}
+
+/* Révélation en cascade des éléments de la carte de connexion */
+@keyframes login-item-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Carte de connexion — arrivée douce avec profondeur */
+@keyframes login-card-in {
+  from { opacity: 0; transform: translateY(34px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+
+/* Secousse en cas d'erreur de connexion */
+@keyframes login-shake {
+  0%, 100%     { transform: translateX(0); }
+  15%, 45%, 75% { transform: translateX(-7px); }
+  30%, 60%, 90% { transform: translateX(7px); }
+}
+
+/* Header — balayage périodique avec temps de repos (au lieu d'un
+   shimmer continu qui attirait l'oeil en permanence) */
+@keyframes header-sweep {
+  0%   { background-position: -180% center; }
+  28%  { background-position:  180% center; }
+  100% { background-position:  180% center; }
+}
+
+/* Header — descente à l'ouverture de l'application */
+@keyframes header-drop {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo du header — flottement discret */
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2.5px); }
+}
+
+/* Croix médicale dorée — reflet bref et espacé */
+@keyframes cross-glint {
+  0%, 90%, 100% { opacity: .9;  filter: none; }
+  95%           { opacity: 1;   filter: drop-shadow(0 0 3.5px #fbbf24); }
+}
+
+/* ── Transition de vue (navigation entre sections) ── */
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(14px) scale(.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);   }
+}
+.view-entering {
+  animation: view-enter .32s cubic-bezier(.22,.61,.36,1) both;
+}
+
+/* ── Modal — entrée avec effet spring ── */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-box-in {
+  from { opacity: 0; transform: scale(.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1)  translateY(0);   }
+}
+.modal-backdrop {
+  animation: modal-backdrop-in .2s ease both;
+}
+.modal-box {
+  animation: modal-box-in .32s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ── Rangées historique — entrée décalée ── */
+@keyframes row-slide-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.hist-row-anim {
+  animation: row-slide-in .22s ease both;
+}
+
+/* ── KPI — pop-in sur la valeur ── */
+@keyframes kpi-pop {
+  0%   { transform: scale(.7);  opacity: 0; }
+  70%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.kpi-pop {
+  animation: kpi-pop .38s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ── Boutons — effet ripple au clic ── */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,.35) 0%, transparent 65%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform .5s ease, opacity .5s ease;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.btn:active::after {
+  transform: scale(2.5);
+  opacity: 1;
+  transition: none;
+}
+
+/* ── Inputs — lueur douce au focus ── */
+@keyframes input-focus-glow {
+  from { box-shadow: 0 0 0 0 rgba(37,99,235,.3); }
+  to   { box-shadow: 0 0 0 4px rgba(37,99,235,.08); }
+}
+input:focus, select:focus, textarea:focus {
+  animation: input-focus-glow .25s ease forwards;
+}
+
+/* ── Toast — rebond en sortie ── */
+@keyframes toast-bounce-out {
+  0%   { opacity: 1; transform: translateY(0) scale(1);    }
+  40%  { opacity: 1; transform: translateY(-6px) scale(1.03); }
+  100% { opacity: 0; transform: translateY(-16px) scale(.96); }
+}
+#toast.hiding {
+  animation: toast-bounce-out .35s ease forwards;
+}
+
+/* ── Carte d'entrée décalée au chargement ── */
 .card {
   animation: slide-in-up .35s ease both;
 }
 .card:nth-child(2) { animation-delay: .05s; }
 .card:nth-child(3) { animation-delay: .10s; }
 .card:nth-child(4) { animation-delay: .15s; }
+
+/* ── Transitions couleurs pour mode nuit (activées temporairement) ── */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color .3s ease,
+    color .3s ease,
+    border-color .28s ease,
+    box-shadow .28s ease !important;
+}
 
 /* ================================================================
    HEADER — Bannière CPMI
@@ -192,22 +365,28 @@ header {
   z-index: 100;
   box-shadow: 0 4px 20px rgba(26,68,128,.35);
   border-bottom: 3px solid rgba(255,255,255,.15);
+  animation: header-drop .55s cubic-bezier(.22,.61,.36,1);
 }
-/* Brillance animée sur le header */
+/* ✅ v13.33 — Balayage lumineux : passage plus lent, plus doux, suivi
+   d'une longue pause. Moins intrusif qu'un shimmer continu. */
 header::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg,
-    transparent 0%, rgba(255,255,255,.06) 40%,
-    rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 60%,
+  background: linear-gradient(100deg,
+    transparent 0%, rgba(255,255,255,.05) 42%,
+    rgba(255,255,255,.13) 50%, rgba(255,255,255,.05) 58%,
     transparent 100%);
   background-size: 200% 100%;
-  animation: shimmer 4s linear infinite;
+  animation: header-sweep 9s cubic-bezier(.4,0,.2,1) infinite;
   pointer-events: none;
 }
 
-.logo { display: flex; align-items: center; gap: 12px; }
+.logo { display: flex; align-items: center; gap: 12px; cursor: default; }
+/* ✅ v13.33 — Le logo ne clignote plus (l'ancien pulse-soft faisait
+   varier l'opacité de .7 à 1, ce qui donnait un effet « défectueux »).
+   Flottement discret + réaction au survol sur le SVG interne, afin de
+   ne pas entrer en conflit avec la transform de l'animation. */
 .logo-icon {
   width: 44px; height: 44px;
   background: rgba(255,255,255,.18);
@@ -215,9 +394,21 @@ header::after {
   display: flex; align-items: center; justify-content: center;
   font-size: 22px;
   border: 1px solid rgba(255,255,255,.25);
-  animation: pulse-soft 3s ease-in-out infinite;
+  animation: logo-float 5.5s ease-in-out infinite;
   backdrop-filter: blur(4px);
+  transition: background .3s ease, box-shadow .3s ease, border-color .3s ease;
 }
+.logo:hover .logo-icon {
+  background: rgba(255,255,255,.3);
+  border-color: rgba(255,255,255,.45);
+  box-shadow: 0 6px 18px rgba(0,0,0,.22);
+}
+.logo-icon svg {
+  transition: transform .45s cubic-bezier(.34,1.56,.64,1);
+}
+.logo:hover .logo-icon svg { transform: scale(1.12) rotate(-5deg); }
+/* Reflet bref sur la croix médicale dorée */
+.logo-icon svg g { animation: cross-glint 7s ease-in-out infinite; }
 .logo-name {
   font-size: 18px; font-weight: 800;
   letter-spacing: .5px;
@@ -313,9 +504,12 @@ main {
   margin-bottom: 18px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(6px);
-  transition: box-shadow .2s, transform .2s;
+  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
 }
-.card:hover { box-shadow: var(--shadow-lg); }
+.card:hover {
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(37,99,235,.08);
+  transform: translateY(-2px);
+}
 .card-title {
   font-size: 12px;
   font-weight: 700;
@@ -607,9 +801,12 @@ select {
   padding: 22px 16px; text-align: center;
   box-shadow: var(--shadow);
   backdrop-filter: blur(6px);
-  transition: transform .2s, box-shadow .2s;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
 }
-.stats-kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.stats-kpi:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(37,99,235,.1);
+}
 .kpi-val { font-size: 38px; font-weight: 900; color: var(--cpmi-deep); line-height: 1.1; }
 .kpi-label { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -681,14 +878,28 @@ select {
   z-index: 2000; padding: 20px;
   overflow: hidden;
 }
-/* Ondulations en arrière-plan du login */
-#login-screen::before {
+/* ✅ v13.33 — Voiles lumineux dérivant lentement (aurora).
+   Remplace l'ancien pulse-soft qui faisait « respirer » tout le fond
+   en opacité. Deux couches à vitesses différentes = mouvement
+   organique, jamais répétitif à l'oeil. */
+#login-screen::before,
+#login-screen::after {
   content: '';
-  position: absolute; inset: 0;
+  position: absolute; inset: -25%;
+  pointer-events: none;
+  will-change: transform;
+}
+#login-screen::before {
   background:
-    radial-gradient(circle at 20% 50%, rgba(255,255,255,.06) 0%, transparent 40%),
-    radial-gradient(circle at 80% 30%, rgba(255,255,255,.06) 0%, transparent 40%);
-  animation: pulse-soft 6s ease-in-out infinite;
+    radial-gradient(circle at 25% 45%, rgba(255,255,255,.10) 0%, transparent 42%),
+    radial-gradient(circle at 78% 28%, rgba(204,251,241,.11) 0%, transparent 40%);
+  animation: aurora-a 26s ease-in-out infinite;
+}
+#login-screen::after {
+  background:
+    radial-gradient(circle at 68% 72%, rgba(251,207,232,.10) 0%, transparent 45%),
+    radial-gradient(circle at 15% 80%, rgba(219,234,254,.10) 0%, transparent 42%);
+  animation: aurora-b 34s ease-in-out infinite;
 }
 
 .login-card {
@@ -698,9 +909,29 @@ select {
   width: 100%; max-width: 390px;
   box-shadow: 0 24px 60px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.5) inset;
   text-align: center;
-  animation: slide-in-up .5s cubic-bezier(.34,1.56,.64,1);
+  animation: login-card-in .6s cubic-bezier(.22,.61,.36,1) both;
   backdrop-filter: blur(12px);
   position: relative;
+  z-index: 1; /* au-dessus des voiles aurora */
+}
+/* Secousse déclenchée par JS lorsqu'une erreur de connexion s'affiche */
+.login-card.shake { animation: login-shake .45s ease; }
+/* ✅ v13.33 — Révélation en cascade du contenu (le logo, en 1er enfant,
+   a sa propre animation combinée définie plus bas) */
+.login-card > *:nth-child(n+2) {
+  animation: login-item-in .5s cubic-bezier(.22,.61,.36,1) both;
+}
+.login-card > *:nth-child(2) { animation-delay: .30s; }
+.login-card > *:nth-child(3) { animation-delay: .37s; }
+.login-card > *:nth-child(4) { animation-delay: .44s; }
+.login-card > *:nth-child(5) { animation-delay: .51s; }
+.login-card > *:nth-child(6) { animation-delay: .58s; }
+.login-card > *:nth-child(7) { animation-delay: .65s; }
+.login-card > *:nth-child(8) { animation-delay: .72s; }
+/* Rétablit la lueur au focus : la règle de cascade ci-dessus est plus
+   spécifique que « input:focus » et l'aurait sinon neutralisée. */
+.login-card input:focus {
+  animation: input-focus-glow .25s ease forwards;
 }
 /* Bandeau de couleur en haut de la card */
 .login-card::before {
@@ -709,6 +940,9 @@ select {
   background: linear-gradient(to right, var(--cpmi-deep), var(--cpmi-teal), var(--cpmi-rose));
   border-radius: 22px 22px 0 0;
 }
+/* ✅ v13.33 — Le logo respire (échelle seule) et diffuse des anneaux
+   concentriques : évocation directe de la « protection » du CPMI.
+   L'ancien pulse-soft faisait chuter l'opacité à .7 en boucle. */
 .login-logo {
   width: 76px; height: 76px;
   background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-sky));
@@ -716,7 +950,56 @@ select {
   display: flex; align-items: center; justify-content: center;
   font-size: 34px; margin: 0 auto 18px;
   box-shadow: 0 8px 24px rgba(26,68,128,.35);
-  animation: pulse-soft 3s ease-in-out infinite;
+  position: relative;
+  animation:
+    login-item-in .5s cubic-bezier(.22,.61,.36,1) .18s both,
+    logo-breathe  4.5s ease-in-out 1s infinite;
+}
+/* Anneaux de protection (2 vagues décalées) */
+.login-logo::before,
+.login-logo::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(37,99,235,.45);
+  animation: halo-ring 3.8s ease-out 1.2s infinite;
+  pointer-events: none;
+}
+.login-logo::after { animation-delay: 3.1s; }
+.login-logo svg { position: relative; z-index: 1; }
+.login-logo svg g { animation: cross-glint 7s ease-in-out infinite; }
+
+/* Reflet traversant le bouton « Se connecter » au survol */
+.login-card .btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -60%;
+  width: 45%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
+  transform: skewX(-18deg);
+  transition: left .65s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+}
+.login-card .btn:hover::before { left: 120%; }
+
+/* ================================================================
+   ✅ v13.33 — ACCESSIBILITÉ : respect de « Réduire les animations »
+   Réglage système (Windows/macOS/Android/iOS). Indispensable pour les
+   utilisateurs sujets au vertige ou à la gêne vestibulaire.
+   ================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Les décors purement animés sont simplement retirés */
+  #login-screen::before,
+  #login-screen::after,
+  .login-logo::before,
+  .login-logo::after,
+  header::after { display: none; }
 }
 .login-card h1 { font-size: 22px; font-weight: 900; color: var(--cpmi-deep); margin-bottom: 4px; }
 .login-card .login-subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 4px; }
@@ -837,7 +1120,6 @@ select {
   border-top-color: var(--accent); border-radius: 50%;
   animation: spin .7s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 .loading-label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
 
 @media print {
@@ -2247,7 +2529,8 @@ select {
       <div class="form-group">
         <label>Rôle</label>
         <select id="nu_role">
-          <option value="agent">Agent</option>
+          <option value="agent">Agent (saisie)</option>
+          <option value="caissier">Caissier (caisse uniquement)</option>
           <option value="admin">Administrateur</option>
         </select>
       </div>
@@ -2456,6 +2739,80 @@ select {
     <div id="rist-mois-table"></div>
     <div style="margin-top:12px">
       <button class="btn btn-primary" onclick="saveRistourneTaux()" style="padding:6px 14px;font-size:12.5px">💾 Enregistrer les taux</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.33 — Vue Caisse simplifiée (utilisateurs non-admin) -->
+<div id="view-caisse-user" style="display:none">
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>💰 Mon activité</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-outline active" id="ucaisse-btn-jour" onclick="setUCaissePeriode('jour')" style="padding:5px 12px;font-size:12px">Aujourd'hui</button>
+        <button class="btn btn-outline" id="ucaisse-btn-semaine" onclick="setUCaissePeriode('semaine')" style="padding:5px 12px;font-size:12px">Cette semaine</button>
+        <button class="btn btn-outline" id="ucaisse-btn-mois" onclick="setUCaissePeriode('mois')" style="padding:5px 12px;font-size:12px">Ce mois</button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;color:var(--text-muted)">Du</label>
+          <input type="date" id="ucaisse-date-from" style="width:auto;font-size:12px">
+          <label style="font-size:11px;color:var(--text-muted)">Au</label>
+          <input type="date" id="ucaisse-date-to" style="width:auto;font-size:12px">
+          <button class="btn btn-primary" onclick="setUCaissePeriode('custom')" style="padding:5px 10px;font-size:12px">Appliquer</button>
+        </div>
+        <span id="ucaisse-periode-label" style="font-size:11.5px;color:var(--text-muted)"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="stats-kpi-row" style="margin-bottom:16px">
+    <div class="stats-kpi" style="border-left:3px solid #15803d">
+      <div class="kpi-val" id="ucaisse-kpi-total" style="color:#15803d">—</div>
+      <div class="kpi-label">Total encaissé (FCFA)</div>
+    </div>
+    <div class="stats-kpi">
+      <div class="kpi-val" id="ucaisse-kpi-nb">—</div>
+      <div class="kpi-label">Patients enregistrés</div>
+    </div>
+    <div class="stats-kpi">
+      <div class="kpi-val" id="ucaisse-kpi-moy">—</div>
+      <div class="kpi-label">Moyenne / dossier (FCFA)</div>
+    </div>
+    <div class="stats-kpi" style="border-left:3px solid var(--warning)">
+      <div class="kpi-val" id="ucaisse-kpi-attente" style="color:var(--warning)">—</div>
+      <div class="kpi-label">Dossiers en attente de paiement</div>
+    </div>
+  </div>
+
+  <!-- Graphique recettes par jour -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📊 Recettes par jour (période sélectionnée)</div>
+    <div style="position:relative;height:220px"><canvas id="ucaisse-chart-jour"></canvas></div>
+  </div>
+
+  <!-- Répartition type + Ristournes côte à côte -->
+  <div class="stats-grid" style="margin-bottom:16px">
+    <!-- Répartition par type -->
+    <div class="card stats-card">
+      <div class="card-title">🔬 Répartition par type d'analyse</div>
+      <div class="table-wrap">
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>Type</th><th style="text-align:center">Nb</th><th style="text-align:right">Total FCFA</th><th style="text-align:right">%</th></tr></thead>
+          <tbody id="ucaisse-type-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Ristournes de mes prescripteurs (lecture seule) -->
+    <div class="card stats-card">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:6px">
+        <span>💊 Mes ristournes du mois</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="ucaisse-rist-mois" onchange="renderUCaisseRistournes()" style="width:auto;padding:4px 6px;font-size:12px"></select>
+          <select id="ucaisse-rist-annee" onchange="renderUCaisseRistournes()" style="width:auto;padding:4px 6px;font-size:12px"></select>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Ristournes générées par les prescripteurs de vos dossiers.</p>
+      <div id="ucaisse-rist-table"></div>
     </div>
   </div>
 </div>
@@ -4009,14 +4366,38 @@ function updateMontantCurrent() {
 // ============================================================
 
 function showView(v) {
-  document.getElementById('view-saisie').style.display = v === 'saisie' ? '' : 'none';
-  document.getElementById('view-historique').style.display = v === 'historique' ? '' : 'none';
-  const viewStats = document.getElementById('view-stats');
-  if (viewStats) viewStats.style.display = v === 'stats' ? '' : 'none';
-  const viewComptes = document.getElementById('view-comptes');
-  if (viewComptes) viewComptes.style.display = v === 'comptes' ? '' : 'none';
-  const viewCaisse = document.getElementById('view-caisse');
-  if (viewCaisse) viewCaisse.style.display = v === 'caisse' ? '' : 'none';
+  // ✅ v13.33 — Le caissier ne peut pas accéder à la saisie ni aux comptes
+  if (isCaissier() && (v === 'saisie' || v === 'comptes')) return;
+
+  // ✅ v13.33 — Déterminer quel conteneur caisse afficher
+  // Admin et Caissier → caisse complète ; Agent → vue personnelle simplifiée
+  const caisseAdminVisible  = (v === 'caisse' && (isAdmin() || isCaissier()));
+  const caisseUserVisible   = (v === 'caisse' && !isAdmin() && !isCaissier());
+
+  const allViews = [
+    { id: 'view-saisie',       show: v === 'saisie' },
+    { id: 'view-historique',   show: v === 'historique' },
+    { id: 'view-stats',        show: v === 'stats' },
+    { id: 'view-comptes',      show: v === 'comptes' },
+    { id: 'view-caisse',       show: caisseAdminVisible },
+    { id: 'view-caisse-user',  show: caisseUserVisible },
+  ];
+
+  allViews.forEach(({ id, show }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (show) {
+      el.style.display = '';
+      // Déclencher l'animation d'entrée
+      el.classList.remove('view-entering');
+      void el.offsetWidth; // forcer un reflow pour relancer l'animation
+      el.classList.add('view-entering');
+      el.addEventListener('animationend', () => el.classList.remove('view-entering'), { once: true });
+    } else {
+      el.style.display = 'none';
+    }
+  });
+
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
   if (v === 'historique') renderHistory(true);
@@ -4163,10 +4544,13 @@ function getDB() {
   // ✅ v13.32 — Modes spéciaux admin
   if (_filterCorbeille    && isAdmin()) return _dbCache.filter(r => !!r.deletedAt);
   if (_filterVerrouillees && isAdmin()) return _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy);
-  // Mode normal (tout profil) : exclure les fiches supprimées ET verrouillées.
-  // Les fiches verrouillées disparaissent de la vue de leur propriétaire (ils pensent qu'elles
-  // sont supprimées) ; seul l'admin les retrouve dans la section « Fiches verrouillées ».
-  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
+  // Admin ou Caissier : toutes les fiches actives (toutes origines)
+  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
+  // Mode normal agent : uniquement les fiches saisies par l'utilisateur courant.
+  // Les fiches verrouillées disparaissent de sa vue (il pense qu'elles sont supprimées).
+  const uid = _currentUser?.username;
+  if (!uid) return [];
+  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy && r.createdBy === uid);
 }
 
 // ✅ v13.32 — Fiches verrouillées toujours exclues des calculs (elles ont leur propre total
@@ -4178,7 +4562,11 @@ function isExcludedFromCalc(r) {
 function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
   // Les fiches verrouillées et supprimées sont toujours exclues.
-  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
+  // Admin et Caissier : toutes les fiches actives. Agent : uniquement les siennes.
+  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
+  const uid = _currentUser?.username;
+  if (!uid) return [];
+  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy && r.createdBy === uid);
 }
 
 // Stub conservé pour compatibilité (anciens appels éventuels)
@@ -5183,6 +5571,7 @@ function ensureInterpFresh(type) {
 }
 
 async function editRecord(id, typeOverride) {
+  if (isCaissier()) { toast('Accès lecture seule — le caissier ne peut pas modifier les fiches', 'err'); return; }
   let record = getDB().find(x => x.id === id);
   if (!record) {
     await refreshDB();
@@ -5309,6 +5698,7 @@ function cancelEdit() {
 
 // ✅ v13.29 — Modifier la fiche d'accueil (patient + examens) sans changer le numéro de dossier
 async function editFicheIdentif(id) {
+  if (isCaissier()) { toast('Accès lecture seule — le caissier ne peut pas modifier les fiches', 'err'); return; }
   let record = getDB().find(x => x.id === id);
   if (!record) {
     showLoading('Chargement…');
@@ -5463,7 +5853,7 @@ async function toggleRestriction(id) {
   _updateLockBtn(id, record);
   // ✅ v13.30 — Re-render : la fiche masquée reste visible mais grisée,
   //   et le total en bas est recalculé sans elle. Met aussi à jour le bouton "Mes fiches masquées".
-  await renderHistorique();
+  await renderHistory();
 }
 
 // Recharge les résultats sauvegardés dans les champs du formulaire (mode édition)
@@ -5986,31 +6376,46 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
       + '<td data-label="Statut">' + statutBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
-        + lockBtn(r)
-        + (() => {
-            const uid = _currentUser?.username;
-            const canEdit = isAdmin() || r.createdBy === uid;
-            return canEdit
-              ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'
-              : '';
-          })()
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="editFicheIdentif(' + r.id + ')" title="Modifier la fiche d\'accueil (patient + examens)" aria-label="Modifier la fiche d\'accueil">🗂</button>'
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats" aria-label="Modifier les résultats">✏️</button>'
+        // ✅ v13.33 — Caissier : lecture seule (export/impression uniquement, pas de modification)
+        + (isCaissier() ? ''
+            : lockBtn(r)
+              + (() => {
+                  const uid = _currentUser?.username;
+                  const canEdit = isAdmin() || r.createdBy === uid;
+                  return canEdit
+                    ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'
+                    : '';
+                })()
+              + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="editFicheIdentif(' + r.id + ')" title="Modifier la fiche d\'accueil (patient + examens)" aria-label="Modifier la fiche d\'accueil">🗂</button>'
+              + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats" aria-label="Modifier les résultats">✏️</button>'
+          )
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF" aria-label="Exporter en PDF">📄</button>'
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
-        + dossierMulti
-        + (isAdmin() && isDossierRecord(r) && getRecordTypes(r).length > 0
-            ? getRecordTypes(r).map(t =>
-                '<button class="btn btn-danger" style="padding:3px 7px;font-size:10px;margin-left:2px;opacity:.75" title="Supprimer ' + t + '" onclick="deleteAnalyseFromDossier(' + r.id + ',\'' + t.replace(/'/g,"\\'") + '\')">✕ ' + t.substring(0,4) + '</button>'
-              ).join('')
-            : '')
-        + softDeleteBtn(r)
+        + (isCaissier() ? ''
+            : '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
+              + dossierMulti
+              + (isAdmin() && isDossierRecord(r) && getRecordTypes(r).length > 0
+                  ? getRecordTypes(r).map(t =>
+                      '<button class="btn btn-danger" style="padding:3px 7px;font-size:10px;margin-left:2px;opacity:.75" title="Supprimer ' + t + '" onclick="deleteAnalyseFromDossier(' + r.id + ',\'' + t.replace(/'/g,"\\'") + '\')">✕ ' + t.substring(0,4) + '</button>'
+                    ).join('')
+                  : '')
+              + softDeleteBtn(r)
+          )
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer résultats" aria-label="Imprimer les résultats">🖨</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="printReceipt(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
       + '</td></tr>';
   }).join('');
   if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge(); // ✅ v13.28 F10
+
+  // ✅ v13.33 — Animation d'entrée décalée sur les rangées
+  b.querySelectorAll('tr').forEach((tr, i) => {
+    tr.classList.add('hist-row-anim');
+    tr.style.animationDelay = Math.min(i * 28, 280) + 'ms';
+    tr.addEventListener('animationend', () => {
+      tr.classList.remove('hist-row-anim');
+      tr.style.animationDelay = '';
+    }, { once: true });
+  });
 }
 
 
@@ -6149,7 +6554,7 @@ function toggleVerrouillees() {
   _filterVerrouillees = !_filterVerrouillees;
   if (_filterVerrouillees) { _filterCorbeille = false; updateCorbeilleBtn(); }
   updateVerrouilleeBtn();
-  renderHistorique();
+  renderHistory();
 }
 
 // ✅ v13.31 — Corbeille admin
@@ -6169,7 +6574,7 @@ function toggleCorbeille() {
   _filterCorbeille = !_filterCorbeille;
   if (_filterCorbeille) { _filterVerrouillees = false; updateVerrouilleeBtn(); }
   updateCorbeilleBtn();
-  renderHistorique();
+  renderHistory();
 }
 
 async function softDeleteDossier(id) {
@@ -6199,7 +6604,7 @@ async function softDeleteDossier(id) {
 
   updateCorbeilleBtn();
   if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
-  renderHistorique();
+  renderHistory();
   toast('Dossier déplacé dans la corbeille 🗑️', 'ok');
 }
 
@@ -6226,7 +6631,7 @@ async function restoreDossier(id) {
 
   updateCorbeilleBtn();
   if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
-  renderHistorique();
+  renderHistory();
   toast('Dossier restauré ✓', 'ok');
 }
 
@@ -6371,7 +6776,7 @@ async function savePatientEdit(id) {
 
     document.getElementById('edit-patient-modal-bd')?.remove();
     buildPatientCache();
-    renderHistorique();
+    renderHistory();
     toast('Informations patient mises à jour ✓', 'ok');
   } catch (e) {
     const errEl = document.getElementById('ep_err');
@@ -6401,7 +6806,7 @@ async function bulkSetStatut(statut) {
   }
   hideLoading();
   clearBulkSelection();
-  renderHistorique();
+  renderHistory();
   toast(ok + ' fiche(s) mises à jour' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
@@ -6431,7 +6836,7 @@ async function bulkLock() {
   }
   hideLoading();
   clearBulkSelection();
-  renderHistorique();
+  renderHistory();
   toast(ok + ' fiche(s) verrouillée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
@@ -6461,7 +6866,7 @@ async function bulkUnlock() {
   }
   hideLoading();
   clearBulkSelection();
-  renderHistorique();
+  renderHistory();
   toast(ok + ' fiche(s) déverrouillée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
@@ -6484,7 +6889,7 @@ async function bulkDelete() {
   hideLoading();
   clearBulkSelection();
   await refreshDB(true);
-  renderHistorique();
+  renderHistory();
   toast(ok + ' fiche(s) supprimée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
@@ -7314,9 +7719,10 @@ async function renderStats() {
   const periodeCount = dbPeriode.length;
   const agents = new Set(dbPeriode.map(r => r.createdBy).filter(Boolean));
 
-  document.getElementById('kpi-total').querySelector('.kpi-val').textContent = total;
-  document.getElementById('kpi-month').querySelector('.kpi-val').textContent = periodeCount;
-  document.getElementById('kpi-agents').querySelector('.kpi-val').textContent = agents.size || '—';
+  // ✅ v13.33 — Animation compte-à-rebours sur les KPI stats
+  animateCount(document.getElementById('kpi-total')?.querySelector('.kpi-val'),   total,       600, false);
+  animateCount(document.getElementById('kpi-month')?.querySelector('.kpi-val'),   periodeCount,500, false);
+  animateCount(document.getElementById('kpi-agents')?.querySelector('.kpi-val'),  agents.size || 0, 400, false);
 
   // ── Fiches par type d'analyse (barres horizontales) ─────────
   const byType = {};
@@ -7410,10 +7816,11 @@ async function renderStats() {
   const recettesMonth = db.filter(r => (r.patient?.date||r.savedAt||'').startsWith(thisMonth))
     .reduce((s, r) => s + (r.montant || 0), 0);
 
+  // ✅ v13.33 — Animation compte-à-rebours KPI financiers
   const kpiRM = document.getElementById('kpi-recettes-month');
   const kpiRT = document.getElementById('kpi-recettes-total');
-  if (kpiRM) kpiRM.querySelector('.kpi-val').textContent = recettesMonth.toLocaleString('fr-FR');
-  if (kpiRT) kpiRT.querySelector('.kpi-val').textContent = recettesTotal.toLocaleString('fr-FR');
+  animateCount(kpiRM?.querySelector('.kpi-val'), recettesMonth, 700, true);
+  animateCount(kpiRT?.querySelector('.kpi-val'), recettesTotal, 800, true);
 
   // ── Recettes par type ──────────────────────────────────────────
   const recettesByType = {};
@@ -9881,12 +10288,47 @@ async function enregistrerFicheIdentif() {
 // ============================================================
 
 let toastTimer;
+
+// ✅ v13.33 — Compte à rebours animé pour les valeurs KPI
+function animateCount(el, target, duration = 600, isCurrency = false) {
+  if (!el) return;
+  const isNumber = typeof target === 'number' && !isNaN(target);
+  if (!isNumber || target === 0) {
+    el.classList.add('kpi-pop');
+    el.addEventListener('animationend', () => el.classList.remove('kpi-pop'), { once: true });
+    return;
+  }
+  const start = performance.now();
+  const startVal = 0;
+  function step(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(startVal + (target - startVal) * eased);
+    el.textContent = isCurrency ? _fmtF(current) : current;
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      el.textContent = isCurrency ? _fmtF(target) : target;
+      el.classList.add('kpi-pop');
+      el.addEventListener('animationend', () => el.classList.remove('kpi-pop'), { once: true });
+    }
+  }
+  requestAnimationFrame(step);
+}
 function toast(msg, type='') {
   const el = document.getElementById('toast');
+  // ✅ v13.33 — Animation de sortie avant d'effacer, puis d'entrée
+  clearTimeout(toastTimer);
+  el.classList.remove('show','hiding');
+  void el.offsetWidth; // reflow pour relancer l'animation
   el.textContent = (type === 'ok' ? '✓ ' : type === 'err' ? '✗ ' : 'ℹ ') + msg;
   el.className = 'show ' + type;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.className = '', 3000);
+  toastTimer = setTimeout(() => {
+    el.classList.add('hiding');
+    el.addEventListener('animationend', () => { el.className = ''; }, { once: true });
+  }, 2700);
 }
 
 // ============================================================
@@ -9960,6 +10402,36 @@ function clearSession() {
 function isAdmin() {
   return !!_currentUser && _currentUser.role === 'admin';
 }
+// ✅ v13.33 — Rôle Caissier : accès lecture à toutes les fiches + caisse complète, pas de saisie
+function isCaissier() {
+  return !!_currentUser && _currentUser.role === 'caissier';
+}
+
+// ✅ v13.33 — Secousse de la carte quand une erreur de connexion apparaît.
+// Implémenté par observation du conteneur d'erreur : aucune des (nombreuses)
+// branches de doLogin n'a besoin d'être modifiée.
+(function initLoginShake() {
+  const start = () => {
+    const errEl = document.getElementById('login-error');
+    const card  = document.querySelector('.login-card');
+    if (!errEl || !card) return;
+    // Messages transitoires qui ne sont pas des erreurs
+    const NEUTRAL = ['', 'Vérification…', 'Vérification...'];
+    new MutationObserver(() => {
+      const txt = (errEl.textContent || '').trim();
+      if (NEUTRAL.includes(txt)) return;
+      card.classList.remove('shake');
+      void card.offsetWidth;          // force le redémarrage de l'animation
+      card.classList.add('shake');
+    }).observe(errEl, { childList: true, characterData: true, subtree: true });
+    card.addEventListener('animationend', e => {
+      if (e.animationName === 'login-shake') card.classList.remove('shake');
+    });
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else { start(); }
+})();
 
 async function doLogin() {
   const userInput = document.getElementById('login-username');
@@ -10067,7 +10539,7 @@ function enterApp() {
 function updateUserBadge() {
   const el = document.getElementById('user-badge');
   if (el && _currentUser) {
-    const roleLabel = isAdmin() ? 'Administrateur' : 'Agent';
+    const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier' : '🔬 Agent';
     el.textContent = `${_currentUser.username} · ${roleLabel}`;
   }
   const clearBtn = document.getElementById('btn-clear-history');
@@ -10077,6 +10549,14 @@ function updateUserBadge() {
   const tarifsCard = document.getElementById('tarifs-config-card');
   if (tarifsCard) tarifsCard.style.display = isAdmin() ? '' : 'none';
   if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); }
+
+  // ✅ v13.33 — Caissier : masquer la nav "Nouvelle saisie" et afficher un message
+  const saisieNavBtn = document.querySelector('header .nav-btn[data-view="saisie"]');
+  if (saisieNavBtn) saisieNavBtn.style.display = isCaissier() ? 'none' : '';
+  const exportAllBtn = document.querySelector('header .nav-btn[onclick="exportAllExcel()"]');
+  if (exportAllBtn) exportAllBtn.style.display = isCaissier() ? 'none' : '';
+  // Afficher directement la caisse pour le caissier après connexion
+  if (isCaissier()) setTimeout(() => showView('caisse'), 50);
 }
 
 // ============================================================
@@ -10154,7 +10634,7 @@ async function renderUsersList() {
   }
   b.innerHTML = data.map(u => {
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const roleLabel = u.role === 'admin' ? 'Administrateur' : 'Agent';
+    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
     return `
@@ -10782,6 +11262,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── Mode sombre ──
 function toggleDarkMode() {
+  // ✅ v13.33 — Transition douce des couleurs lors du changement de thème
+  document.documentElement.classList.add('theme-transitioning');
+  setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 400);
+
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
   document.getElementById('btn-dark-mode').textContent = isDark ? '🌙' : '☀️';
@@ -11314,6 +11798,8 @@ function getCaisseRange() {
 async function renderCaisse() {
   await refreshDB();
   updateVerrouilleeBtn(); // ✅ v13.32 — bouton admin fiches verrouillées
+  // ✅ v13.33 — Brancher selon le rôle : agent → vue simplifiée, admin/caissier → caisse complète
+  if (!isAdmin() && !isCaissier()) { renderUserCaisse(); return; }
   const db = getCalcDB(); // exclut les fiches verrouillées selon le choix admin
   const { from, to } = getCaisseRange();
   const rows = filterByDateRange(db, from, to);
@@ -11324,11 +11810,11 @@ async function renderCaisse() {
   const nb = rows.length;
   const moy = nb ? Math.round(total / nb) : 0;
   const attente = rows.filter(r => getStatut(r.id) === 'attente').length;
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('caisse-kpi-total', _fmtF(total));
-  set('caisse-kpi-nb', nb);
-  set('caisse-kpi-moy', _fmtF(moy));
-  set('caisse-kpi-attente', attente);
+  // ✅ v13.33 — Compte-à-rebours animé sur les KPI
+  animateCount(document.getElementById('caisse-kpi-total'),   total,   700, true);
+  animateCount(document.getElementById('caisse-kpi-nb'),      nb,      500, false);
+  animateCount(document.getElementById('caisse-kpi-moy'),     moy,     600, true);
+  animateCount(document.getElementById('caisse-kpi-attente'), attente, 400, false);
 
   // Recettes par jour
   const parJour = {};
@@ -11383,6 +11869,154 @@ async function renderCaisse() {
 
   populateMoisAnneeSelectors();
   renderRistournesMois();
+}
+
+// ── FEATURE 7 (v13.33) : Vue Caisse simplifiée pour utilisateurs non-admin ──────────
+let _uCaissePeriode = 'jour';
+let _uCaisseChart   = null;
+
+function setUCaissePeriode(p) {
+  _uCaissePeriode = p;
+  ['jour','semaine','mois'].forEach(k => {
+    const b = document.getElementById('ucaisse-btn-' + k);
+    if (b) b.classList.toggle('active', k === p);
+  });
+  renderUserCaisse();
+}
+
+function getUCaisseRange() {
+  if (_uCaissePeriode === 'custom') {
+    return {
+      from: document.getElementById('ucaisse-date-from')?.value || '',
+      to:   document.getElementById('ucaisse-date-to')?.value || '',
+    };
+  }
+  return computeHistDateRange(_uCaissePeriode || 'jour');
+}
+
+function populateUCaisseMoisAnnee() {
+  const now  = new Date();
+  const y    = now.getFullYear();
+  const annees = [y, y - 1, y - 2];
+  const mEl = document.getElementById('ucaisse-rist-mois');
+  const aEl = document.getElementById('ucaisse-rist-annee');
+  if (mEl && !mEl.dataset.filled) {
+    mEl.innerHTML = MOIS_FR.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+    mEl.value = now.getMonth() + 1;
+    mEl.dataset.filled = '1';
+  }
+  if (aEl && !aEl.dataset.filled) {
+    aEl.innerHTML = annees.map(a => `<option value="${a}">${a}</option>`).join('');
+    aEl.value = y;
+    aEl.dataset.filled = '1';
+  }
+}
+
+function renderUCaisseRistournes() {
+  const el = document.getElementById('ucaisse-rist-table');
+  if (!el) return;
+  const mois  = parseInt(document.getElementById('ucaisse-rist-mois')?.value  || (new Date().getMonth() + 1));
+  const annee = parseInt(document.getElementById('ucaisse-rist-annee')?.value || new Date().getFullYear());
+  // Réutiliser computeRistournesData qui filtre déjà par getCalcDB() (qui filtre par uid)
+  const rows = computeRistournesData(mois, annee);
+  if (!rows.length) {
+    el.innerHTML = `<p style="font-size:12px;color:var(--text-muted)">Aucune ristourne pour ${MOIS_FR[mois - 1]} ${annee}.</p>`;
+    return;
+  }
+  const totalRist = rows.reduce((s, r) => s + r.ristourne, 0);
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:var(--accent-light)">
+      <th style="padding:5px 8px;text-align:left">Prescripteur</th>
+      <th style="padding:5px 8px;text-align:center">Dossiers</th>
+      <th style="padding:5px 8px;text-align:right">Montant</th>
+      <th style="padding:5px 8px;text-align:right">Taux</th>
+      <th style="padding:5px 8px;text-align:right">Ristourne</th>
+    </tr></thead>
+    <tbody>${rows.map(d => `<tr>
+      <td style="padding:5px 8px">${esc(d.presc.nom)}</td>
+      <td style="padding:5px 8px;text-align:center">${d.nbExtraBPN}</td>
+      <td style="padding:5px 8px;text-align:right">${_fmtF(d.montantBrut)}</td>
+      <td style="padding:5px 8px;text-align:right">${d.taux}%</td>
+      <td style="padding:5px 8px;text-align:right;font-weight:600;color:var(--success)">${_fmtF(d.ristourne)}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr style="border-top:2px solid var(--border)">
+      <td colspan="4" style="padding:6px 8px;font-weight:700;font-size:12.5px">Total ristournes</td>
+      <td style="padding:6px 8px;text-align:right;font-weight:700;color:var(--success);font-size:13px">${_fmtF(totalRist)}</td>
+    </tr></tfoot>
+  </table>`;
+}
+
+function renderUserCaisse() {
+  const db = getCalcDB(); // filtre par uid automatiquement pour non-admin
+  const { from, to } = getUCaisseRange();
+  const rows = filterByDateRange(db, from, to);
+
+  // Libellé période
+  const labelEl = document.getElementById('ucaisse-periode-label');
+  if (labelEl) labelEl.textContent = (from || '…') + ' → ' + (to || '…');
+
+  // KPI avec compte-à-rebours animé ✅ v13.33
+  const total   = rows.reduce((s, r) => s + (r.montant || 0), 0);
+  const nb      = rows.length;
+  const moy     = nb ? Math.round(total / nb) : 0;
+  const attente = rows.filter(r => getStatut(r.id) === 'attente').length;
+  animateCount(document.getElementById('ucaisse-kpi-total'),   total,   700, true);
+  animateCount(document.getElementById('ucaisse-kpi-nb'),      nb,      500, false);
+  animateCount(document.getElementById('ucaisse-kpi-moy'),     moy,     600, true);
+  animateCount(document.getElementById('ucaisse-kpi-attente'), attente, 400, false);
+
+  // Graphique recettes par jour
+  const parJour = {};
+  rows.forEach(r => { const d = _recDate(r); if (d) parJour[d] = (parJour[d] || 0) + (r.montant || 0); });
+  const jours = Object.keys(parJour).sort();
+  const canvas = document.getElementById('ucaisse-chart-jour');
+  if (_uCaisseChart) { try { _uCaisseChart.destroy(); } catch (e) {} _uCaisseChart = null; }
+  if (canvas && typeof Chart !== 'undefined') {
+    _uCaisseChart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: jours.map(j => j.slice(5)),
+        datasets: [{ label: 'FCFA', data: jours.map(j => parJour[j]), backgroundColor: 'rgba(21,128,61,.75)', borderColor: '#15803d', borderWidth: 1, borderRadius: 4 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + _fmtF(c.raw) + ' FCFA' } } },
+        scales: {
+          y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: v => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v } },
+          x: { ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // Répartition par type d'examen
+  const byType = {};
+  TYPES_ANALYSES.forEach(t => byType[t] = { nb: 0, total: 0 });
+  rows.forEach(r => {
+    const types = isDossierRecord(r) ? (r.resultats?._types || []) : [r.type];
+    const montants = r.resultats?._montants || null;
+    types.forEach(t => {
+      if (!byType[t]) byType[t] = { nb: 0, total: 0 };
+      byType[t].nb++;
+      byType[t].total += montants ? (Number(montants[t]) || 0) : (types.length === 1 ? (r.montant || 0) : 0);
+    });
+  });
+  const tbodyT = document.getElementById('ucaisse-type-body');
+  if (tbodyT) {
+    const entries = Object.entries(byType).filter(([, v]) => v.nb > 0).sort((a, b) => b[1].total - a[1].total);
+    tbodyT.innerHTML = entries.length
+      ? entries.map(([t, v]) => `<tr>
+          <td>${esc(t)}</td>
+          <td style="text-align:center">${v.nb}</td>
+          <td style="text-align:right">${_fmtF(v.total)}</td>
+          <td style="text-align:right">${total ? Math.round(v.total / total * 100) : 0}%</td>
+        </tr>`).join('')
+      : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Aucune donnée</td></tr>';
+  }
+
+  // Ristournes
+  populateUCaisseMoisAnnee();
+  renderUCaisseRistournes();
 }
 
 // ── FEATURE 6 : ristournes mensuelles + export PDF/Excel ──────────
