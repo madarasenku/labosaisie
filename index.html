@@ -156,17 +156,9 @@ body::before {
 }
 
 /* ── Animations de base ── */
-@keyframes pulse-soft {
-  0%, 100% { transform: scale(1); opacity: .7; }
-  50%       { transform: scale(1.08); opacity: 1; }
-}
 @keyframes slide-in-up {
   from { opacity: 0; transform: translateY(28px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -486,6 +478,32 @@ main {
   transform: translateY(-1px);
 }
 .tab-icon { display: block; font-size: 19px; margin-bottom: 3px; }
+
+/* ✅ v13.33 — Sous-onglets admin */
+.admin-tabs-main { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
+.admin-tab-main {
+  padding:8px 16px; font-size:13px; font-weight:500;
+  border-radius:var(--radius); cursor:pointer;
+  color:var(--text-secondary); background:var(--surface-1);
+  border:1px solid var(--border); transition:all .15s;
+}
+.admin-tab-main.active {
+  background:var(--cpmi-deep); color:#fff; border-color:var(--cpmi-deep);
+}
+.admin-tab-main:hover:not(.active) { color:var(--text-primary); background:var(--surface-2); }
+.admin-section { display:none; }
+.admin-section.active { display:block; }
+.admin-tabs-sub { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; flex-wrap:wrap; }
+.admin-tab-sub {
+  padding:7px 16px; font-size:12.5px; cursor:pointer;
+  color:var(--text-secondary); background:transparent;
+  border:none; border-bottom:2px solid transparent; margin-bottom:-2px;
+  transition:all .15s; font-family:inherit;
+}
+.admin-tab-sub.active { color:var(--cpmi-deep); border-bottom-color:var(--cpmi-deep); font-weight:600; }
+.admin-tab-sub:hover:not(.active) { color:var(--text-primary); background:var(--accent-light); }
+.admin-sub-section { display:none; }
+.admin-sub-section.active { display:block; }
 
 /* ================================================================
    PANELS
@@ -2294,16 +2312,14 @@ select {
           style="padding:8px 14px;font-size:12.5px;display:flex;align-items:center;gap:6px">
           ↺ Réinitialiser
         </button>
-        <button id="btn-verrouillee" onclick="toggleVerrouillees()"
+        <button id="btn-masquees" onclick="toggleMasquees()"
           style="display:none;padding:8px 14px;font-size:12.5px;border-radius:8px;cursor:pointer;border:1.5px solid #fbbf24;background:#fef3c7;color:#92400e;font-weight:600;align-items:center;gap:6px">
-          🔒 Fiches verrouillées&nbsp;<span id="verrouillee-badge" style="background:#d97706;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px">0</span>
+          🔒 Fiches masquées&nbsp;<span id="masquees-badge" style="background:#d97706;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px">0</span>
         </button>
         <button id="btn-corbeille" onclick="toggleCorbeille()"
           style="display:none;padding:8px 14px;font-size:12.5px;border-radius:8px;cursor:pointer;border:1.5px solid #f87171;background:#fef2f2;color:#b91c1c;font-weight:600;align-items:center;gap:6px">
           🗑️ Corbeille&nbsp;<span id="corbeille-badge" style="background:#dc2626;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px">0</span>
         </button>
-        <button id="btn-clear-history" class="btn btn-danger" onclick="clearHistory()"
-          style="display:none;padding:8px 14px;font-size:12.5px">🗑 Vider l'historique</button>
       </div>
     </div>
 
@@ -2478,150 +2494,192 @@ select {
     </p>
     <div id="ristournes-table"></div>
 
-    <!-- Top 10 examens les plus demandés -->
-    <div class="card" style="margin-top:20px">
-      <div class="card-title">🔬 Top 10 examens les plus demandés</div>
-      <table class="result-table" style="width:100%">
-        <thead><tr><th>#</th><th>Examen</th><th>Nb demandes</th></tr></thead>
-        <tbody id="top-examens-body"><tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Chargement…</td></tr></tbody>
-      </table>
-    </div>
   </div>
 
-  <!-- Gestion des prescripteurs -->
-  <div class="card" style="margin-top:16px" id="prescripteurs-admin-card">
-    <div class="card-title">👨‍⚕️ Gestion des prescripteurs</div>
-    <div class="form-grid" style="margin-bottom:12px">
-      <div class="form-group">
-        <label>Nom complet</label>
-        <input type="text" id="presc_nom" placeholder="Dr Nom Prénom">
-      </div>
-      <div class="form-group">
-        <label>Spécialité</label>
-        <input type="text" id="presc_spec" placeholder="Médecine générale...">
-      </div>
-      <div class="form-group">
-        <label>Structure / Cabinet</label>
-        <input type="text" id="presc_struct" placeholder="Hôpital, clinique...">
-      </div>
-      <div class="form-group">
-        <label>Taux de ristourne extra-BPN (%)</label>
-        <input type="number" id="presc_taux" min="0" max="100" step="0.5" value="0">
-      </div>
-    </div>
-    <button class="btn btn-primary" onclick="savePrescripteur()" style="margin-bottom:16px">➕ Ajouter le prescripteur</button>
-    <div id="prescripteurs-list"></div>
-  </div>
 </div>
 
 <div id="view-comptes" style="display:none">
-  <div class="card">
-    <div class="card-title">👤 Nouveau compte</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Nom d'utilisateur</label>
-        <input type="text" id="nu_username" placeholder="ex: agent2" autocomplete="off">
+
+  <!-- ✅ v13.33 — Onglets principaux admin -->
+  <div class="admin-tabs-main">
+    <button class="admin-tab-main active" onclick="adminShowMain('ac-comptes',this)">👤 Comptes</button>
+    <button class="admin-tab-main" onclick="adminShowMain('ac-config',this)">⚙️ Configuration</button>
+    <button class="admin-tab-main" onclick="adminShowMain('ac-journal',this)">🛡️ Journal & Rapports</button>
+  </div>
+
+  <!-- ── ONGLET 1 : COMPTES ─────────────────────────────── -->
+  <div id="ac-comptes" class="admin-section active">
+    <div class="admin-tabs-sub">
+      <button class="admin-tab-sub active" onclick="adminShowSub('ac-users',this)">👤 Utilisateurs</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-presc',this)">👨‍⚕️ Prescripteurs</button>
+    </div>
+
+    <!-- Sous-onglet : Utilisateurs -->
+    <div id="ac-users" class="admin-sub-section active">
+      <div class="card">
+        <div class="card-title">👤 Nouveau compte</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nom d'utilisateur</label>
+            <input type="text" id="nu_username" placeholder="ex: agent2" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Mot de passe</label>
+            <input type="text" id="nu_password" placeholder="Mot de passe">
+          </div>
+          <div class="form-group">
+            <label>Rôle</label>
+            <select id="nu_role">
+              <option value="agent">Agent (saisie)</option>
+              <option value="caissier">Caissier (caisse uniquement)</option>
+              <option value="admin">Administrateur</option>
+            </select>
+          </div>
+        </div>
+        <div id="nu-error" style="color:var(--danger);font-size:12.5px;margin-top:4px"></div>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary" onclick="createUserAccount()">➕ Créer le compte</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Mot de passe</label>
-        <input type="text" id="nu_password" placeholder="Mot de passe">
-      </div>
-      <div class="form-group">
-        <label>Rôle</label>
-        <select id="nu_role">
-          <option value="agent">Agent (saisie)</option>
-          <option value="caissier">Caissier (caisse uniquement)</option>
-          <option value="admin">Administrateur</option>
-        </select>
+      <div class="card">
+        <div class="card-title">📋 Comptes existants</div>
+        <div class="table-wrap">
+          <table id="users-table">
+            <thead><tr><th>Nom d'utilisateur</th><th>Rôle</th><th>Créé le</th><th>Actions</th></tr></thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
-    <div id="nu-error" style="color:var(--danger);font-size:12.5px;margin-top:4px"></div>
-    <div style="margin-top:14px">
-      <button class="btn btn-primary" onclick="createUserAccount()">➕ Créer le compte</button>
+
+    <!-- Sous-onglet : Prescripteurs -->
+    <div id="ac-presc" class="admin-sub-section">
+      <div class="card" id="prescripteurs-admin-card">
+        <div class="card-title">👨‍⚕️ Gestion des prescripteurs</div>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>Nom complet</label>
+            <input type="text" id="presc_nom" placeholder="Dr Nom Prénom">
+          </div>
+          <div class="form-group">
+            <label>Spécialité</label>
+            <input type="text" id="presc_spec" placeholder="Médecine générale...">
+          </div>
+          <div class="form-group">
+            <label>Structure / Cabinet</label>
+            <input type="text" id="presc_struct" placeholder="Hôpital, clinique...">
+          </div>
+          <div class="form-group">
+            <label>Taux de ristourne extra-BPN (%)</label>
+            <input type="number" id="presc_taux" min="0" max="100" step="0.5" value="0">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="savePrescripteur()" style="margin-bottom:16px">➕ Ajouter le prescripteur</button>
+        <div id="prescripteurs-list"></div>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-title">📋 Comptes existants</div>
-    <div class="table-wrap">
-      <table id="users-table">
-        <thead>
-          <tr>
-            <th>Nom d'utilisateur</th><th>Rôle</th><th>Créé le</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="users-body"></tbody>
-      </table>
+  <!-- ── ONGLET 2 : CONFIGURATION ───────────────────────── -->
+  <div id="ac-config" class="admin-section">
+    <div class="admin-tabs-sub">
+      <button class="admin-tab-sub active" onclick="adminShowSub('ac-tarifs',this)">📋 Examens & tarifs</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-refs',this)">📐 Valeurs de référence</button>
     </div>
-  </div>
 
-  <!-- ✅ v13.28 — Rapport d'activité mensuel (PDF automatique) -->
-  <div class="card" id="rapport-mensuel-card">
-    <div class="card-title">📑 Rapport d'activité mensuel</div>
-    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
-      Génère un rapport PDF complet (statistiques globales, répartitions, top prescripteurs,
-      courbe d'activité et alertes critiques) pour le mois sélectionné.
-    </p>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select id="rapport-mois" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
-      <select id="rapport-annee" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
-      <button class="btn" onclick="genererRapportMensuel()" style="padding:7px 16px;font-size:12.5px;background:#dc2626;color:#fff">📄 Générer le rapport PDF</button>
-    </div>
-  </div>
-
-  <!-- ✅ v13.2 — Journal d'audit médico-légal (admin, lecture seule) -->
-  <div class="card" id="audit-log-card">
-    <div class="card-title" style="justify-content:space-between">
-      <span>🛡️ Journal d'audit</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-outline" onclick="renderAuditLog()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
-        <button class="btn" onclick="purgeAuditLog()" style="padding:5px 12px;font-size:12px;background:#dc2626;color:#fff">🗑️ Purger</button>
+    <!-- Sous-onglet : Examens & tarifs -->
+    <div id="ac-tarifs" class="admin-sub-section active">
+      <div class="card" id="tarifs-config-card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>📋 Examens demandés & Tarification par défaut</span>
+          <button onclick="showAddExamenModal()" class="btn btn-primary" style="padding:5px 12px;font-size:12px">➕ Ajouter un examen</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+          Modifiez les prix par défaut ou ajoutez vos propres examens. Les changements s'appliquent immédiatement sur la fiche d'accueil.
+        </p>
+        <div id="admin-examens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn btn-primary" onclick="saveAdminTarifs()">💾 Enregistrer les prix</button>
+          <button class="btn btn-outline" onclick="resetAdminTarifs()">↺ Remettre les prix par défaut</button>
+        </div>
       </div>
     </div>
-    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
-      Trace inaltérable de toutes les créations, modifications et suppressions (qui, quand, quoi). Lecture seule.
-    </p>
-    <div class="table-wrap">
-      <table id="audit-table">
-        <thead><tr><th>Date/heure</th><th>Utilisateur</th><th>Action</th><th>Détails</th></tr></thead>
-        <tbody id="audit-body"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:14px">Cliquez sur « Actualiser » pour charger le journal.</td></tr></tbody>
-      </table>
-    </div>
-  </div>
 
-  <!-- Examens & Tarification (identique à la page d'accueil, prix synchronisés) -->
-  <div class="card" id="tarifs-config-card">
-    <div class="card-title" style="justify-content:space-between">
-      <span>📋 Examens demandés & Tarification par défaut</span>
-      <button onclick="showAddExamenModal()" class="btn btn-primary" style="padding:5px 12px;font-size:12px">➕ Ajouter un examen</button>
-    </div>
-    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
-      Modifiez les prix par défaut ou ajoutez vos propres examens. Les changements s'appliquent immédiatement sur la fiche d'accueil.
-    </p>
-
-    <div id="admin-examens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px"></div>
-
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-      <button class="btn btn-primary" onclick="saveAdminTarifs()">💾 Enregistrer les prix</button>
-      <button class="btn btn-outline" onclick="resetAdminTarifs()">↺ Remettre les prix par défaut</button>
-    </div>
-  </div>
-
-
-  <!-- Valeurs de référence (admin uniquement) -->
-  <div class="card" id="refs-config-card" style="display:none">
-    <div class="card-title" style="justify-content:space-between">
-      <span>📐 Valeurs de référence du laboratoire</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="saveRefsConfig()" style="padding:5px 12px;font-size:12px">💾 Enregistrer comme base</button>
-        <button class="btn btn-outline" onclick="resetRefsConfig()" style="padding:5px 12px;font-size:12px">↺ Remettre défauts</button>
+    <!-- Sous-onglet : Valeurs de référence -->
+    <div id="ac-refs" class="admin-sub-section">
+      <div class="card" id="refs-config-card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>📐 Valeurs de référence du laboratoire</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="saveRefsConfig()" style="padding:5px 12px;font-size:12px">💾 Enregistrer comme base</button>
+            <button class="btn btn-outline" onclick="resetRefsConfig()" style="padding:5px 12px;font-size:12px">↺ Remettre défauts</button>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px">
+          Modifiez les bornes de référence selon les valeurs de votre laboratoire.
+          Ces valeurs s'appliquent à toute l'application (interprétation, coloration Excel, affichage).
+        </p>
+        <div id="refs-editor-grid"></div>
       </div>
     </div>
-    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px">
-      Modifiez les bornes de référence selon les valeurs de votre laboratoire. 
-      Ces valeurs s'appliquent à toute l'application (interprétation, coloration Excel, affichage).
-    </p>
-    <div id="refs-editor-grid"></div>
+  </div>
+
+  <!-- ── ONGLET 3 : JOURNAL & RAPPORTS ─────────────────── -->
+  <div id="ac-journal" class="admin-section">
+    <div class="admin-tabs-sub">
+      <button class="admin-tab-sub active" onclick="adminShowSub('ac-audit',this)">🛡️ Audit</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-rapport',this)">📑 Rapport PDF</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-topex',this)">🔬 Top examens</button>
+    </div>
+
+    <!-- Sous-onglet : Audit -->
+    <div id="ac-audit" class="admin-sub-section active">
+      <div class="card" id="audit-log-card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>🛡️ Journal d'audit</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" onclick="renderAuditLog()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+            <button class="btn" onclick="purgeAuditLog()" style="padding:5px 12px;font-size:12px;background:#dc2626;color:#fff">🗑️ Purger</button>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Trace inaltérable de toutes les créations, modifications et suppressions (qui, quand, quoi). Lecture seule.
+        </p>
+        <div class="table-wrap">
+          <table id="audit-table">
+            <thead><tr><th>Date/heure</th><th>Utilisateur</th><th>Action</th><th>Détails</th></tr></thead>
+            <tbody id="audit-body"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:14px">Cliquez sur « Actualiser » pour charger le journal.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Rapport PDF -->
+    <div id="ac-rapport" class="admin-sub-section">
+      <div class="card" id="rapport-mensuel-card">
+        <div class="card-title">📑 Rapport d'activité mensuel</div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Génère un rapport PDF complet (statistiques globales, répartitions, top prescripteurs,
+          courbe d'activité et alertes critiques) pour le mois sélectionné.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="rapport-mois" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
+          <select id="rapport-annee" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
+          <button class="btn" onclick="genererRapportMensuel()" style="padding:7px 16px;font-size:12.5px;background:#dc2626;color:#fff">📄 Générer le rapport PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Top examens -->
+    <div id="ac-topex" class="admin-sub-section">
+      <div class="card">
+        <div class="card-title">🔬 Top 10 examens les plus demandés</div>
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>#</th><th>Examen</th><th>Nb demandes</th></tr></thead>
+          <tbody id="top-examens-body"><tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div id="add-examen-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;align-items:center;justify-content:center;padding:20px">
@@ -4541,16 +4599,24 @@ let _filterCorbeille = false;
 let _filterVerrouillees = false;
 
 function getDB() {
-  // ✅ v13.32 — Modes spéciaux admin
-  if (_filterCorbeille    && isAdmin()) return _dbCache.filter(r => !!r.deletedAt);
-  if (_filterVerrouillees && isAdmin()) return _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy);
-  // Admin ou Caissier : toutes les fiches actives (toutes origines)
-  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
-  // Mode normal agent : uniquement les fiches saisies par l'utilisateur courant.
-  // Les fiches verrouillées disparaissent de sa vue (il pense qu'elles sont supprimées).
+  // ✅ v13.33 — Corbeille : admin voit soft+hard deleted, agent voit ses soft-delete
+  if (_filterCorbeille) {
+    const uid = _currentUser?.username;
+    if (isAdmin()) return _dbCache.filter(r => !!r.deletedAt || !!r._hardDeleted);
+    return _dbCache.filter(r => !!r.deletedAt && !r._hardDeleted && r.deletedBy === uid);
+  }
+  // ✅ v13.33 — Fiches masquées : admin voit toutes, agent voit les siennes
+  if (_filterVerrouillees) {
+    const uid = _currentUser?.username;
+    if (isAdmin()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy);
+    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy && r.createdBy === uid);
+  }
+  // Admin/Caissier : fiches actives (sans soft-delete ni hard-delete ni masquées)
+  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
+  // Agent : ses fiches actives uniquement
   const uid = _currentUser?.username;
   if (!uid) return [];
-  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy && r.createdBy === uid);
+  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && r.createdBy === uid);
 }
 
 // ✅ v13.32 — Fiches verrouillées toujours exclues des calculs (elles ont leur propre total
@@ -4561,12 +4627,11 @@ function isExcludedFromCalc(r) {
 
 function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
-  // Les fiches verrouillées et supprimées sont toujours exclues.
-  // Admin et Caissier : toutes les fiches actives. Agent : uniquement les siennes.
-  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy);
+  // Fiches verrouillées, soft-delete et hard-delete toujours exclues.
+  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
   const uid = _currentUser?.username;
   if (!uid) return [];
-  return _dbCache.filter(r => !r.deletedAt && !r.restrictedBy && r.createdBy === uid);
+  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && r.createdBy === uid);
 }
 
 // Stub conservé pour compatibilité (anciens appels éventuels)
@@ -4916,7 +4981,15 @@ async function deleteRecordRemote(id) {
     toast('Seul un administrateur peut supprimer une fiche', 'err');
     return false;
   }
-  _dbCache = _dbCache.filter(r => r.id !== id);
+  // ✅ v13.33 — Trace permanente : la fiche reste dans le cache admin
+  // marquée _hardDeleted, visible en corbeille admin, aucune action possible.
+  const hdRec = _dbCache.find(r => r.id === id);
+  if (hdRec) {
+    hdRec._hardDeleted = true;
+    if (!hdRec.deletedAt) hdRec.deletedAt = new Date().toISOString();
+  } else {
+    _dbCache = _dbCache.filter(r => r.id !== id);
+  }
   return true;
 }
 
@@ -5525,7 +5598,11 @@ async function _saveRecordImpl(type) {
     });
     if (saved) {
       const allTypes = newRes._types.join(' · ');
-      hideLoading(); refreshRappelPatient(); toast('✓ ' + type + ' ajouté au dossier N°' + dossier + ' — Total : ' + newMontant.toLocaleString('fr-FR') + ' FCFA', 'ok');
+      hideLoading();
+      resetPanelAfterSave(tabKey);
+      regenDossier(); // ✅ v13.33 — nouveau N° sans toucher à la date ni aux coches
+      refreshRappelPatient();
+      toast('✓ ' + type + ' ajouté au dossier N°' + dossier + ' — Total : ' + newMontant.toLocaleString('fr-FR') + ' FCFA', 'ok');
     }
 
   } else {
@@ -5539,9 +5616,35 @@ async function _saveRecordImpl(type) {
       prescripteur_id: prescripteurId || null,
     });
     if (saved) {
-      hideLoading(); refreshRappelPatient(); toast('✓ Dossier N°' + dossier + ' créé — ' + type + ' — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
+      hideLoading();
+      resetPanelAfterSave(tabKey);
+      regenDossier(); // ✅ v13.33 — nouveau N° sans toucher à la date ni aux coches
+      refreshRappelPatient();
+      toast('✓ Dossier N°' + dossier + ' créé — ' + type + ' — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
     }
   }
+}
+
+// ✅ v13.33 — Après enregistrement : vider les valeurs de résultats + nom + âge.
+// Restent intacts : date, sexe, service, médecin, clinique, prescripteur,
+// examens cochés, prix saisis.
+// Le numéro de dossier est régénéré via regenDossier().
+function resetPanelAfterSave(tabKey) {
+  // Vider nom et âge uniquement (pas la date, le sexe, le service…)
+  const nomEl = document.getElementById('p_nom');
+  const ageEl = document.getElementById('p_age');
+  if (nomEl) nomEl.value = '';
+  if (ageEl) ageEl.value = '';
+
+  const panel = document.getElementById('panel-' + tabKey);
+  if (!panel) return;
+  // Vider uniquement les champs de valeurs (v_* et sv_*), pas les px_*
+  panel.querySelectorAll('input[id^="v_"], input[id^="sv_"]').forEach(i => i.value = '');
+  // Remettre les select internes au panel (interprétations, profils…)
+  panel.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  // Remettre les cellules d'interprétation à l'état neutre
+  panel.querySelectorAll('.interp').forEach(sp => { sp.className = 'interp interp-?'; sp.textContent = '—'; });
+  panel.querySelectorAll('.abg-row').forEach(r => r.className = 'abg-row nd');
 }
 
 
@@ -5728,8 +5831,8 @@ async function editFicheIdentif(id) {
     if (el) el.value = p[k] || '';
   });
 
-  // Téléphone si présent
-  const telEl = document.getElementById('p_telephone');
+  // Téléphone si présent (le champ s'appelle ep_telephone dans la modale d'édition)
+  const telEl = document.getElementById('ep_telephone');
   if (telEl && p.telephone) telEl.value = p.telephone;
 
   // Prescripteur
@@ -6221,16 +6324,20 @@ async function renderHistory(forceRefresh) {
   if (sortNomEl)     sortNomEl.textContent     = _sortCol==='nom'     ? (sortDir==='asc'?'↑':'↓') : '';
   if (sortMontantEl) sortMontantEl.textContent = _sortCol==='montant' ? (sortDir==='asc'?'↑':'↓') : '';
 
-  // Total de la vue courante (fiches verrouillées ont leur propre total dans leur section)
+  // ✅ v13.33 — Total propre à la vue active :
+  // • Mode normal/corbeille : somme des fiches visibles (filtered)
+  // • Mode masquées : somme des fiches masquées uniquement (exclues du calcul global)
   const totalMontant = filtered.reduce((s, r) => s + (r.montant || 0), 0);
   const countEl = document.getElementById('search-count');
   const totalBar = document.getElementById('search-total-bar');
   const countBar = document.getElementById('search-count-bar');
   if (countEl) {
     if (_filterCorbeille) {
-      countEl.textContent = '🗑️ ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' dans la corbeille';
+      const corbWho = isAdmin() ? 'dans la corbeille (tous utilisateurs)' : 'supprimée' + (filtered.length>1?'s':'') + ' par vous';
+      countEl.textContent = '🗑️ ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' ' + corbWho;
     } else if (_filterVerrouillees) {
-      countEl.textContent = '🔒 ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' verrouillée' + (filtered.length>1?'s':'');
+      const who = isAdmin() ? 'au total' : 'masquée' + (filtered.length>1?'s par vous':'e par vous');
+      countEl.textContent = '🔒 ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' ' + who;
     } else {
       const isFull = filtered.length === db.length;
       countEl.textContent = isFull
@@ -6247,7 +6354,19 @@ async function renderHistory(forceRefresh) {
     countBar.style.borderColor = _filterCorbeille ? '#f87171' : _filterVerrouillees ? '#fbbf24' : 'var(--border)';
   }
   if (totalBar) {
-    totalBar.textContent = totalMontant > 0 ? '💰 ' + totalMontant.toLocaleString('fr-FR') + ' FCFA' : '';
+    if (totalMontant > 0) {
+      // ✅ v13.33 — Couleur du total selon le mode actif
+      totalBar.style.color = _filterCorbeille
+        ? '#b91c1c'   // rouge : montant "perdu" dans la corbeille
+        : _filterVerrouillees
+          ? '#92400e'   // ambré : montant masqué, hors calcul global
+          : '#15803d';  // vert : total normal
+      totalBar.textContent = (_filterVerrouillees ? '🔒 ' : '💰 ')
+        + totalMontant.toLocaleString('fr-FR') + ' FCFA'
+        + (_filterVerrouillees ? ' (masqué)' : '');
+    } else {
+      totalBar.textContent = '';
+    }
   }
 
   if (!filtered.length) {
@@ -6280,16 +6399,23 @@ async function renderHistory(forceRefresh) {
     : '';
 
   // ✅ v13.32 — Bouton verrouillage : visible uniquement pour le propriétaire de la fiche,
-  // en mode normal (les fiches déjà verrouillées disparaissent de cette vue).
-  // L'admin déverrouille depuis la section "Fiches verrouillées".
+  // Bouton masquer : visible pour l'admin sur toutes les fiches,
+  // pour un agent uniquement sur ses propres fiches.
   const lockBtn = (r) => {
     if (_filterVerrouillees || _filterCorbeille) return ''; // géré par les rows spéciaux
     const uid = _currentUser?.username;
-    if (!uid || r.createdBy !== uid || isAdmin()) return '';
+    if (!uid) return '';
+    const canToggle = isAdmin() || r.createdBy === uid;
+    if (!canToggle) return '';
+    const locked = !!r.restrictedBy;
+    const style = locked
+      ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
+      : 'background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0';
+    const title = locked ? 'Lever la restriction (démasquer)' : 'Masquer aux autres profils';
     return '<button class="btn" id="lock-btn-' + r.id + '" '
-      + 'style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0" '
-      + 'title="Verrouiller — la fiche sera masquée (seul l\'admin peut la retrouver)" '
-      + 'onclick="toggleRestriction(' + r.id + ')">🔒</button>';
+      + 'style="padding:4px 8px;font-size:11px;margin-left:3px;' + style + '" '
+      + 'title="' + title + '" '
+      + 'onclick="toggleRestriction(' + r.id + ')">' + (locked ? '🔒' : '🔓') + '</button>';
   };
 
   const hl = q ? (s => highlight(s, q)) : esc;
@@ -6323,6 +6449,26 @@ async function renderHistory(forceRefresh) {
 
     // ✅ v13.31 — En mode Corbeille, remplacer toutes les actions par restaurer + supprimer définitivement
     if (_filterCorbeille) {
+      // ✅ v13.33 — Fiche hard-deleted : trace permanente en lecture seule
+      if (r._hardDeleted) {
+        const hdDate = r.deletedAt ? new Date(r.deletedAt).toLocaleDateString('fr-FR') : '?';
+        const hdBy   = r.deletedBy || r.createdBy || '?';
+        return '<tr style="opacity:.45;background:#f1f5f9;text-decoration:line-through">'
+          + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.2"></td>'
+          + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+          + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong></td>'
+          + '<td data-label="Patient">' + esc(r.patient.nom)
+              + '<div style="font-size:10px;color:#64748b;margin-top:2px;text-decoration:none">Supprimé déf. le ' + hdDate + ' · par <strong>' + esc(hdBy) + '</strong></div>'
+            + '</td>'
+          + '<td data-label="Âge">' + esc(r.patient.age || '—') + '</td>'
+          + '<td data-label="Sexe">' + esc(r.patient.sexe || '—') + '</td>'
+          + '<td data-label="Service">' + esc(r.patient.service || '—') + '</td>'
+          + '<td data-label="Type">' + getRecordTypes(r).map(t => '<span class="badge-type" style="margin:1px 2px;display:inline-block;opacity:.5">'+t+'</span>').join('') + '</td>'
+          + '<td data-label="Saisi par">' + esc(r.createdBy || '—') + '</td>'
+          + '<td data-label="Montant" style="color:#94a3b8">' + (r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—') + '</td>'
+          + '<td data-label="Statut"><span style="font-size:10px;background:#e2e8f0;color:#475569;border-radius:4px;padding:2px 6px;font-weight:600;text-decoration:none">Supprimée déf.</span></td>'
+          + '<td data-label="Actions"><span style="font-size:11px;color:#94a3b8;font-style:italic">—</span></td></tr>';
+      }
       const deletedDate = r.deletedAt ? new Date(r.deletedAt).toLocaleDateString('fr-FR') : '?';
       const deletedBy   = r.deletedBy || '?';
       return '<tr style="opacity:.85;background:#fff5f5">'
@@ -6340,10 +6486,12 @@ async function renderHistory(forceRefresh) {
         + '<td data-label="Montant" style="font-weight:700;color:#94a3b8">' + (r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—') + '</td>'
         + '<td data-label="Statut">—</td>'
         + '<td data-label="Actions">'
-          + '<button class="btn" style="padding:4px 9px;font-size:11px;background:#dcfce7;color:#166534;border:1px solid #86efac;margin-right:4px" '
-            + 'title="Restaurer ce dossier" onclick="restoreDossier(' + r.id + ')">↩️ Restaurer</button>'
-          + '<button class="btn btn-danger" style="padding:4px 9px;font-size:11px" '
-            + 'title="Supprimer définitivement (irréversible)" onclick="deleteRecord(' + r.id + ')">🗑 Supprimer</button>'
+          + (isAdmin()
+            ? '<button class="btn" style="padding:4px 9px;font-size:11px;background:#dcfce7;color:#166534;border:1px solid #86efac;margin-right:4px" '
+                + 'title="Restaurer ce dossier" onclick="restoreDossier(' + r.id + ')">↩️ Restaurer</button>'
+              + '<button class="btn btn-danger" style="padding:4px 9px;font-size:11px" '
+                + 'title="Supprimer définitivement (irréversible)" onclick="deleteRecord(' + r.id + ')">🗑 Supprimer</button>'
+            : '<span style="font-size:11px;color:#dc2626;font-style:italic">Contactez l\'admin pour restaurer</span>')
         + '</td></tr>';
     }
     const dossierMulti = '';
@@ -6532,40 +6680,47 @@ function clearBulkSelection() {
   updateBulkToolbar();
 }
 
-// ✅ v13.30 — Filtre "Mes fiches masquées"
-// ✅ v13.32 — Bouton "Fiches verrouillées" : admin uniquement
-function updateVerrouilleeBtn() {
-  const btn   = document.getElementById('btn-verrouillee');
-  const badge = document.getElementById('verrouillee-badge');
+// ✅ v13.33 — Fiches masquées : visible pour tout utilisateur
+//   Admin → toutes les fiches masquées de tous les agents
+//   Agent → uniquement ses propres fiches masquées
+function updateMasqueesBtn() {
+  const btn   = document.getElementById('btn-masquees');
+  const badge = document.getElementById('masquees-badge');
   if (!btn) return;
-  if (!isAdmin()) { btn.style.display = 'none'; return; }
-  const count   = _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy).length;
+  const uid = _currentUser?.username;
+  const count = isAdmin()
+    ? _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy).length
+    : _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy && r.createdBy === uid).length;
   if (badge) badge.textContent = count;
   btn.style.display   = count > 0 ? 'flex' : 'none';
   btn.style.opacity   = _filterVerrouillees ? '1' : '0.75';
   btn.style.boxShadow = _filterVerrouillees ? '0 0 0 2px #d97706' : 'none';
 }
+// Alias conservé pour les appels existants dans la base de code
+function updateVerrouilleeBtn() { updateMasqueesBtn(); }
 
-// Stub — l'ancien bouton "Mes fiches masquées" n'existe plus
-function updateMasqueesBtn() {}
-function toggleMasquees() {}
-
-function toggleVerrouillees() {
+function toggleMasquees() {
   _filterVerrouillees = !_filterVerrouillees;
   if (_filterVerrouillees) { _filterCorbeille = false; updateCorbeilleBtn(); }
-  updateVerrouilleeBtn();
+  updateMasqueesBtn();
   renderHistory();
 }
+// Alias conservé
+function toggleVerrouillee() { toggleMasquees(); }
+function toggleVerrouillees() { toggleMasquees(); }
 
 // ✅ v13.31 — Corbeille admin
 function updateCorbeilleBtn() {
   const btn   = document.getElementById('btn-corbeille');
   const badge = document.getElementById('corbeille-badge');
   if (!btn) return;
-  if (!isAdmin()) { btn.style.display = 'none'; return; }
-  const count = _dbCache.filter(r => !!r.deletedAt).length;
+  // ✅ v13.33 — Visible pour tous : admin voit soft+hard, agent voit ses suppressions
+  const uid = _currentUser?.username;
+  const count = isAdmin()
+    ? _dbCache.filter(r => !!r.deletedAt || !!r._hardDeleted).length
+    : _dbCache.filter(r => !!r.deletedAt && !r._hardDeleted && r.deletedBy === uid).length;
   if (badge) badge.textContent = count;
-  btn.style.display = count > 0 ? 'flex' : 'none';
+  btn.style.display   = count > 0 ? 'flex' : 'none';
   btn.style.opacity   = _filterCorbeille ? '1' : '0.75';
   btn.style.boxShadow = _filterCorbeille ? '0 0 0 2px #f87171' : 'none';
 }
@@ -6893,18 +7048,30 @@ async function bulkDelete() {
   toast(ok + ' fiche(s) supprimée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
-async function clearHistory() {
-  if (!await showConfirmModal({
-    icon: '⚠️',
-    title: 'Vider tout l\'historique ?',
-    message: 'Cette action est irréversible. Toutes les fiches seront supprimées.',
-    confirmText: 'Vider', cancelText: 'Annuler', confirmClass: 'btn-danger'
-  })) return;
-  const ok = await clearAllRemote();
-  if (ok) {
-    renderHistory();
-    toast('Historique vidé');
-  }
+// ✅ v13.33 — clearHistory retiré de l'interface ; stub conservé
+//   pour éviter les ReferenceError si un onglet ouvert avant la mise à
+//   jour tentait d'appeler la fonction.
+// ✅ v13.33 — Navigation sous-onglets admin
+function adminShowMain(id, btn) {
+  document.querySelectorAll('#view-comptes .admin-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-main').forEach(t => t.classList.remove('active'));
+  const sec = document.getElementById(id);
+  if (sec) sec.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+function adminShowSub(id, btn) {
+  if (!btn) return;
+  const parentSection = btn.closest('.admin-section');
+  if (!parentSection) return;
+  parentSection.querySelectorAll('.admin-sub-section').forEach(s => s.classList.remove('active'));
+  parentSection.querySelectorAll('.admin-tab-sub').forEach(t => t.classList.remove('active'));
+  const sub = document.getElementById(id);
+  if (sub) sub.classList.add('active');
+  btn.classList.add('active');
+}
+
+function clearHistory() {
+  console.warn('clearHistory() désactivé en v13.33');
 }
 
 // ============================================================
@@ -9235,7 +9402,12 @@ function onPrescripteurChange() {
 
 function showAddPrescripteur() {
   showView('stats');
-  document.getElementById('prescripteurs-admin-card')?.scrollIntoView({ behavior: 'smooth' });
+  // ✅ v13.33 — Naviguer vers l'onglet Comptes > Prescripteurs
+  showView('comptes');
+  setTimeout(() => {
+    adminShowMain('ac-comptes', document.querySelector('.admin-tab-main'));
+    adminShowSub('ac-presc', document.querySelector('#ac-comptes .admin-tab-sub:last-child'));
+  }, 80);
 }
 
 async function savePrescripteur() {
@@ -10542,12 +10714,12 @@ function updateUserBadge() {
     const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier' : '🔬 Agent';
     el.textContent = `${_currentUser.username} · ${roleLabel}`;
   }
-  const clearBtn = document.getElementById('btn-clear-history');
-  if (clearBtn) clearBtn.style.display = isAdmin() ? '' : 'none';
+  // ✅ v13.33 — btn-clear-history supprimé ; btn-masquees géré par updateMasqueesBtn()
+  updateMasqueesBtn();
   const usersNavBtn = document.getElementById('btn-nav-users');
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
-  const tarifsCard = document.getElementById('tarifs-config-card');
-  if (tarifsCard) tarifsCard.style.display = isAdmin() ? '' : 'none';
+  // ✅ v13.33 — tarifs-config-card et refs-config-card sont dans des sous-onglets,
+  // leur visibilité est gérée par adminShowSub — rien à faire ici.
   if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); }
 
   // ✅ v13.33 — Caissier : masquer la nav "Nouvelle saisie" et afficher un message
@@ -10779,7 +10951,7 @@ async function initApp() {
 // ============================================================
 
 function buildRefsEditor() {
-  const card = document.getElementById('refs-config-card');
+  const card = document.getElementById('ac-refs');  // ✅ v13.33 — le sous-onglet remplace l'ancienne carte cachée
   if (!card) return;
   card.style.display = isAdmin() ? '' : 'none';
   if (!isAdmin()) return;
