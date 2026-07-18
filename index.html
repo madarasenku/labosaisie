@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CPMI — Centre de Protection Mère et Infantile · Laboratoire</title>
+<!-- ✅ v13.34 — PWA : installation sur écran d'accueil, thème, iOS -->
+<meta name="theme-color" content="#1a4480">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CPMI Labo">
+<meta name="description" content="Laboratoire d'analyses médicales — CPMI Grand-Bassam. Saisie, historique, caisse et statistiques.">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
+<link id="pwa-manifest" rel="manifest">
 <!-- ⚠ SÉCURITÉ (SRI) — Pour verrouiller ces CDN contre toute altération,
      ajoutez un attribut integrity="sha384-…" à chaque balise ci-dessous.
      Générez le hash de chaque fichier ainsi (dans un terminal) :
@@ -1415,7 +1424,8 @@ select {
     <button id="btn-nav-caisse" class="nav-btn" data-view="caisse" onclick="showView('caisse')">💰 Caisse</button>
     <button id="btn-nav-users" class="nav-btn" data-view="comptes" onclick="showView('comptes')" style="display:none">👤 Comptes</button>
     <button class="nav-btn" onclick="exportAllExcel()">⬇ Exporter tout</button>
-    <button class="nav-btn" onclick="toggleDarkMode()" id="btn-dark-mode" title="Mode sombre/clair" style="font-size:16px;padding:5px 10px">🌙</button>
+    <button id="btn-install-pwa" class="nav-btn" onclick="installPWA()" title="Installer l'application sur cet appareil" style="display:none;background:rgba(255,255,255,.25);align-items:center;gap:5px">📲 Installer</button>
+    <button class="nav-btn" onclick="toggleDarkMode()" id="btn-dark-mode" title="Mode sombre/clair" aria-label="Basculer mode sombre ou clair" style="font-size:16px;padding:5px 10px">🌙</button>
     <button class="nav-btn logout-btn" onclick="doLogout()" title="Se déconnecter">⎋ Déconnexion</button>
   </nav>
 </header>
@@ -1424,6 +1434,9 @@ select {
 
 <!-- VIEWS -->
 <div id="view-saisie">
+
+  <!-- ✅ v13.34 — Tableau de bord synthétique du jour -->
+  <div id="dashboard-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
 
   <!-- ═══════════════════════════════════════════════════
        FICHE D'IDENTIFICATION PATIENT & PRESCRIPTION
@@ -1440,7 +1453,7 @@ select {
         <label>N° dossier</label>
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="p_dossier" readonly style="background:var(--bg);font-weight:700;color:var(--cpmi-deep);cursor:default;flex:1;font-size:15px">
-          <button type="button" onclick="regenDossier()" title="Nouveau N° de dossier" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px">↺</button>
+          <button type="button" onclick="regenDossier()" title="Nouveau N° de dossier" aria-label="Générer un nouveau numéro de dossier" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px">↺</button>
         </div>
       </div>
       <div class="form-group">
@@ -1460,7 +1473,13 @@ select {
       </div>
       <div class="form-group">
         <label>Âge</label>
-        <input type="number" id="p_age" placeholder="ex. 34" min="0" max="120" oninput="updateAllRefs();updateMontantCurrent()">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" id="p_age" placeholder="ex. 34" min="0" max="120"
+            style="flex:1" oninput="onAgeInput()">
+          <input type="date" id="p_ddn" title="Date de naissance (calcul automatique de l'âge)"
+            style="flex:1;font-size:12px" onchange="calcAgeFromDDN()">
+        </div>
+        <div id="p_age_label" style="font-size:11px;color:var(--text-muted);margin-top:3px"></div>
       </div>
       <div class="form-group">
         <label>Sexe</label>
@@ -1476,7 +1495,7 @@ select {
           <select id="p_prescripteur_id" onchange="onPrescripteurChange()" style="flex:1">
             <option value="">— Choisir un prescripteur —</option>
           </select>
-          <button type="button" onclick="showAddPrescripteur()" title="Ajouter un prescripteur" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
+          <button type="button" onclick="showAddPrescripteur()" title="Ajouter un prescripteur" aria-label="Ajouter un prescripteur" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
         </div>
         <input type="text" id="p_medecin" placeholder="Ou saisir manuellement..." style="margin-top:6px;font-size:12px" list="medecin-datalist" oninput="updateMontantCurrent()">
         <datalist id="medecin-datalist"></datalist>
@@ -1494,6 +1513,10 @@ select {
           <option>Médecine interne</option>
           <option>Autre</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>Téléphone patient</label>
+        <input type="tel" id="p_telephone" placeholder="ex. 07 00 00 00 00">
       </div>
       <div class="form-group full">
         <label>Renseignements cliniques</label>
@@ -2276,6 +2299,15 @@ select {
         </select>
       </div>
       <div>
+        <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Statut</label>
+        <select id="filter-statut" onchange="renderHistory()">
+          <option value="">Tous les statuts</option>
+          <option value="attente">⏳ En attente</option>
+          <option value="rendu">✅ Rendu</option>
+          <option value="urgent">🔴 Urgent</option>
+        </select>
+      </div>
+      <div>
         <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Tri</label>
         <select id="filter-sort" onchange="renderHistory()">
           <option value="desc">⬇ Plus récent</option>
@@ -2301,11 +2333,15 @@ select {
       </div>
     </div>
 
-    <!-- Ligne 3 : agent + reset + effacer -->
+    <!-- Ligne 3 : agent + service + reset + effacer -->
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div style="flex:1;min-width:160px">
+      <div style="flex:1;min-width:150px">
         <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Agent</label>
         <select id="filter-agent" onchange="renderHistory()"><option value="">Tous les agents</option></select>
+      </div>
+      <div style="flex:1;min-width:150px">
+        <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Service</label>
+        <select id="filter-service" onchange="renderHistory()"><option value="">Tous les services</option></select>
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end;padding-top:18px;flex-wrap:wrap">
         <button class="btn btn-outline" onclick="clearSearchFilters()"
@@ -2525,7 +2561,12 @@ select {
           </div>
           <div class="form-group">
             <label>Mot de passe</label>
-            <input type="text" id="nu_password" placeholder="Mot de passe">
+            <div style="position:relative">
+              <input type="password" id="nu_password" placeholder="Mot de passe" style="padding-right:40px">
+              <button type="button" onclick="togglePwdVisibility('nu_password',this)"
+                aria-label="Afficher ou masquer le mot de passe"
+                style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px">👁</button>
+            </div>
           </div>
           <div class="form-group">
             <label>Rôle</label>
@@ -2666,6 +2707,23 @@ select {
           <select id="rapport-mois" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
           <select id="rapport-annee" style="width:auto;padding:6px 10px;font-size:12.5px"></select>
           <button class="btn" onclick="genererRapportMensuel()" style="padding:7px 16px;font-size:12.5px;background:#dc2626;color:#fff">📄 Générer le rapport PDF</button>
+        </div>
+      </div>
+
+      <!-- ✅ v13.34 — Sauvegarde / restauration complète -->
+      <div class="card" id="backup-card">
+        <div class="card-title">💾 Sauvegarde &amp; restauration</div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Exportez une copie complète de toutes les fiches (fichier JSON) comme filet de sécurité,
+          ou pour archiver un mois clôturé. La restauration ré-importe les fiches manquantes sans écraser les existantes.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="exportBackup()" style="padding:7px 16px;font-size:12.5px">⬇ Télécharger la sauvegarde</button>
+          <label class="btn btn-outline" style="padding:7px 16px;font-size:12.5px;cursor:pointer;margin:0">
+            ⬆ Restaurer depuis un fichier
+            <input type="file" id="backup-file-input" accept="application/json,.json" style="display:none" onchange="importBackup(event)">
+          </label>
+          <span id="backup-status" style="font-size:12px;color:var(--text-muted)"></span>
         </div>
       </div>
     </div>
@@ -4458,6 +4516,7 @@ function showView(v) {
 
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
+  if (v === 'saisie' && typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34
   if (v === 'historique') renderHistory(true);
   if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
@@ -4532,6 +4591,7 @@ function getPatient() {
     date:         document.getElementById('p_date').value,
     nom:          document.getElementById('p_nom').value.trim(),
     age:          document.getElementById('p_age').value,
+      telephone:    (document.getElementById('p_telephone')?.value || '').trim(),
     sexe:         document.getElementById('p_sexe').value,
     medecin:      document.getElementById('p_medecin').value.trim(),
     service:      document.getElementById('p_service').value,
@@ -4623,6 +4683,77 @@ function getDB() {
 // dans la section admin « Fiches verrouillées »).
 function isExcludedFromCalc(r) {
   return !!(r && r.restrictedBy);
+}
+
+// ✅ v13.34 — Tableau de bord : synthèse du jour, affichée en haut de la Saisie
+// ✅ v13.34 — Calcul âge depuis DDN (jours/mois/ans)
+function calcAgeFromDDN() {
+  const ddnEl = document.getElementById('p_ddn');
+  const ageEl = document.getElementById('p_age');
+  const lblEl = document.getElementById('p_age_label');
+  if (!ddnEl || !ddnEl.value) return;
+  const ddn = new Date(ddnEl.value), now = new Date();
+  const diffMs = now - ddn;
+  if (diffMs < 0) { if (lblEl) lblEl.textContent = '⚠ Date dans le futur'; return; }
+  const diffDays = Math.floor(diffMs / 86400000);
+  let ageDisplay = '', ageValeur = 0;
+  if (diffDays < 30) {
+    ageValeur = parseFloat((diffDays / 365).toFixed(3));
+    ageDisplay = diffDays + ' jour' + (diffDays > 1 ? 's' : '');
+  } else if (diffDays < 365) {
+    const mois = Math.floor(diffDays / 30.44);
+    ageValeur = parseFloat((mois / 12).toFixed(2));
+    ageDisplay = mois + ' mois';
+  } else {
+    const ans = now.getFullYear() - ddn.getFullYear();
+    const corr = (now.getMonth() < ddn.getMonth() ||
+      (now.getMonth() === ddn.getMonth() && now.getDate() < ddn.getDate())) ? 1 : 0;
+    ageValeur = ans - corr;
+    ageDisplay = ageValeur + ' an' + (ageValeur > 1 ? 's' : '');
+  }
+  if (ageEl) ageEl.value = ageValeur;
+  if (lblEl) lblEl.textContent = '→ ' + ageDisplay;
+  updateAllRefs(); updateMontantCurrent();
+}
+function onAgeInput() {
+  const ddnEl = document.getElementById('p_ddn');
+  const lblEl = document.getElementById('p_age_label');
+  if (ddnEl) ddnEl.value = '';
+  if (lblEl) lblEl.textContent = '';
+  updateAllRefs(); updateMontantCurrent();
+}
+
+function renderDashboard() {
+  const host = document.getElementById('dashboard-cards');
+  if (!host) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const calcDB = (typeof getCalcDB === 'function' ? getCalcDB() : _dbCache) || [];
+  const dujour = calcDB.filter(r => (r.patient?.date || (r.savedAt || '').slice(0, 10)) === today);
+
+  const nbJour     = dujour.length;
+  const recetteJour = dujour.reduce((s, r) => s + (r.montant || 0), 0);
+  const enAttente  = calcDB.filter(r => getStatut(r.id) === 'attente').length;
+
+  // Service le plus fréquent aujourd'hui
+  const svcCount = {};
+  dujour.forEach(r => {
+    const s = (r.patient?.service || '').trim();
+    if (s) svcCount[s] = (svcCount[s] || 0) + 1;
+  });
+  const topSvc = Object.entries(svcCount).sort((a, b) => b[1] - a[1])[0];
+
+  const card = (icon, label, value, color) =>
+    '<div style="background:var(--surface,#fff);border:1px solid var(--border);border-left:4px solid ' + color + ';'
+    + 'border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
+    + '<div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">' + icon + ' ' + label + '</div>'
+    + '<div style="font-size:20px;font-weight:800;color:' + color + '">' + value + '</div></div>';
+
+  host.innerHTML =
+      card('📋', 'Fiches du jour', nbJour, '#2563eb')
+    + card('💰', 'Recette du jour', recetteJour.toLocaleString('fr-FR') + ' F', '#15803d')
+    + card('⏳', 'En attente', enAttente, '#d97706')
+    + card('🏥', 'Service phare', topSvc ? esc(topSvc[0]) + ' (' + topSvc[1] + ')' : '—', '#7c3aed');
 }
 
 function getCalcDB() {
@@ -4854,6 +4985,18 @@ function removeFromQueue(qid) {
   saveSyncQueue(loadSyncQueue().filter(x => x.qid !== qid));
 }
 
+// ✅ v13.33 — Enfile une action simple (toggle_restriction / soft_delete_dossier)
+// portant sur une fiche déjà en base. Ces RPC ne prennent qu'un id.
+function enqueueAction(rpc, id) {
+  const q = loadSyncQueue();
+  // Si l'action porte sur une fiche encore temporaire (créée hors ligne),
+  // elle sera rejouée après l'insert — on la met en file avec l'id temporaire,
+  // flushSyncQueue résoudra l'id réel au moment du rejeu.
+  q.push({ qid: rpc + '_' + id + '_' + Date.now(), op: 'action', rpc, id, queuedAt: new Date().toISOString() });
+  saveSyncQueue(q);
+  updateSyncBanner();
+}
+
 // Rejoue la file. Reconstruit les paramètres avec le jeton courant.
 async function flushSyncQueue(silent) {
   if (_syncing || !navigator.onLine || !TK()) return;
@@ -4877,6 +5020,18 @@ async function flushSyncQueue(silent) {
           prescripteur_id: item.record.prescripteur_id, est_bpn: item.est_bpn };
         const idx = _dbCache.findIndex(r => r.id === item.tempId);
         if (idx >= 0) _dbCache[idx] = saved; else _dbCache.push(saved);
+        removeFromQueue(item.qid); ok++;
+      } else if (item.op === 'action') {
+        // ✅ v13.33 — Rejeu d'une action différée (masquer / corbeille)
+        let realId = item.id;
+        // Si l'id est temporaire, retrouver l'id réel de la fiche synchronisée
+        if (String(realId).startsWith('tmp_')) {
+          const rec = _dbCache.find(r => r._prevTempId === realId || r.id === realId);
+          if (rec && !String(rec.id).startsWith('tmp_')) realId = rec.id;
+          else { removeFromQueue(item.qid); continue; } // fiche pas encore synchro → on saute
+        }
+        const { error } = await _sb.rpc(item.rpc, { p_token: TK(), p_id: realId });
+        if (error) throw error;
         removeFromQueue(item.qid); ok++;
       } else if (item.op === 'update') {
         const { data, error } = await _sb.rpc('update_resultat', {
@@ -5103,7 +5258,7 @@ async function newPatient() {
   const btnSaveF = document.querySelector('button[onclick="enregistrerFicheIdentif()"]');
   if (btnSaveF) btnSaveF.innerHTML = '💾 Enregistrer sans saisie';
   // Effacer les infos patient
-  ['p_nom','p_medecin','p_clinique'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['p_nom','p_medecin','p_clinique','p_telephone'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['p_age'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['p_sexe','p_service'].forEach(id => { const el = document.getElementById(id); if(el) el.selectedIndex = 0; });
   // ✅ v13.29 — re-synchroniser p_medecin depuis le prescripteur encore sélectionné
@@ -5633,8 +5788,12 @@ function resetPanelAfterSave(tabKey) {
   // Vider nom et âge uniquement (pas la date, le sexe, le service…)
   const nomEl = document.getElementById('p_nom');
   const ageEl = document.getElementById('p_age');
+  const ddnEl2 = document.getElementById('p_ddn');
+  const lblEl2 = document.getElementById('p_age_label');
   if (nomEl) nomEl.value = '';
   if (ageEl) ageEl.value = '';
+  if (ddnEl2) ddnEl2.value = '';
+  if (lblEl2) lblEl2.textContent = '';
 
   const panel = document.getElementById('panel-' + tabKey);
   if (!panel) return;
@@ -5645,6 +5804,7 @@ function resetPanelAfterSave(tabKey) {
   // Remettre les cellules d'interprétation à l'état neutre
   panel.querySelectorAll('.interp').forEach(sp => { sp.className = 'interp interp-?'; sp.textContent = '—'; });
   panel.querySelectorAll('.abg-row').forEach(r => r.className = 'abg-row nd');
+  if (typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34 — MAJ compteurs
 }
 
 
@@ -5831,9 +5991,11 @@ async function editFicheIdentif(id) {
     if (el) el.value = p[k] || '';
   });
 
-  // Téléphone si présent (le champ s'appelle ep_telephone dans la modale d'édition)
-  const telEl = document.getElementById('ep_telephone');
-  if (telEl && p.telephone) telEl.value = p.telephone;
+  // Téléphone — fiche saisie + modale édition
+  const telSaisie = document.getElementById('p_telephone');
+  if (telSaisie && p.telephone) telSaisie.value = p.telephone;
+  const telEdit = document.getElementById('ep_telephone');
+  if (telEdit && p.telephone) telEdit.value = p.telephone;
 
   // Prescripteur
   const prescEl = document.getElementById('p_prescripteur_id');
@@ -5931,6 +6093,14 @@ async function toggleRestriction(id) {
   const prevRestricted = record.restrictedBy;
   record.restrictedBy = isRestricted ? null : (_currentUser?.username || '');
   _updateLockBtn(id, record);
+
+  // ✅ v13.33 — Hors ligne : enfiler l'action, la garder localement
+  if (!navigator.onLine || String(id).startsWith('tmp_')) {
+    enqueueAction('toggle_restriction', id);
+    renderHistory();
+    toast('📴 Hors ligne — ' + (isRestricted ? 'restriction levée' : 'fiche masquée') + ' localement', 'ok');
+    return;
+  }
 
   // Appel RPC en arrière-plan
   const { data, error } = await _sb.rpc('toggle_restriction', { p_token: TK(), p_id: id });
@@ -6134,7 +6304,7 @@ function clearSearchFilters() {
   ['search-input','filter-date-from','filter-date-to'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['filter-type','filter-agent'].forEach(id => {
+  ['filter-type','filter-agent','filter-statut','filter-service'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   const fs = document.getElementById('filter-sort'); if (fs) fs.value = 'desc';
@@ -6288,9 +6458,20 @@ async function renderHistory(forceRefresh) {
   const q         = (document.getElementById('search-input')?.value   || '').toLowerCase();
   const ft        =  document.getElementById('filter-type')?.value    || '';
   const fa        =  document.getElementById('filter-agent')?.value   || '';
+  const fst       =  document.getElementById('filter-statut')?.value  || '';
+  const fsv       =  document.getElementById('filter-service')?.value || '';
   const dateFrom  =  document.getElementById('filter-date-from')?.value || '';
   const dateTo    =  document.getElementById('filter-date-to')?.value   || '';
   const sortDir   =  document.getElementById('filter-sort')?.value    || 'desc';
+
+  // ✅ v13.34 — Peupler la liste des services à partir des fiches présentes
+  const svcSel = document.getElementById('filter-service');
+  if (svcSel) {
+    const services = [...new Set(db.map(r => (r.patient?.service || '').trim()).filter(Boolean))].sort();
+    const currentSvc = svcSel.value;
+    svcSel.innerHTML = '<option value="">Tous les services</option>' +
+      services.map(s => '<option value="' + esc(s) + '"' + (s === currentSvc ? ' selected' : '') + '>' + esc(s) + '</option>').join('');
+  }
 
   // Filtrage normal par période (getDB() gère déjà l'exclusion des fiches verrouillées/supprimées)
   let filtered = filterByDateRange(db, dateFrom, dateTo);
@@ -6300,6 +6481,8 @@ async function renderHistory(forceRefresh) {
       if (!types.includes(ft)) return false;
     }
     if (fa && r.createdBy !== fa) return false;
+    if (fst && getStatut(r.id) !== fst) return false;       // ✅ v13.34 filtre statut
+    if (fsv && (r.patient?.service || '').trim() !== fsv) return false; // ✅ v13.34 filtre service
     if (q) {
       const txt = [r.patient?.nom, r.patient?.dossier, r.patient?.medecin, r.patient?.service, r.createdBy, getDisplayType(r)].filter(Boolean).join(' ').toLowerCase();
       if (!txt.includes(q)) return false;
@@ -6392,11 +6575,13 @@ async function renderHistory(forceRefresh) {
     const canDel = isAdmin() || r.createdBy === uid;
     if (!canDel) return '';
     return '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px;opacity:.85" '
-      + 'title="Supprimer (envoyé dans la corbeille)" onclick="softDeleteDossier(' + r.id + ')">🗑️</button>';
+      + 'title="Supprimer (envoyé dans la corbeille)" aria-label="Supprimer, envoyer dans la corbeille" onclick="softDeleteDossier(' + r.id + ')">🗑️</button>';
   };
-  const deleteBtn = (id) => isAdmin()
-    ? '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="deleteRecord(' + id + ')">🗑</button>'
-    : '';
+  const deleteBtn = (id, rid) => {
+    const dupl = '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd" title="Dupliquer — pré-remplir le formulaire" aria-label="Dupliquer cette fiche" onclick="dupliquerFiche(' + (rid||id) + ')">⧉</button>';
+    const del = isAdmin() ? '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px" title="Supprimer définitivement" aria-label="Supprimer définitivement" onclick="deleteRecord(' + id + ')">🗑</button>' : '';
+    return dupl + del;
+  };
 
   // ✅ v13.32 — Bouton verrouillage : visible uniquement pour le propriétaire de la fiche,
   // Bouton masquer : visible pour l'admin sur toutes les fiches,
@@ -6415,6 +6600,7 @@ async function renderHistory(forceRefresh) {
     return '<button class="btn" id="lock-btn-' + r.id + '" '
       + 'style="padding:4px 8px;font-size:11px;margin-left:3px;' + style + '" '
       + 'title="' + title + '" '
+      + 'aria-label="' + title + '" '
       + 'onclick="toggleRestriction(' + r.id + ')">' + (locked ? '🔒' : '🔓') + '</button>';
   };
 
@@ -6509,6 +6695,7 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Patient">' + hl(r.patient.nom)
           + (hasCriticalValues(r) ? '<span class="badge-critique" title="Valeur critique détectée">🔴 CRITIQUE</span>' : '')
           + (r.patient.medecin ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px">' + hl(r.patient.medecin) + '</div>' : '')
+          + (r.patient.note ? '<div style="font-size:10.5px;color:#7c3aed;margin-top:2px;font-style:italic" title="Note interne">📝 ' + esc(r.patient.note) + '</div>' : '')
         + '</td>'
       + '<td data-label="Âge">' + esc(r.patient.age || '—') + '</td>'
       + '<td data-label="Sexe">' + esc(r.patient.sexe || '—') + '</td>'
@@ -6531,7 +6718,7 @@ async function renderHistory(forceRefresh) {
                   const uid = _currentUser?.username;
                   const canEdit = isAdmin() || r.createdBy === uid;
                   return canEdit
-                    ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'
+                    ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'                      + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe" onclick="showNoteModal(' + r.id + ')" title="Note interne (visible agents/admin)" aria-label="Note interne">📝</button>'
                     : '';
                 })()
               + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="editFicheIdentif(' + r.id + ')" title="Modifier la fiche d\'accueil (patient + examens)" aria-label="Modifier la fiche d\'accueil">🗂</button>'
@@ -6747,6 +6934,18 @@ async function softDeleteDossier(id) {
     cancelText: 'Annuler',
     confirmClass: 'btn-danger'
   })) return;
+
+  // ✅ v13.33 — Hors ligne : enfiler l'action, masquer localement
+  if (!navigator.onLine || String(id).startsWith('tmp_')) {
+    record.deletedAt = new Date().toISOString();
+    record.deletedBy = uid;
+    enqueueAction('soft_delete_dossier', id);
+    updateCorbeilleBtn();
+    if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+    renderHistory();
+    toast('📴 Hors ligne — dossier placé en corbeille localement', 'ok');
+    return;
+  }
 
   const { data, error } = await _sb.rpc('soft_delete_dossier', { p_token: TK(), p_id: id });
   if (error || data !== 'ok') {
@@ -7068,6 +7267,211 @@ function adminShowSub(id, btn) {
   const sub = document.getElementById(id);
   if (sub) sub.classList.add('active');
   btn.classList.add('active');
+}
+
+// ✅ v13.33 — Afficher/masquer un champ mot de passe
+function togglePwdVisibility(inputId, btn) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+  btn.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+}
+
+// ✅ v13.34 — Sauvegarde complète (JSON) de toutes les fiches
+// ✅ v13.34 — Dupliquer une fiche : pré-remplit le formulaire avec le patient
+// et les examens cochés de la fiche source. Les valeurs restent vides.
+// ✅ v13.34 — Note interne sur une fiche (agents + admin, invisible sur les impressions)
+function showNoteModal(id) {
+  const record = _dbCache.find(r => r.id === id);
+  if (!record) { toast('Dossier introuvable', 'err'); return; }
+  const uid = _currentUser?.username;
+  const canEdit = isAdmin() || record.createdBy === uid;
+  const note = record.patient?.note || '';
+
+  const old = document.getElementById('note-modal-bd');
+  if (old) old.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'note-modal-bd';
+  bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
+  bd.innerHTML = `
+    <div style="background:var(--surface-2,#fff);border-radius:16px;padding:26px 28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="font-size:15px;font-weight:700;color:var(--text-primary,#0f172a);margin-bottom:4px">📝 Note interne</div>
+      <div style="font-size:12px;color:var(--text-muted,#94a3b8);margin-bottom:14px">
+        Dossier <strong>${esc(record.patient?.dossier || '—')}</strong> · ${esc(record.patient?.nom || '—')}<br>
+        Visible uniquement par les agents et l'admin — n'apparaît pas sur les impressions.
+      </div>
+      <textarea id="note-modal-textarea" rows="4"
+        style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#e2e8f0);border-radius:8px;font-size:13px;resize:vertical;font-family:inherit"
+        placeholder="Anomalie de prélèvement, contexte clinique, instruction médicale…"
+        ${!canEdit ? 'readonly' : ''}>${esc(note)}</textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-outline" onclick="document.getElementById('note-modal-bd').remove()" style="padding:7px 16px">Fermer</button>
+        ${canEdit ? '<button class="btn btn-primary" onclick="saveNote(' + id + ')" style="padding:7px 16px">💾 Enregistrer</button>' : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(bd);
+  bd.addEventListener('click', e => { if (e.target === bd) bd.remove(); });
+  setTimeout(() => document.getElementById('note-modal-textarea')?.focus(), 50);
+}
+
+async function saveNote(id) {
+  const record = _dbCache.find(r => r.id === id);
+  if (!record) { toast('Dossier introuvable', 'err'); return; }
+  const note = (document.getElementById('note-modal-textarea')?.value || '').trim();
+
+  // Mise à jour optimiste
+  if (!record.patient) record.patient = {};
+  record.patient.note = note;
+
+  // Hors ligne : persister dans le cache uniquement (la note sera synchro au prochain update_resultat)
+  if (!navigator.onLine || String(id).startsWith('tmp_')) {
+    document.getElementById('note-modal-bd')?.remove();
+    renderHistory();
+    toast('📴 Note enregistrée localement', 'ok');
+    return;
+  }
+
+  // En ligne : RPC dédiée
+  try {
+    const { error } = await _sb.rpc('update_note_dossier', {
+      p_token: TK(), p_id: id, p_note: note
+    });
+    if (error) throw error;
+    document.getElementById('note-modal-bd')?.remove();
+    renderHistory();
+    toast(note ? '📝 Note enregistrée' : '📝 Note effacée', 'ok');
+  } catch (e) {
+    console.error('saveNote:', e);
+    toast("Erreur lors de l'enregistrement : " + (e.message || e), 'err');
+  }
+}
+
+function dupliquerFiche(id) {
+  const r = _dbCache.find(x => x.id === id);
+  if (!r) { toast('Fiche introuvable', 'err'); return; }
+  showView('saisie');
+  const p = r.patient || {};
+  const setV = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  setV('p_nom',     p.nom);
+  setV('p_age',     p.age);
+  setV('p_sexe',    p.sexe);
+  setV('p_medecin', p.medecin);
+  setV('p_service', p.service);
+  setV('p_clinique',p.clinique);
+  setV('p_telephone', p.telephone);
+  setV('p_date', new Date().toISOString().slice(0, 10));
+  regenDossier();
+  const examens = r.resultats?._examens_coches || {};
+  Object.values(examens).flat().forEach(exId => {
+    const chk = document.getElementById(exId);
+    if (chk) { chk.checked = true; chk.dispatchEvent(new Event('change', { bubbles: true })); }
+  });
+  if (typeof rechargeFichePrix === 'function') rechargeFichePrix();
+  if (typeof updateAllRefs === 'function') updateAllRefs();
+  toast('⧉ Fiche dupliquée — saisissez les nouvelles valeurs', 'ok');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function exportBackup() {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  try {
+    const backup = {
+      _format: 'cpmi-labo-backup',
+      _version: 1,
+      exportedAt: new Date().toISOString(),
+      exportedBy: _currentUser?.username || '',
+      count: _dbCache.length,
+      fiches: _dbCache
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = 'cpmi-sauvegarde-' + d + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const st = document.getElementById('backup-status');
+    if (st) st.textContent = '✅ ' + _dbCache.length + ' fiche(s) exportée(s)';
+    toast('💾 Sauvegarde téléchargée (' + _dbCache.length + ' fiches)', 'ok');
+  } catch (e) {
+    console.error('exportBackup:', e);
+    toast('Erreur lors de la sauvegarde', 'err');
+  }
+}
+
+// ✅ v13.34 — Restauration : ré-importe les fiches manquantes (ne réécrit rien)
+async function importBackup(event) {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  const file = event.target?.files?.[0];
+  if (!file) return;
+  const st = document.getElementById('backup-status');
+  if (st) st.textContent = '⏳ Lecture du fichier…';
+
+  let backup;
+  try {
+    backup = JSON.parse(await file.text());
+  } catch (e) {
+    if (st) st.textContent = '';
+    toast('Fichier illisible ou corrompu', 'err');
+    event.target.value = '';
+    return;
+  }
+  if (backup._format !== 'cpmi-labo-backup' || !Array.isArray(backup.fiches)) {
+    if (st) st.textContent = '';
+    toast("Ce fichier n'est pas une sauvegarde CPMI valide", 'err');
+    event.target.value = '';
+    return;
+  }
+
+  // Ne garder que les fiches absentes du cache (par N° de dossier + type)
+  const existing = new Set(_dbCache.map(r => (r.patient?.dossier || '') + '|' + (r.type || '')));
+  const toImport = backup.fiches.filter(f =>
+    !existing.has((f.patient?.dossier || '') + '|' + (f.type || '')));
+
+  if (!toImport.length) {
+    if (st) st.textContent = '✅ Rien à restaurer — toutes les fiches sont déjà présentes.';
+    toast('Toutes les fiches de la sauvegarde sont déjà présentes', 'ok');
+    event.target.value = '';
+    return;
+  }
+
+  const ok = await showConfirmModal({
+    icon: '⬆',
+    title: 'Restaurer ' + toImport.length + ' fiche(s) ?',
+    message: 'La sauvegarde du ' + (backup.exportedAt || '').slice(0, 10) + ' contient '
+      + backup.fiches.length + ' fiche(s), dont ' + toImport.length
+      + ' absente(s) de la base actuelle. Les fiches déjà présentes ne seront pas modifiées.',
+    confirmText: 'Restaurer', cancelText: 'Annuler'
+  });
+  if (!ok) { event.target.value = ''; if (st) st.textContent = ''; return; }
+
+  let done = 0, failed = 0;
+  for (const f of toImport) {
+    try {
+      const est_bpn = f.est_bpn || (f.resultats?._types || []).includes('Bilan prénatal');
+      const { error } = await _sb.rpc('insert_resultat', {
+        p_token: TK(), p_type: f.type, p_patient: f.patient,
+        p_resultats: f.resultats, p_montant: f.montant || 0,
+        p_prescripteur_id: f.prescripteur_id || null, p_est_bpn: est_bpn
+      });
+      if (error) throw error;
+      done++;
+      if (st) st.textContent = '⏳ Restauration… ' + done + '/' + toImport.length;
+    } catch (e) {
+      console.error('importBackup fiche:', e);
+      failed++;
+    }
+  }
+
+  await refreshDB(true);
+  renderHistory(true);
+  if (st) st.textContent = '✅ ' + done + ' restaurée(s)' + (failed ? ' · ' + failed + ' échec(s)' : '');
+  toast('✅ ' + done + ' fiche(s) restaurée(s)' + (failed ? ' — ' + failed + ' échec(s)' : ''), failed ? 'err' : 'ok');
+  event.target.value = '';
 }
 
 function clearHistory() {
@@ -8056,7 +8460,13 @@ async function renderStats() {
   if (lineEl && typeof Chart !== 'undefined') {
     const lL=[],lD=[];
     for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');lL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));lD.push(db.filter(r=>(r.patient?.date||r.savedAt||'').startsWith(k)).length);}
-    window._charts.line = new Chart(lineEl,{type:'line',data:{labels:lL,datasets:[{data:lD,borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',borderWidth:2,tension:.35,pointRadius:4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},stepSize:1}},x:{ticks:{font:{size:10}}}}}});
+    // ✅ v13.34 — Dataset comparaison année précédente
+    const lD2 = [];
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear()-1,now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');lD2.push(db.filter(r=>(r.patient?.date||r.savedAt||'').startsWith(k)).length);}
+    window._charts.line = new Chart(lineEl,{type:'line',data:{labels:lL,datasets:[
+      {label:'Cette année',data:lD,borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',borderWidth:2,tension:.35,pointRadius:4,fill:true},
+      {label:'An passé',data:lD2,borderColor:'#94a3b8',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],tension:.35,pointRadius:3,fill:false}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:14}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},stepSize:1}},x:{ticks:{font:{size:10}}}}}});
   }
   const el_ts=document.getElementById('kpi-total-sub'); if(el_ts){const n=Object.values(byType).reduce((a,b)=>a+b,0);el_ts.textContent=n+' analyse'+(n>1?'s':'')+' enregistrée'+(n>1?'s':'');}
   const el_ms=document.getElementById('kpi-month-sub'); if(el_ms){const n=dbPeriode.reduce((s,r)=>s+(isDossierRecord(r)?(r.resultats?._types||[]).length:1),0);el_ms.textContent=n+' analyse'+(n>1?'s':'');}
@@ -11357,12 +11767,14 @@ setInterval(() => {
 
 // ── Raccourcis clavier globaux ────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  // Ctrl+S / Cmd+S — Sauvegarder l'analyse active
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+  // Ctrl+S / Cmd+S — Sauvegarder l'analyse de l'onglet actif
+  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
     e.preventDefault();
-    const activeTab = document.querySelector('.tab-btn.active');
+    const saisieVisible = document.getElementById('view-saisie')?.style.display !== 'none';
+    if (!saisieVisible) return;
+    const activeTab = document.querySelector('.tab.active'); // ✅ v13.34 — bonne classe
     if (!activeTab) return;
-    const tabId = activeTab.dataset.tab;
+    const tabId = (activeTab.id || '').replace('tab-', '');
     const TYPE_MAP = {
       hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
       sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin', bpn:'Bilan prénatal',
@@ -11371,25 +11783,115 @@ document.addEventListener('keydown', e => {
     if (type) saveRecord(type);
     return;
   }
-  // Ctrl+P / Cmd+P — Imprimer (géré nativement sauf si on est dans la saisie)
-  if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-    const view = document.querySelector('[id^="view-"]:not([style*="none"])');
-    if (view?.id === 'view-saisie') {
+  // Ctrl+N / Cmd+N — Nouveau patient
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
+    const saisieVisible = document.getElementById('view-saisie')?.style.display !== 'none';
+    if (saisieVisible && typeof newPatient === 'function') {
       e.preventDefault();
-      toast('Enregistrez d\'abord la fiche avant d\'imprimer', 'ok');
+      newPatient();
     }
+    return;
   }
-  // Escape — Fermer les modaux ouverts
+  // Ctrl+P / Cmd+P — bloquer l'impression brute depuis la saisie
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+    const saisieVisible = document.getElementById('view-saisie')?.style.display !== 'none';
+    if (saisieVisible) {
+      e.preventDefault();
+      toast("Enregistrez d'abord la fiche avant d'imprimer", 'ok');
+    }
+    return;
+  }
+  // Escape — Fermer tout modal ouvert
   if (e.key === 'Escape') {
-    const modal = document.getElementById('edit-type-modal');
-    if (modal) modal.remove();
+    ['edit-type-modal'].forEach(id => document.getElementById(id)?.remove());
+    ['add-examen-modal','presc-modal','user-modal','first-login-modal',
+     'edit-patient-modal-bd','confirm-modal-backdrop'].forEach(id => {
+      const m = document.getElementById(id);
+      if (m && m.style.display !== 'none') m.style.display = 'none';
+    });
   }
 });
 
+// ✅ v13.34 — Progressive Web App : installation + cache offline
+(function setupPWA() {
+  // Icône SVG (data URI) réutilisée pour toutes les tailles
+  const ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==';
+  // Construire le manifest dynamiquement et l'attacher via Blob URL
+  try {
+    const manifest = {
+      name: 'CPMI — Laboratoire Grand-Bassam',
+      short_name: 'CPMI Labo',
+      description: "Laboratoire d'analyses médicales du Centre de Protection Mère et Infantile.",
+      start_url: '.',
+      scope: '.',
+      display: 'standalone',
+      orientation: 'any',
+      background_color: '#1a4480',
+      theme_color: '#1a4480',
+      lang: 'fr',
+      icons: [
+        { src: ICON, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+        { src: ICON, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    const link = document.getElementById('pwa-manifest');
+    if (link) link.href = URL.createObjectURL(blob);
+  } catch (e) { console.warn('[PWA] manifest:', e); }
+
+  // Bouton « Installer l'application » — apparaît quand le navigateur le propose
+  let _deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _deferredPrompt = e;
+    const btn = document.getElementById('btn-install-pwa');
+    if (btn) btn.style.display = 'inline-flex';
+  });
+  window.installPWA = async function () {
+    if (!_deferredPrompt) {
+      toast("Utilisez le menu du navigateur → « Ajouter à l'écran d'accueil »", 'ok');
+      return;
+    }
+    _deferredPrompt.prompt();
+    const { outcome } = await _deferredPrompt.userChoice;
+    _deferredPrompt = null;
+    const btn = document.getElementById('btn-install-pwa');
+    if (btn) btn.style.display = 'none';
+    if (outcome === 'accepted') toast('✅ Application installée', 'ok');
+  };
+  window.addEventListener('appinstalled', () => {
+    const btn = document.getElementById('btn-install-pwa');
+    if (btn) btn.style.display = 'none';
+  });
+
+  // Service worker inline (cache "network-first" du document) — via Blob.
+  // Note : sur certains hébergeurs les SW blob sont bloqués ; échec silencieux.
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE = 'cpmi-labo-v1';
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+      self.addEventListener('fetch', e => {
+        if (e.request.method !== 'GET') return;
+        e.respondWith(
+          fetch(e.request)
+            .then(res => {
+              const copy = res.clone();
+              caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
+              return res;
+            })
+            .catch(() => caches.match(e.request))
+        );
+      });
+    `;
+    try {
+      const swUrl = URL.createObjectURL(new Blob([swCode], { type: 'text/javascript' }));
+      navigator.serviceWorker.register(swUrl).catch(err => console.warn('[PWA] SW:', err.message));
+    } catch (e) { console.warn('[PWA] SW register:', e); }
+  }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
-  // ✅ v13 — Virgule décimale → point : sur clavier français, l'utilisateur
-  // tape souvent « 9,9 » ; les champs number rejetaient la virgule (valeur
-  // perdue). On convertit à la frappe pour préserver la justesse des résultats.
   document.addEventListener('keydown', (e) => {
     if ((e.key === ',' || e.code === 'NumpadDecimal' && e.key === ',')) {
       const el = e.target;
