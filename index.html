@@ -867,7 +867,7 @@ select {
   position: relative;
 }
 /* Sur petit écran, indiquer visuellement qu'il y a plus de colonnes à voir
-   en scrollant horizontalement (sinon "Valeurs normales" / "Interprétation"
+   en scrollant horizontalement (sinon "Valeurs normales" / "Commentaire"
    restent invisibles sans que l'utilisateur sache qu'il peut les faire défiler) */
 
 
@@ -1383,7 +1383,7 @@ select {
   .print-composite-section + .print-composite-section { page-break-before: always; }
   .print-composite-section { break-inside: avoid; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  @page { margin: 1.8cm; size: A4; }
+  @page { margin: 1.2cm 1.0cm; size: A4; }
 
   /* Masquer toute l'app, n'afficher que le rendu d'impression */
   body > *:not(#print-render) { display: none !important; }
@@ -1392,38 +1392,88 @@ select {
   body { background: #fff !important; margin: 0; }
   #print-render { display: block !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #000; background: #fff; }
 
-  /* En-tête — fond blanc, traits noirs (pas de bandeau coloré plein qui mange l'encre) */
-  .print-header-bar { height: 1.5px; background: #000; margin-bottom: 0; }
-  .print-header-content { display: flex; align-items: center; gap: 12px; padding: 8px 0 6px; border-bottom: 1.5px solid #000; margin-bottom: 6px; background: #fff; }
-  .print-logo { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; filter: grayscale(1) contrast(1.4); }
-  .print-center-name { font-size: 14pt; font-weight: 800; color: #000; letter-spacing: .3px; }
-  .print-center-sub { font-size: 8pt; color: #444; }
-  .print-type-badge { margin-left: auto; background: #fff; color: #000; border: 1.5px solid #000; padding: 4px 13px; border-radius: 20px; font-size: 9pt; font-weight: 700; letter-spacing: .5px; white-space: nowrap; }
+  /* ✅ v13.34 — En-tête : double liseré or/bleu + logo + badge type */
+  .print-header-bar {
+    height: 3px;
+    background: linear-gradient(to right, #1e3a8a 0%, #2563eb 60%, #cba135 100%);
+    margin-bottom: 0;
+  }
+  .print-header-bar.bottom {
+    height: 2px;
+    background: linear-gradient(to right, #cba135 0%, #1e3a8a 100%);
+    margin-top: 0;
+  }
+  .print-header-content {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 0 8px;
+    border-bottom: none;
+    margin-bottom: 8px;
+    background: #fff;
+  }
+  .print-logo {
+    display: flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; flex-shrink: 0;
+    filter: grayscale(1) contrast(1.4);
+  }
+  .print-center-name {
+    font-size: 15pt; font-weight: 900; color: #000; letter-spacing: .4px;
+    line-height: 1.2;
+  }
+  .print-center-sub { font-size: 8pt; color: #444; margin-top: 1px; }
+  .print-center-addr { font-size: 7.5pt; color: #666; font-style: italic; }
+  .print-type-badge {
+    margin-left: auto;
+    background: #1e3a8a; color: #fff;
+    padding: 5px 14px; border-radius: 4px;
+    font-size: 9pt; font-weight: 800; letter-spacing: .8px;
+    white-space: nowrap; flex-shrink: 0;
+  }
 
-  /* Fiche patient — fond blanc, cadre noir fin */
-  .print-patient-card { background: #fff; border: 1.3px solid #000; border-radius: 4px; padding: 8px 12px; margin-bottom: 10px; }
+  /* ✅ v13.34 — Fiche patient : fond très léger, N° dossier en vedette */
+  .print-patient-card {
+    background: #f8faff;
+    border: 1.5px solid #1e3a8a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .print-patient-label {
+    font-size: 7pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: #1e3a8a; margin-bottom: 5px;
+    border-bottom: 1px solid #c7d9f9; padding-bottom: 3px;
+  }
   .print-patient-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-  .print-patient-table td { padding: 3px 8px; vertical-align: top; border-right: 1px solid #ccc; }
+  .print-patient-table td { padding: 3.5px 8px; vertical-align: top; border-right: 1px solid #d0dcf7; }
   .print-patient-table td:last-child { border-right: none; }
-  .print-dossier { font-size: 12pt; font-weight: 800; color: #000; }
+  .print-patient-table .lbl { font-size: 7.5pt; color: #444; font-weight: 600; }
+  .print-patient-table .val { font-weight: 500; color: #000; }
+  .print-dossier { font-size: 13pt; font-weight: 900; color: #1e3a8a; letter-spacing: .3px; }
 
   /* Sections */
   .print-section { margin-bottom: 8px; break-inside: avoid; }
   .print-section-title { font-size: 9pt; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 5px; }
 
-  /* Tableaux — en-têtes en gris très clair (quasi blanc, peu d'encre), texte noir, bordures fines */
-  .print-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 4px; }
-  .print-table th { background: #eee !important; color: #000; font-weight: 700; padding: 4px 7px; text-align: left; border: 1px solid #999; font-size: 8pt; }
-  .print-table td { padding: 3.5px 7px; border: 1px solid #ccc; vertical-align: middle; color: #000; }
-  .print-table tr:nth-child(even) td { background: #fafafa; }
+  /* ✅ v13.34 — Tableaux résultats : en-têtes bleu CPMI, alternance douce */
+  .print-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 6px; }
+  .print-table th {
+    background: #1e3a8a !important; color: #fff !important;
+    font-weight: 700; padding: 5px 8px; text-align: left;
+    border: 1px solid #1e3a8a; font-size: 8pt; letter-spacing: .3px;
+  }
+  .print-table td { padding: 4px 8px; border: 1px solid #d0dcf7; vertical-align: middle; color: #000; }
+  .print-table tr:nth-child(even) td { background: #f0f5ff; }
+  .print-table tr:nth-child(odd)  td { background: #fff; }
+  .print-table tr:hover td { background: #e8f0fe; }
   /* Résultats anormaux : pas de fond coloré (économie d'encre) — texte en gras
      + un repère textuel ▲/▼ explicite pour rester lisible même en noir pur */
-  .print-hi  { color: #000 !important; background: #fff !important; font-weight: 800; }
-  .print-hi::before  { content: '▲ '; }
-  .print-lo  { color: #000 !important; background: #fff !important; font-weight: 800; }
-  .print-lo::before  { content: '▼ '; }
-  .print-ok  { color: #000 !important; background: #fff !important; font-weight: 400; }
-  .print-warn{ color: #000 !important; background: #fff !important; font-weight: 800; }
+  /* ✅ v13.34 — Anomalies : fond coloré léger (économie encre modérée) + repère texte */
+  .print-hi   { color: #991b1b !important; background: #fde8e8 !important; font-weight: 800; }
+  .print-hi::before   { content: '▲ '; }
+  .print-lo   { color: #1e40af !important; background: #dbeafe !important; font-weight: 800; }
+  .print-lo::before   { content: '▼ '; }
+  .print-ok   { color: #155724 !important; background: #f0fff4 !important; font-weight: 400; }
+  .print-warn { color: #92400e !important; background: #fef9c3 !important; font-weight: 800; }
   .print-warn::before { content: '⚠ '; }
 
   /* Notes et conclusions — fond blanc, bordure gauche noire en guise d'accent */
@@ -1434,14 +1484,34 @@ select {
   .print-conclusion.print-warn { border-left-color: #000; }
   .print-conclusion.print-note { border-left-color: #999; }
 
-  /* Pied de page */
-  .print-footer { margin-top: 10px; }
-  .print-footer-bar { height: 1px; background: #000; margin-bottom: 8px; }
-  .print-footer-content { display: flex; gap: 16px; align-items: flex-start; }
+  /* ✅ v13.34 — Pied de page : 3 zones + confidentialité */
+  .print-footer { margin-top: 14px; }
+  .print-footer-bar {
+    height: 2px;
+    background: linear-gradient(to right, #1e3a8a, #cba135);
+    margin-bottom: 8px;
+  }
+  .print-footer-content { display: flex; gap: 12px; align-items: flex-start; }
   .print-sig-box { flex: 1; }
-  .print-sig-label { font-size: 7.5pt; font-weight: 700; color: #000; background: #fff; border: 1px solid #000; padding: 2px 6px; border-radius: 0; margin-bottom: 2px; display: inline-block; }
-  .print-sig-zone { border: 1px solid #000; height: 20mm; border-radius: 0; }
-  .print-meta { font-size: 7pt; color: #444; font-style: italic; align-self: flex-end; text-align: right; margin-left: auto; }
+  .print-sig-label {
+    font-size: 7.5pt; font-weight: 700; color: #fff;
+    background: #1e3a8a; padding: 3px 8px;
+    margin-bottom: 3px; display: inline-block; letter-spacing: .3px;
+  }
+  .print-sig-zone {
+    border: 1px solid #1e3a8a; height: 18mm;
+    border-radius: 0; background: #f8faff;
+  }
+  .print-meta {
+    font-size: 7pt; color: #444; font-style: italic;
+    align-self: flex-end; text-align: right; margin-left: auto;
+    line-height: 1.5;
+  }
+  .print-confidential {
+    text-align: center; font-size: 7pt; color: #888;
+    font-style: italic; margin-top: 6px; padding-top: 4px;
+    border-top: 1px dashed #ccc;
+  }
 
   /* Filigrane CPMI — extrêmement léger, ne consomme quasiment pas d'encre */
   body::after {
@@ -3218,6 +3288,12 @@ function profileFromPatient(pat) {
 // sinon référence par sexe, sinon référence générique).
 function refDisplayFor(p, profile) {
   if (!p) return '';
+  // ✅ v13.34 — Pour la formule leucocytaire : afficher la référence en valeur
+  // absolue (/µL) stockée dans HEMA_FL.ref, pas le pourcentage de NORM.
+  // La valeur exportée est déjà en /µL, la référence doit l'être aussi.
+  const isFL = typeof HEMA_FL !== 'undefined' && HEMA_FL.some(fl => fl.id === p.id);
+  if (isFL && p.ref && p.unitAbs) return p.ref + ' ' + p.unitAbs;
+
   const dynRef = getRef(p.id, profile);
   if (dynRef && dynRef.ref) return dynRef.ref;
   // Fallback sur les champs statiques refM/refF/ref du paramètre
@@ -4776,15 +4852,22 @@ function ensurePanelBuilt(name) {
 }
 
 function switchTab(name) {
+  // ✅ v13.34 — Bloquer l'onglet si aucun examen de ce type n'est payé/coché
+  // (sauf en mode édition où les examens sont déjà restaurés)
+  if (!_editingRecordId && !_locksDisabled && document.getElementById('zone-saisie')?.style.display !== 'none') {
+    const TAB_EXAMS = getCatalogueComplet().filter(ex => ex.tab === name);
+    const hasPaid = TAB_EXAMS.some(ex => document.getElementById(ex.id)?.checked);
+    if (!hasPaid && TAB_EXAMS.length > 0) {
+      toast('Cochez et payez au moins un examen de ce type pour saisir les résultats', 'err');
+      return; // Ne pas changer d'onglet
+    }
+  }
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.getElementById('panel-' + name).classList.add('active');
-  // Construire le panneau au premier affichage seulement (perf)
   ensurePanelBuilt(name);
-  if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13 — verrouiller les champs non cochés
-  // Ré-appliquer le filtrage/marquage des sections sur le nouvel onglet actif
-  // (seulement si on est déjà en zone de saisie, pas lors de l'init de page)
+  if (typeof applyExamLocks === 'function') applyExamLocks();
   if (document.getElementById('zone-saisie')?.style.display !== 'none') {
     markRequiredSections();
   }
@@ -5928,11 +6011,20 @@ async function _saveRecordImpl(type) {
       prescripteur_id: prescripteurId || existing.prescripteur_id || null,
     });
     if (saved) {
-      hideLoading(); toast(type + ' mis à jour ✓', 'ok');
+      hideLoading();
       _editingRecordId = null;
       _editingType     = null;
       const banner = document.getElementById('edit-mode-banner');
       if (banner) banner.style.display = 'none';
+      // ✅ v13.34 — Tout mettre à jour après modification
+      renderHistory(true);
+      if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+      if (typeof renderDashboard === 'function') renderDashboard();
+      if (typeof updateCorbeilleBtn === 'function') updateCorbeilleBtn();
+      if (typeof updateMasqueesBtn === 'function') updateMasqueesBtn();
+      // Revenir à l'historique pour voir la fiche modifiée
+      showView('historique');
+      toast(type + ' mis à jour ✓', 'ok');
     }
     return;
   }
@@ -6009,11 +6101,12 @@ async function _saveRecordImpl(type) {
   }
 }
 
-// ✅ v13.33 — Après enregistrement : vider les valeurs de résultats + nom + âge.
-// Restent intacts : date, sexe, service, médecin, clinique, prescripteur,
-// examens cochés, prix saisis.
-// Le numéro de dossier est régénéré via regenDossier().
+// ✅ v13.33/v13.34 — Après enregistrement : vider les valeurs de résultats + nom + âge.
+// En mode ÉDITION : ne rien faire (les champs doivent rester pour correction éventuelle).
 function resetPanelAfterSave(tabKey) {
+  // ✅ v13.34 — Ne pas réinitialiser en mode édition
+  if (_editingRecordId) return;
+
   // Vider nom et âge uniquement (pas la date, le sexe, le service…)
   const nomEl = document.getElementById('p_nom');
   const ageEl = document.getElementById('p_age');
@@ -7891,8 +7984,8 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ── Création feuille ─────────────────────────────────────────
   const NC = 6;
   const ws = wb.addWorksheet(sheetName || getDisplayType(r).substring(0,31), {
-    pageSetup: { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1,
-      margins:{left:0.5,right:0.5,top:0.6,bottom:0.6,header:0.2,footer:0.2} },
+    pageSetup: { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
+      margins:{left:0.4,right:0.4,top:0.4,bottom:0.4,header:0.15,footer:0.15} }, // ✅ v13.34
     views: [{ showGridLines:false, state:'frozen', ySplit:10 }],
   });
   ws.columns = [
@@ -7912,7 +8005,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   row++;
 
   // Nom centre (grande ligne)
-  ws.getRow(row).height = 26;
+  ws.getRow(row).height = 20; // ✅ v13.34 compact
   mg(row,1,row,NC);
   const cCentre = ws.getCell(row,1);
   cCentre.value = 'CPMI DE GRAND-BASSAM  —  Centre de Protection Mère et Infantile';
@@ -7941,7 +8034,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ════════════════════════════════════════════════════
   row++; // espace
   // ✅ v12.2 — police 18 ≈ caractères 2x plus larges : largeur effective divisée par 2
-  ws.getRow(row).height = Math.max(32, neededLines(nomMAJ, Math.floor(spanWidth(1,NC)/2)) * 24 + 8);
+  ws.getRow(row).height = Math.max(20, neededLines(nomMAJ, Math.floor(spanWidth(1,NC)/2)) * 16 + 4); // ✅ v13.34
   mg(row,1,row,NC);
   const cNom = ws.getCell(row,1);
   cNom.value = nomMAJ;
@@ -8141,7 +8234,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     if (_wid.show) {
       secHdr('Sérodiagnostic de Widal & Felix');
       if (_wid.rows.length) {
-        tblHdr('Antigène', 'Titre', 'Cinétique', 'Interprétation');
+        tblHdr('Antigène', 'Titre', 'Cinétique', 'Commentaire');
         _wid.rows.forEach(w => pRow(w.name, w.titre, w.cinetique || '—', '', w.interp || ''));
       }
       if (_wid.concl) nRow(_wid.concl.replace(/^[^\w]+/, ''), _wid.concl.includes('ÉTAT') || _wid.concl.includes('DÉBUT') ? 'FFFFF1F1' : 'FFFFFDE7');
@@ -8331,9 +8424,9 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // Zones signature
   ws.getRow(row).height = 14;
   mg(row,1,row,3); sC(ws.getCell(row,1),{bg:PAT_LABEL,fg:SEC_FG,bold:true,size:9});
-  ws.getCell(row,1).value='Cachet du biologiste responsable';
+  ws.getCell(row,1).value='Commentaire du technicien :';
   mg(row,4,row,NC); sC(ws.getCell(row,4),{bg:PAT_LABEL,fg:SEC_FG,bold:true,size:9});
-  ws.getCell(row,4).value='Signature';
+  ws.getCell(row,4).value='Signature du technicien :';
   row++;
   for (let i=0;i<4;i++) {
     ws.getRow(row).height=14;
@@ -8883,10 +8976,11 @@ async function buildAndPrint(r) {
         <div>
           <div class="print-center-name">CPMI DE GRAND-BASSAM</div>
           <div class="print-center-sub">Centre de Protection Mère et Infantile · Laboratoire d'analyses médicales</div>
+          <div class="print-center-addr">Grand-Bassam, Côte d'Ivoire · Tél : — · Email : —</div>
         </div>
         <div class="print-type-badge">${getDisplayType(r).toUpperCase()}</div>
       </div>
-      <div class="print-header-bar" style="background:linear-gradient(to right,#e11d76,#d97706)"></div>
+      <div class="print-header-bar bottom"></div>
     </div>
 
     <div class="print-patient-card">
@@ -8953,9 +9047,23 @@ async function buildAndPrint(r) {
     <div class="print-footer">
       <div class="print-footer-bar"></div>
       <div class="print-footer-content">
-        <div class="print-sig-box"><div class="print-sig-label">Cachet du biologiste</div><div class="print-sig-zone"></div></div>
-        <div class="print-sig-box"><div class="print-sig-label">Signature</div><div class="print-sig-zone"></div></div>
-        <div class="print-meta">Édité le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}<br>CPMI de Grand-Bassam</div>
+        <div class="print-sig-box" style="flex:2">
+          <div class="print-sig-label">Commentaire du technicien</div>
+          <div class="print-sig-zone" style="height:22mm;padding:4px 8px;line-height:1.8">
+            <div style="border-bottom:1px solid #c7d9f9;margin-bottom:4px"></div>
+            <div style="border-bottom:1px solid #c7d9f9;margin-bottom:4px"></div>
+            <div style="border-bottom:1px solid #c7d9f9"></div>
+          </div>
+        </div>
+        <div class="print-sig-box" style="flex:1">
+          <div class="print-sig-label">Signature du technicien</div>
+          <div class="print-sig-zone" style="height:22mm"></div>
+        </div>
+        <div class="print-meta">Édité le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}<br>CPMI de Grand-Bassam<br><span style="font-size:6.5pt">Document confidentiel · N° ${record?.id || r.id || '—'}</span></div>
+      </div>
+      <div class="print-confidential">
+        Ce document est réservé à l'usage médical. Toute reproduction non autorisée est interdite.
+        Résultats à interpréter en contexte clinique. · CPMI Grand-Bassam
       </div>
     </div>`;
 
@@ -9022,7 +9130,7 @@ function buildPrintSections(type, res, pat) {
     const profil = res['Profil Hb'];
     const commentHb = res['Commentaire Hb'];
     if (ephbRows.length || profil) {
-      let c = table(['Fraction','%','','Interprétation'], ephbRows);
+      let c = table(['Fraction','%','','Commentaire'], ephbRows);
       if (profil) c += `<p class="print-note"><b>Profil :</b> ${profil}</p>`;
       if (commentHb) c += `<p class="print-note print-italic">${commentHb}</p>`;
       html += section('🔬 Électrophorèse de l\'Hémoglobine', c);
@@ -9087,7 +9195,7 @@ function buildPrintSections(type, res, pat) {
     const _widS = widalReport(res);
     if (_widS.show) {
       const widalRowsS = _widS.rows.map(w => [w.name, w.titre, w.cinetique||'—', w.interp||'—']);
-      let wHtml = widalRowsS.length ? table(['Antigène','Titre','Cinétique','Interprétation'], widalRowsS) : '';
+      let wHtml = widalRowsS.length ? table(['Antigène','Titre','Cinétique','Commentaire'], widalRowsS) : '';
       if (_widS.concl) {
         const cls = _widS.concl.includes('ÉTAT') ? 'print-hi' : _widS.concl.includes('DÉBUT') ? 'print-warn' : 'print-note';
         wHtml += `<p class="print-conclusion ${cls}">${escHTML(_widS.concl.replace(/^[🔴🟠🟡⚪]\s*/,''))}</p>`;
@@ -9201,32 +9309,61 @@ async function printReceipt(id) {
   const receiptNum = String(record.id).padStart(6, '0');
   const dateHeure = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
 
+  // ✅ v13.34 — Reçu modernisé : en-tête avec logo SVG inline,
+  //   séparations visuelles, total en vedette, QR en bas
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; margin: 0 auto; padding: 8px; }
-  .center { text-align: center; }
-  .bold { font-weight: bold; }
-  .line { border-top: 1px dashed #333; margin: 6px 0; }
-  .double-line { border-top: 2px solid #000; margin: 6px 0; }
-  .row { display: flex; justify-content: space-between; margin: 2px 0; }
-  .total-row { font-size: 14px; font-weight: bold; }
-  .small { font-size: 10px; color: #555; }
-  .badge { display: inline-block; background: #1e3a8a; color: #fff; padding: 1px 6px; border-radius: 4px; font-size: 10px; }
-  @media print { body { width: 100%; } }
+  body { font-family:'Courier New',monospace; font-size:12px; width:80mm; margin:0 auto; padding:0; background:#fff; }
+  .receipt { padding:10px 10px 6px; }
+  .hdr-bar { height:5px; background:linear-gradient(to right,#1e3a8a,#2563eb,#cba135); }
+  .hdr { padding:8px 0 6px; text-align:center; border-bottom:2px solid #000; margin-bottom:0; }
+  .hdr-logo { display:inline-block; width:36px; height:36px; margin-bottom:3px; }
+  .hdr-name { font-weight:900; font-size:13px; letter-spacing:.5px; }
+  .hdr-sub  { font-size:9px; color:#444; }
+  .hdr-addr { font-size:8px; color:#666; font-style:italic; }
+  .title-bar { background:#1e3a8a; color:#fff; text-align:center; font-weight:700; font-size:11px; letter-spacing:2px; padding:5px 0; margin:6px 0; }
+  .meta { font-size:9.5px; margin-bottom:4px; }
+  .meta-row { display:flex; justify-content:space-between; padding:1.5px 0; }
+  .meta-row .lbl { color:#444; }
+  .meta-row .val { font-weight:600; }
+  .sep { border-top:1px dashed #555; margin:5px 0; }
+  .sep-solid { border-top:2px solid #000; margin:5px 0; }
+  .section-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#1e3a8a; margin:4px 0 2px; }
+  .item-row { display:flex; justify-content:space-between; font-size:10px; padding:1.5px 0; }
+  .item-name { flex:1; padding-right:6px; }
+  .item-type { font-size:8.5px; color:#666; padding-right:8px; }
+  .item-prix { font-weight:500; white-space:nowrap; }
+  .total-box { background:#f0f5ff; border:1.5px solid #1e3a8a; border-radius:3px; padding:6px 10px; margin:6px 0; display:flex; justify-content:space-between; align-items:center; }
+  .total-lbl { font-weight:700; font-size:11px; }
+  .total-val { font-weight:900; font-size:16px; color:#1e3a8a; }
+  .qr-section { text-align:center; margin-top:6px; padding-top:5px; border-top:1px dashed #aaa; }
+  .qr-section img { width:70px; height:70px; }
+  .qr-ref { font-size:8px; color:#666; margin-top:2px; font-style:italic; }
+  .footer-msg { text-align:center; font-size:9px; color:#666; font-style:italic; margin-top:5px; }
+  .footer-bar { height:3px; background:linear-gradient(to right,#cba135,#1e3a8a); margin-top:8px; }
+  @media print { body { width:100%; } }
 </style>
 </head><body>
-  <!-- En-tête -->
-  <div class="center">
-    <div class="bold" style="font-size:14px">CPMI DE GRAND-BASSAM</div>
-    <div class="small">Centre de Protection Mère et Infantile</div>
-    <div class="small">Laboratoire d'analyses médicales</div>
-    <div class="small">Grand-Bassam — Côte d'Ivoire</div>
+  <div class="hdr-bar"></div>
+  <div class="receipt">
+  <div class="hdr">
+    <div class="hdr-logo">
+      <svg viewBox="0 0 64 64" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="31" fill="#1e3a8a"/>
+        <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
+        <circle cx="32" cy="14" r="3.4" fill="#fff"/>
+        <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
+        <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+      </svg>
+    </div>
+    <div class="hdr-name">CPMI DE GRAND-BASSAM</div>
+    <div class="hdr-sub">Centre de Protection Mère et Infantile</div>
+    <div class="hdr-sub">Laboratoire d'analyses médicales</div>
+    <div class="hdr-addr">Grand-Bassam, Côte d'Ivoire</div>
   </div>
-  <div class="double-line"></div>
-  <div class="center bold" style="font-size:13px; letter-spacing:1px">REÇU DE PAIEMENT</div>
-  <div class="line"></div>
+  <div class="title-bar">REÇU DE PAIEMENT</div>
 
   <!-- Infos reçu -->
   <div class="row"><span>N° Reçu :</span><span class="bold">${receiptNum}</span></div>
@@ -9381,6 +9518,42 @@ async function exportRecord(id) {
     return;
   }
 
+  // ✅ v13.34 — Onglet récapitulatif en première position
+  try {
+    const recap = wb.addWorksheet('Récapitulatif', { properties: { tabColor: { argb: 'FF1E3A8A' } } });
+    const p = record.patient || {};
+    recap.columns = [{width:28},{width:40}];
+    const addR = (label, val, bold) => {
+      const r = recap.addRow([label, val || '—']);
+      r.getCell(1).font = { bold:true, color:{argb:'FF1E3A8A'}, size:10 };
+      r.getCell(2).font = { bold:!!bold, size:10 };
+      r.getCell(1).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFE8F0FE'}};
+      r.getCell(2).fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FFF8FAFF'}};
+      r.getCell(1).border = r.getCell(2).border = {bottom:{style:'thin',color:{argb:'FFD0DCF7'}}};
+    };
+    // Titre
+    recap.mergeCells('A1:B1');
+    const t = recap.getCell('A1');
+    t.value = 'CPMI DE GRAND-BASSAM — Résumé du dossier';
+    t.font = {bold:true, size:13, color:{argb:'FFFFFFFF'}};
+    t.fill = {type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A8A'}};
+    t.alignment = {horizontal:'center',vertical:'middle'};
+    recap.getRow(1).height = 28;
+    recap.addRow([]);
+    addR('N° Dossier', p.dossier, true);
+    addR('Patient', p.nom);
+    addR('Date', p.date ? p.date.split('-').reverse().join('/') : '');
+    addR('Âge / Sexe', [p.age ? p.age + ' ans' : '', p.sexe].filter(Boolean).join(' · '));
+    addR('Service', p.service);
+    addR('Médecin', p.medecin);
+    addR('Analyses', getRecordTypes(record).join(', '));
+    addR('Montant total', record.montant ? record.montant.toLocaleString('fr-FR') + ' FCFA' : '—', true);
+    addR('Saisi par', record.createdBy);
+    addR('Date enregistrement', record.savedAt ? new Date(record.savedAt).toLocaleString('fr-FR') : '');
+    // Déplacer la feuille récap en premier
+    wb.moveWorksheet('Récapitulatif', 0);
+  } catch(e) { console.warn('recap sheet:', e); }
+
   await downloadWorkbook(wb, makeFilename(
     record.patient?.dossier, record.patient?.date,
     record.patient?.nom || 'PATIENT', 'Dossier'
@@ -9493,7 +9666,7 @@ function buildPDF(r, analyses) {
   };
 
   const p = r.patient;
-  const W = 210; const MARGIN = 14;
+  const W = 210; const MARGIN = 10; // ✅ v13.34 — marges réduites
   const profile = profileFromPatient(p); // ✅ v13.17 — valeurs normales
   const _paramByName = {};
   [...(typeof HEMA_PARAMS!=='undefined'?HEMA_PARAMS:[]), ...(typeof HEMA_FL!=='undefined'?HEMA_FL:[])].forEach(pp => { _paramByName[pp.name] = pp; });
@@ -9510,39 +9683,31 @@ function buildPDF(r, analyses) {
 
   // ── En-tête bleu ─────────────────────────────────────────
   doc.setFillColor(30, 58, 138); // C_HEADER_BG
-  doc.rect(0, 0, W, 38, 'F');
+  doc.rect(0, 0, W, 26, 'F');
 
-  // Liseré doré en haut
+  // Liséré doré
   doc.setFillColor(203, 161, 53);
-  doc.rect(0, 0, W, 2, 'F');
+  doc.rect(0, 0, W, 1.5, 'F');
 
-  // Nom du centre
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('CPMI DE GRAND BASSAM', MARGIN + 22, 14);
+  doc.setFontSize(12);
+  doc.text('CPMI DE GRAND BASSAM', MARGIN + 18, 10);
 
-  // Sous-titre
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(10);
-  doc.text("Laboratoire d'analyses médicales", MARGIN + 22, 20);
-
-  // Adresse
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text("Grand-Bassam — Côte d'Ivoire", MARGIN + 22, 26);
+  doc.text("Laboratoire d'analyses medicales - Grand-Bassam", MARGIN + 18, 16);
 
-  // Type d'analyse
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('RÉSULTAT : ' + getDisplayType({ type: rType, resultats: res }).toUpperCase(), MARGIN + 22, 33);
+  doc.setFontSize(9);
+  doc.text('RESULTAT : ' + getDisplayType({ type: rType, resultats: res }).toUpperCase(), MARGIN + 18, 22);
 
   // Liseré bleu clair bas
   doc.setFillColor(96, 165, 250);
-  doc.rect(0, 38, W, 1.5, 'F');
+  doc.rect(0, 26, W, 1.5, 'F'); // ✅ v13.34
 
   // ── Logo CPMI — silhouette mère-enfant + croix dorée (dessin vectoriel natif) ──
-  const lcx = MARGIN + 9, lcy = 19; // centre du cercle logo
+  const lcx = MARGIN + 9, lcy = 13; // centre du cercle logo (✅ v13.34)
   doc.setFillColor(255, 255, 255);
   doc.circle(lcx, lcy, 8.2, 'F');
 
@@ -9561,7 +9726,7 @@ function buildPDF(r, analyses) {
   doc.roundedRect(lcx + 4.6, lcy + 2.0, 1.3, 4.0, 0.4, 0.4, 'F');
   doc.roundedRect(lcx + 3.1, lcy + 3.5, 4.0, 1.3, 0.4, 0.4, 'F');
 
-  y = 44;
+  y = 30; // ✅ v13.34
 
   // ── Fiche patient ─────────────────────────────────────────
   doc.setFillColor(220, 232, 251);
@@ -9607,7 +9772,7 @@ function buildPDF(r, analyses) {
       doc.autoTable({
         startY: y, head: [head], body,
         margin: { left: MARGIN, right: MARGIN },
-        styles: { fontSize: 8, cellPadding: 2.5 },
+        styles: { fontSize: 8, cellPadding: 2 /* ✅ v13.34 */ },
         headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: [250,251,253] },
         ...o2,
@@ -9622,12 +9787,12 @@ function buildPDF(r, analyses) {
           else if (interp.includes('normal'))                            { data.cell.styles.textColor=[21,128,61];  data.cell.styles.fillColor=[232,248,238]; }
         }
       });
-      y = doc.lastAutoTable.finalY + 5;
+      y = doc.lastAutoTable.finalY + 3; // ✅ v13.34
     };
 
     const sectionTitle = (txt) => {
       doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,58,138);
-      doc.text(txt, MARGIN, y); y += 5;
+      doc.text(txt, MARGIN, y); y += 3.5; // ✅ v13.34
     };
 
     // ── NFS ─────────────────────────────────────────────────────
@@ -9653,7 +9818,7 @@ function buildPDF(r, analyses) {
     });
     if (ephbRows.length || res['Profil Hb']) {
       sectionTitle('🔬 Électrophorèse de l\'Hémoglobine');
-      if (ephbRows.length) addTable(['Fraction','%','Unité','Interprétation'], ephbRows);
+      if (ephbRows.length) addTable(['Fraction','%','Unité','Commentaire'], ephbRows);
       if (res['Profil Hb']) {
         doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(50,50,50);
         doc.text('Profil : ' + res['Profil Hb'], MARGIN, y); y += 4;
@@ -9712,7 +9877,7 @@ function buildPDF(r, analyses) {
         head: [['Test','Résultat','Valeurs normales']],
         body: [['CRP Latex', crpLabel, '< 6 mg/L']],
         margin: { left: MARGIN, right: MARGIN },
-        styles: { fontSize: 8, cellPadding: 2.5 },
+        styles: { fontSize: 8, cellPadding: 2 /* ✅ v13.34 */ },
         headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         columnStyles: { 1:{ textColor: crpColor, fontStyle:'bold' } },
       });
@@ -9726,7 +9891,7 @@ function buildPDF(r, analyses) {
     if (_wid.show) {
       sectionTitle('🦠 Sérodiagnostic de Widal & Félix');
       if (widalRows.length) {
-        addTable(['Antigène','Titre','Cinétique','Interprétation'], widalRows);
+        addTable(['Antigène','Titre','Cinétique','Commentaire'], widalRows);
       }
       if (widalConclusion) {
         const isEtat  = widalConclusion.includes('ÉTAT');
@@ -9767,7 +9932,7 @@ function buildPDF(r, analyses) {
         head: [['Paramètre', 'Résultat', 'Unité', 'Valeurs normales']],
         body: rows.map(r => r.slice(0,4)),
         margin: { left: MARGIN, right: MARGIN },
-        styles: { fontSize: 8, cellPadding: 2.5 },
+        styles: { fontSize: 8, cellPadding: 2 /* ✅ v13.34 */ },
         headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         alternateRowStyles: { fillColor: [250,251,253] },
       });
@@ -9802,7 +9967,7 @@ function buildPDF(r, analyses) {
         head: [[ex.label, 'Résultat', 'Unité', 'Valeurs normales']],
         body: ex.rows.map(pr => [pr.name, '', pr.unit, pr.ref]),
         margin: { left: MARGIN, right: MARGIN },
-        styles: { fontSize: 8, cellPadding: 2.5, minCellHeight: 7 },
+        styles: { fontSize: 8, cellPadding: 2 /* ✅ v13.34 */, minCellHeight: 7 },
         headStyles: { fillColor: [71,85,105], textColor: 255, fontStyle: 'bold', fontSize: 8 },
         columnStyles: { 1:{ fillColor:[255,255,255] } },
       });
@@ -9820,22 +9985,34 @@ function buildPDF(r, analyses) {
   const now = new Date();
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.5);
-  doc.text('Édité le ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + '  ·  CPMI DE GRAND BASSAM', MARGIN, y);
-  y += 8;
+  doc.setFontSize(8);
+  doc.text('Édité le ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + '  ·  CPMI DE GRAND BASSAM  ·  N° ' + (r.id||'—'), MARGIN, y);
+  y += 6;
 
-  // Zone signature
-  doc.setFillColor(220, 232, 251);
-  doc.rect(MARGIN, y, (W-2*MARGIN)/2 - 3, 6, 'F');
-  doc.setTextColor(30,58,138); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
-  doc.text('Cachet du biologiste responsable', MARGIN+2, y+4);
-  doc.rect(MARGIN, y+6, (W-2*MARGIN)/2 - 3, 14);
+  // ✅ v13.34 — Zone commentaire + signature technicien (médecin supprimé)
+  const zoneW = (W - 2*MARGIN);
+  const commentW = zoneW * 0.6;
+  const sigW = zoneW * 0.38;
+  const sigX = MARGIN + commentW + zoneW * 0.02;
 
-  const x2 = MARGIN + (W-2*MARGIN)/2 + 3;
+  // Zone commentaire technicien
   doc.setFillColor(220, 232, 251);
-  doc.rect(x2, y, (W-2*MARGIN)/2 - 3, 6, 'F');
-  doc.text('Signature', x2+2, y+4);
-  doc.rect(x2, y+6, (W-2*MARGIN)/2 - 3, 14);
+  doc.rect(MARGIN, y, commentW, 5, 'F');
+  doc.setTextColor(30,58,138); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('Commentaire du technicien', MARGIN + 2, y + 3.5);
+  doc.setDrawColor(30,58,138); doc.setLineWidth(0.4);
+  doc.rect(MARGIN, y + 5, commentW, 16);
+  // Lignes de saisie
+  doc.setDrawColor(200,210,230); doc.setLineWidth(0.2);
+  for (let li = 1; li <= 3; li++) doc.line(MARGIN+2, y+5+li*4, MARGIN+commentW-2, y+5+li*4);
+
+  // Zone signature technicien
+  doc.setFillColor(220, 232, 251);
+  doc.rect(sigX, y, sigW, 5, 'F');
+  doc.setTextColor(30,58,138); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('Signature du technicien', sigX + 2, y + 3.5);
+  doc.setDrawColor(30,58,138); doc.setLineWidth(0.4);
+  doc.rect(sigX, y + 5, sigW, 16);
 
   // Numéro de page
   doc.setTextColor(150); doc.setFont('helvetica','normal'); doc.setFontSize(7);
@@ -10675,6 +10852,13 @@ function applyExamLocks() {
   const checked = {};
   cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
   cat.forEach(ex => {
+    // ✅ v13.34 — Masquer la ligne entière si l'examen n'est pas payé,
+    // plutôt que de juste griser les champs (verrouillage seul insuffisant)
+    const row = document.getElementById('row_' + ex.id);
+    if (row) {
+      const isPaid = checked[ex.id];
+      row.style.display = isPaid ? '' : 'none';
+    }
     examFieldIds(ex.id).forEach(fid => {
       const el = document.getElementById(fid);
       if (el) setFieldLocked(el, !checked[ex.id]);
@@ -12549,27 +12733,32 @@ function checkValeursCritiques(resultats) {
   if (!resultats || typeof resultats !== 'object') return alerts;
   Object.entries(resultats).forEach(([nom, v]) => {
     if (!nom || nom.startsWith('_')) return;
-    const key = nom.toLowerCase();
+    const key = nom.toLowerCase().trim();
     for (const [cle, crit] of Object.entries(VALEURS_CRITIQUES)) {
-      if (key.includes(cle) || key.includes(crit.label.toLowerCase())) {
-        const brut = (typeof v === 'object' && v) ? (v.valeur ?? v.resultat ?? '') : v;
-        const num = parseFloat(String(brut).replace(',', '.'));
-        if (!isNaN(num) && (num < crit.min || num > crit.max)) {
-          alerts.push({ label: crit.label, valeur: num, unite: crit.unite, min: crit.min, max: crit.max,
-            sens: num < crit.min ? 'bas' : 'élevé' });
-        }
-        break;
+      // ✅ v13.34 — Match précis : le nom doit commencer par la clé ou y être égal
+      // (évite que "créatinine" matche "créatinine sérique en µmol/L" faux positif)
+      const cLabel = crit.label.toLowerCase();
+      const matched = key === cle || key === cLabel
+        || key.startsWith(cle + ' ') || key.startsWith(cle + '(')
+        || key.startsWith(cLabel + ' ') || key.startsWith(cLabel + '(');
+      if (!matched) continue;
+      const brut = (typeof v === 'object' && v) ? (v.valeur ?? v.resultat ?? '') : v;
+      const num = parseFloat(String(brut).replace(',', '.'));
+      if (!isNaN(num) && (num < crit.min || num > crit.max)) {
+        alerts.push({ label: crit.label, valeur: num, unite: crit.unite, min: crit.min, max: crit.max,
+          sens: num < crit.min ? 'bas' : 'élevé' });
       }
+      break;
     }
   });
   return alerts;
 }
 function hasCriticalValues(record) {
   if (!record) return false;
-  if (record.patient && record.patient.has_critical === true) return true;
+  // ✅ v13.34 — Ne pas utiliser has_critical résiduel : recalculer en direct
+  // (évite les faux positifs après correction d'une valeur)
   if (record.resultats) {
     if (checkValeursCritiques(record.resultats).length) return true;
-    // dossiers unifiés : parcourir chaque type
     for (const t of (record.resultats._types || [])) {
       if (checkValeursCritiques(record.resultats[t]).length) return true;
     }
@@ -12584,15 +12773,18 @@ function checkCriticalLive() {
   document.querySelectorAll('#zone-saisie input[type="number"]').forEach(inp => {
     const num = parseFloat((inp.value || '').replace(',', '.'));
     if (isNaN(num)) return;
-    const label = (inp.closest('tr')?.cells?.[0]?.textContent || '').toLowerCase();
+    const label = (inp.closest('tr')?.cells?.[0]?.textContent || '').toLowerCase().trim();
     if (!label) return;
     for (const [cle, crit] of Object.entries(VALEURS_CRITIQUES)) {
-      if (label.includes(cle) || label.includes(crit.label.toLowerCase())) {
-        if (num < crit.min || num > crit.max) {
-          alerts.push({ label: crit.label, valeur: num, unite: crit.unite, sens: num < crit.min ? 'bas' : 'élevé' });
-        }
-        break;
+      const cLabel = crit.label.toLowerCase();
+      const matched = label === cle || label === cLabel
+        || label.startsWith(cle + ' ') || label.startsWith(cle + '(')
+        || label.startsWith(cLabel + ' ') || label.startsWith(cLabel + '(');
+      if (!matched) continue;
+      if (num < crit.min || num > crit.max) {
+        alerts.push({ label: crit.label, valeur: num, unite: crit.unite, sens: num < crit.min ? 'bas' : 'élevé' });
       }
+      break;
     }
   });
   if (alerts.length) {
