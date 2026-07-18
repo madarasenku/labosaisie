@@ -788,6 +788,7 @@ select {
   border-bottom: 2px solid var(--border); white-space: nowrap;
 }
 #history-table td, #users-table td { padding: 8px 11px; border-bottom: 1px solid #edf2fc; vertical-align: middle; }
+#history-table td[data-label="Actions"] { vertical-align: bottom; padding-bottom: 6px; }
 #history-table tr:hover td, #users-table tr:hover td { background: rgba(224,234,255,.5); }
 .badge-type {
   font-size: 10px; font-weight: 700; padding: 2px 7px;
@@ -868,28 +869,7 @@ select {
 /* Sur petit écran, indiquer visuellement qu'il y a plus de colonnes à voir
    en scrollant horizontalement (sinon "Valeurs normales" / "Interprétation"
    restent invisibles sans que l'utilisateur sache qu'il peut les faire défiler) */
-@media (max-width: 640px) {
-  .table-wrap {
-    background:
-      linear-gradient(to right, var(--surface) 30%, rgba(255,255,255,0)),
-      linear-gradient(to right, rgba(255,255,255,0), var(--surface) 70%) 100% 0,
-      linear-gradient(to right, rgba(26,68,128,.18), rgba(255,255,255,0)),
-      linear-gradient(to right, rgba(255,255,255,0), rgba(26,68,128,.18)) 100% 0;
-    background-repeat: no-repeat;
-    background-size: 24px 100%, 24px 100%, 10px 100%, 10px 100%;
-    background-attachment: local, local, scroll, scroll;
-  }
-  .table-wrap::after {
-    content: '⇆ Faites glisser pour voir plus';
-    display: block;
-    text-align: center;
-    font-size: 10px;
-    color: var(--text-muted);
-    background: var(--bg);
-    padding: 3px 0;
-    border-top: 1px solid var(--border);
-  }
-}
+
 
 /* ================================================================
    ÉCRAN DE CONNEXION ANIMÉ
@@ -1069,67 +1049,316 @@ select {
 }
 
 /* ================================================================
-   RESPONSIVE
+   ✅ v13.34 — RESPONSIVE COMPLET — breakpoints tous les ~50px
+   Colonnes masquées progressivement, actions sur une ligne,
+   animations fluides à chaque transition.
    ================================================================ */
+
+/* ── 768px : inputs plus grands (évite le zoom iOS) ── */
 @media (max-width: 768px) {
   input[type=text], input[type=date], input[type=number],
   input[type=password], select, textarea { font-size: 16px; }
 }
+
+/* ── 900px : padding réduit ── */
 @media (max-width: 900px) {
   main { padding: 16px 14px 50px; }
   .card { padding: 16px 14px; }
   .form-grid { grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 10px; }
-  .stats-kpi-row { grid-template-columns: repeat(2,1fr); }
-  .stats-grid { grid-template-columns: 1fr; }
 }
-/* Zone tablette / petit laptop : le header peut wrapper sur 2 lignes
-   sans être tronqué (avant, seule la hauteur fixe de 68px s'appliquait ici,
-   ce qui coupait la 2e ligne de boutons quand ils ne tenaient pas sur une seule ligne) */
+
+/* ── 900px (réduit) + 641px (min) : navigation + actions ⋯ ── */
 @media (max-width: 900px) and (min-width: 641px) {
-  header {
-    height: auto;
-    min-height: 68px;
-    flex-wrap: wrap;
-    padding: 12px 20px;
-    row-gap: 8px;
-  }
+  header { height: auto; min-height: 68px; flex-wrap: wrap; padding: 10px 20px; row-gap: 8px; }
   header nav { flex-wrap: wrap; row-gap: 8px; }
+
+  /* Colonnes masquées à cette largeur */
+  #history-table th:nth-child(5),  /* Âge */
+  #history-table td:nth-child(5),
+  #history-table th:nth-child(6),  /* Sexe */
+  #history-table td:nth-child(6),
+  #history-table th:nth-child(9),  /* Saisi par */
+  #history-table td:nth-child(9) { display: none; }
+
+  /* Actions : ligne unique avec scroll horizontal */
+  #history-table td[data-label="Actions"] {
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    vertical-align: bottom;
+    padding-bottom: 6px;
+  }
+  #history-table td[data-label="Actions"]::-webkit-scrollbar { display: none; }
+
+  /* Secondaires cachés — remplacés par ⋯ */
+  #history-table .btn-action-secondary { display: none !important; }
+  #history-table .btn-action-menu { display: inline-flex !important; }
+
+  /* Menu dropdown ⋯ */
+  .action-dropdown { position: relative; display: inline-block; }
+  .action-dropdown-content {
+    display: none; position: absolute; right: 0; top: 100%;
+    background: var(--surface-2); border: 0.5px solid var(--border);
+    border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.14);
+    z-index: 999; min-width: 170px; padding: 5px;
+    animation: login-item-in .18s ease both;
+  }
+  .action-dropdown.open .action-dropdown-content { display: block; }
+  .action-dropdown-content button {
+    display: flex !important; width: 100%; padding: 8px 11px;
+    font-size: 12px; border: none; background: none; color: var(--text-primary);
+    cursor: pointer; border-radius: 7px; gap: 8px; align-items: center; text-align: left;
+  }
+  .action-dropdown-content button:hover { background: var(--accent-light); }
 }
+
+/* ── 850px : masquer le service ── */
+@media (max-width: 850px) and (min-width: 641px) {
+  #history-table th:nth-child(7),
+  #history-table td:nth-child(7) { display: none; }
+}
+
+/* ── 750px : masquer le type, raccourcir N° dossier ── */
+@media (max-width: 750px) and (min-width: 641px) {
+  #history-table th:nth-child(8),
+  #history-table td:nth-child(8) { display: none; }
+  #history-table th:nth-child(3),
+  #history-table td:nth-child(3) { max-width: 80px; }
+}
+
+/* ── 641px → 320px : MODE CARTE — tout s'empile proprement ── */
 @media (max-width: 640px) {
   body { font-size: 13.5px; }
-  header { height: auto; flex-wrap: wrap; padding: 10px 12px; row-gap: 8px; }
+
+  /* ── Header : logo + nav sur 2 lignes ── */
+  header {
+    height: auto; flex-wrap: wrap; padding: 10px 12px; row-gap: 8px;
+    animation: header-drop .45s cubic-bezier(.22,.61,.36,1);
+  }
   .logo-sub { display: none; }
-  header nav { margin-left: 0; width: 100%; flex-wrap: wrap; gap: 6px; }
-  #user-badge { width: 100%; order: -1; }
-  .nav-btn { flex: 1 1 auto; padding: 8px 10px; font-size: 12px; text-align: center; }
+  header nav { margin-left: 0; width: 100%; flex-wrap: wrap; gap: 5px; }
+  #user-badge { width: 100%; order: -1; font-size: 11px; }
+  .nav-btn {
+    flex: 1 1 auto; padding: 8px 10px; font-size: 12px; text-align: center;
+    transition: background .2s ease, transform .15s ease;
+  }
+  .nav-btn:active { transform: scale(.96); }
+
+  /* ── Main ── */
   main { padding: 12px 10px 50px; }
   .tabs { gap: 2px; padding: 3px; margin-bottom: 16px; }
-  .tab { min-width: 86px; padding: 8px 6px; font-size: 11.5px; }
-  .tab-icon { font-size: 17px; }
-  .card { padding: 14px 12px; }
-  .form-grid, .form-grid.col-3 { grid-template-columns: 1fr; gap: 10px; }
-  .btn { width: 100%; justify-content: center; }
-  #history-table .btn, #users-table .btn { width: auto; }
-  .btn-row .btn { flex: 1 1 140px; width: auto; }
-  .abg-grid { grid-template-columns: 1fr; }
-  #view-historique .table-wrap, #view-comptes .table-wrap { border: none; overflow: visible; }
-  #history-table thead, #users-table thead { display: none; }
-  #history-table tbody, #users-table tbody { display: block; }
-  #history-table tr, #users-table tr { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; }
-  #history-table td, #users-table td { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #dde8ff; text-align: right; }
-  #history-table td:last-child, #users-table td:last-child { border-bottom: none; flex-wrap: wrap; justify-content: flex-end; }
-  #history-table td::before, #users-table td::before { content: attr(data-label); font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: left; }
+  .tab { padding: 8px 10px; font-size: 12px; }
+
+  /* ── Dashboard : 2 colonnes ── */
+  #dashboard-cards { grid-template-columns: 1fr 1fr; }
+
+  /* ── Tableau → cartes ── */
+  #view-historique .table-wrap,
+  #view-comptes .table-wrap { border: none; overflow: visible; }
+
+  #history-table thead { display: none; }
+  #history-table tbody { display: flex; flex-direction: column; gap: 10px; }
+
+  #history-table tr {
+    display: grid;
+    grid-template-columns: 28px auto 1fr auto;
+    grid-template-rows: auto auto auto auto auto auto;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    animation: login-item-in .25s cubic-bezier(.22,.61,.36,1) both;
+    transition: box-shadow .2s ease, transform .15s ease;
+  }
+  #history-table tr:active { transform: scale(.99); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+
+  /* Checkbox */
+  #history-table td:nth-child(1) {
+    grid-column: 1; grid-row: 1;
+    padding: 9px 2px 9px 10px;
+    border: none; display: flex; align-items: center;
+  }
+  #history-table td:nth-child(1)::before { display: none; }
+
+  /* Date */
+  #history-table td[data-label="Date"] {
+    grid-column: 2; grid-row: 1;
+    padding: 9px 4px; font-size: 11px; color: var(--text-muted);
+    border: none; display: flex; align-items: center;
+  }
+  #history-table td[data-label="Date"]::before { display: none; }
+
+  /* N° Dossier */
+  #history-table td[data-label="N° Dossier"] {
+    grid-column: 3; grid-row: 1;
+    padding: 9px 4px; font-size: 12px; font-weight: 700; color: var(--cpmi-deep);
+    border: none; display: flex; align-items: center;
+  }
+  #history-table td[data-label="N° Dossier"]::before { display: none; }
+
+  /* Montant dans l'en-tête */
+  #history-table td[data-label="Montant"] {
+    grid-column: 4; grid-row: 1;
+    padding: 9px 10px 9px 4px; font-size: 12px; font-weight: 800; color: #059669;
+    border: none; display: flex; align-items: center; white-space: nowrap;
+  }
+  #history-table td[data-label="Montant"]::before { display: none; }
+
+  /* Patient — toute la largeur, ligne 2 */
+  #history-table td[data-label="Patient"] {
+    grid-column: 1 / -1; grid-row: 2;
+    padding: 7px 12px;
+    background: linear-gradient(to right, #eff6ff, #f8faff);
+    border-top: 0.5px solid var(--border);
+    border-bottom: 0.5px solid var(--border);
+    font-size: 14px; font-weight: 700;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  }
+  #history-table td[data-label="Patient"]::before { display: none; }
+
+  /* Type d'analyse — ligne 3 */
+  #history-table td[data-label="Type"] {
+    grid-column: 1 / -1; grid-row: 3;
+    padding: 6px 12px 3px; border: none;
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  }
+  #history-table td[data-label="Type"]::before { display: none; }
+
+  /* Service — ligne 4, compact */
+  #history-table td[data-label="Service"] {
+    grid-column: 1 / -1; grid-row: 4;
+    padding: 2px 12px 6px; font-size: 11px; color: var(--text-muted);
+    border: none; display: flex; align-items: center; gap: 5px;
+  }
+  #history-table td[data-label="Service"]::before {
+    content: "🏥"; font-size: 11px;
+    font-weight: normal; text-transform: none; color: inherit;
+  }
+
+  /* Statut — ligne 5, à gauche */
+  #history-table td[data-label="Statut"] {
+    grid-column: 1 / -1; grid-row: 5;
+    padding: 5px 12px 6px; border-top: 0.5px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+  }
+  #history-table td[data-label="Statut"]::before { display: none; }
+
+  /* Colonnes masquées sur mobile */
+  #history-table td[data-label="Âge"],
+  #history-table td[data-label="Sexe"],
+  #history-table td[data-label="Saisi par"] { display: none; }
+
+  /* ── ACTIONS — ligne unique horizontale ────────────────── */
+  #history-table td[data-label="Actions"] {
+    grid-column: 1 / -1; grid-row: 6;
+    padding: 8px 10px;
+    border-top: 0.5px solid var(--border);
+    background: var(--surface-1);
+    display: flex;
+    flex-direction: row;          /* ← ligne, pas colonne */
+    flex-wrap: nowrap;
+    gap: 5px;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    vertical-align: bottom;
+    /* dégradé indicateur de scroll */
+    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+            mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  }
+  #history-table td[data-label="Actions"]::-webkit-scrollbar { display: none; }
+  #history-table td[data-label="Actions"]::before { display: none; }
+
+  /* Tous les boutons visibles, même taille, même ligne */
+  #history-table td[data-label="Actions"] .btn,
+  #history-table td[data-label="Actions"] .btn-action-secondary,
+  #history-table td[data-label="Actions"] .btn-action-primary {
+    display: inline-flex !important;
+    align-items: center; justify-content: center;
+    flex: 0 0 auto;
+    width: 34px; height: 34px;
+    padding: 0;
+    font-size: 15px;
+    border-radius: 8px;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  #history-table td[data-label="Actions"] .btn:active { transform: scale(.9); }
+  /* Bouton ⋯ masqué (tout est déjà visible) */
+  #history-table td[data-label="Actions"] .btn-action-menu { display: none !important; }
+
+  /* Séparateur vertical entre groupes */
+  #history-table td[data-label="Actions"] .btn-action-sep {
+    display: inline-flex !important;
+    width: 1px; height: 22px;
+    background: var(--border);
+    flex-shrink: 0; margin: 0 2px;
+  }
+
+  /* ── Fiche patient : grille 2 colonnes ── */
+  #fiche-identification .form-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  #fiche-identification .form-group:has(#p_nom),
+  #fiche-identification .form-group:has(#p_age),
+  #fiche-identification .form-group:has(#p_prescripteur_id),
+  #fiche-identification .form-group:has(#p_medecin),
+  #fiche-identification .form-group.full { grid-column: 1 / -1; }
+
+  #fiche-identif-title { flex-wrap: wrap; font-size: 11.5px; line-height: 1.4; gap: 6px 8px; }
+  #fiche-identif-title button { margin-left: 0 !important; width: 100%; }
+
+  /* ── Login ── */
   .login-card { padding: 28px 22px; }
   #toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
   .stats-kpi-row { grid-template-columns: repeat(2,1fr); gap: 10px; }
   .kpi-val { font-size: 28px; }
-  /* Titre de la fiche d'identification : empiler titre + bouton proprement */
-  #fiche-identif-title { flex-wrap: wrap; font-size: 11.5px; line-height: 1.4; gap: 6px 8px; }
-  #fiche-identif-title button { margin-left: 0 !important; width: 100%; }
 }
-@media (max-width: 380px) {
+
+/* ── 550px : raccourcir les boutons nav ── */
+@media (max-width: 550px) and (min-width: 421px) {
+  .nav-btn { font-size: 11.5px; padding: 7px 8px; }
+}
+
+/* ── 480px : forcer 2 colonnes sur le dashboard ── */
+@media (max-width: 480px) {
+  #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+  #dashboard-cards > div { padding: 9px 10px; }
+  #dashboard-cards > div > div:last-child { font-size: 16px; }
+}
+
+/* ── 420px : nav compressée ── */
+@media (max-width: 420px) {
   .nav-btn { font-size: 11px; padding: 7px 6px; }
-  .tab { min-width: 70px; font-size: 10.5px; }
+  #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 6px; }
+}
+
+/* ── 380px : très petits écrans ── */
+@media (max-width: 380px) {
+  .nav-btn { font-size: 10.5px; padding: 6px 5px; }
+  .tab { min-width: 68px; font-size: 10.5px; }
+  header { padding: 8px 10px; }
+  main { padding: 10px 8px 50px; }
+  #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 5px; }
+  /* Actions : icônes encore plus compactes */
+  #history-table td[data-label="Actions"] .btn,
+  #history-table td[data-label="Actions"] .btn-action-secondary,
+  #history-table td[data-label="Actions"] .btn-action-primary {
+    width: 30px; height: 30px; font-size: 13px;
+  }
+}
+
+/* ── 320px : écrans miniatures ── */
+@media (max-width: 320px) {
+  .nav-btn { font-size: 10px; padding: 5px 4px; }
+  #history-table td[data-label="Actions"] .btn,
+  #history-table td[data-label="Actions"] .btn-action-secondary,
+  #history-table td[data-label="Actions"] .btn-action-primary {
+    width: 28px; height: 28px; font-size: 12px;
+  }
+  .login-card { padding: 22px 16px; }
 }
 
 /* ================================================================
@@ -6718,7 +6947,7 @@ async function renderHistory(forceRefresh) {
                   const uid = _currentUser?.username;
                   const canEdit = isAdmin() || r.createdBy === uid;
                   return canEdit
-                    ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'                      + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe" onclick="showNoteModal(' + r.id + ')" title="Note interne (visible agents/admin)" aria-label="Note interne">📝</button>'
+                    ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'                      + '<button class="btn btn-action-secondary" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe" onclick="showNoteModal(' + r.id + ')" title="Note interne (visible agents/admin)" aria-label="Note interne">📝</button>'
                     : '';
                 })()
               + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="editFicheIdentif(' + r.id + ')" title="Modifier la fiche d\'accueil (patient + examens)" aria-label="Modifier la fiche d\'accueil">🗂</button>'
@@ -6738,6 +6967,7 @@ async function renderHistory(forceRefresh) {
           )
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer résultats" aria-label="Imprimer les résultats">🖨</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="printReceipt(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
+        + '<button class=\'btn btn-action-menu\' style=\'display:none;padding:4px 10px;font-size:15px;margin-left:3px;line-height:1\' onclick=\'toggleActionMenu(this)\' title=\'Actions\' aria-label=\'Actions\'>⋯</button>'
       + '</td></tr>';
   }).join('');
   if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge(); // ✅ v13.28 F10
@@ -7472,6 +7702,23 @@ async function importBackup(event) {
   if (st) st.textContent = '✅ ' + done + ' restaurée(s)' + (failed ? ' · ' + failed + ' échec(s)' : '');
   toast('✅ ' + done + ' fiche(s) restaurée(s)' + (failed ? ' — ' + failed + ' échec(s)' : ''), failed ? 'err' : 'ok');
   event.target.value = '';
+}
+
+// ✅ v13.34 — Ouvrir/fermer le menu ⋯ des actions condensées (< 900px)
+function toggleActionMenu(btn) {
+  const wrap = btn.closest('.action-dropdown') || btn.parentElement;
+  const isOpen = wrap.classList.contains('open');
+  // Fermer tous les menus ouverts
+  document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) {
+    wrap.classList.add('open');
+    // Fermer au prochain clic ailleurs
+    setTimeout(() => {
+      document.addEventListener('click', function close(e) {
+        if (!wrap.contains(e.target)) { wrap.classList.remove('open'); document.removeEventListener('click', close); }
+      });
+    }, 0);
+  }
 }
 
 function clearHistory() {
