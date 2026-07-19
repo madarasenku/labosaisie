@@ -2011,6 +2011,7 @@ select {
     <div class="card">
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Hématologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Hématologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Hématologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Hématologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('hema')">↺ Effacer</button>
@@ -2070,6 +2071,7 @@ select {
     <div class="card">
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Biochimie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Biochimie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Biochimie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Biochimie')" style="background:#dc2626;color:#fff">📄 PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('bio')">↺ Effacer</button>
@@ -2341,6 +2343,7 @@ select {
     <div class="card">
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Bactériologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Bactériologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Bactériologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Bactériologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('bacterio')">↺ Effacer</button>
@@ -2431,6 +2434,7 @@ select {
     <div class="card">
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Immuno-Sérologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Immuno-Sérologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Immuno-Sérologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Immuno-Sérologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('sero')">↺ Effacer</button>
@@ -2539,6 +2543,7 @@ select {
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Parasitologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Parasitologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Parasitologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Parasitologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('parasito')">↺ Effacer</button>
@@ -2561,6 +2566,7 @@ select {
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveRecord('Groupe sanguin')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Groupe sanguin')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Groupe sanguin')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Groupe sanguin')" style="background:#dc2626;color:#fff">📄 PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('gs')">↺ Effacer</button>
@@ -4853,13 +4859,20 @@ function ensurePanelBuilt(name) {
 
 function switchTab(name) {
   // ✅ v13.34 — Bloquer l'onglet si aucun examen de ce type n'est payé/coché
-  // (sauf en mode édition où les examens sont déjà restaurés)
-  if (!_editingRecordId && !_locksDisabled && document.getElementById('zone-saisie')?.style.display !== 'none') {
+  // UNIQUEMENT quand on est en mode saisie de résultats (zone-saisie visible
+  // ET fiche-identification masquée) — pas quand on coche depuis la fiche d'accueil
+  const _inEditMode = _editingRecordId || (typeof _editingFicheId !== 'undefined' && _editingFicheId);
+  const zoneSaisie = document.getElementById('zone-saisie');
+  const ficheIdent = document.getElementById('fiche-identification');
+  const enSaisieResultats = zoneSaisie?.style.display !== 'none'
+                         && ficheIdent?.style.display === 'none';
+
+  if (!_inEditMode && !_locksDisabled && enSaisieResultats) {
     const TAB_EXAMS = getCatalogueComplet().filter(ex => ex.tab === name);
     const hasPaid = TAB_EXAMS.some(ex => document.getElementById(ex.id)?.checked);
     if (!hasPaid && TAB_EXAMS.length > 0) {
       toast('Cochez et payez au moins un examen de ce type pour saisir les résultats', 'err');
-      return; // Ne pas changer d'onglet
+      return;
     }
   }
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -5403,20 +5416,34 @@ async function insertRecordRemote(record) {
 }
 
 // Met à jour une fiche existante (édition depuis l'historique)
-async function updateRecordRemote(id, record) {
-  // ✅ v13 — mise à jour via RPC sécurisée par jeton
+async function updateRecordRemote(id, record, opts = {}) {
+  // ✅ v13.34 — opts.onlyPatient : ne met à jour que les infos patient (pas résultats ni montant)
+  // opts.onlyResultats : ne met à jour que les résultats (montant gelé au cache)
   const est_bpn = record.type === 'Bilan prénatal' || (record.resultats?._types||[]).includes('Bilan prénatal');
-  if (!navigator.onLine || String(id).startsWith('tmp_')) return enqueueUpdate(id, record, est_bpn); // ✅ v13.4
+  if (!navigator.onLine || String(id).startsWith('tmp_')) return enqueueUpdate(id, record, est_bpn);
+
+  // Construire le payload selon ce qu'on modifie
+  const payload = { p_token: TK(), p_id: id, p_est_bpn: est_bpn };
+  if (!opts.onlyResultats) {
+    payload.p_patient = record.patient;
+    payload.p_prescripteur_id = record.prescripteur_id || null;
+  }
+  if (!opts.onlyPatient) {
+    payload.p_resultats = record.resultats;
+    // ✅ Montant gelé si on modifie uniquement les résultats
+    const cachedRecord = _dbCache.find(r => r.id === id);
+    payload.p_montant = opts.onlyResultats
+      ? (cachedRecord?.montant || record.montant || 0)
+      : (record.montant || 0);
+  } else {
+    // onlyPatient : garder montant et résultats existants
+    const cachedRecord = _dbCache.find(r => r.id === id);
+    payload.p_resultats = cachedRecord?.resultats || record.resultats;
+    payload.p_montant   = cachedRecord?.montant   || record.montant || 0;
+  }
+
   try {
-    const { data, error } = await _sb.rpc('update_resultat', {
-      p_token: TK(),
-      p_id: id,
-      p_patient: record.patient,
-      p_resultats: record.resultats,
-      p_montant: record.montant || 0,
-      p_prescripteur_id: record.prescripteur_id || null,
-      p_est_bpn: est_bpn,
-    });
+    const { data, error } = await _sb.rpc('update_resultat', payload);
     if (error) throw error;
     const idx = _dbCache.findIndex(r => r.id === id);
     const updated = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
@@ -5950,8 +5977,19 @@ async function _saveRecordImpl(type) {
     const montantEl = document.getElementById('montant-preview');
     const parTab = JSON.parse(montantEl?.dataset?.montantParTab || '{}');
     montant = parTab[tabKey] || 0;
-    if (!montant) montant = calculateMontant(type, typeResultats);
-  } catch(e) { montant = calculateMontant(type, typeResultats); }
+    // ✅ v13.34 — Ne pas recalculer le montant depuis les champs remplis
+    // (les examens non remplis feraient baisser le prix).
+    // On utilise le montant affiché dans montant-preview, figé à la coche.
+    if (!montant) {
+      const previewEl = document.getElementById('montant-preview');
+      const montantAffiche = parseInt((previewEl?.dataset?.montant || '0').replace(/\D/g,''), 10);
+      montant = montantAffiche || calcFicheTotal() || calculateMontant(type, typeResultats);
+    }
+  } catch(e) {
+    const previewEl = document.getElementById('montant-preview');
+    montant = parseInt((previewEl?.dataset?.montant || '0').replace(/\D/g,''), 10)
+              || calculateMontant(type, typeResultats);
+  }
 
   // Examens cochés pour ce tab
   const examensCochesTab = getCatalogueComplet()
@@ -6005,15 +6043,23 @@ async function _saveRecordImpl(type) {
       newMontant = montant;
     }
 
+    // ✅ v13.34 — Modifier résultats : ne touche QUE les résultats, montant gelé
     const saved = await updateRecordRemote(_editingRecordId, {
       patient: p, type: isDossierRecord(existing) ? 'Dossier' : type,
       resultats: newRes, montant: newMontant,
       prescripteur_id: prescripteurId || existing.prescripteur_id || null,
-    });
+    }, { onlyResultats: true });
     if (saved) {
       hideLoading();
       _editingRecordId = null;
       _editingType     = null;
+      // ✅ v13.34 — Restaurer updateMontantCurrent après édition
+      if (window._updateMontantCurrent_orig) {
+        window.updateMontantCurrent = window._updateMontantCurrent_orig;
+        window._updateMontantCurrent_orig = null;
+      }
+      const montantEl = document.getElementById('montant-preview');
+      if (montantEl) delete montantEl.dataset.montantGele;
       const banner = document.getElementById('edit-mode-banner');
       if (banner) banner.style.display = 'none';
       // ✅ v13.34 — Tout mettre à jour après modification
@@ -6202,7 +6248,8 @@ async function editRecord(id, typeOverride) {
     'Immuno-Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs',// BPN supprimé v13.21
   };
   const tabKey = TYPE_TO_TAB[type] || 'hema';
-  _showAllExams = true;
+  // ✅ v13.34 — Ne pas forcer _showAllExams = true en mode édition résultats
+  // applyExamLocks affiche les lignes cochées et masque les autres
 
   document.getElementById('fiche-identification').style.display = 'none';
   document.getElementById('zone-saisie').style.display = '';
@@ -6211,6 +6258,21 @@ async function editRecord(id, typeOverride) {
 
   loadResultsIntoForm(type, res);
   ensureInterpFresh(type); // ✅ v13.1 — recalcule les interp depuis les valeurs rechargées
+
+  // ✅ v13.34 — Geler le montant original de la fiche pendant l'édition
+  // (évite que la restauration des cases cochées recalcule un nouveau prix)
+  const montantOriginal = record.montant || 0;
+  const montantEl = document.getElementById('montant-preview');
+  if (montantEl) {
+    montantEl.dataset.montantGele = montantOriginal;
+    montantEl.textContent = montantOriginal.toLocaleString('fr-FR') + ' F';
+  }
+  // Surcharger updateMontantCurrent temporairement pour ne pas toucher au montant
+  window._updateMontantCurrent_orig = window.updateMontantCurrent;
+  window.updateMontantCurrent = function() {
+    if (_editingRecordId) return; // gelé en mode édition
+    window._updateMontantCurrent_orig && window._updateMontantCurrent_orig();
+  };
   // ✅ v13.14 — En édition, on restaure les examens PAYÉS dans la fiche : leurs
   // champs sont éditables, les autres restent 🔒 (il faut les cocher pour saisir).
   if (typeof restoreFicheFromRecord === 'function' && restoreFicheFromRecord(record)) {
@@ -6275,10 +6337,17 @@ function showEditTypeModal(id, types) {
 
 function cancelEdit() {
   _editingRecordId = null;
+  // ✅ v13.34 — Restaurer updateMontantCurrent si gelé
+  if (window._updateMontantCurrent_orig) {
+    window.updateMontantCurrent = window._updateMontantCurrent_orig;
+    window._updateMontantCurrent_orig = null;
+  }
+  const montantEl = document.getElementById('montant-preview');
+  if (montantEl) delete montantEl.dataset.montantGele;
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
   newPatient();
-  if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
+  if (typeof applyExamLocks === 'function') applyExamLocks();
 }
 
 // ✅ v13.29 — Modifier la fiche d'accueil (patient + examens) sans changer le numéro de dossier
@@ -6332,7 +6401,14 @@ async function editFicheIdentif(id) {
   // Restaurer les examens cochés et leurs prix depuis le dossier existant
   if (typeof restoreFicheFromRecord === 'function') restoreFicheFromRecord(record);
 
-  if (typeof updateMontantCurrent === 'function') updateMontantCurrent();
+  // ✅ v13.34 — En mode editFicheIdentif, le prix est recalculable librement
+  // (l'utilisateur peut cocher/décocher des examens)
+  // Restaurer updateMontantCurrent si gelé par un mode édition précédent
+  if (window._updateMontantCurrent_orig) {
+    window.updateMontantCurrent = window._updateMontantCurrent_orig;
+    window._updateMontantCurrent_orig = null;
+  }
+  if (typeof calcFicheTotal === 'function') calcFicheTotal();
 
   // Bandeau d'édition sur la fiche d'accueil
   let banner = document.getElementById('fiche-edit-banner');
@@ -7039,12 +7115,11 @@ async function renderHistory(forceRefresh) {
               + (() => {
                   const uid = _currentUser?.username;
                   const canEdit = isAdmin() || r.createdBy === uid;
+                  // ✅ v13.34 — Bouton unifié
                   return canEdit
-                    ? '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditPatientModal(' + r.id + ')" title="Modifier les informations patient" aria-label="Modifier patient">👤</button>'                      + '<button class="btn btn-action-secondary" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe" onclick="showNoteModal(' + r.id + ')" title="Note interne (visible agents/admin)" aria-label="Note interne">📝</button>'
+                    ? '<button class="btn btn-action-secondary" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditUnifie(' + r.id + ')" title="Modifier" aria-label="Modifier">✏️ Modifier</button>'
                     : '';
                 })()
-              + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="editFicheIdentif(' + r.id + ')" title="Modifier la fiche d\'accueil (patient + examens)" aria-label="Modifier la fiche d\'accueil">🗂</button>'
-              + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#fef3c7;color:#92400e" onclick="editRecord(' + r.id + ')" title="Modifier les résultats" aria-label="Modifier les résultats">✏️</button>'
           )
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF" aria-label="Exporter en PDF">📄</button>'
@@ -7315,6 +7390,12 @@ async function restoreDossier(id) {
 // ✅ v13.31 — Modal d'édition rapide des informations patient
 // Accessible au propriétaire de la fiche et à l'admin.
 function showEditPatientModal(id) {
+  // ✅ v13.34 — Geler le montant original pendant la modif des infos patient
+  const recPat = getDB().find(x => x.id === id);
+  if (recPat) {
+    const montantEl = document.getElementById('montant-preview');
+    if (montantEl) montantEl.dataset.montantGelePat = recPat.montant || 0;
+  }
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
   const uid = _currentUser?.username;
@@ -7437,13 +7518,14 @@ async function savePatientEdit(id) {
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Enregistrement…'; }
 
   try {
+    // ✅ v13.34 — Modifier infos patient : ne touche QUE le patient, prix inchangé
     const updated = await updateRecordRemote(id, {
       type:           record.type,
       patient:        updatedPatient,
       resultats:      record.resultats,
       montant:        record.montant,
       prescripteur_id: record.prescripteur_id,
-    });
+    }, { onlyPatient: true });
 
     if (!updated) throw new Error('La mise à jour a échoué.');
 
@@ -7573,6 +7655,101 @@ async function bulkDelete() {
 // ✅ v13.33 — clearHistory retiré de l'interface ; stub conservé
 //   pour éviter les ReferenceError si un onglet ouvert avant la mise à
 //   jour tentait d'appeler la fonction.
+// ✅ v13.34 — Bouton modifier unifié : une modale, 3 actions
+function showEditUnifie(id) {
+  const record = getDB().find(r => r.id === id);
+  if (!record) { toast('Fiche introuvable', 'err'); return; }
+  const p = record.patient || {};
+  const types = getRecordTypes(record);
+  const nom = esc(p.nom || '—');
+  const dossier = esc(p.dossier || '—');
+
+  const old = document.getElementById('edit-unifie-modal');
+  if (old) old.remove();
+
+  const bd = document.createElement('div');
+  bd.id = 'edit-unifie-modal';
+  bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const typesChoix = types.length > 1
+    ? types.map(t => `<button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();editRecord(${id},'${t}')"
+        style="width:100%;padding:11px 14px;text-align:left;margin-bottom:6px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
+        ✏️ Modifier les résultats — <strong>${esc(t)}</strong></button>`).join('')
+    : `<button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();editRecord(${id})"
+        style="width:100%;padding:11px 14px;text-align:left;margin-bottom:6px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
+        ✏️ Modifier les résultats — <strong>${esc(types[0] || 'Analyse')}</strong></button>`;
+
+  bd.innerHTML = `
+    <div style="background:var(--surface-2);border-radius:16px;padding:24px 26px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:3px">✏️ Modifier le dossier</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px">${dossier} · ${nom}</div>
+      ${typesChoix}
+      <button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();editFicheIdentif(${id})"
+        style="width:100%;padding:11px 14px;text-align:left;margin-bottom:6px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
+        🗂 Modifier les examens &amp; informations patient</button>
+      <button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();showNoteModal(${id})"
+        style="width:100%;padding:11px 14px;text-align:left;margin-bottom:14px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
+        📝 Note interne</button>
+      <button class="btn btn-outline" onclick="document.getElementById('edit-unifie-modal').remove()"
+        style="width:100%;padding:7px">Annuler</button>
+    </div>`;
+
+  document.body.appendChild(bd);
+  bd.addEventListener('click', e => { if (e.target === bd) bd.remove(); });
+}
+
+// ✅ v13.34 — Enregistrer et passer à l'onglet SUIVANT dans les examens cochés
+// Ex : Biochimie → Immuno-Sérologie → Parasitologie selon ce qui est coché
+const TAB_ORDER = ['hema','bio','bacterio','sero','parasito','gs','bpn'];
+const TAB_TO_TYPE = {
+  hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
+  sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin', bpn:'Bilan prénatal'
+};
+
+async function saveThenNext(type) {
+  await saveRecord(type);
+  // Trouver l'onglet courant
+  const typeToTab = {
+    'Hématologie':'hema','Biochimie':'bio','Bactériologie':'bacterio',
+    'Immuno-Sérologie':'sero','Parasitologie':'parasito','Groupe sanguin':'gs','Bilan prénatal':'bpn'
+  };
+  const currentTab = typeToTab[type] || 'hema';
+  const currentIdx = TAB_ORDER.indexOf(currentTab);
+
+  // Chercher le prochain onglet qui a au moins un examen coché
+  let nextTab = null;
+  for (let i = currentIdx + 1; i < TAB_ORDER.length; i++) {
+    const tabId = TAB_ORDER[i];
+    const tabEl = document.getElementById('tab-' + tabId);
+    if (!tabEl) continue;
+    // Vérifier si au moins un examen de cet onglet est coché
+    const cat = getCatalogueComplet().filter(ex => ex.tab === tabId);
+    const hasChecked = cat.some(ex => document.getElementById(ex.id)?.checked);
+    if (hasChecked) { nextTab = tabId; break; }
+  }
+
+  if (nextTab) {
+    setTimeout(() => {
+      switchTab(nextTab);
+      toast('➡ Passez à ' + (TAB_TO_TYPE[nextTab] || nextTab), 'ok');
+    }, 150);
+  } else {
+    // Plus d'onglet suivant — réinitialiser pour le prochain patient
+    setTimeout(() => {
+      const nomEl = document.getElementById('p_nom');
+      if (nomEl) { nomEl.value = ''; nomEl.focus(); }
+      ['p_age','p_ddn'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      const lblEl = document.getElementById('p_age_label');
+      if (lblEl) lblEl.textContent = '';
+      regenDossier();
+      switchTab(TAB_ORDER[0]);
+      toast('✅ Tous les examens enregistrés — patient suivant', 'ok');
+    }, 150);
+  }
+}
+
 // ✅ v13.33 — Navigation sous-onglets admin
 function adminShowMain(id, btn) {
   document.querySelectorAll('#view-comptes .admin-section').forEach(s => s.classList.remove('active'));
@@ -10841,33 +11018,40 @@ let _locksDisabled = false; // ✅ v13.14 — désactive les verrous (ex. ancien
 let _applyingLocks = false; // ✅ v13.16 — garde anti-réentrance (l'effacement déclenche des events)
 
 function applyExamLocks() {
-  // Verrous désactivés uniquement pour les anciens dossiers dont on ne connaît
-  // pas les examens payés (sinon impossible de les éditer). Sinon, on applique.
   if (_applyingLocks) return;
+
+  // ✅ v13.34 — Mode modification accueil (_editingFicheId) :
+  // tout afficher et tout débloquer — l'utilisateur peut cocher/décocher librement
+  if (typeof _editingFicheId !== 'undefined' && _editingFicheId) {
+    unlockAllFields();
+    getCatalogueComplet().forEach(ex => {
+      const row = document.getElementById('row_' + ex.id);
+      if (row) row.style.display = '';
+    });
+    return;
+  }
+
   if (_locksDisabled) { unlockAllFields(); return; }
   _applyingLocks = true;
   try {
-  let cat;
-  try { cat = getCatalogueComplet(); } catch(e) { return; }
-  const checked = {};
-  cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
-  cat.forEach(ex => {
-    // ✅ v13.34 — Masquer la ligne entière si l'examen n'est pas payé,
-    // plutôt que de juste griser les champs (verrouillage seul insuffisant)
-    const row = document.getElementById('row_' + ex.id);
-    if (row) {
-      const isPaid = checked[ex.id];
-      row.style.display = isPaid ? '' : 'none';
-    }
-    examFieldIds(ex.id).forEach(fid => {
-      const el = document.getElementById(fid);
-      if (el) setFieldLocked(el, !checked[ex.id]);
+    let cat;
+    try { cat = getCatalogueComplet(); } catch(e) { return; }
+    const checked = {};
+    cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
+    cat.forEach(ex => {
+      // Masquer la ligne si l'examen n'est pas payé/coché
+      const row = document.getElementById('row_' + ex.id);
+      if (row) row.style.display = checked[ex.id] ? '' : 'none';
+      // Verrouiller les champs si non coché
+      examFieldIds(ex.id).forEach(fid => {
+        const el = document.getElementById(fid);
+        if (el) setFieldLocked(el, !checked[ex.id]);
+      });
     });
-  });
-  // Bactério : verrou global du panneau si aucun examen bactério coché
-  const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
-  document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
-    .forEach(el => setFieldLocked(el, !bacOn));
+    // Bactério : verrou global si aucun examen bactério coché
+    const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
+    document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
+      .forEach(el => setFieldLocked(el, !bacOn));
   } finally { _applyingLocks = false; }
 }
 
