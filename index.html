@@ -11015,12 +11015,14 @@ function applyExamLocks() {
   if (_applyingLocks) return;
 
   // ✅ v13.34 — Mode modification accueil (_editingFicheId) :
-  // tout afficher et tout débloquer — l'utilisateur peut cocher/décocher librement
+  // tout débloquer et afficher toutes les sections de résultats
   if (typeof _editingFicheId !== 'undefined' && _editingFicheId) {
     unlockAllFields();
     getCatalogueComplet().forEach(ex => {
-      const row = document.getElementById('row_' + ex.id);
-      if (row) row.style.display = '';
+      if (ex.section) {
+        const sec = document.getElementById(ex.section);
+        if (sec) sec.style.display = '';
+      }
     });
     return;
   }
@@ -11033,14 +11035,24 @@ function applyExamLocks() {
     const checked = {};
     cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
     cat.forEach(ex => {
-      // Masquer la ligne si l'examen n'est pas payé/coché
-      const row = document.getElementById('row_' + ex.id);
-      if (row) row.style.display = checked[ex.id] ? '' : 'none';
-      // Verrouiller les champs si non coché
+      // ✅ v13.34 — NE PAS masquer row_ex_* : ce sont les CASES À COCHER
+      // de la fiche d'accueil, pas les lignes de résultats.
+      // On verrouille uniquement les CHAMPS de saisie des résultats
+      // (dans les panneaux) quand l'examen n'est pas coché.
       examFieldIds(ex.id).forEach(fid => {
         const el = document.getElementById(fid);
         if (el) setFieldLocked(el, !checked[ex.id]);
       });
+      // Masquer/afficher la SECTION de résultats correspondante (sec-*)
+      if (ex.section) {
+        const sec = document.getElementById(ex.section);
+        if (sec) {
+          // Une section peut regrouper plusieurs examens : visible si AU MOINS un coché
+          const examsInSection = cat.filter(e => e.section === ex.section);
+          const anyChecked = examsInSection.some(e => checked[e.id]);
+          sec.style.display = anyChecked ? '' : 'none';
+        }
+      }
     });
     // Bactério : verrou global si aucun examen bactério coché
     const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
