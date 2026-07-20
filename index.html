@@ -7390,12 +7390,6 @@ async function restoreDossier(id) {
 // ✅ v13.31 — Modal d'édition rapide des informations patient
 // Accessible au propriétaire de la fiche et à l'admin.
 function showEditPatientModal(id) {
-  // ✅ v13.34 — Geler le montant original pendant la modif des infos patient
-  const recPat = getDB().find(x => x.id === id);
-  if (recPat) {
-    const montantEl = document.getElementById('montant-preview');
-    if (montantEl) montantEl.dataset.montantGelePat = recPat.montant || 0;
-  }
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
   const uid = _currentUser?.username;
