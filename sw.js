@@ -1,11 +1,13 @@
 /* ============================================================
-   LaboSaisie CPMI — Service Worker v13.34+
+   LaboSaisie CPMI — Service Worker v13.36
    Stratégie : Network-First avec fallback cache
    (réseau prioritaire → toujours la version à jour ;
     si hors-ligne → version en cache)
+   v13.36 : bump cache → cpmi-labo-v2 (purge ancien cache
+   qui pouvait contenir index.html avec ref print.js externe)
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v1';
+const CACHE = 'cpmi-labo-v2';
 
 /* Pré-cacher les fichiers essentiels à l'installation */
 const PRECACHE = [
