@@ -770,6 +770,8 @@ async function buildAndPrint(r) {
 
 // ✅ v13.35 — Construire les lignes vides pour les examens cochés sans résultats
 function buildEmptyRows(type, res, cochesList) {
+  // ✅ v13.35 fix — robustesse : accepter tableau ou objet {type:[...]}
+  if (cochesList && !Array.isArray(cochesList)) cochesList = Object.values(cochesList).flat();
   if (!cochesList || !cochesList.length) return '';
   // Paramètres connus pour ce type avec leurs unités et valeurs normales
   const PARAMS_META = {};

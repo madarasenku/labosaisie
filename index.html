@@ -9184,7 +9184,10 @@ function isValFilled(v) {
 function collectPendingForType(res, coches) {
   const cat = getCatalogueComplet();
   const out = [];
-  (coches || []).forEach(label => {
+  // ✅ v13.35 fix — robustesse : coches doit être un tableau
+  let list = coches || [];
+  if (!Array.isArray(list)) list = Object.values(list).flat();
+  list.forEach(label => {
     const ex = cat.find(e => e.label === label);
     const rows = ex ? examExpectedRows(ex.id) : [];
     if (rows.length) {
@@ -9454,16 +9457,22 @@ function getPendingCheckedExams(record, type) {
     let all = [];
     (res0._types || []).forEach(t => {
       const sub = res0[t] || {};
-      all = all.concat(collectPendingForType(sub, sub._examens_coches || []));
+      // ✅ v13.35 fix — coches stockées au niveau dossier : res0._examens_coches[t]
+      let coches = res0._examens_coches?.[t] || sub._examens_coches || [];
+      // Robustesse : si c'est un objet {type:[...]}, extraire le tableau du type
+      if (coches && !Array.isArray(coches)) coches = coches[t] || Object.values(coches).flat() || [];
+      all = all.concat(collectPendingForType(sub, Array.isArray(coches) ? coches : []));
     });
     return all;
   }
   // Cas simple : un seul type
-  const coches = isDossierRecord(record)
+  let coches = isDossierRecord(record)
     ? (res0._examens_coches?.[type] || [])
     : (res0['_examens_coches'] || []);
+  // ✅ v13.35 fix — robustesse : garantir un tableau
+  if (coches && !Array.isArray(coches)) coches = coches[type] || Object.values(coches).flat() || [];
   const res = getRecordResultats(record, type) || {};
-  return collectPendingForType(res, coches);
+  return collectPendingForType(res, Array.isArray(coches) ? coches : []);
 }
 
 function buildFicheExamens() {
