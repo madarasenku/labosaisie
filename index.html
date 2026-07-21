@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="CPMI Labo">
 <meta name="description" content="Laboratoire d'analyses médicales — CPMI Grand-Bassam. Saisie, historique, caisse et statistiques.">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
 <!-- ⚠ SÉCURITÉ (SRI) — Pour verrouiller ces CDN contre toute altération,
      ajoutez un attribut integrity="sha384-…" à chaque balise ci-dessous.
@@ -4829,9 +4830,8 @@ function initSupabase() {
     console.error('[LaboSaisie] Librairie Supabase non chargée (vérifiez votre connexion internet).');
     return false;
   }
-  if (SUPABASE_URL.includes('uvxxbihlagfncraokqlg') || SUPABASE_KEY.includes('RPgz6piVcNONZOOcLmOCQw')) {
-    console.warn('[LaboSaisie] ⚠ Vous utilisez la configuration Supabase par défaut. Remplacez SUPABASE_URL et SUPABASE_KEY par vos propres identifiants.');
-  }
+  // ✅ v13.36 — Ces identifiants SONT ceux de production du CPMI (pas des placeholders).
+  // L'ancien avertissement « configuration par défaut » était un faux positif → retiré.
   try {
     _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     return true;
@@ -10730,12 +10730,15 @@ document.addEventListener('keydown', e => {
   const ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==';
   // Construire le manifest dynamiquement et l'attacher via Blob URL
   try {
+    // Manifest servi via blob: → les URLs relatives ('.') ne peuvent pas être
+    // résolues (base blob invalide). On calcule des URLs ABSOLUES depuis la page.
+    const _baseUrl = new URL('.', location.href).href;
     const manifest = {
       name: 'CPMI — Laboratoire Grand-Bassam',
       short_name: 'CPMI Labo',
       description: "Laboratoire d'analyses médicales du Centre de Protection Mère et Infantile.",
-      start_url: '.',
-      scope: '.',
+      start_url: _baseUrl,
+      scope: _baseUrl,
       display: 'standalone',
       orientation: 'any',
       background_color: '#1a4480',
