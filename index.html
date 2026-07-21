@@ -1697,6 +1697,7 @@ select {
       <span id="rappel-dossier" style="font-size:11.5px;background:var(--accent-light);color:var(--cpmi-deep);padding:2px 10px;border-radius:99px;font-weight:700"></span>
       <span id="rappel-examens" style="font-size:11.5px;color:var(--text-muted)"></span>
       <button onclick="document.getElementById('zone-saisie').style.display='none';document.getElementById('fiche-identification').style.display=''" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:12.5px;color:var(--cpmi-mid);font-weight:600;font-family:inherit">← Retour à la fiche</button>
+      <div id="rappel-saved-analyses" style="font-size:11px;color:var(--text-muted);margin-top:2px;width:100%"></div>
     </div>
 
   <!-- TABS -->
@@ -11910,4 +11911,85 @@ async function saveRistourneTaux() {
   renderRistournesMois();
 }
 // ✅ v13.35 — Code ristournes PDF/Excel déplacé dans print.js
+</script>
+
+</div><!-- /#app-root -->
+
+<!-- ✅ v13.7 — Modale d'édition de compte (remplace confirm + prompt) -->
+<div id="user-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+  <div class="modal-box">
+    <div class="modal-title" id="user-modal-title">Modifier le compte</div>
+    <input type="hidden" id="um_id">
+    <div id="um_name" style="font-weight:700;margin-bottom:10px"></div>
+    <label class="modal-label" for="um_role">Rôle</label>
+    <select class="modal-input" id="um_role" aria-label="Rôle du compte">
+      <option value="agent">Agent</option>
+      <option value="admin">Administrateur</option>
+    </select>
+    <label class="modal-label" for="um_password">Nouveau mot de passe <span style="font-weight:400;color:var(--text-muted)">(laisser vide pour ne pas changer)</span></label>
+    <input class="modal-input" id="um_password" type="password" autocomplete="new-password" aria-label="Nouveau mot de passe">
+    <div id="um-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeUserModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitUserModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.1 — Modale d'édition prescripteur (remplace les prompt() en série) -->
+<div id="presc-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="presc-modal-title">
+  <div class="modal-box">
+    <div class="modal-title" id="presc-modal-title">Modifier le prescripteur</div>
+    <input type="hidden" id="pm_id">
+    <label class="modal-label" for="pm_nom">Nom</label>
+    <input class="modal-input" id="pm_nom" type="text" aria-label="Nom du prescripteur">
+    <label class="modal-label" for="pm_spec">Spécialité</label>
+    <input class="modal-input" id="pm_spec" type="text" aria-label="Spécialité">
+    <label class="modal-label" for="pm_struct">Structure</label>
+    <input class="modal-input" id="pm_struct" type="text" aria-label="Structure">
+    <label class="modal-label" for="pm_taux">Taux de ristourne (%)</label>
+    <input class="modal-input" id="pm_taux" type="number" min="0" max="100" step="0.5" aria-label="Taux de ristourne en pourcentage">
+    <div id="pm-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePrescModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitPrescModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vue publique de vérification (QR code) -->
+<div id="share-view" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a4480,#2563eb,#0d9488);align-items:center;justify-content:center;z-index:3000;padding:20px">
+  <div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Nunito',sans-serif;text-align:center">
+    <div style="width:44px;height:44px;border:4px solid #e0eaff;border-top-color:#1a4480;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px"></div>
+    <div style="font-size:14px;color:#4a5c82;font-weight:600">Vérification du dossier…</div>
+  </div>
+</div>
+
+<!-- ✅ v13.28 — Modale de changement de mot de passe obligatoire (première connexion) -->
+<div id="first-login-modal" class="modal-backdrop" style="display:none;z-index:3200" role="dialog" aria-modal="true" aria-labelledby="fl-title">
+  <div class="modal-box">
+    <div class="modal-title" id="fl-title">🔐 Changement de mot de passe obligatoire</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+      Pour votre sécurité, vous devez définir un nouveau mot de passe avant d'accéder à l'application.
+    </p>
+    <label class="modal-label" for="fl_old">Mot de passe actuel</label>
+    <input class="modal-input" id="fl_old" type="password" autocomplete="current-password">
+    <label class="modal-label" for="fl_new">Nouveau mot de passe <span style="font-weight:400;color:var(--text-muted)">(min. 8 caractères, au moins 1 chiffre)</span></label>
+    <input class="modal-input" id="fl_new" type="password" autocomplete="new-password">
+    <label class="modal-label" for="fl_confirm">Confirmer le mot de passe</label>
+    <input class="modal-input" id="fl_confirm" type="password" autocomplete="new-password">
+    <div id="fl-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="submitFirstLoginPassword()">Changer le mot de passe</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-label" id="loading-label">Chargement…</div>
+</div>
+
 <script src="print.js"></script>
+</body>
+</html>
