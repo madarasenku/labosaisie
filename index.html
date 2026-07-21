@@ -10919,10 +10919,10 @@ function setPaiementStatus(id, status, infos) {
   localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
   // Persister dans Supabase via p_patient update
   if (_sb && TK() && r) {
-    _sb.rpc('update_dossier_patient', {
+    Promise.resolve(_sb.rpc('update_dossier_patient', {
       p_token: TK(), p_id: id,
       p_patient: r.patient
-    }).catch(() => {});
+    })).catch(() => {});
   }
   updateBandeauPaiement();
   if (typeof renderCaisse === 'function') renderCaisse();
