@@ -7787,10 +7787,13 @@ async function saveNote(id) {
 
   // En ligne : RPC dédiée
   try {
-    const { error } = await _sb.rpc('update_note_dossier', {
+    const { data, error } = await _sb.rpc('update_note_dossier', {
       p_token: TK(), p_id: id, p_note: note
     });
     if (error) throw error;
+    if (data === 'unauthorized') { toast('Session expirée — reconnectez-vous', 'err'); return; }
+    if (data === 'forbidden')    { toast('Action non autorisée', 'err'); return; }
+    if (data === 'not_found')    { toast('Fiche introuvable', 'err'); return; }
     document.getElementById('note-modal-bd')?.remove();
     renderHistory();
     toast(note ? '📝 Note enregistrée' : '📝 Note effacée', 'ok');
