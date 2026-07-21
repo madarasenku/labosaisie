@@ -494,6 +494,81 @@ function escHTML(s) {
 }
 
 
+
+// ============================================================
+// ✅ v13.35 — RÉFÉRENCE UNIQUE DOCUMENT
+// Format : CPM-XXXX-YYYY (4 chars alphanumériques + année)
+// Générée une fois par dossier, stockée dans patient.ref_doc
+// ============================================================
+function generateRefUnique() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans 0/O/1/I pour lisibilité
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return 'CPM-' + code + '-' + new Date().getFullYear();
+}
+
+function getOrCreateRef(record) {
+  // Réutiliser la ref existante si déjà générée
+  if (record?.patient?.ref_doc) return record.patient.ref_doc;
+  const ref = generateRefUnique();
+  // Stocker dans le record en mémoire (persisté au prochain save)
+  if (record?.patient) record.patient.ref_doc = ref;
+  return ref;
+}
+
+// ✅ v13.35 — Signature cursive SVG à partir du nom
+// Génère un paraphe stylisé illisible mais unique par nom
+function generateSignatureSVG(name, width=160, height=45) {
+  if (!name || name === '—') return '';
+  // Seed déterministe depuis le nom
+  let seed = 0;
+  for (let i = 0; i < name.length; i++) seed = (seed * 31 + name.charCodeAt(i)) & 0xffffffff;
+  const rng = () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; };
+
+  const cx = width / 2, cy = height / 2;
+  const paths = [];
+
+  // Trait principal — ondulation centrale
+  const pts = [];
+  const steps = 10 + Math.floor(rng() * 6);
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const x = 12 + t * (width - 24);
+    const amp = 8 + rng() * 10;
+    const freq = 1.5 + rng() * 1.5;
+    const y = cy + Math.sin(t * Math.PI * freq + rng() * 2) * amp * (1 - Math.abs(t - 0.5) * 0.8);
+    pts.push([x, y]);
+  }
+  // Convertir en courbe de Bézier
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i-1], cur = pts[i];
+    const cpx = (prev[0] + cur[0]) / 2;
+    d += ` Q ${cpx.toFixed(1)} ${prev[1].toFixed(1)} ${cur[0].toFixed(1)} ${cur[1].toFixed(1)}`;
+  }
+  paths.push(`<path d="${d}" fill="none" stroke="#1e3a8a" stroke-width="${1.2 + rng() * 0.8}" stroke-linecap="round"/>`);
+
+  // Boucle montante (début de prénom)
+  const loopX = 12 + rng() * 20;
+  const loopH = 15 + rng() * 12;
+  paths.push(`<path d="M ${loopX} ${cy+5} C ${loopX-4} ${cy-loopH} ${loopX+10} ${cy-loopH+4} ${loopX+6} ${cy+2}" fill="none" stroke="#1e3a8a" stroke-width="1.1" stroke-linecap="round"/>`);
+
+  // Trait de soulignement partiel
+  const ulStart = 8 + rng() * 10;
+  const ulEnd = width - 8 - rng() * 15;
+  const ulY = cy + 14 + rng() * 6;
+  paths.push(`<path d="M ${ulStart} ${ulY} Q ${(ulStart+ulEnd)/2} ${ulY + (rng()-0.5)*4} ${ulEnd} ${ulY - rng()*3}" fill="none" stroke="#1e3a8a" stroke-width="0.8" stroke-linecap="round"/>`);
+
+  // Point final (paraphe)
+  const dotX = ulEnd + 3 + rng() * 5;
+  paths.push(`<circle cx="${dotX}" cy="${ulY - 1}" r="${0.8 + rng() * 0.6}" fill="#1e3a8a"/>`);
+
+  // Initiales lisibles en petite taille (optionnel — donne l'ancrage)
+  const initials = name.split(/[\s._-]+/).map(w => w[0]||'').join('').substring(0,2).toUpperCase();
+  paths.push(`<text x="10" y="${cy+3}" font-family="Georgia,serif" font-style="italic" font-size="9" fill="#1e3a8a" opacity="0.35">${initials}</text>`);
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${paths.join('')}</svg>`;
+}
 // ============================================================
 // QR CODE — Génération asynchrone via QRCode.js (CDN)
 // ============================================================
@@ -530,6 +605,10 @@ async function buildAndPrint(r) {
   const now = new Date();
 
   let html = `
+    <style>
+      .print-empty-row td { background: #fafafa !important; }
+      .print-empty-row td:nth-child(2) { border-bottom: 1px dotted #9ca3af !important; min-width: 80px; }
+    </style>
     <div class="print-header">
       <div class="print-header-bar"></div>
       <div class="print-header-content">
@@ -569,24 +648,55 @@ async function buildAndPrint(r) {
       </table>
     </div>`;
 
-  // ── QR Code de vérification ────────────────────────────────
-  // Si le dossier a un share_token, le QR pointe vers la page publique de l'app.
-  // Sinon, fallback sur les infos texte (anciens dossiers sans token).
+  // ── ✅ v13.35 — Double QR + UUID + technicien ───────────────
   const shareToken = p?.share_token;
-  const qrContent = shareToken
+  const refDoc     = getOrCreateRef(r);
+  const techName   = (typeof _currentUser !== 'undefined' && _currentUser?.username) || '—';
+
+  // QR 1 : vérification en ligne (share_token) ou infos dossier
+  const qrContent1 = shareToken
     ? `${APP_PUBLIC_URL}?share=${shareToken}`
-    : `CPMI Grand-Bassam\nDossier: ${p?.dossier||'—'}\nPatient: ${(p?.nom||'').toUpperCase()}\nDate: ${p?.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}\nAnalyses: ${getDisplayType(r)}`;
-  const qrUrl = await generateQRDataURL(qrContent, 100);
-  if (qrUrl) {
-    const qrLabel = shareToken ? 'Vérifier en ligne' : 'Scan = info dossier';
-    html += `<div style="float:right;margin:-80px 0 10px 10px;text-align:center">
-      <img src="${qrUrl}" width="80" height="80" style="display:block;border:1px solid #e5e7eb;border-radius:4px">
-      <div style="font-size:8px;color:#9ca3af;margin-top:2px">${qrLabel}</div>
-    </div>`;
-  }
+    : `CPMI Grand-Bassam | Ref: ${refDoc} | Dossier: ${p?.dossier||'—'} | Patient: ${(p?.nom||'').toUpperCase()} | Date: ${p?.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}`;
+  // QR 2 : infos patient compactes (toujours disponible offline)
+  const qrContent2 = `CPMI GRAND-BASSAM\nREF: ${refDoc}\nDOSSIER: ${p?.dossier||'—'}\nPATIENT: ${(p?.nom||'').toUpperCase()}\nANALYSE: ${getDisplayType(r)}\nDATE: ${p?.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}\nTECH: ${techName}`;
+
+  const [qrUrl1, qrUrl2] = await Promise.all([
+    generateQRDataURL(qrContent1, 90),
+    generateQRDataURL(qrContent2, 90),
+  ]);
+
+  html += `<div style="float:right;margin:-90px 0 10px 12px;text-align:center;display:flex;flex-direction:column;gap:4px">
+    ${qrUrl1 ? `<div style="text-align:center">
+      <img src="${qrUrl1}" width="72" height="72" style="display:block;border:2px solid #1e3a8a;border-radius:4px;margin:0 auto">
+      <div style="font-size:7px;color:#1e3a8a;font-weight:700;margin-top:1px">${shareToken ? 'Vérifier en ligne' : 'Info dossier'}</div>
+    </div>` : ''}
+    ${qrUrl2 ? `<div style="text-align:center;margin-top:3px">
+      <img src="${qrUrl2}" width="72" height="72" style="display:block;border:1px solid #9ca3af;border-radius:4px;margin:0 auto">
+      <div style="font-size:7px;color:#6b7280;margin-top:1px">Infos patient</div>
+    </div>` : ''}
+    <div style="font-size:7px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:3px;margin-top:1px">Réf. ${refDoc}</div>
+  </div>`;
 
   // ── Sections selon le type ──────────────────────────────────
   html += buildPrintSections(r.type, res, r.patient);
+
+  // ✅ v13.35 — Cases vides pour examens cochés sans résultats
+  if (isDossierRecord(r)) {
+    (res._types || []).forEach(t => {
+      const coches = res._examens_coches?.[t] || [];
+      const typeRes = res[t] || {};
+      const emptyHtml = buildEmptyRows(t, typeRes, coches);
+      if (emptyHtml) {
+        html += `<div class="print-composite-section" style="margin-top:12px">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;border-bottom:1.5px solid #d1d5db;padding-bottom:3px;margin-bottom:6px">${t} — à compléter</div>
+          ${emptyHtml}
+        </div>`;
+      }
+    });
+  } else {
+    const coches = res._examens_coches || [];
+    html += buildEmptyRows(r.type, res, Array.isArray(coches) ? coches : Object.values(coches).flat());
+  }
 
   // ✅ v12.4 — Composition BPN (forfait fixe)
   if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
@@ -627,13 +737,22 @@ async function buildAndPrint(r) {
         </div>
         <div class="print-sig-box" style="flex:1">
           <div class="print-sig-label">Signature du technicien</div>
-          <div class="print-sig-zone" style="height:22mm"></div>
+          <div class="print-sig-zone" style="height:18mm;padding:2px 4px;display:flex;flex-direction:column;justify-content:center">
+            ${generateSignatureSVG(techName, 150, 38)}
+            <div style="font-size:7pt;color:#1e3a8a;font-weight:600;margin-top:2px;letter-spacing:.3px">${techName}</div>
+            <div style="font-size:6.5pt;color:#9ca3af">Technicien de laboratoire · CPMI Grand-Bassam</div>
+          </div>
         </div>
-        <div class="print-meta">Édité le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}<br>CPMI de Grand-Bassam<br><span style="font-size:6.5pt">Document confidentiel · N° ${record?.id || r.id || '—'}</span></div>
+        <div class="print-meta">
+          Édité le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}<br>
+          CPMI de Grand-Bassam<br>
+          <span style="font-size:6.5pt;font-weight:700;color:#1e3a8a">Réf. ${refDoc || record?.patient?.ref_doc || '—'}</span>
+        </div>
       </div>
       <div class="print-confidential">
-        Ce document est réservé à l'usage médical. Toute reproduction non autorisée est interdite.
-        Résultats à interpréter en contexte clinique. · CPMI Grand-Bassam
+        Document officiel du laboratoire CPMI Grand-Bassam · Réf. ${refDoc || record?.patient?.ref_doc || '—'}
+        · Résultats à interpréter en contexte clinique par un professionnel de santé.
+        · Document confidentiel — usage médical exclusif. Toute reproduction non autorisée est interdite.
       </div>
     </div>`;
 
@@ -648,6 +767,57 @@ async function buildAndPrint(r) {
   window.print();
 }
 
+
+// ✅ v13.35 — Construire les lignes vides pour les examens cochés sans résultats
+function buildEmptyRows(type, res, cochesList) {
+  if (!cochesList || !cochesList.length) return '';
+  // Paramètres connus pour ce type avec leurs unités et valeurs normales
+  const PARAMS_META = {};
+  if (typeof HEMA_PARAMS !== 'undefined') HEMA_PARAMS.forEach(p => { PARAMS_META[p.name] = {unit: p.unit||'', ref: p.ref||''}; });
+  if (typeof HEMA_FL !== 'undefined')     HEMA_FL.forEach(p => { PARAMS_META[p.name] = {unit: p.unit||'', ref: p.ref||''}; });
+  if (typeof BIO_GLUCIDES !== 'undefined') [...(BIO_GLUCIDES||[]),...(BIO_REIN||[]),...(BIO_FOIE||[]),...(BIO_LIPIDES||[]),...(BIO_IONO||[]),...(BIO_FER||[]),...(BIO_HORM||[]),...(BIO_AUTRE||[])].forEach(p => { if(p) PARAMS_META[p.name] = {unit:p.unit||'', ref:p.ref||''}; });
+
+  // Filtrer les examens cochés qui n'ont pas de résultat saisi
+  const paramsTypes = {
+    'Hématologie': [...(typeof HEMA_PARAMS!=='undefined'?HEMA_PARAMS:[]), ...(typeof HEMA_FL!=='undefined'?HEMA_FL:[])],
+    'Biochimie':   [...(typeof BIO_GLUCIDES!=='undefined'?BIO_GLUCIDES:[]),...(typeof BIO_REIN!=='undefined'?BIO_REIN:[]),...(typeof BIO_FOIE!=='undefined'?BIO_FOIE:[]),...(typeof BIO_LIPIDES!=='undefined'?BIO_LIPIDES:[]),...(typeof BIO_IONO!=='undefined'?BIO_IONO:[])],
+  };
+  const knownParams = (paramsTypes[type]||[]).map(p=>p.name);
+
+  // Examens cochés sans valeur
+  const empty = cochesList.filter(label => {
+    // Vérifier si ce label correspond à un paramètre connu sans résultat
+    const hasResult = Object.keys(res).some(k => {
+      if (k.startsWith('_')) return false;
+      if (k === label) return res[k] && (res[k].valeur || res[k].resultat);
+      return false;
+    });
+    return !hasResult;
+  });
+
+  if (!empty.length) return '';
+
+  const rows = empty.map(label => {
+    const meta = PARAMS_META[label] || {};
+    return `<tr class="print-empty-row">
+      <td>${label}</td>
+      <td style="min-width:60px;border-bottom:1px dotted #9ca3af">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+      <td style="color:#9ca3af;font-size:9pt">${meta.unit||''}</td>
+      <td style="color:#9ca3af;font-size:9pt">${meta.ref||''}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="print-section">
+    <div class="print-section-title" style="color:#6b7280;border-color:#d1d5db">📋 Résultats à compléter manuellement</div>
+    <table class="print-table" style="opacity:.85">
+      <thead><tr><th>Examen</th><th>Résultat</th><th>Unité</th><th>Valeurs normales</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="font-size:7.5pt;color:#9ca3af;font-style:italic;margin-top:4px">
+      Ces examens ont été demandés — résultats à saisir manuellement après analyse.
+    </p>
+  </div>`;
+}
 function buildPrintSections(type, res, pat) {
   const profile = profileFromPatient(pat || {}); // ✅ v13.17 — valeurs normales
   let html = '';
@@ -1186,7 +1356,7 @@ async function exportPDFFromForm(type) {
   } catch(err) { console.error('exportPDFFromForm:', err); toast('Erreur PDF : ' + (err.message||err), 'err'); }
 }
 
-function buildPDF(r, analyses) {
+async function buildPDF(r, analyses) {
   try {
   // Ordre des paramètres NFS pour le PDF (même ordre que l'écran)
   const HEMA_PARAMS_PRINT = HEMA_PARAMS.map(p => p.name);
@@ -1556,7 +1726,10 @@ function buildPDF(r, analyses) {
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(8);
-  doc.text('Édité le ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + '  ·  CPMI DE GRAND BASSAM  ·  N° ' + (r.id||'—'), MARGIN, y);
+  // ✅ v13.35 — Ligne méta avec UUID
+  const _refDoc = getOrCreateRef(r);
+  const _techName = (typeof _currentUser !== 'undefined' && _currentUser?.username) ? _currentUser.username.toUpperCase() : '—';
+  doc.text('Édité le ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + '  ·  CPMI DE GRAND-BASSAM  ·  Réf. ' + _refDoc, MARGIN, y);
   y += 6;
 
   // ✅ v13.34 — Zone commentaire + signature technicien (médecin supprimé)
@@ -1576,13 +1749,78 @@ function buildPDF(r, analyses) {
   doc.setDrawColor(200,210,230); doc.setLineWidth(0.2);
   for (let li = 1; li <= 3; li++) doc.line(MARGIN+2, y+5+li*4, MARGIN+commentW-2, y+5+li*4);
 
-  // Zone signature technicien
+  // ✅ v13.35 — Zone signature PDF avec cursive SVG
   doc.setFillColor(220, 232, 251);
   doc.rect(sigX, y, sigW, 5, 'F');
   doc.setTextColor(30,58,138); doc.setFont('helvetica','bold'); doc.setFontSize(8);
   doc.text('Signature du technicien', sigX + 2, y + 3.5);
   doc.setDrawColor(30,58,138); doc.setLineWidth(0.4);
-  doc.rect(sigX, y + 5, sigW, 16);
+  doc.rect(sigX, y + 5, sigW, 22);
+  // Signature SVG → PNG via canvas → addImage
+  try {
+    const _svgStr = generateSignatureSVG(_techName, 140, 40);
+    if (_svgStr) {
+      const _blob = new Blob([_svgStr], {type:'image/svg+xml'});
+      const _url  = URL.createObjectURL(_blob);
+      await new Promise(res => {
+        const _img = new Image();
+        _img.onload = () => {
+          const _cv = document.createElement('canvas');
+          _cv.width = 280; _cv.height = 80;
+          const _ctx = _cv.getContext('2d');
+          _ctx.drawImage(_img, 0, 0, 280, 80);
+          URL.revokeObjectURL(_url);
+          try { doc.addImage(_cv.toDataURL('image/png'), 'PNG', sigX + 1, y + 6, sigW - 2, 14); } catch(e){}
+          res();
+        };
+        _img.onerror = res;
+        _img.src = _url;
+      });
+    }
+  } catch(_se) {}
+  // Nom et titre sous la signature
+  doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(30,58,138);
+  doc.text(_techName, sigX + 2, y + 22);
+  doc.setFont('helvetica','italic'); doc.setFontSize(6.5); doc.setTextColor(120);
+  doc.text('Technicien de laboratoire · CPMI Grand-Bassam', sigX + 2, y + 25.5);
+
+  // ✅ v13.35 — Double QR dans le PDF
+  try {
+    const _shareToken = r?.patient?.share_token;
+    const _qrContent1 = _shareToken
+      ? (APP_PUBLIC_URL + '?share=' + _shareToken)
+      : ('CPMI GRAND-BASSAM | REF: ' + _refDoc + ' | DOSSIER: ' + (p?.dossier||'—') + ' | PATIENT: ' + (p?.nom||'').toUpperCase());
+    const _qrContent2 = 'CPMI GRAND-BASSAM\nREF: ' + _refDoc + '\nDOSSIER: ' + (p?.dossier||'—') + '\nPATIENT: ' + (p?.nom||'').toUpperCase() + '\nANALYSE: ' + getDisplayType(r) + '\nDATE: ' + (p?.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—');
+
+    const [_qrUrl1, _qrUrl2] = await Promise.all([
+      generateQRDataURL(_qrContent1, 80),
+      generateQRDataURL(_qrContent2, 80),
+    ]);
+
+    const qrSize = 18; // mm dans le PDF
+    const qrY = y + 1;
+    const qrX1 = W - MARGIN - qrSize * 2 - 4;
+    const qrX2 = W - MARGIN - qrSize;
+
+    if (_qrUrl1) {
+      doc.addImage(_qrUrl1, 'PNG', qrX1, qrY, qrSize, qrSize);
+      doc.setFont('helvetica','normal'); doc.setFontSize(5.5); doc.setTextColor(30,58,138);
+      doc.text(_shareToken ? 'Vérifier en ligne' : 'Info dossier', qrX1 + qrSize/2, qrY + qrSize + 2.5, { align: 'center' });
+    }
+    if (_qrUrl2) {
+      doc.addImage(_qrUrl2, 'PNG', qrX2 + 2, qrY, qrSize, qrSize);
+      doc.setFont('helvetica','normal'); doc.setFontSize(5.5); doc.setTextColor(100,116,139);
+      doc.text('Infos patient', qrX2 + 2 + qrSize/2, qrY + qrSize + 2.5, { align: 'center' });
+    }
+    // Réf sous les QR
+    doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(30,58,138);
+    doc.text('Réf. ' + _refDoc, qrX1 + qrSize + 2, qrY + qrSize + 6, { align: 'center' });
+  } catch(_qrErr) { /* QR optionnel — ne bloque pas le PDF */ }
+
+  // ✅ v13.35 — Pied de page conformité
+  doc.setFont('helvetica', 'italic'); doc.setFontSize(6); doc.setTextColor(120);
+  const _conformite = 'Document officiel CPMI Grand-Bassam · Réf. ' + _refDoc + ' · Résultats à interpréter par un professionnel de santé · Usage médical exclusif';
+  doc.text(_conformite, W/2, 286, { align: 'center', maxWidth: W - 2*MARGIN });
 
   // Numéro de page
   doc.setTextColor(150); doc.setFont('helvetica','normal'); doc.setFontSize(7);
