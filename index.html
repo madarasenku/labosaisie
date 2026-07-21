@@ -1364,6 +1364,38 @@ select {
   font-size: 10px; font-weight: 800; line-height: 16px; text-align: center;
 }
 
+
+/* ── v13.35 — Statut paiement ── */
+#bandeau-paiement {
+  display:none;
+  background:#b91c1c;
+  color:#fff;
+  text-align:center;
+  padding:10px 16px;
+  font-size:13.5px;
+  font-weight:700;
+  position:sticky;
+  top:0;
+  z-index:850;
+  border-bottom:2px solid #991b1b;
+  gap:12px;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+#bandeau-paiement.visible { display:flex; }
+.btn-payer {
+  background:#fff;
+  color:#b91c1c;
+  border:none;
+  border-radius:6px;
+  padding:5px 14px;
+  font-size:12.5px;
+  font-weight:800;
+  cursor:pointer;
+  transition:background .15s;
+}
+.btn-payer:hover { background:#fee2e2; }
 </style>
 </head>
 <body>
@@ -1508,6 +1540,11 @@ select {
 
 <!-- VIEWS -->
 <div id="view-saisie">
+<!-- ✅ v13.35 — Bandeau paiement non effectué -->
+<div id="bandeau-paiement">
+  🔒 Paiement non effectué — la saisie des résultats est bloquée
+  <button class="btn-payer" onclick="showView('caisse')">💰 Aller à la caisse</button>
+</div>
 
   <!-- ✅ v13.34 — Tableau de bord synthétique du jour -->
   <div id="dashboard-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
@@ -2886,6 +2923,17 @@ select {
     <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-nb">—</div><div class="kpi-label">Nombre de dossiers</div></div>
     <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-moy">—</div><div class="kpi-label">Moyenne / dossier (FCFA)</div></div>
     <div class="stats-kpi" style="border-left:3px solid var(--warning)"><div class="kpi-val" id="caisse-kpi-attente" style="color:var(--warning)">—</div><div class="kpi-label">Dossiers en attente de paiement</div></div>
+  </div>
+
+  <!-- ✅ v13.35 — Dossiers à encaisser -->
+  <div class="card" style="margin-bottom:16px" id="caisse-a-encaisser-card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>🔒 Dossiers à encaisser</span>
+      <span id="caisse-encaisser-count" style="font-size:12px;color:var(--warning);font-weight:700"></span>
+    </div>
+    <div id="caisse-a-encaisser-body">
+      <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:16px">Chargement…</p>
+    </div>
   </div>
 
   <!-- Graphique recettes par jour -->
@@ -4603,6 +4651,7 @@ function showView(v) {
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
   if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
   if (v === 'saisie' && typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34
+  if (v === 'saisie' && typeof updateBandeauPaiement === 'function') updateBandeauPaiement(); // ✅ v13.35
   if (v === 'historique') renderHistory(true);
   if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
@@ -5743,6 +5792,12 @@ async function saveRecord(type) {
 async function _saveRecordImpl(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
+  // ✅ v13.35 — Bloquer la saisie si dossier non payé
+  if (_editingRecordId && !isDossierPaye(_editingRecordId)) {
+    toast('🔒 Paiement requis avant la saisie des résultats', 'err');
+    showView('caisse');
+    return;
+  }
   toast('Enregistrement en cours…');
   showLoading('Enregistrement…');
 
@@ -6896,7 +6951,7 @@ async function renderHistory(forceRefresh) {
         }).join('') + '</td>'
       + '<td data-label="Saisi par">' + hl(r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
-      + '<td data-label="Statut">' + statutBadge(r.id) + '</td>'
+      + '<td data-label="Statut">' + statutBadge(r.id) + ' ' + paiementBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
         // ✅ v13.33 — Caissier : lecture seule (export/impression uniquement, pas de modification)
         + (isCaissier() ? ''
@@ -12319,10 +12374,243 @@ function setStatut(id, statut) {
   renderHistory();
 }
 
+// ════════════════════════════════════════════════════════
+// ✅ v13.35 — GESTION PAIEMENT CAISSE
+// Séparé du statut dossier (rendu/attente/urgent)
+// paiement_status : 'non_paye' | 'paye'
+// ════════════════════════════════════════════════════════
+const PAIEMENT_KEY = 'labosaisie_paiements_v1';
+
+function getPaiements() {
+  try { return JSON.parse(localStorage.getItem(PAIEMENT_KEY) || '{}'); } catch { return {}; }
+}
+
+function getPaiementStatus(id) {
+  // Priorité : cache DB → localStorage
+  const r = (_dbCache || []).find(r => r.id === id);
+  if (r?.patient?.paiement_status) return r.patient.paiement_status;
+  return getPaiements()[id] || 'non_paye';
+}
+
+function setPaiementStatus(id, status, infos) {
+  // infos = { montant_demande, montant_recu, monnaie_rendue, agent }
+  const r = (_dbCache || []).find(r => r.id === id);
+  if (r) r.patient = { ...(r.patient || {}), paiement_status: status, paiement_infos: infos || {} };
+  const p = getPaiements();
+  p[id] = status;
+  localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
+  // Persister dans Supabase via p_patient update
+  if (_sb && TK() && r) {
+    _sb.rpc('update_dossier_patient', {
+      p_token: TK(), p_id: id,
+      p_patient: r.patient
+    }).catch(() => {});
+  }
+  updateBandeauPaiement();
+  if (typeof renderCaisse === 'function') renderCaisse();
+  if (typeof renderHistory === 'function') renderHistory();
+}
+
+function isDossierPaye(id) {
+  return getPaiementStatus(id) === 'paye';
+}
+
+// Met à jour le bandeau rouge en vue saisie selon le dossier en cours
+function updateBandeauPaiement() {
+  const bandeau = document.getElementById('bandeau-paiement');
+  if (!bandeau) return;
+  // Récupérer l'ID du dossier en cours d'édition
+  const id = _editingRecordId || null;
+  if (!id) { bandeau.classList.remove('visible'); return; }
+  const paye = isDossierPaye(id);
+  bandeau.classList.toggle('visible', !paye);
+  // Désactiver/activer les champs de saisie
+  const saisieZone = document.getElementById('view-saisie');
+  if (!saisieZone) return;
+  saisieZone.querySelectorAll('input:not([type=button]):not([type=submit]):not([type=checkbox]), select, textarea').forEach(el => {
+    if (el.closest('#bandeau-paiement')) return;
+    el.disabled = !paye;
+    el.classList.toggle('field-locked', !paye);
+  });
+  saisieZone.querySelectorAll('button[onclick*="saveRecord"]').forEach(btn => {
+    btn.disabled = !paye;
+    btn.title = paye ? '' : 'Paiement requis avant la saisie';
+  });
+}
+
+// ── Modal de paiement ──────────────────────────────────
+function ouvrirModalPaiement(id, montantDemande) {
+  const existing = document.getElementById('modal-paiement');
+  if (existing) existing.remove();
+
+  const r = (_dbCache || []).find(r => r.id === id);
+  const nom = r?.patient?.nom || 'Patient';
+  const demand = montantDemande || r?.montant || 0;
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-paiement';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;padding:28px 24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:16px;font-weight:800;color:var(--cpmi-deep);margin-bottom:4px">💰 Encaissement</div>
+      <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:18px">${esc(nom)} — Dossier #${id}</div>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--text-label);display:block;margin-bottom:4px">Montant demandé (FCFA)</label>
+          <input type="number" id="pm-demande" value="${demand}" min="0" step="100"
+            style="font-size:18px;font-weight:900;color:var(--cpmi-deep);text-align:right"
+            oninput="calcMonnaie()">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:var(--text-label);display:block;margin-bottom:4px">Montant reçu (FCFA)</label>
+          <input type="number" id="pm-recu" value="" min="0" step="100"
+            placeholder="Saisir le montant donné par le patient"
+            style="font-size:18px;font-weight:900;text-align:right"
+            oninput="calcMonnaie()">
+        </div>
+        <div id="pm-monnaie-wrap" style="background:var(--success-light);border-radius:10px;padding:12px 16px;display:none">
+          <div style="font-size:11px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.5px">Monnaie à rendre</div>
+          <div id="pm-monnaie" style="font-size:26px;font-weight:900;color:var(--success)">0 FCFA</div>
+        </div>
+        <div id="pm-insuffisant" style="background:var(--danger-light);border-radius:10px;padding:10px 14px;display:none;color:var(--danger);font-size:13px;font-weight:700">
+          ⚠ Montant insuffisant
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:22px">
+        <button class="btn btn-outline" onclick="fermerModalPaiement()" style="flex:1">Annuler</button>
+        <button class="btn btn-primary" id="pm-btn-valider" onclick="validerPaiement(${id})" style="flex:2" disabled>✅ Valider le paiement</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('pm-recu').focus();
+}
+
+function fermerModalPaiement() {
+  const m = document.getElementById('modal-paiement');
+  if (m) m.remove();
+}
+
+function calcMonnaie() {
+  const demande = parseFloat(document.getElementById('pm-demande')?.value || 0);
+  const recu    = parseFloat(document.getElementById('pm-recu')?.value || 0);
+  const monnaieWrap = document.getElementById('pm-monnaie-wrap');
+  const monnaieEl   = document.getElementById('pm-monnaie');
+  const insuffEl    = document.getElementById('pm-insuffisant');
+  const btnValider  = document.getElementById('pm-btn-valider');
+
+  if (!recu || isNaN(recu)) {
+    monnaieWrap.style.display = 'none';
+    insuffEl.style.display = 'none';
+    if (btnValider) btnValider.disabled = true;
+    return;
+  }
+  const monnaie = recu - demande;
+  if (monnaie < 0) {
+    monnaieWrap.style.display = 'none';
+    insuffEl.style.display = 'block';
+    if (btnValider) btnValider.disabled = true;
+  } else {
+    monnaieWrap.style.display = 'block';
+    insuffEl.style.display = 'none';
+    if (monnaieEl) monnaieEl.textContent = monnaie.toLocaleString('fr-FR') + ' FCFA';
+    if (btnValider) btnValider.disabled = false;
+  }
+}
+
+function validerPaiement(id) {
+  const demande = parseFloat(document.getElementById('pm-demande')?.value || 0);
+  const recu    = parseFloat(document.getElementById('pm-recu')?.value || 0);
+  const monnaie = recu - demande;
+  if (monnaie < 0) return;
+
+  const infos = {
+    montant_demande: demande,
+    montant_recu: recu,
+    monnaie_rendue: monnaie,
+    agent: _currentUser?.username || '?',
+    date: new Date().toISOString()
+  };
+  setPaiementStatus(id, 'paye', infos);
+  fermerModalPaiement();
+  toast('✅ Paiement enregistré — ' + demande.toLocaleString('fr-FR') + ' FCFA', 'ok');
+  // Mettre à jour le montant du dossier si différent
+  const r = (_dbCache || []).find(r => r.id === id);
+  if (r && demande && demande !== r.montant) {
+    r.montant = demande;
+  }
+}
+
+function annulerPaiement(id) {
+  if (!confirm('Annuler le paiement de ce dossier ?')) return;
+  setPaiementStatus(id, 'non_paye', {});
+  toast('Paiement annulé', 'err');
+}
+
+// ✅ v13.35 — Rendre la liste des dossiers à encaisser
+function renderCaisseAEncaisser() {
+  const body  = document.getElementById('caisse-a-encaisser-body');
+  const count = document.getElementById('caisse-encaisser-count');
+  if (!body) return;
+
+  const db = getDB() || [];
+  // Dossiers non payés, triés du plus récent au plus ancien
+  const nonPayes = db
+    .filter(r => getPaiementStatus(r.id) === 'non_paye')
+    .sort((a, b) => new Date(b.savedAt || 0) - new Date(a.savedAt || 0));
+
+  if (count) count.textContent = nonPayes.length ? nonPayes.length + ' dossier(s) en attente' : '';
+
+  if (!nonPayes.length) {
+    body.innerHTML = '<p style="font-size:13px;color:var(--success);text-align:center;padding:16px">✅ Tous les dossiers sont encaissés</p>';
+    return;
+  }
+
+  const rows = nonPayes.map(r => {
+    const p    = r.patient || {};
+    const nom  = esc(p.nom || '—');
+    const dos  = esc(p.dossier || r.id);
+    const date = r.savedAt ? new Date(r.savedAt).toLocaleDateString('fr-FR') : '—';
+    const mont = (r.montant || 0).toLocaleString('fr-FR');
+    const type = esc(getRecordTypes(r).join(', ') || r.type || '—');
+    return `<tr>
+      <td style="font-weight:700">${nom}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${dos}</td>
+      <td style="font-size:12px">${type}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${date}</td>
+      <td style="font-weight:700;color:var(--cpmi-deep);text-align:right">${mont} FCFA</td>
+      <td style="text-align:center">
+        <button class="btn btn-primary" style="padding:4px 12px;font-size:12px"
+          onclick="ouvrirModalPaiement(${r.id}, ${r.montant || 0})">💰 Encaisser</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="table-wrap">
+      <table class="result-table" style="width:100%">
+        <thead><tr>
+          <th>Patient</th><th>N° dossier</th><th>Analyse</th><th>Date</th>
+          <th style="text-align:right">Montant</th><th style="text-align:center">Action</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+
+
 function cycleStatut(id) {
   const order = ['attente','rendu','urgent'];
   const next = order[(order.indexOf(getStatut(id))+1) % order.length];
   setStatut(id, next);
+}
+
+function paiementBadge(id) {
+  const s = getPaiementStatus(id);
+  if (s === 'paye') return '<span style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">💵 Payé</span>';
+  return '<span style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();ouvrirModalPaiement(' + id + ')">💳 Non payé</span>';
 }
 function statutBadge(id) {
   const s = getStatut(id);
@@ -12814,6 +13102,7 @@ async function renderCaisse() {
   animateCount(document.getElementById('caisse-kpi-nb'),      nb,      500, false);
   animateCount(document.getElementById('caisse-kpi-moy'),     moy,     600, true);
   animateCount(document.getElementById('caisse-kpi-attente'), attente, 400, false);
+  renderCaisseAEncaisser(); // ✅ v13.35
 
   // Recettes par jour
   const parJour = {};
