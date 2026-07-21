@@ -172,54 +172,6 @@ body::before {
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* ── ✅ v13.33 — Animations retravaillées (login + header) ──────────
-   Thème CPMI : protection, douceur, soin. Mouvements lents et
-   organiques ; aucun clignotement d'opacité sur les logos.
-   ------------------------------------------------------------------ */
-
-/* Voiles lumineux dérivant lentement en fond du login (aurora) */
-@keyframes aurora-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  33%      { transform: translate3d(3%, -2.5%, 0) scale(1.09); }
-  66%      { transform: translate3d(-2.5%, 3%, 0) scale(1.04); }
-}
-@keyframes aurora-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); }
-  50%      { transform: translate3d(-3.5%, -3%, 0) scale(1); }
-}
-
-/* Halo de protection : anneaux concentriques émanant du logo */
-@keyframes halo-ring {
-  0%   { transform: scale(1);    opacity: .5; }
-  70%  { opacity: 0; }
-  100% { transform: scale(2.15); opacity: 0; }
-}
-
-/* Respiration du logo — échelle seule, jamais l'opacité */
-@keyframes logo-breathe {
-  0%, 100% { transform: scale(1);     box-shadow: 0 8px 24px rgba(26,68,128,.35); }
-  50%      { transform: scale(1.045); box-shadow: 0 13px 32px rgba(26,68,128,.48); }
-}
-
-/* Révélation en cascade des éléments de la carte de connexion */
-@keyframes login-item-in {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Carte de connexion — arrivée douce avec profondeur */
-@keyframes login-card-in {
-  from { opacity: 0; transform: translateY(34px) scale(.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);   }
-}
-
-/* Secousse en cas d'erreur de connexion */
-@keyframes login-shake {
-  0%, 100%     { transform: translateX(0); }
-  15%, 45%, 75% { transform: translateX(-7px); }
-  30%, 60%, 90% { transform: translateX(7px); }
-}
-
 /* Header — balayage périodique avec temps de repos (au lieu d'un
    shimmer continu qui attirait l'oeil en permanence) */
 @keyframes header-sweep {
@@ -874,158 +826,6 @@ select {
 /* ================================================================
    ÉCRAN DE CONNEXION ANIMÉ
    ================================================================ */
-#login-screen {
-  position: fixed; inset: 0;
-  background:
-    radial-gradient(ellipse 70% 60% at 15% 20%, rgba(219,234,254,.8), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(204,251,241,.6), transparent 50%),
-    radial-gradient(ellipse 50% 60% at 50% 50%, rgba(251,207,232,.4), transparent 55%),
-    linear-gradient(145deg, #1a4480 0%, #2563eb 50%, #0d9488 100%);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 2000; padding: 20px;
-  overflow: hidden;
-}
-/* ✅ v13.33 — Voiles lumineux dérivant lentement (aurora).
-   Remplace l'ancien pulse-soft qui faisait « respirer » tout le fond
-   en opacité. Deux couches à vitesses différentes = mouvement
-   organique, jamais répétitif à l'oeil. */
-#login-screen::before,
-#login-screen::after {
-  content: '';
-  position: absolute; inset: -25%;
-  pointer-events: none;
-  will-change: transform;
-}
-#login-screen::before {
-  background:
-    radial-gradient(circle at 25% 45%, rgba(255,255,255,.10) 0%, transparent 42%),
-    radial-gradient(circle at 78% 28%, rgba(204,251,241,.11) 0%, transparent 40%);
-  animation: aurora-a 26s ease-in-out infinite;
-}
-#login-screen::after {
-  background:
-    radial-gradient(circle at 68% 72%, rgba(251,207,232,.10) 0%, transparent 45%),
-    radial-gradient(circle at 15% 80%, rgba(219,234,254,.10) 0%, transparent 42%);
-  animation: aurora-b 34s ease-in-out infinite;
-}
-
-.login-card {
-  background: rgba(255,255,255,.95);
-  border-radius: 22px;
-  padding: 42px 36px;
-  width: 100%; max-width: 390px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.5) inset;
-  text-align: center;
-  animation: login-card-in .6s cubic-bezier(.22,.61,.36,1) both;
-  backdrop-filter: blur(12px);
-  position: relative;
-  z-index: 1; /* au-dessus des voiles aurora */
-}
-/* Secousse déclenchée par JS lorsqu'une erreur de connexion s'affiche */
-.login-card.shake { animation: login-shake .45s ease; }
-/* ✅ v13.33 — Révélation en cascade du contenu (le logo, en 1er enfant,
-   a sa propre animation combinée définie plus bas) */
-.login-card > *:nth-child(n+2) {
-  animation: login-item-in .5s cubic-bezier(.22,.61,.36,1) both;
-}
-.login-card > *:nth-child(2) { animation-delay: .30s; }
-.login-card > *:nth-child(3) { animation-delay: .37s; }
-.login-card > *:nth-child(4) { animation-delay: .44s; }
-.login-card > *:nth-child(5) { animation-delay: .51s; }
-.login-card > *:nth-child(6) { animation-delay: .58s; }
-.login-card > *:nth-child(7) { animation-delay: .65s; }
-.login-card > *:nth-child(8) { animation-delay: .72s; }
-/* Rétablit la lueur au focus : la règle de cascade ci-dessus est plus
-   spécifique que « input:focus » et l'aurait sinon neutralisée. */
-.login-card input:focus {
-  animation: input-focus-glow .25s ease forwards;
-}
-/* Bandeau de couleur en haut de la card */
-.login-card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 4px;
-  background: linear-gradient(to right, var(--cpmi-deep), var(--cpmi-teal), var(--cpmi-rose));
-  border-radius: 22px 22px 0 0;
-}
-/* ✅ v13.33 — Le logo respire (échelle seule) et diffuse des anneaux
-   concentriques : évocation directe de la « protection » du CPMI.
-   L'ancien pulse-soft faisait chuter l'opacité à .7 en boucle. */
-.login-logo {
-  width: 76px; height: 76px;
-  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-sky));
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 34px; margin: 0 auto 18px;
-  box-shadow: 0 8px 24px rgba(26,68,128,.35);
-  position: relative;
-  animation:
-    login-item-in .5s cubic-bezier(.22,.61,.36,1) .18s both,
-    logo-breathe  4.5s ease-in-out 1s infinite;
-}
-/* Anneaux de protection (2 vagues décalées) */
-.login-logo::before,
-.login-logo::after {
-  content: '';
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(37,99,235,.45);
-  animation: halo-ring 3.8s ease-out 1.2s infinite;
-  pointer-events: none;
-}
-.login-logo::after { animation-delay: 3.1s; }
-.login-logo svg { position: relative; z-index: 1; }
-.login-logo svg g { animation: cross-glint 7s ease-in-out infinite; }
-
-/* Reflet traversant le bouton « Se connecter » au survol */
-.login-card .btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -60%;
-  width: 45%; height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
-  transform: skewX(-18deg);
-  transition: left .65s cubic-bezier(.4,0,.2,1);
-  pointer-events: none;
-}
-.login-card .btn:hover::before { left: 120%; }
-
-/* ================================================================
-   ✅ v13.33 — ACCESSIBILITÉ : respect de « Réduire les animations »
-   Réglage système (Windows/macOS/Android/iOS). Indispensable pour les
-   utilisateurs sujets au vertige ou à la gêne vestibulaire.
-   ================================================================ */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
-    scroll-behavior: auto !important;
-  }
-  /* Les décors purement animés sont simplement retirés */
-  #login-screen::before,
-  #login-screen::after,
-  .login-logo::before,
-  .login-logo::after,
-  header::after { display: none; }
-}
-.login-card h1 { font-size: 22px; font-weight: 900; color: var(--cpmi-deep); margin-bottom: 4px; }
-.login-card .login-subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 4px; }
-.login-card .login-tagline {
-  font-size: 11px; color: var(--cpmi-teal); font-style: italic;
-  margin-bottom: 24px; font-weight: 600;
-}
-.login-card input[type=password], .login-card input[type=text] {
-  text-align: center; letter-spacing: .5px;
-  font-size: 15px; margin-bottom: 12px;
-}
-.login-card .btn {
-  width: 100%; justify-content: center;
-  padding: 13px; font-size: 15px;
-  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
-  box-shadow: 0 4px 14px rgba(26,68,128,.35);
-}
-#login-error { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 16px; }
-#app-root { display: none; }
 
 /* ================================================================
    STYLES SPÉCIAUX
@@ -1311,7 +1111,6 @@ select {
   #fiche-identif-title button { margin-left: 0 !important; width: 100%; }
 
   /* ── Login ── */
-  .login-card { padding: 28px 22px; }
   #toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
   .stats-kpi-row { grid-template-columns: repeat(2,1fr); gap: 10px; }
   .kpi-val { font-size: 28px; }
@@ -1358,7 +1157,6 @@ select {
   #history-table td[data-label="Actions"] .btn-action-primary {
     width: 28px; height: 28px; font-size: 12px;
   }
-  .login-card { padding: 22px 16px; }
 }
 
 /* ================================================================
@@ -1663,29 +1461,6 @@ select {
 </script>
 
   <div id="record-preview" class="record-preview"></div>
-
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">
-      <svg viewBox="0 0 64 64" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-        <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
-        <circle cx="32" cy="14" r="3.4" fill="#fff"/>
-        <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.9"/>
-        <g>
-          <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
-          <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
-        </g>
-      </svg>
-    </div>
-    <h1>CPMI</h1>
-    <p class="login-subtitle">Centre de Protection Mère et Infantile</p>
-    <p class="login-tagline">Laboratoire d'analyses médicales · Grand-Bassam</p>
-    <input type="text" id="login-username" placeholder="Nom d'utilisateur" autocomplete="username" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
-    <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn btn-primary" onclick="doLogin()">🔐 Se connecter</button>
-    <div id="login-error"></div>
-  </div>
-</div>
 
 <div id="app-root">
 <div id="offline-banner" style="display:none;background:#b91c1c;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:600;position:sticky;top:0;z-index:900">
@@ -4942,6 +4717,20 @@ function validatePatient(p) {
 //     • Project URL  → SUPABASE_URL
 //     • anon public  → SUPABASE_KEY
 // ════════════════════════════════════════════════════════════════
+// ✅ v13.34+ — Vérification session : si pas de session valide → login.html
+(function checkAuth() {
+  const SESSION_KEY_CHECK = 'labo_session_user';
+  const raw = localStorage.getItem(SESSION_KEY_CHECK);
+  if (!raw) { window.location.replace('login.html'); return; }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.expiresAt || Date.now() > parsed.expiresAt || !parsed.id || !parsed.token) {
+      localStorage.removeItem(SESSION_KEY_CHECK);
+      window.location.replace('login.html');
+    }
+  } catch(e) { window.location.replace('login.html'); }
+})();
+
 const SUPABASE_URL = 'https://uvxxbihlagfncraokqlg.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_RPgz6piVcNONZOOcLmOCQw_5YPxZTd6';
 
@@ -11616,8 +11405,8 @@ function isCaissier() {
 (function initLoginShake() {
   const start = () => {
     const errEl = document.getElementById('login-error');
-    const card  = document.querySelector('.login-card');
-    if (!errEl || !card) return;
+    const card  = null; // ✅ v13.34+ — login-card dans login.html
+    if (!errEl) return;
     // Messages transitoires qui ne sont pas des erreurs
     const NEUTRAL = ['', 'Vérification…', 'Vérification...'];
     new MutationObserver(() => {
@@ -11636,88 +11425,18 @@ function isCaissier() {
   } else { start(); }
 })();
 
-async function doLogin() {
-  const userInput = document.getElementById('login-username');
-  const pwdInput = document.getElementById('login-password');
-  const errEl = document.getElementById('login-error');
-  const username = userInput.value.trim();
-  const pwd = pwdInput.value;
-  errEl.textContent = '';
-  if (!username || !pwd) { errEl.textContent = "Veuillez saisir le nom d'utilisateur et le mot de passe."; return; }
-
-  errEl.textContent = 'Vérification…';
-
-  // Vérifier que Supabase est initialisé
-  if (!_sb) {
-    if (!initSupabase()) {
-      errEl.textContent = '⚠ Impossible de contacter le serveur. Vérifiez votre connexion internet et rechargez la page.';
-      return;
-    }
-  }
-
-  try {
-    const { data, error } = await _sb.rpc('login_user', { p_username: username, p_password: pwd });
-    if (error) {
-      console.error('Erreur login_user:', error);
-      // Messages précis selon le type d'erreur
-      if (error.message && error.message.includes('Could not find the function')) {
-        errEl.textContent = '⚠ La base de données n\'est pas initialisée. Exécutez le script SQL dans Supabase.';
-      } else if (error.message && (error.message.includes('JWT') || error.message.includes('apikey') || error.message.includes('Invalid API key'))) {
-        errEl.textContent = '⚠ Clé Supabase invalide. Vérifiez SUPABASE_KEY dans le fichier.';
-      } else if (error.message && error.message.includes('Failed to fetch')) {
-        errEl.textContent = '⚠ Serveur injoignable. Vérifiez SUPABASE_URL et votre connexion internet.';
-      } else {
-        errEl.textContent = 'Erreur serveur : ' + (error.message || 'inconnue') + ' (voir console F12)';
-      }
-      return;
-    }
-    // ✅ v13.3 — login_user renvoie un statut : ok / locked / invalid
-    // v13.28 : type composite → colonnes uname/urole/utoken/ustatus
-    const raw = data && (Array.isArray(data) ? data[0] : data);
-    // Normaliser : accepte les deux formats (ancien et nouveau)
-    const row = raw ? {
-      id:             raw.id             ?? raw.id,
-      username:       raw.username       ?? raw.uname,
-      role:           raw.role           ?? raw.urole,
-      token:          raw.token          ?? raw.utoken,
-      status:         raw.status         ?? raw.ustatus,
-      locked_seconds: raw.locked_seconds ?? raw.ulocked_secs ?? 0,
-    } : null;
-    if (row && row.status === 'ok') {
-      setSession(row);
-      enterApp();
-    } else if (row && row.status === 'locked') {
-      const mins = Math.max(1, Math.ceil((row.locked_seconds || 0) / 60));
-      errEl.textContent = '🔒 Trop de tentatives. Compte verrouillé temporairement — réessayez dans ' + mins + ' min.';
-      pwdInput.value = '';
-    } else {
-      errEl.textContent = 'Nom d\'utilisateur ou mot de passe incorrect.';
-      pwdInput.value = '';
-      pwdInput.focus();
-    }
-  } catch (e) {
-    console.error('Exception login:', e);
-    if (e.message && e.message.includes('Failed to fetch')) {
-      errEl.textContent = '⚠ Serveur injoignable. Vérifiez SUPABASE_URL et votre connexion internet.';
-    } else {
-      errEl.textContent = 'Erreur : ' + (e.message || 'connexion impossible') + ' (voir console F12)';
-    }
-  }
-}
+// ✅ v13.34+ — doLogin() déplacé dans login.html
 
 function doLogout() {
   if (!confirm('Se déconnecter ?')) return;
-  if (typeof stopTokenRefresh === 'function') stopTokenRefresh(); // ✅ v13.28 F9
+  if (typeof stopTokenRefresh === 'function') stopTokenRefresh();
   clearSession();
-  document.getElementById('app-root').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-username').value = '';
-  document.getElementById('login-password').value = '';
-  document.getElementById('login-error').textContent = '';
+  // ✅ v13.34+ — Redirection vers la page de login dédiée
+  window.location.replace('login.html');
 }
 
 function enterApp() {
-  document.getElementById('login-screen').style.display = 'none';
+  // ✅ v13.34+ — login géré par login.html, app-root toujours visible ici
   document.getElementById('app-root').style.display = 'block';
   // Charger les valeurs de référence depuis Supabase au login
   (async () => {
@@ -12376,11 +12095,10 @@ setInterval(() => {
     toast('Session expirée par inactivité — reconnexion requise', 'err');
     setTimeout(() => {
       clearSession();
-      document.getElementById('app-root').style.display = 'none';
-      document.getElementById('login-screen').style.display = 'flex';
-      document.getElementById('login-username').value = '';
-      document.getElementById('login-password').value = '';
-      document.getElementById('login-error').textContent = 'Session expirée — veuillez vous reconnecter.';
+      // ✅ v13.34+ — Redirection login.html
+      window.location.replace('login.html?expired=1');
+      // Fallback (ne devrait pas être atteint)
+      document.getElementById('login-error' /* supprimé */ + '').textContent = 'Session expirée — veuillez vous reconnecter.';
     }, 2000);
   }
 }, 60_000); // vérifier chaque minute
@@ -12485,30 +12203,9 @@ document.addEventListener('keydown', e => {
     if (btn) btn.style.display = 'none';
   });
 
-  // Service worker inline (cache "network-first" du document) — via Blob.
-  // Note : sur certains hébergeurs les SW blob sont bloqués ; échec silencieux.
+  // ✅ v13.34+ — Service worker externe sw.js (meilleure compatibilité hébergeurs)
   if ('serviceWorker' in navigator) {
-    const swCode = `
-      const CACHE = 'cpmi-labo-v1';
-      self.addEventListener('install', e => self.skipWaiting());
-      self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-      self.addEventListener('fetch', e => {
-        if (e.request.method !== 'GET') return;
-        e.respondWith(
-          fetch(e.request)
-            .then(res => {
-              const copy = res.clone();
-              caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
-              return res;
-            })
-            .catch(() => caches.match(e.request))
-        );
-      });
-    `;
-    try {
-      const swUrl = URL.createObjectURL(new Blob([swCode], { type: 'text/javascript' }));
-      navigator.serviceWorker.register(swUrl).catch(err => console.warn('[PWA] SW:', err.message));
-    } catch (e) { console.warn('[PWA] SW register:', e); }
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('[PWA] SW:', err.message));
   }
 })();
 
@@ -12546,8 +12243,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (hasValidSession()) {
     enterApp();
   } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('login-username').focus();
+    // ✅ v13.34+ — Pas de session → login.html (normalement géré par checkAuth() en haut)
+    window.location.replace('login.html');
   }
 });
 
@@ -12766,9 +12463,8 @@ async function checkShareMode() {
   if (!token) return false;
 
   // Masquer login et app, afficher l'overlay de vérification
-  const loginEl = document.getElementById('login-screen');
+  // ✅ v13.34+ — login-screen est dans login.html, pas ici
   const appEl   = document.getElementById('app-root');
-  if (loginEl) loginEl.style.display = 'none';
   if (appEl)   appEl.style.display   = 'none';
 
   const overlay = document.getElementById('share-view');

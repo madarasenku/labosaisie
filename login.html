@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPMI — Connexion</title>
+<meta name="theme-color" content="#1a4480">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CPMI Labo">
+<meta name="description" content="Connexion — Laboratoire CPMI Grand-Bassam">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
+
+<!-- Supabase uniquement — aucune autre lib nécessaire pour le login -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  --cpmi-deep:  #1a4480;
+  --cpmi-mid:   #2563eb;
+  --cpmi-sky:   #3b82f6;
+  --cpmi-teal:  #0d9488;
+  --cpmi-rose:  #e11d76;
+  --text-muted: #4a5c82;
+  --danger:     #dc2626;
+  --radius:     10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 20%, rgba(219,234,254,.8), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(204,251,241,.6), transparent 50%),
+    radial-gradient(ellipse 50% 60% at 50% 50%, rgba(251,207,232,.4), transparent 55%),
+    linear-gradient(145deg, #1a4480 0%, #2563eb 50%, #0d9488 100%);
+  position: relative;
+}
+
+/* Voiles aurora */
+body::before, body::after {
+  content: '';
+  position: absolute; inset: -25%;
+  pointer-events: none;
+  will-change: transform;
+}
+body::before {
+  background:
+    radial-gradient(circle at 25% 45%, rgba(255,255,255,.10) 0%, transparent 42%),
+    radial-gradient(circle at 78% 28%, rgba(204,251,241,.11) 0%, transparent 40%);
+  animation: aurora-a 26s ease-in-out infinite;
+}
+body::after {
+  background:
+    radial-gradient(circle at 68% 72%, rgba(251,207,232,.10) 0%, transparent 45%),
+    radial-gradient(circle at 15% 80%, rgba(219,234,254,.10) 0%, transparent 42%);
+  animation: aurora-b 34s ease-in-out infinite;
+}
+
+@keyframes aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%       { transform: translate3d(3%, -2.5%, 0) scale(1.09); }
+  66%       { transform: translate3d(-2.5%, 3%, 0) scale(1.04); }
+}
+@keyframes aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); }
+  50%       { transform: translate3d(-3.5%, -3%, 0) scale(1); }
+}
+@keyframes halo-ring {
+  0%   { transform: scale(1);    opacity: .5; }
+  70%  { opacity: 0; }
+  100% { transform: scale(2.15); opacity: 0; }
+}
+@keyframes logo-breathe {
+  0%, 100% { transform: scale(1);     box-shadow: 0 8px 24px rgba(26,68,128,.35); }
+  50%       { transform: scale(1.045); box-shadow: 0 13px 32px rgba(26,68,128,.48); }
+}
+@keyframes login-item-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes login-card-in {
+  from { opacity: 0; transform: translateY(34px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes login-shake {
+  0%, 100%      { transform: translateX(0); }
+  15%, 45%, 75% { transform: translateX(-7px); }
+  30%, 60%, 90% { transform: translateX(7px); }
+}
+@keyframes cross-glint {
+  0%, 88%, 100% { opacity: 1; }
+  92%           { opacity: .55; }
+}
+
+.login-card {
+  background: rgba(255,255,255,.95);
+  border-radius: 22px;
+  padding: 42px 36px;
+  width: 100%; max-width: 390px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.5) inset;
+  text-align: center;
+  animation: login-card-in .6s cubic-bezier(.22,.61,.36,1) both;
+  backdrop-filter: blur(12px);
+  position: relative; z-index: 1;
+}
+.login-card.shake { animation: login-shake .45s ease; }
+.login-card > *:nth-child(n+2) {
+  animation: login-item-in .5s cubic-bezier(.22,.61,.36,1) both;
+}
+.login-card > *:nth-child(2) { animation-delay: .30s; }
+.login-card > *:nth-child(3) { animation-delay: .37s; }
+.login-card > *:nth-child(4) { animation-delay: .44s; }
+.login-card > *:nth-child(5) { animation-delay: .51s; }
+.login-card > *:nth-child(6) { animation-delay: .58s; }
+.login-card > *:nth-child(7) { animation-delay: .65s; }
+.login-card > *:nth-child(8) { animation-delay: .72s; }
+
+.login-card input:focus { animation: none; }
+.login-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(to right, var(--cpmi-deep), var(--cpmi-teal), var(--cpmi-rose));
+  border-radius: 22px 22px 0 0;
+}
+
+.login-logo {
+  width: 76px; height: 76px;
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-sky));
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  box-shadow: 0 8px 24px rgba(26,68,128,.35);
+  position: relative;
+  animation: login-item-in .5s cubic-bezier(.22,.61,.36,1) .18s both,
+             logo-breathe  4.5s ease-in-out 1s infinite;
+}
+.login-logo::before, .login-logo::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(37,99,235,.45);
+  animation: halo-ring 3.8s ease-out 1.2s infinite;
+  pointer-events: none;
+}
+.login-logo::after { animation-delay: 3.1s; }
+.login-logo svg g { animation: cross-glint 7s ease-in-out infinite; }
+
+.login-card h1 { font-size: 22px; font-weight: 900; color: var(--cpmi-deep); margin-bottom: 4px; }
+.login-subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 4px; }
+.login-tagline  { font-size: 11px; color: var(--cpmi-teal); font-style: italic; margin-bottom: 24px; font-weight: 600; }
+
+input[type=text], input[type=password] {
+  border: 1.5px solid #c7d7f5;
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  font-size: 15px;
+  color: #0f1f40;
+  background: rgba(255,255,255,.9);
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+  text-align: center;
+  letter-spacing: .5px;
+  transition: border-color .2s, box-shadow .2s;
+  margin-bottom: 12px;
+}
+input:focus {
+  border-color: var(--cpmi-mid);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  background: #fff;
+}
+
+.btn {
+  padding: 13px 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  width: 100%;
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(26,68,128,.35);
+  transition: all .2s;
+  position: relative; overflow: hidden;
+}
+.btn::before {
+  content: '';
+  position: absolute; top: 0; left: -60%;
+  width: 45%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
+  transform: skewX(-18deg);
+  transition: left .65s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+}
+.btn:hover::before { left: 120%; }
+.btn:hover { box-shadow: 0 6px 18px rgba(26,68,128,.4); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+#login-error {
+  color: var(--danger);
+  font-size: 12.5px;
+  margin-top: 10px;
+  min-height: 16px;
+  line-height: 1.4;
+}
+
+/* Indicateur de chargement */
+.spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  body::before, body::after,
+  .login-logo::before, .login-logo::after { display: none; }
+}
+
+@media (max-width: 420px) {
+  .login-card { padding: 28px 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="login-card" id="login-card">
+  <div class="login-logo">
+    <svg viewBox="0 0 64 64" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+      <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
+      <circle cx="32" cy="14" r="3.4" fill="#fff"/>
+      <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.9"/>
+      <g>
+        <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
+        <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+      </g>
+    </svg>
+  </div>
+  <h1>CPMI</h1>
+  <p class="login-subtitle">Centre de Protection Mère et Infantile</p>
+  <p class="login-tagline">Laboratoire d'analyses médicales · Grand-Bassam</p>
+  <input type="text" id="login-username" placeholder="Nom d'utilisateur" autocomplete="username"
+    onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+  <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password"
+    onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn" id="login-btn" onclick="doLogin()">🔐 Se connecter</button>
+  <div id="login-error"></div>
+</div>
+
+<script>
+/* ── Config Supabase ── */
+const SUPABASE_URL = 'https://uvxxbihlagfncraokqlg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_RPgz6piVcNONZOOcLmOCQw_5YPxZTd6';
+const SESSION_KEY  = 'labo_session_user';
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+
+/* ── Init Supabase ── */
+let _sb = null;
+function initSupabase() {
+  if (!window.supabase) return false;
+  try {
+    _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    return true;
+  } catch(e) { return false; }
+}
+
+/* ── Vérification session existante ── */
+function hasValidSession() {
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.expiresAt || Date.now() > parsed.expiresAt || !parsed.id || !parsed.token) {
+      localStorage.removeItem(SESSION_KEY);
+      return false;
+    }
+    return true;
+  } catch(e) { return false; }
+}
+
+/* ── Au chargement : si session valide → rediriger direct vers l'app ── */
+document.addEventListener('DOMContentLoaded', () => {
+  if (hasValidSession()) {
+    window.location.replace('index.html');
+    return;
+  }
+  initSupabase();
+  document.getElementById('login-username').focus();
+
+  /* Service Worker pour PWA */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+});
+
+/* ── Login ── */
+async function doLogin() {
+  const userInput = document.getElementById('login-username');
+  const pwdInput  = document.getElementById('login-password');
+  const errEl     = document.getElementById('login-error');
+  const btn       = document.getElementById('login-btn');
+  const card      = document.getElementById('login-card');
+
+  const username = userInput.value.trim();
+  const pwd = pwdInput.value;
+  errEl.textContent = '';
+
+  if (!username || !pwd) {
+    errEl.textContent = "Veuillez saisir le nom d'utilisateur et le mot de passe.";
+    card.classList.remove('shake');
+    void card.offsetWidth;
+    card.classList.add('shake');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Vérification…';
+
+  if (!_sb && !initSupabase()) {
+    errEl.textContent = '⚠ Impossible de contacter le serveur. Vérifiez votre connexion.';
+    resetBtn(); return;
+  }
+
+  try {
+    const { data, error } = await _sb.rpc('login_user', { p_username: username, p_password: pwd });
+
+    if (error) {
+      if (error.message?.includes('Could not find the function')) {
+        errEl.textContent = '⚠ Base de données non initialisée. Exécutez le script SQL dans Supabase.';
+      } else if (error.message?.includes('JWT') || error.message?.includes('apikey') || error.message?.includes('Invalid API key')) {
+        errEl.textContent = '⚠ Clé Supabase invalide. Vérifiez SUPABASE_KEY.';
+      } else if (error.message?.includes('Failed to fetch')) {
+        errEl.textContent = '⚠ Serveur injoignable. Vérifiez votre connexion internet.';
+      } else {
+        errEl.textContent = 'Erreur serveur : ' + (error.message || 'inconnue');
+      }
+      shake(); resetBtn(); return;
+    }
+
+    const raw = data && (Array.isArray(data) ? data[0] : data);
+    const row = raw ? {
+      id:             raw.id             ?? raw.id,
+      username:       raw.username       ?? raw.uname,
+      role:           raw.role           ?? raw.urole,
+      token:          raw.token          ?? raw.utoken,
+      status:         raw.status         ?? raw.ustatus,
+      locked_seconds: raw.locked_seconds ?? raw.ulocked_secs ?? 0,
+    } : null;
+
+    if (row && row.status === 'ok') {
+      /* Stocker la session */
+      const session = {
+        id: row.id, username: row.username, role: row.role, token: row.token,
+        expiresAt: Date.now() + SESSION_DURATION_MS
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      /* Rediriger vers l'app */
+      btn.innerHTML = '✅ Connexion réussie…';
+      window.location.replace('index.html');
+
+    } else if (row && row.status === 'locked') {
+      const mins = Math.max(1, Math.ceil((row.locked_seconds || 0) / 60));
+      errEl.textContent = '🔒 Trop de tentatives. Compte verrouillé — réessayez dans ' + mins + ' min.';
+      pwdInput.value = '';
+      shake(); resetBtn();
+    } else {
+      errEl.textContent = "Nom d'utilisateur ou mot de passe incorrect.";
+      pwdInput.value = '';
+      pwdInput.focus();
+      shake(); resetBtn();
+    }
+  } catch(e) {
+    errEl.textContent = e.message?.includes('Failed to fetch')
+      ? '⚠ Serveur injoignable. Vérifiez votre connexion internet.'
+      : 'Erreur : ' + (e.message || 'connexion impossible');
+    shake(); resetBtn();
+  }
+}
+
+function resetBtn() {
+  const btn = document.getElementById('login-btn');
+  btn.disabled = false;
+  btn.innerHTML = '🔐 Se connecter';
+}
+
+function shake() {
+  const card = document.getElementById('login-card');
+  card.classList.remove('shake');
+  void card.offsetWidth;
+  card.classList.add('shake');
+}
+</script>
+</body>
+</html>
