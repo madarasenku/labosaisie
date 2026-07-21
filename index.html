@@ -1708,6 +1708,13 @@ select {
     <button class="tab" onclick="switchTab('parasito')" id="tab-parasito"><span class="tab-icon">🔬</span>Parasitologie</button>
     <button class="tab" onclick="switchTab('gs')" id="tab-gs"><span class="tab-icon">🩸</span>Groupe sanguin</button>
   </div>
+  <!-- ✅ v13.35 — Bouton enregistrer tout -->
+  <div id="save-all-bar" style="display:none;padding:10px 0 4px;text-align:right">
+    <button id="btn-save-all" class="btn btn-primary" onclick="saveAllTabs()" style="padding:10px 24px;font-size:14px;gap:8px">
+      💾 Enregistrer tous les examens cochés
+    </button>
+    <div id="save-all-hint" style="font-size:11.5px;color:var(--text-muted);margin-top:4px"></div>
+  </div>
 
   <!-- ===== HÉMATOLOGIE ===== -->
   <div class="panel active" id="panel-hema">
@@ -1822,7 +1829,7 @@ select {
 
     <div class="card">
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Hématologie')">💾 Enregistrer</button>
+        <button class="btn btn-primary" onclick="saveThenNext('Hématologie')">💾 Enregistrer</button>
         <button class="btn" onclick="saveThenNext('Hématologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Hématologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Hématologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
@@ -1882,7 +1889,7 @@ select {
 
     <div class="card">
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Biochimie')">💾 Enregistrer</button>
+        <button class="btn btn-primary" onclick="saveThenNext('Biochimie')">💾 Enregistrer</button>
         <button class="btn" onclick="saveThenNext('Biochimie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Biochimie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Biochimie')" style="background:#dc2626;color:#fff">📄 PDF</button>
@@ -2154,7 +2161,7 @@ select {
 
     <div class="card">
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Bactériologie')">💾 Enregistrer</button>
+        <button class="btn btn-primary" onclick="saveThenNext('Bactériologie')">💾 Enregistrer</button>
         <button class="btn" onclick="saveThenNext('Bactériologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Bactériologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Bactériologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
@@ -2245,7 +2252,7 @@ select {
 
     <div class="card">
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Immuno-Sérologie')">💾 Enregistrer</button>
+        <button class="btn btn-primary" onclick="saveThenNext('Immuno-Sérologie')">💾 Enregistrer</button>
         <button class="btn" onclick="saveThenNext('Immuno-Sérologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Immuno-Sérologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Immuno-Sérologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
@@ -2354,7 +2361,7 @@ select {
         <textarea id="para_obs" placeholder="Qualité de la lame, contexte clinique, recommandations..."></textarea>
       </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Parasitologie')">💾 Enregistrer</button>
+        <button class="btn btn-primary" onclick="saveThenNext('Parasitologie')">💾 Enregistrer</button>
         <button class="btn" onclick="saveThenNext('Parasitologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Parasitologie')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Parasitologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
@@ -2377,7 +2384,7 @@ select {
         </table>
       </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveRecord('Groupe sanguin')">💾 Enregistrer</button>
+        <button class="btn btn-primary" onclick="saveThenNext('Groupe sanguin')">💾 Enregistrer</button>
         <button class="btn" onclick="saveThenNext('Groupe sanguin')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
         <button class="btn btn-success" onclick="exportSingle('Groupe sanguin')">⬇ Excel</button>
         <button class="btn" onclick="exportPDFFromForm('Groupe sanguin')" style="background:#dc2626;color:#fff">📄 PDF</button>
@@ -4585,6 +4592,28 @@ function autoInterp(id, lo, hiM, hiF) {
 }
 
 // Calcule et affiche le montant pour l'onglet courant
+
+// ✅ v13.35 — Mise à jour du bouton "Enregistrer tout" selon les coches
+function updateSaveAllBar() {
+  const bar  = document.getElementById('save-all-bar');
+  const hint = document.getElementById('save-all-hint');
+  if (!bar) return;
+
+  const tabsCoches = TAB_ORDER.filter(tabId => {
+    const cat = getCatalogueComplet().filter(ex => ex.tab === tabId);
+    return cat.some(ex => document.getElementById(ex.id)?.checked);
+  });
+
+  if (tabsCoches.length > 1) {
+    bar.style.display = 'block';
+    if (hint) {
+      const labels = tabsCoches.map(t => TAB_TO_TYPE[t] || t).join(', ');
+      hint.textContent = tabsCoches.length + ' analyses détectées : ' + labels;
+    }
+  } else {
+    bar.style.display = 'none';
+  }
+}
 function updateMontantCurrent() {
   // ✅ v13.11 — Le « Total facture » = somme des examens cochés sur la fiche.
   // Si la fiche a été renseignée, elle fait foi : on ne l'écrase PAS par le
@@ -4596,7 +4625,7 @@ function updateMontantCurrent() {
     const parTab = JSON.parse(el?.dataset?.montantParTab || '{}');
     ficheUtilisee = Object.keys(parTab).length > 0;
   } catch(e) {}
-  if (ficheUtilisee && typeof calcFicheTotal === 'function') { calcFicheTotal(); return; }
+  if (ficheUtilisee && typeof calcFicheTotal === 'function') { calcFicheTotal(); updateSaveAllBar(); return; }
 
   const activeTab = document.querySelector('.tab.active');
   if (!activeTab) return;
@@ -4609,6 +4638,7 @@ function updateMontantCurrent() {
   const type = typeMap[tabId];
   if (!type) return;
   updateMontant(type);
+  updateSaveAllBar(); // ✅ v13.35
 }
 
 // ============================================================
@@ -5849,6 +5879,33 @@ async function _saveRecordImpl(type) {
       examensPrixTab[ex.label] = pxEl ? (parseInt(pxEl.value || '0') || 0) : (ex.prix || 0);
     });
 
+  // ✅ v13.35 — Collecter TOUS les onglets avec des coches (même sans résultats saisis)
+  // pour que l'historique affiche tous les types demandés dès l'enregistrement.
+  const TAB_TO_TYPE_MAP = {
+    hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
+    sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin'
+  };
+  const autresTabsCoches = {}; // { type: { coches: [...], prix: {...}, montant: N } }
+  const montantParTab = JSON.parse(document.getElementById('montant-preview')?.dataset?.montantParTab || '{}');
+  TAB_ORDER.forEach(tid => {
+    if (tid === tabKey) return; // déjà traité
+    const otherType = TAB_TO_TYPE_MAP[tid];
+    if (!otherType) return;
+    const coches = getCatalogueComplet()
+      .filter(ex => ex.tab === tid && document.getElementById(ex.id)?.checked);
+    if (!coches.length) return;
+    const prix = {};
+    coches.forEach(ex => {
+      const pxEl = document.getElementById('px_' + ex.id);
+      prix[ex.label] = pxEl ? (parseInt(pxEl.value || '0') || 0) : (ex.prix || 0);
+    });
+    autresTabsCoches[otherType] = {
+      coches: coches.map(ex => ex.label),
+      prix,
+      montant: montantParTab[tid] || 0,
+    };
+  });
+
   const prescripteurId = document.getElementById('p_prescripteur_id')?.value || null;
   const dossier = p.dossier;
 
@@ -5952,6 +6009,16 @@ async function _saveRecordImpl(type) {
     }
     if (!newRes._montants) newRes._montants = {}; // ✅ v12 — mémorise le montant par analyse
     newRes._montants[type] = montant;
+    // ✅ v13.35 — Intégrer les autres onglets cochés sans résultats
+    Object.entries(autresTabsCoches).forEach(([otherType, data]) => {
+      if (!newRes._types.includes(otherType)) newRes._types.push(otherType);
+      if (!newRes[otherType]) newRes[otherType] = {};
+      if (!newRes._examens_coches) newRes._examens_coches = {};
+      newRes._examens_coches[otherType] = data.coches;
+      if (!newRes._examens_prix) newRes._examens_prix = {};
+      newRes._examens_prix[otherType] = data.prix;
+      newRes._montants[otherType] = data.montant;
+    });
     // ✅ v13.28 — Recalculer le TOTAL depuis _montants (somme de tous les types)
     // au lieu d'additionner à l'ancien total : évite l'accumulation si on
     // ré-enregistre le même type plusieurs fois.
@@ -5975,6 +6042,16 @@ async function _saveRecordImpl(type) {
     // ── Créer un nouveau dossier ────────────────────────────────
     const newRes = { [type]: typeResultats, _types: [type], _montants: { [type]: montant } }; // ✅ v12
     if (examensCochesTab.length) { newRes._examens_coches = { [type]: examensCochesTab }; newRes._examens_prix = { [type]: examensPrixTab }; }
+    // ✅ v13.35 — Intégrer les autres onglets cochés sans résultats
+    Object.entries(autresTabsCoches).forEach(([otherType, data]) => {
+      if (!newRes._types.includes(otherType)) newRes._types.push(otherType);
+      if (!newRes[otherType]) newRes[otherType] = {}; // résultats vides
+      if (!newRes._examens_coches) newRes._examens_coches = {};
+      newRes._examens_coches[otherType] = data.coches;
+      if (!newRes._examens_prix) newRes._examens_prix = {};
+      newRes._examens_prix[otherType] = data.prix;
+      newRes._montants[otherType] = data.montant;
+    });
 
     const saved = await insertRecordRemote({
       patient: p, type: 'Dossier',
@@ -7588,6 +7665,41 @@ async function saveThenNext(type) {
   }
 }
 
+
+// ✅ v13.35 — Enregistrer tous les onglets cochés en séquence automatique
+async function saveAllTabs() {
+  const tabsACochecher = TAB_ORDER.filter(tabId => {
+    const cat = getCatalogueComplet().filter(ex => ex.tab === tabId);
+    return cat.some(ex => document.getElementById(ex.id)?.checked);
+  });
+
+  if (!tabsACochecher.length) {
+    toast('⚠ Aucun examen coché', 'err'); return;
+  }
+
+  const btns = document.querySelectorAll('button[onclick^="saveThenNext"], button[onclick^="saveRecord"], #btn-save-all');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    for (const tabId of tabsACochecher) {
+      const type = TAB_TO_TYPE[tabId];
+      if (!type) continue;
+      switchTab(tabId);
+      await new Promise(r => setTimeout(r, 80));
+      await _saveRecordImpl(type);
+      await new Promise(r => setTimeout(r, 120));
+    }
+    toast('✅ ' + tabsACochecher.length + ' analyse(s) enregistrée(s)', 'ok');
+    setTimeout(() => {
+      regenDossier();
+      switchTab(TAB_ORDER[0]);
+    }, 200);
+  } catch(e) {
+    toast('Erreur : ' + (e.message || e), 'err');
+  } finally {
+    btns.forEach(b => b.disabled = false);
+  }
+}
 // ✅ v13.33 — Navigation sous-onglets admin
 function adminShowMain(id, btn) {
   document.querySelectorAll('#view-comptes .admin-section').forEach(s => s.classList.remove('active'));
