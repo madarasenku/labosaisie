@@ -2943,6 +2943,14 @@ select {
       <span id="caisse-periode-label" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
     </div>
 
+    <!-- ✅ v13.37 — Export du point journalier (par jour + total) sur la période choisie -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <span style="font-size:12.5px;font-weight:700;color:var(--text-label)">📅 Point journalier :</span>
+      <button class="btn btn-success" onclick="exportPointJournalierExcel()" style="padding:6px 14px;font-size:12.5px">⬇ Excel</button>
+      <button class="btn" onclick="exportPointJournalierPDF()" style="padding:6px 14px;font-size:12.5px;background:#dc2626;color:#fff">📄 PDF</button>
+      <span style="font-size:11.5px;color:var(--text-muted)">Le total de chaque jour + le total général sur la période sélectionnée.</span>
+    </div>
+
     <!-- v13.32 — Fiches verrouillées exclues de la comptabilité (voir section Fiches verrouillées) -->
     <div id="caisse-cles-toggle" style="display:none"></div>
   </div>
@@ -14239,6 +14247,83 @@ async function exportRistournesExcel() {
   tot.font = { bold: true }; tot.getCell(3).numFmt = '#,##0" FCFA"'; tot.getCell(5).numFmt = '#,##0" FCFA"';
   ws.columns.forEach(c => c.width = 18); ws.getColumn(1).width = 30;
   await downloadWorkbook(wb, 'Ristournes_' + MOIS_FR[mois - 1] + '_' + annee + '.xlsx');
+}
+
+// ✅ v13.37 — POINT JOURNALIER DE LA CAISSE (par jour + total)
+// Une ligne par jour : date, nombre de patients, total encaissé ; puis un total général.
+function _frDate(d) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.split('-').reverse().join('/') : (d || '—');
+}
+function _pointJournalierData() {
+  const db = getCalcDB();
+  const { from, to } = getCaisseRange();
+  const rows = filterByDateRange(db, from, to);
+  const parJour = {};
+  rows.forEach(r => {
+    const d = _recDate(r) || '—';
+    (parJour[d] = parJour[d] || { nb: 0, total: 0 });
+    parJour[d].nb++;
+    parJour[d].total += (r.montant || 0);
+  });
+  const jours = Object.keys(parJour).sort();
+  return {
+    from, to, jours, parJour,
+    totNb: rows.length,
+    totMontant: rows.reduce((s, r) => s + (r.montant || 0), 0)
+  };
+}
+async function exportPointJournalierExcel() {
+  if (typeof ensureExcelJSReady === 'function' ? !ensureExcelJSReady() : !window.ExcelJS) {
+    toast('Bibliothèque Excel non disponible', 'err'); return;
+  }
+  await refreshDB();
+  const { from, to, jours, parJour, totNb, totMontant } = _pointJournalierData();
+  if (!jours.length) { toast('Aucune donnée sur la période sélectionnée', 'err'); return; }
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Point journalier');
+  ws.mergeCells('A1:C1');
+  ws.getCell('A1').value = 'CPMI Grand-Bassam — Point journalier de la caisse';
+  ws.getCell('A1').font = { bold: true, size: 13 };
+  ws.mergeCells('A2:C2');
+  ws.getCell('A2').value = 'Période : ' + _frDate(from) + '  →  ' + _frDate(to);
+  ws.getCell('A2').font = { italic: true, size: 10, color: { argb: 'FF666666' } };
+  ws.addRow([]);
+  const hdr = ws.addRow(['Date', 'Nb patients', 'Total encaissé (FCFA)']);
+  hdr.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A4480' } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.alignment = { horizontal: 'center' }; });
+  jours.forEach(d => {
+    const row = ws.addRow([_frDate(d), parJour[d].nb, parJour[d].total]);
+    row.getCell(2).alignment = { horizontal: 'center' };
+    row.getCell(3).numFmt = '#,##0" FCFA"';
+  });
+  const tot = ws.addRow(['TOTAL', totNb, totMontant]);
+  tot.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCEAF7' } }; });
+  tot.getCell(2).alignment = { horizontal: 'center' };
+  tot.getCell(3).numFmt = '#,##0" FCFA"';
+  ws.getColumn(1).width = 16; ws.getColumn(2).width = 14; ws.getColumn(3).width = 24;
+  await downloadWorkbook(wb, 'Point_caisse_' + (from || 'debut') + '_' + (to || 'fin') + '.xlsx');
+  toast('Export Excel réussi ✓', 'ok');
+}
+function exportPointJournalierPDF() {
+  if (!window.jspdf?.jsPDF) { toast('Bibliothèque PDF non disponible', 'err'); return; }
+  const { from, to, jours, parJour, totNb, totMontant } = _pointJournalierData();
+  if (!jours.length) { toast('Aucune donnée sur la période sélectionnée', 'err'); return; }
+  const { doc } = _newPDFDoc();
+  doc.setFontSize(14); doc.setFont(undefined, 'bold');
+  doc.text('CPMI Grand-Bassam - Point journalier de la caisse', 14, 16);
+  doc.setFontSize(10); doc.setFont(undefined, 'normal');
+  doc.text('Periode : ' + _frDate(from) + '  ->  ' + _frDate(to), 14, 23);
+  doc.autoTable({
+    startY: 28,
+    head: [['Date', 'Nb patients', 'Total encaisse (FCFA)']],
+    body: jours.map(d => [_frDate(d), String(parJour[d].nb), _fmtF(parJour[d].total) + ' F']),
+    foot: [['TOTAL', String(totNb), _fmtF(totMontant) + ' F']],
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [26, 68, 128], halign: 'center' },
+    footStyles: { fillColor: [220, 234, 247], textColor: [26, 68, 128], fontStyle: 'bold' },
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' } }
+  });
+  doc.save('Point_caisse_' + (from || 'debut') + '_' + (to || 'fin') + '.pdf');
+  toast('Export PDF réussi ✓', 'ok');
 }
 
 // ── FEATURE 7 : rapport d'activité mensuel (PDF) ──────────────────
