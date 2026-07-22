@@ -5551,23 +5551,31 @@ function collectResults(type) {
     data['GE - Stade'] = document.getElementById('ge_stade')?.value || '';
     data['GE - TDR'] = document.getElementById('ge_tdr')?.value || '';
     data['GE - Observation'] = document.getElementById('ge_obs')?.value || '';
-    // Groupe sanguin
-    data['GS - ABO'] = document.getElementById('gs_abo_hema')?.value || '';
-    data['GS - Rhésus'] = document.getElementById('gs_rh_hema')?.value || '';
-    data['GS - RAI'] = document.getElementById('gs_rai_hema')?.value || '';
-    data['GS - Phénotype'] = document.getElementById('gs_phenotype_hema')?.value || '';
-    // CRP
-    data['CRP - Valeur'] = document.getElementById('crp_valeur')?.value || '';
-    data['CRP - Interprétation'] = document.getElementById('crp_interp')?.textContent || '';
-    // Widal
-    WIDAL_ANTIGENES.forEach(ag => {
-      data['Widal - ' + ag.name] = {
-        titre: document.getElementById('widal_'+ag.id)?.value || '',
-        cinetique: document.getElementById('widal_cin_'+ag.id)?.value || '',
-        interp: document.getElementById('widal_i_'+ag.id)?.textContent || '',
-      };
-    });
-    data['Widal - Conclusion'] = document.getElementById('widal-conclusion')?.textContent || '';
+    // ✅ v13.36 — CORRECTIF CONTAMINATION INTER-PATIENTS : CRP / Widal / GS vivent
+    // sur le panneau Sérologie et n'étaient jamais vidés après un enregistrement
+    // Hématologie. On ne les collecte donc QUE si l'examen correspondant est
+    // effectivement coché (sinon on héritait des valeurs du patient précédent).
+    // Ils restent aussi collectés sous 'Immuno-Sérologie'.
+    if (document.getElementById('ex_gs')?.checked) {
+      data['GS - ABO'] = document.getElementById('gs_abo_hema')?.value || '';
+      data['GS - Rhésus'] = document.getElementById('gs_rh_hema')?.value || '';
+      data['GS - RAI'] = document.getElementById('gs_rai_hema')?.value || '';
+      data['GS - Phénotype'] = document.getElementById('gs_phenotype_hema')?.value || '';
+    }
+    if (document.getElementById('ex_crp')?.checked) {
+      data['CRP - Valeur'] = document.getElementById('crp_valeur')?.value || '';
+      data['CRP - Interprétation'] = document.getElementById('crp_interp')?.textContent || '';
+    }
+    if (document.getElementById('ex_widal')?.checked) {
+      WIDAL_ANTIGENES.forEach(ag => {
+        data['Widal - ' + ag.name] = {
+          titre: document.getElementById('widal_'+ag.id)?.value || '',
+          cinetique: document.getElementById('widal_cin_'+ag.id)?.value || '',
+          interp: document.getElementById('widal_i_'+ag.id)?.textContent || '',
+        };
+      });
+      data['Widal - Conclusion'] = document.getElementById('widal-conclusion')?.textContent || '';
+    }
 
   } else if (type === 'Biochimie') {
     [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO,...BIO_FER,...BIO_CARD,...BIO_HORM,...BIO_COAG,...BIO_AUTRE].forEach(p => {
@@ -6556,9 +6564,25 @@ function loadResultsIntoForm(type, res) {
     setVal('gs_obs', res['Commentaire GS']);
   }
   else if (type === 'Parasitologie') {
-    setSel('eps_aspect', res['Aspect des selles']);
-    setSel('eps_consistance', res['Consistance']);
-    setVal('eps_obs', res['Observation']);
+    // ✅ v13.36 — CORRECTIF : les anciens ids eps_* n'existaient pas → l'édition
+    // n'affichait rien et le ré-enregistrement effaçait les données. On restaure
+    // désormais les vrais champs para_*/pe_* (miroir de collectResults).
+    setSel('para_type',        res["Type d'examen"]);
+    setSel('para_resultat',    res['Résultat global']);
+    setSel('para_coloration',  res['Coloration']);
+    setSel('para_espece',      res['Espèce plasmodiale']);
+    setVal('para_parasitemie', res['Parasitémie (%)']);
+    setVal('para_densite',     res['Densité parasitaire /µL']);
+    setSel('para_stade',       res['Stade parasitaire']);
+    setVal('para_indice',      res['Indice érythrocytaire']);
+    setSel('para_tdr',         res['TDR paludisme']);
+    if (typeof PARA_EPS !== 'undefined') {
+      PARA_EPS.forEach(pa => {
+        const id = 'pe_' + pa.replace(/[^a-z]/gi,'_');
+        if (res[pa] !== undefined) setSel(id, res[pa]);
+      });
+    }
+    setVal('para_obs', res['Observations']);
   }
   else if (type === 'Bilan prénatal') {
     // ✅ v12.4 — restaurer les examens inclus cochés
@@ -7002,9 +7026,12 @@ async function renderHistory(forceRefresh) {
     }
     const dossierMulti = '';
     const montantStr = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
-    const recPreview = {id:r.id,patient:r.patient,montant:r.montant,resultats:{_examens_coches:r.resultats?._examens_coches}};
+    // ✅ v13.36 — SÉCURITÉ (XSS) : ne plus injecter le JSON du dossier (nom/note
+    // patients) dans l'attribut HTML. On passe seulement l'id (numérique) et
+    // showPreview() retrouve le dossier dans le cache. Empêche un nom de patient
+    // du type '"><img src=x onerror=...> d'exécuter du code dans l'historique.
     return '<tr id="row-' + r.id + '" class="hist-row-' + getStatut(r.id) + '"'
-      + ' onmousemove="showPreview(event,' + JSON.stringify(recPreview).replace(/\\/g,'\\\\').replace(/'/g,"\\'") + ')" onmouseleave="hidePreview()">'
+      + ' onmousemove="showPreview(event,' + r.id + ')" onmouseleave="hidePreview()">'
       + '<td style="text-align:center;padding:4px;vertical-align:middle"><input type="checkbox" class="bulk-chk" data-id="' + r.id + '" '
         + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
         + ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)"></td>'
@@ -11149,8 +11176,14 @@ function statutBadge(id) {
 
 // ── Aperçu rapide au survol ──
 let _previewTimer = null;
-function showPreview(e, record) {
+function showPreview(e, recordOrId) {
   clearTimeout(_previewTimer);
+  // ✅ v13.36 — Accepte un id (nouveau, sûr) ou un objet (compat). L'id est
+  // résolu depuis le cache : aucune donnée patient n'est injectée dans le HTML.
+  const record = (typeof recordOrId === 'object' && recordOrId)
+    ? recordOrId
+    : getDB().find(x => x.id === recordOrId);
+  if (!record) return;
   _previewTimer = setTimeout(() => {
     const p = record.patient||{};
     const types = getRecordTypes(record).join(', ');
