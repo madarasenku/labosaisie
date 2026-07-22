@@ -9767,9 +9767,9 @@ async function enregistrerFicheIdentif() {
       hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
       sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin'
     };
-    // Type principal = celui du premier onglet ayant des examens cochés
-    const premierTab = Object.keys(cochesParTab)[0];
-    const typePrincipal = TAB_TO_TYPE[premierTab] || 'Hématologie';
+    // ✅ v13.36 — Plus de « type principal » : le dossier est enregistré avec
+    // type='Dossier' et toutes ses analyses dans _types. (L'ancien typePrincipal
+    // rangeait tout le dossier sous la 1re analyse cochée, souvent Hématologie.)
 
     const _montants = {};
     const _examens_coches = {};
@@ -9806,7 +9806,11 @@ async function enregistrerFicheIdentif() {
         _facture_seule:  !(existing?.resultats) || existing.resultats._facture_seule,
       };
       const updatedRecord = {
-        type: typePrincipal,
+        // ✅ v13.36 — TOUJOURS 'Dossier' : un dossier multi-analyses doit
+        // passer isDossierRecord() pour que getRecordTypes() lise _types.
+        // (Avant : typePrincipal masquait les analyses autres que la 1re,
+        //  ex. Immuno-Sérologie affiché comme « Hématologie ».)
+        type: 'Dossier',
         patient: p,
         resultats: mergedResultats,
         montant: montantTotal,
@@ -9826,7 +9830,10 @@ async function enregistrerFicheIdentif() {
       showView('historique');
     } else {
       const record = {
-        type: typePrincipal,
+        // ✅ v13.36 — TOUJOURS 'Dossier' (voir note ci-dessus) : sinon
+        // getRecordTypes() ne renvoie que le type principal et masque les
+        // autres analyses dans l'historique et sur le reçu.
+        type: 'Dossier',
         patient: p,
         resultats,
         montant: montantTotal,
