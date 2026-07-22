@@ -2948,7 +2948,7 @@ select {
       <span style="font-size:12.5px;font-weight:700;color:var(--text-label)">📅 Point journalier :</span>
       <button class="btn btn-success" onclick="exportPointJournalierExcel()" style="padding:6px 14px;font-size:12.5px">⬇ Excel</button>
       <button class="btn" onclick="exportPointJournalierPDF()" style="padding:6px 14px;font-size:12.5px;background:#dc2626;color:#fff">📄 PDF</button>
-      <span style="font-size:11.5px;color:var(--text-muted)">Le total de chaque jour + le total général sur la période sélectionnée.</span>
+      <span style="font-size:11.5px;color:var(--text-muted)">Par jour (payé / non payé) + par type d'analyse + par prescripteur, avec totaux — sur la période sélectionnée.</span>
     </div>
 
     <!-- v13.32 — Fiches verrouillées exclues de la comptabilité (voir section Fiches verrouillées) -->
@@ -14258,71 +14258,149 @@ function _pointJournalierData() {
   const db = getCalcDB();
   const { from, to } = getCaisseRange();
   const rows = filterByDateRange(db, from, to);
+
+  // ── Par jour : nb patients, total, payé, non payé ──
   const parJour = {};
   rows.forEach(r => {
     const d = _recDate(r) || '—';
-    (parJour[d] = parJour[d] || { nb: 0, total: 0 });
-    parJour[d].nb++;
-    parJour[d].total += (r.montant || 0);
+    const j = (parJour[d] = parJour[d] || { nb: 0, total: 0, paye: 0, nonPaye: 0 });
+    const m = r.montant || 0;
+    j.nb++; j.total += m;
+    if (getPaiementStatus(r.id) === 'paye') j.paye += m; else j.nonPaye += m;
   });
   const jours = Object.keys(parJour).sort();
+
+  // ── Par type d'analyse (même logique que la caisse à l'écran) ──
+  const byType = {};
+  rows.forEach(r => {
+    const types = isDossierRecord(r) ? (r.resultats?._types || []) : [r.type];
+    const montants = r.resultats?._montants || null;
+    types.forEach(t => {
+      if (!t) return;
+      const b = (byType[t] = byType[t] || { nb: 0, total: 0 });
+      b.nb++;
+      b.total += montants ? (Number(montants[t]) || 0) : (types.length === 1 ? (r.montant || 0) : 0);
+    });
+  });
+  const typeRows = Object.entries(byType).filter(([, v]) => v.nb > 0).sort((a, b) => b[1].total - a[1].total);
+
+  // ── Par prescripteur (tous, pas seulement le top 5) ──
+  const byPresc = {};
+  rows.forEach(r => {
+    const pid = r.prescripteur_id;
+    const nom = (_prescripteurs.find(p => Number(p.id) === Number(pid))?.nom) || r.patient?.medecin || 'Inconnu';
+    const b = (byPresc[nom] = byPresc[nom] || { nb: 0, total: 0 });
+    b.nb++; b.total += (r.montant || 0);
+  });
+  const prescRows = Object.entries(byPresc).sort((a, b) => b[1].total - a[1].total);
+
+  const totMontant = rows.reduce((s, r) => s + (r.montant || 0), 0);
+  const totPaye = rows.filter(r => getPaiementStatus(r.id) === 'paye').reduce((s, r) => s + (r.montant || 0), 0);
   return {
-    from, to, jours, parJour,
-    totNb: rows.length,
-    totMontant: rows.reduce((s, r) => s + (r.montant || 0), 0)
+    from, to, jours, parJour, typeRows, prescRows,
+    totNb: rows.length, totMontant, totPaye, totNonPaye: totMontant - totPaye
   };
 }
+
 async function exportPointJournalierExcel() {
   if (typeof ensureExcelJSReady === 'function' ? !ensureExcelJSReady() : !window.ExcelJS) {
     toast('Bibliothèque Excel non disponible', 'err'); return;
   }
   await refreshDB();
-  const { from, to, jours, parJour, totNb, totMontant } = _pointJournalierData();
-  if (!jours.length) { toast('Aucune donnée sur la période sélectionnée', 'err'); return; }
+  const D = _pointJournalierData();
+  if (!D.jours.length) { toast('Aucune donnée sur la période sélectionnée', 'err'); return; }
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Point journalier');
-  ws.mergeCells('A1:C1');
-  ws.getCell('A1').value = 'CPMI Grand-Bassam — Point journalier de la caisse';
-  ws.getCell('A1').font = { bold: true, size: 13 };
-  ws.mergeCells('A2:C2');
-  ws.getCell('A2').value = 'Période : ' + _frDate(from) + '  →  ' + _frDate(to);
-  ws.getCell('A2').font = { italic: true, size: 10, color: { argb: 'FF666666' } };
-  ws.addRow([]);
-  const hdr = ws.addRow(['Date', 'Nb patients', 'Total encaissé (FCFA)']);
-  hdr.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A4480' } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.alignment = { horizontal: 'center' }; });
-  jours.forEach(d => {
-    const row = ws.addRow([_frDate(d), parJour[d].nb, parJour[d].total]);
+  const MONEY = '#,##0" FCFA"';
+  const titre = (ws, txt, span) => {
+    ws.mergeCells('A1:' + span + '1'); ws.getCell('A1').value = txt; ws.getCell('A1').font = { bold: true, size: 13 };
+    ws.mergeCells('A2:' + span + '2'); ws.getCell('A2').value = 'Période : ' + _frDate(D.from) + '  →  ' + _frDate(D.to);
+    ws.getCell('A2').font = { italic: true, size: 10, color: { argb: 'FF666666' } };
+    ws.addRow([]);
+  };
+  const hdr = (ws, cols) => { const h = ws.addRow(cols); h.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A4480' } }; c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.alignment = { horizontal: 'center' }; }); };
+  const totalRow = (ws, cells, moneyCols) => { const t = ws.addRow(cells); t.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCEAF7' } }; }); moneyCols.forEach(c => t.getCell(c).numFmt = MONEY); };
+
+  // Feuille 1 : Point journalier
+  const ws1 = wb.addWorksheet('Point journalier');
+  titre(ws1, 'CPMI Grand-Bassam — Point journalier de la caisse', 'E');
+  hdr(ws1, ['Date', 'Nb patients', 'Total (FCFA)', 'Payé (FCFA)', 'Non payé (FCFA)']);
+  D.jours.forEach(d => {
+    const j = D.parJour[d];
+    const row = ws1.addRow([_frDate(d), j.nb, j.total, j.paye, j.nonPaye]);
     row.getCell(2).alignment = { horizontal: 'center' };
-    row.getCell(3).numFmt = '#,##0" FCFA"';
+    [3, 4, 5].forEach(c => row.getCell(c).numFmt = MONEY);
   });
-  const tot = ws.addRow(['TOTAL', totNb, totMontant]);
-  tot.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCEAF7' } }; });
-  tot.getCell(2).alignment = { horizontal: 'center' };
-  tot.getCell(3).numFmt = '#,##0" FCFA"';
-  ws.getColumn(1).width = 16; ws.getColumn(2).width = 14; ws.getColumn(3).width = 24;
-  await downloadWorkbook(wb, 'Point_caisse_' + (from || 'debut') + '_' + (to || 'fin') + '.xlsx');
+  totalRow(ws1, ['TOTAL', D.totNb, D.totMontant, D.totPaye, D.totNonPaye], [3, 4, 5]);
+  ws1.getColumn(1).width = 16; ws1.getColumn(2).width = 13; [3, 4, 5].forEach(c => ws1.getColumn(c).width = 18);
+
+  // Feuille 2 : Par type d'analyse
+  const ws2 = wb.addWorksheet("Par type d'analyse");
+  titre(ws2, "CPMI Grand-Bassam — Répartition par type d'analyse", 'C');
+  hdr(ws2, ["Type d'analyse", 'Nb dossiers', 'Total (FCFA)']);
+  D.typeRows.forEach(([t, v]) => { const row = ws2.addRow([t, v.nb, v.total]); row.getCell(2).alignment = { horizontal: 'center' }; row.getCell(3).numFmt = MONEY; });
+  totalRow(ws2, ['TOTAL', D.typeRows.reduce((s, [, v]) => s + v.nb, 0), D.typeRows.reduce((s, [, v]) => s + v.total, 0)], [3]);
+  ws2.getColumn(1).width = 28; ws2.getColumn(2).width = 13; ws2.getColumn(3).width = 20;
+
+  // Feuille 3 : Par prescripteur
+  const ws3 = wb.addWorksheet('Par prescripteur');
+  titre(ws3, 'CPMI Grand-Bassam — Répartition par prescripteur', 'C');
+  hdr(ws3, ['Prescripteur', 'Nb dossiers', 'Total (FCFA)']);
+  D.prescRows.forEach(([nom, v]) => { const row = ws3.addRow([nom, v.nb, v.total]); row.getCell(2).alignment = { horizontal: 'center' }; row.getCell(3).numFmt = MONEY; });
+  totalRow(ws3, ['TOTAL', D.prescRows.reduce((s, [, v]) => s + v.nb, 0), D.prescRows.reduce((s, [, v]) => s + v.total, 0)], [3]);
+  ws3.getColumn(1).width = 30; ws3.getColumn(2).width = 13; ws3.getColumn(3).width = 20;
+
+  await downloadWorkbook(wb, 'Point_caisse_' + (D.from || 'debut') + '_' + (D.to || 'fin') + '.xlsx');
   toast('Export Excel réussi ✓', 'ok');
 }
+
 function exportPointJournalierPDF() {
   if (!window.jspdf?.jsPDF) { toast('Bibliothèque PDF non disponible', 'err'); return; }
-  const { from, to, jours, parJour, totNb, totMontant } = _pointJournalierData();
-  if (!jours.length) { toast('Aucune donnée sur la période sélectionnée', 'err'); return; }
+  const D = _pointJournalierData();
+  if (!D.jours.length) { toast('Aucune donnée sur la période sélectionnée', 'err'); return; }
   const { doc } = _newPDFDoc();
+  const HEAD = [26, 68, 128], FOOT = [220, 234, 247];
+  const foot = { fillColor: FOOT, textColor: HEAD, fontStyle: 'bold' };
+
   doc.setFontSize(14); doc.setFont(undefined, 'bold');
   doc.text('CPMI Grand-Bassam - Point journalier de la caisse', 14, 16);
   doc.setFontSize(10); doc.setFont(undefined, 'normal');
-  doc.text('Periode : ' + _frDate(from) + '  ->  ' + _frDate(to), 14, 23);
+  doc.text('Periode : ' + _frDate(D.from) + '  ->  ' + _frDate(D.to), 14, 23);
+
+  // 1) Par jour
   doc.autoTable({
     startY: 28,
-    head: [['Date', 'Nb patients', 'Total encaisse (FCFA)']],
-    body: jours.map(d => [_frDate(d), String(parJour[d].nb), _fmtF(parJour[d].total) + ' F']),
-    foot: [['TOTAL', String(totNb), _fmtF(totMontant) + ' F']],
-    styles: { fontSize: 10 },
-    headStyles: { fillColor: [26, 68, 128], halign: 'center' },
-    footStyles: { fillColor: [220, 234, 247], textColor: [26, 68, 128], fontStyle: 'bold' },
+    head: [['Date', 'Nb pat.', 'Total', 'Paye', 'Non paye']],
+    body: D.jours.map(d => { const j = D.parJour[d]; return [_frDate(d), String(j.nb), _fmtF(j.total) + ' F', _fmtF(j.paye) + ' F', _fmtF(j.nonPaye) + ' F']; }),
+    foot: [['TOTAL', String(D.totNb), _fmtF(D.totMontant) + ' F', _fmtF(D.totPaye) + ' F', _fmtF(D.totNonPaye) + ' F']],
+    styles: { fontSize: 9 }, headStyles: { fillColor: HEAD }, footStyles: foot,
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } }
+  });
+
+  // 2) Par type d'analyse
+  let y = (doc.lastAutoTable?.finalY || 40) + 10;
+  doc.setFont(undefined, 'bold'); doc.setFontSize(12); doc.text("Repartition par type d'analyse", 14, y);
+  doc.autoTable({
+    startY: y + 3,
+    head: [['Type', 'Nb dossiers', 'Total']],
+    body: D.typeRows.map(([t, v]) => [t, String(v.nb), _fmtF(v.total) + ' F']),
+    foot: [['TOTAL', String(D.typeRows.reduce((s, [, v]) => s + v.nb, 0)), _fmtF(D.typeRows.reduce((s, [, v]) => s + v.total, 0)) + ' F']],
+    styles: { fontSize: 9 }, headStyles: { fillColor: HEAD }, footStyles: foot,
     columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' } }
   });
-  doc.save('Point_caisse_' + (from || 'debut') + '_' + (to || 'fin') + '.pdf');
+
+  // 3) Par prescripteur
+  y = (doc.lastAutoTable?.finalY || 40) + 10;
+  doc.setFont(undefined, 'bold'); doc.setFontSize(12); doc.text('Repartition par prescripteur', 14, y);
+  doc.autoTable({
+    startY: y + 3,
+    head: [['Prescripteur', 'Nb dossiers', 'Total']],
+    body: D.prescRows.map(([nom, v]) => [nom, String(v.nb), _fmtF(v.total) + ' F']),
+    foot: [['TOTAL', String(D.prescRows.reduce((s, [, v]) => s + v.nb, 0)), _fmtF(D.prescRows.reduce((s, [, v]) => s + v.total, 0)) + ' F']],
+    styles: { fontSize: 9 }, headStyles: { fillColor: HEAD }, footStyles: foot,
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' } }
+  });
+
+  doc.save('Point_caisse_' + (D.from || 'debut') + '_' + (D.to || 'fin') + '.pdf');
   toast('Export PDF réussi ✓', 'ok');
 }
 
