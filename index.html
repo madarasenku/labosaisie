@@ -11272,7 +11272,8 @@ function ouvrirModalPaiement(id, montantDemande) {
         </div>
         <div>
           <label style="font-size:12px;font-weight:700;color:var(--text-label);display:block;margin-bottom:4px">Montant reçu (FCFA)</label>
-          <input type="number" id="pm-recu" value="" min="0" step="100"
+          <!-- ✅ v13.37 — pré-rempli avec le prix normal, modifiable si le patient donne plus -->
+          <input type="number" id="pm-recu" value="${demand}" min="0" step="100"
             placeholder="Saisir le montant donné par le patient"
             style="font-size:18px;font-weight:900;text-align:right"
             oninput="calcMonnaie()">
@@ -11298,7 +11299,11 @@ function ouvrirModalPaiement(id, montantDemande) {
       </div>
     </div>`;
   document.body.appendChild(modal);
-  document.getElementById('pm-recu').focus();
+  // ✅ v13.37 — Champ pré-rempli avec le prix : on calcule la monnaie (0 par
+  // défaut → bouton actif) et on sélectionne le texte pour le modifier vite.
+  const recuEl = document.getElementById('pm-recu');
+  if (recuEl) { recuEl.focus(); recuEl.select(); }
+  if (typeof calcMonnaie === 'function') calcMonnaie();
 }
 
 function fermerModalPaiement() {
