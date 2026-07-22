@@ -2945,6 +2945,16 @@ select {
     </div>
   </div>
 
+  <!-- ✅ v13.36 — Monnaie à rendre (patients qui n'ont pas repris leur monnaie) -->
+  <div class="card" style="margin-bottom:16px;display:none" id="caisse-monnaie-card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>💵 Monnaie à rendre</span>
+      <span id="caisse-monnaie-count" style="font-size:12px;color:#b45309;font-weight:700"></span>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">Patients à qui la monnaie n'a pas encore été remise. Cliquez « Remise » quand le patient repart avec sa monnaie.</p>
+    <div id="caisse-monnaie-body"></div>
+  </div>
+
   <!-- Graphique recettes par jour -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">📊 Recettes par jour (période sélectionnée)</div>
@@ -11040,6 +11050,12 @@ function ouvrirModalPaiement(id, montantDemande) {
         <div id="pm-monnaie-wrap" style="background:var(--success-light);border-radius:10px;padding:12px 16px;display:none">
           <div style="font-size:11px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.5px">Monnaie à rendre</div>
           <div id="pm-monnaie" style="font-size:26px;font-weight:900;color:var(--success)">0 FCFA</div>
+          <!-- ✅ v13.36 — Suivi de la remise de la monnaie -->
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer">
+            <input type="checkbox" id="pm-monnaie-remise" checked style="width:17px;height:17px;cursor:pointer;accent-color:var(--success)">
+            Monnaie remise au patient maintenant
+          </label>
+          <div style="font-size:11px;color:#b45309;margin-top:4px">Décochez si le patient repart sans sa monnaie (il reviendra la chercher).</div>
         </div>
         <div id="pm-insuffisant" style="background:var(--danger-light);border-radius:10px;padding:10px 14px;display:none;color:var(--danger);font-size:13px;font-weight:700">
           ⚠ Montant insuffisant
@@ -11093,16 +11109,28 @@ function validerPaiement(id) {
   const monnaie = recu - demande;
   if (monnaie < 0) return;
 
+  // ✅ v13.36 — Suivi de la remise de la monnaie. Si le patient repart sans sa
+  // monnaie (case décochée), le dossier apparaît dans « Monnaie à rendre ».
+  const remiseChk = document.getElementById('pm-monnaie-remise');
+  const monnaieRemise = monnaie <= 0 ? true : (remiseChk ? remiseChk.checked : true);
   const infos = {
     montant_demande: demande,
     montant_recu: recu,
-    monnaie_rendue: monnaie,
+    monnaie: monnaie,               // montant de la monnaie
+    monnaie_rendue: monnaie,        // conservé pour compatibilité (montant)
+    monnaie_remise: monnaieRemise,  // la monnaie a-t-elle été physiquement remise ?
+    monnaie_remise_le: (monnaie > 0 && monnaieRemise) ? new Date().toISOString() : null,
+    monnaie_remise_par: (monnaie > 0 && monnaieRemise) ? (_currentUser?.username || '?') : null,
     agent: _currentUser?.username || '?',
     date: new Date().toISOString()
   };
   setPaiementStatus(id, 'paye', infos);
   fermerModalPaiement();
-  toast('✅ Paiement enregistré — ' + demande.toLocaleString('fr-FR') + ' FCFA', 'ok');
+  if (monnaie > 0 && !monnaieRemise) {
+    toast('✅ Paiement enregistré — ⚠ Monnaie de ' + monnaie.toLocaleString('fr-FR') + ' FCFA À RENDRE', 'ok');
+  } else {
+    toast('✅ Paiement enregistré — ' + demande.toLocaleString('fr-FR') + ' FCFA', 'ok');
+  }
   // Mettre à jour le montant du dossier si différent
   const r = (_dbCache || []).find(r => r.id === id);
   if (r && demande && demande !== r.montant) {
@@ -11114,6 +11142,86 @@ function annulerPaiement(id) {
   if (!confirm('Annuler le paiement de ce dossier ?')) return;
   setPaiementStatus(id, 'non_paye', {});
   toast('Paiement annulé', 'err');
+}
+
+// ✅ v13.36 — Suivi de la monnaie à rendre
+// Retourne le montant de monnaie DUE (non remise) pour un dossier, sinon 0.
+// Un dossier n'est « à rendre » que si la case a été explicitement décochée
+// (monnaie_remise === false) → les anciens paiements ne sont jamais signalés.
+function monnaieDue(id) {
+  const r = (_dbCache || []).find(x => x.id === id);
+  const info = r?.patient?.paiement_infos || {};
+  const montant = Number(info.monnaie != null ? info.monnaie : info.monnaie_rendue) || 0;
+  return (montant > 0 && info.monnaie_remise === false) ? montant : 0;
+}
+
+async function marquerMonnaieRemise(id) {
+  const r = (_dbCache || []).find(x => x.id === id);
+  if (!r) { toast('Dossier introuvable', 'err'); return; }
+  const nom = r.patient?.nom || 'ce patient';
+  const due = monnaieDue(id);
+  if (!await showConfirmModal({
+    icon: '💵', title: 'Monnaie remise ?',
+    message: 'Confirmer que la monnaie de ' + due.toLocaleString('fr-FR') + ' FCFA a bien été remise à ' + nom + ' ?',
+    confirmText: 'Oui, remise', cancelText: 'Annuler'
+  })) return;
+  const infos = {
+    ...(r.patient?.paiement_infos || {}),
+    monnaie_remise: true,
+    monnaie_remise_le: new Date().toISOString(),
+    monnaie_remise_par: _currentUser?.username || '?'
+  };
+  setPaiementStatus(id, 'paye', infos); // conserve le statut payé, met à jour les infos
+  toast('✅ Monnaie de ' + due.toLocaleString('fr-FR') + ' FCFA remise à ' + nom, 'ok');
+}
+
+// Liste des dossiers dont la monnaie n'a pas encore été remise
+function renderCaisseMonnaie() {
+  const card  = document.getElementById('caisse-monnaie-card');
+  const body  = document.getElementById('caisse-monnaie-body');
+  const count = document.getElementById('caisse-monnaie-count');
+  if (!card || !body) return;
+
+  const db = getDB() || [];
+  const dus = db
+    .filter(r => monnaieDue(r.id) > 0)
+    .sort((a, b) => new Date(b.savedAt || 0) - new Date(a.savedAt || 0));
+
+  if (!dus.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const totalDu = dus.reduce((s, r) => s + monnaieDue(r.id), 0);
+  if (count) count.textContent = dus.length + ' patient(s) · ' + totalDu.toLocaleString('fr-FR') + ' FCFA';
+
+  const rows = dus.map(r => {
+    const p   = r.patient || {};
+    const nom = esc(p.nom || '—');
+    const dos = esc(p.dossier || r.id);
+    const due = monnaieDue(r.id).toLocaleString('fr-FR');
+    const info = p.paiement_infos || {};
+    const quand = info.date ? new Date(info.date).toLocaleDateString('fr-FR') : '—';
+    return `<tr>
+      <td style="font-weight:700">${nom}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${dos}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${quand}</td>
+      <td style="font-weight:900;color:#b45309;text-align:right">${due} FCFA</td>
+      <td style="text-align:center">
+        <button class="btn btn-primary" style="padding:4px 12px;font-size:12px;background:#16a34a"
+          onclick="marquerMonnaieRemise(${r.id})">✅ Remise</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="table-wrap">
+      <table class="result-table" style="width:100%">
+        <thead><tr>
+          <th>Patient</th><th>N° dossier</th><th>Payé le</th>
+          <th style="text-align:right">Monnaie due</th><th style="text-align:center">Action</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // ✅ v13.35 — Rendre la liste des dossiers à encaisser
@@ -11177,8 +11285,13 @@ function cycleStatut(id) {
 
 function paiementBadge(id) {
   const s = getPaiementStatus(id);
-  if (s === 'paye') return '<span style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">💵 Payé</span>';
-  return '<span style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();ouvrirModalPaiement(' + id + ')">💳 Non payé</span>';
+  // ✅ v13.36 — Pastille « monnaie à rendre » si le patient n'a pas repris sa monnaie
+  const due = (typeof monnaieDue === 'function') ? monnaieDue(id) : 0;
+  const monnaieTag = due > 0
+    ? ' <span title="Cliquer pour marquer la monnaie comme remise" style="background:#ffedd5;color:#9a3412;border:1px solid #fdba74;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();marquerMonnaieRemise(' + id + ')">💵 Monnaie à rendre : ' + due.toLocaleString('fr-FR') + '</span>'
+    : '';
+  if (s === 'paye') return '<span style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">💵 Payé</span>' + monnaieTag;
+  return '<span style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();ouvrirModalPaiement(' + id + ')">💳 Non payé</span>' + monnaieTag;
 }
 function statutBadge(id) {
   const s = getStatut(id);
@@ -11677,6 +11790,7 @@ async function renderCaisse() {
   animateCount(document.getElementById('caisse-kpi-moy'),     moy,     600, true);
   animateCount(document.getElementById('caisse-kpi-attente'), attente, 400, false);
   renderCaisseAEncaisser(); // ✅ v13.35
+  renderCaisseMonnaie();    // ✅ v13.36 — monnaie à rendre
 
   // Recettes par jour
   const parJour = {};
