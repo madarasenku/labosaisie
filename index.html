@@ -2926,6 +2926,15 @@ select {
      ═══════════════════════════════════════════════════ -->
 <div id="view-caisse" style="display:none">
 
+  <!-- ✅ v13.37 — Enregistrer un nouveau patient depuis la caisse -->
+  <div class="card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-weight:800;color:var(--cpmi-deep);font-size:15px">👤 Nouveau patient</div>
+      <div style="font-size:12px;color:var(--text-muted)">Enregistrer un patient (infos + examens + montant) puis l'encaisser.</div>
+    </div>
+    <button class="btn btn-primary" onclick="caisseNouveauPatient()" style="padding:9px 20px;font-size:14px">➕ Enregistrer un patient</button>
+  </div>
+
   <!-- Sélecteur de période -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">💰 Caisse — Sélection de période</div>
@@ -4687,9 +4696,15 @@ function updateMontantCurrent() {
 // ============================================================
 
 function showView(v) {
+  // ✅ v13.37 — Quitter le mode « nouveau patient caisse » dès qu'on change de vue
+  if (v !== 'saisie') _caisseNewPatientMode = false;
   // ✅ v13.33 — Le caissier ne peut pas accéder à la saisie ni aux comptes
   // ✅ v13.37 — Le spectateur non plus (lecture caisse uniquement)
-  if ((isCaissier() || isSpectateur()) && (v === 'saisie' || v === 'comptes')) return;
+  if (isSpectateur() && (v === 'saisie' || v === 'comptes')) return;
+  if (isCaissier() && v === 'comptes') return;
+  // Caissier : saisie autorisée UNIQUEMENT pour enregistrer un nouveau patient
+  // (facture), via le bouton dédié de la caisse.
+  if (isCaissier() && v === 'saisie' && !_caisseNewPatientMode) return;
 
   // ✅ v13.33 — Déterminer quel conteneur caisse afficher
   // Admin et Caissier → caisse complète ; Agent → vue personnelle simplifiée
@@ -5490,6 +5505,13 @@ async function newPatient() {
     message: 'Les informations en cours seront effacées. Les fiches déjà enregistrées ne sont pas supprimées.',
     confirmText: 'Confirmer', cancelText: 'Annuler'
   })) return;
+  await resetFicheIdentif();
+}
+
+// ✅ v13.37 — Réinitialisation de la fiche d'accueil SANS confirmation. Réutilisée
+// par newPatient() (après confirmation) et par l'enregistrement d'un nouveau
+// patient depuis la Caisse (caisseNouveauPatient).
+async function resetFicheIdentif() {
   // Repartir sur une session propre : mode filtré réactivé, plus en mode édition
   _showAllExams = false;
   _editingRecordId = null;
@@ -5536,6 +5558,29 @@ async function newPatient() {
   if (zoneSaisie) zoneSaisie.style.display = 'none';
   if (ficheIdentif) ficheIdentif.style.display = '';
   toast('Nouveau patient prêt ✓', 'ok');
+}
+
+// ✅ v13.37 — Enregistrement d'un nouveau patient depuis la CAISSE.
+// Le caissier ouvre la fiche d'accueil (patient + examens + montant) et clique
+// « Enregistrer sans saisie ». Les résultats ne sont PAS liés ici (le bouton
+// « Démarrer la saisie » est masqué pour le caissier).
+let _caisseNewPatientMode = false;
+async function caisseNouveauPatient() {
+  if (isSpectateur()) { blockIfSpectateur(); return; }
+  if (!isAdmin() && !isCaissier()) return;
+  _caisseNewPatientMode = true;         // autorise l'accès temporaire à la fiche
+  showView('saisie');
+  await resetFicheIdentif();
+  // Afficher la fiche d'accueil, masquer la zone de saisie des résultats
+  const zone = document.getElementById('zone-saisie');
+  const fiche = document.getElementById('fiche-identification');
+  if (zone) zone.style.display = 'none';
+  if (fiche) fiche.style.display = '';
+  // Caissier : masquer « Démarrer la saisie des résultats » (facture uniquement)
+  const btnDemarrer = document.querySelector('button[onclick="demarrerSaisie()"]');
+  if (btnDemarrer) btnDemarrer.style.display = isCaissier() ? 'none' : '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('👤 Nouveau patient — remplissez la fiche puis « Enregistrer »', 'ok');
 }
 
 // Déduit le texte d'interprétation (pour les exports PDF/Excel/impression)
@@ -9954,7 +9999,13 @@ async function enregistrerFicheIdentif() {
       hideLoading();
       toast('Facture enregistrée ✓ — résultats à compléter plus tard', 'ok');
       await refreshDB(true);
-      newPatient();
+      // ✅ v13.37 — Nouveau patient enregistré depuis la caisse → retour à la caisse
+      if (_caisseNewPatientMode) {
+        _caisseNewPatientMode = false;
+        showView('caisse');
+      } else {
+        newPatient();
+      }
     }
   } catch (e) {
     hideLoading();
