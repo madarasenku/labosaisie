@@ -8586,6 +8586,33 @@ function buildProfessionalSheet(wb, r, sheetName) {
       });
       row++;
     }
+    // ✅ v13.37 — CRP / Widal / Groupe sanguin manquaient dans l'export Excel.
+    if (res['CRP - Valeur']) {
+      secHdr('CRP — Protéine C-réactive (Latex)');
+      tblHdr('Test', 'Résultat', 'Unité', 'Valeurs normales');
+      const _crp = res['CRP - Valeur'] === 'neg' ? 'Négatif (< 6 mg/L)' : res['CRP - Valeur'] + ' mg/L';
+      pRow('CRP Latex', _crp, '', '< 6 mg/L', res['CRP - Valeur'] === 'neg' ? 'Normal' : 'Élevé');
+      row++;
+    }
+    if (typeof WIDAL_ANTIGENES !== 'undefined') {
+      const _widD = WIDAL_ANTIGENES.filter(ag => { const w = res['Widal - ' + ag.name]; return w && w.titre; });
+      if (_widD.length) {
+        secHdr('Sérodiagnostic de Widal & Félix (SWF)');
+        tblHdr('Antigène', 'Titre', 'Cinétique', 'Commentaire');
+        _widD.forEach(ag => { const w = res['Widal - ' + ag.name]; pRow(ag.name, w.titre, w.cinetique || '', w.interp || '', ''); });
+        if (res['Widal - Conclusion']) nRow(res['Widal - Conclusion']);
+        row++;
+      }
+    }
+    const _sAbo = res['Groupe ABO'] || res['GS - ABO'];
+    const _sRh  = res['Rhésus'] || res['GS - Rhésus'];
+    if (_sAbo || _sRh) {
+      secHdr('Groupe Sanguin ABO / Rhésus');
+      tblHdr('Paramètre', 'Résultat', '', '');
+      if (_sAbo) pRow('Groupe ABO', _sAbo, '', '', '');
+      if (_sRh)  pRow('Rhésus', _sRh, '', '', '');
+      row++;
+    }
 
   } else if (r.type === 'Groupe sanguin') {
     secHdr('Groupe Sanguin ABO / Rhésus');
@@ -8596,13 +8623,23 @@ function buildProfessionalSheet(wb, r, sheetName) {
     row++;
 
   } else if (r.type === 'Parasitologie') {
-    secHdr('Examen Parasitologique des Selles');
-      tblHdr('Paramètre', 'Résultat', '', '');
-    if (res['Aspect des selles'])  pRow('Aspect',res['Aspect des selles'],'','','');
-    if (res['Consistance'])        pRow('Consistance',res['Consistance'],'','','');
-    if (res['Observation'])        nRow(res['Observation']);
-    const parasites = Object.keys(res).filter(k=>k.startsWith('EPS_')&&res[k]&&res[k]!=='Absent');
-    parasites.forEach(k=>pRow(k.replace('EPS_',''),res[k],'','',''));
+    // ✅ v13.37 — CORRECTIF : lisait des clés inexistantes (« Aspect des selles »,
+    // « EPS_… ») → section vide. On lit désormais les vraies clés (collectResults).
+    secHdr('Examen Parasitologique / Paludisme');
+    tblHdr('Paramètre', 'Résultat', 'Unité', 'Observation');
+    if (res["Type d'examen"])           pRow("Type d'examen", res["Type d'examen"], '', '', '');
+    if (res['Résultat global'])         pRow('Résultat global', res['Résultat global'], '', '', '');
+    if (res['Coloration'])              pRow('Coloration', res['Coloration'], '', '', '');
+    if (res['Espèce plasmodiale'])      pRow('Espèce plasmodiale', res['Espèce plasmodiale'], '', '', '');
+    if (res['Parasitémie (%)'])         pRow('Parasitémie', res['Parasitémie (%)'], '%', '', '');
+    if (res['Densité parasitaire /µL']) pRow('Densité parasitaire', res['Densité parasitaire /µL'], '/µL', '', '');
+    if (res['Stade parasitaire'])       pRow('Stade parasitaire', res['Stade parasitaire'], '', '', '');
+    if (res['Indice érythrocytaire'])   pRow('Indice érythrocytaire', res['Indice érythrocytaire'], '', '', '');
+    if (res['TDR paludisme'])           pRow('TDR paludisme', res['TDR paludisme'], '', '', '');
+    if (typeof PARA_EPS !== 'undefined') {
+      PARA_EPS.forEach(pa => { const v = res[pa]; if (v && v !== 'Absent' && v !== '') pRow(pa, v, '', '', ''); });
+    }
+    if (res['Observations']) nRow(res['Observations']);
     row++;
 
   } else {
@@ -9984,6 +10021,22 @@ async function enregistrerFicheIdentif() {
       await refreshDB(true);
       showView('historique');
     } else {
+      // ✅ v13.37 — Garde-fou anti-doublon : un dossier ACTIF avec ce numéro
+      // existe déjà (double-clic, ré-enregistrement…). On propose un nouveau
+      // numéro plutôt que de créer un doublon.
+      const _dup = getDB().find(rr => rr.patient?.dossier === p.dossier && !rr.deletedAt && !rr._hardDeleted);
+      if (_dup) {
+        hideLoading();
+        const _ok = await showConfirmModal({
+          icon: '⚠️', title: 'Numéro de dossier déjà utilisé',
+          message: 'Le dossier N° ' + esc(p.dossier || '') + ' existe déjà (' + esc(_dup.patient?.nom || '') + '). Générer un nouveau numéro et enregistrer ? (Annuler pour vérifier d\'abord.)',
+          confirmText: 'Nouveau numéro + enregistrer', cancelText: 'Annuler'
+        });
+        if (!_ok) return;
+        await regenDossier();
+        p.dossier = getPatient().dossier;
+        showLoading('Enregistrement de la facture…');
+      }
       const record = {
         // ✅ v13.36 — TOUJOURS 'Dossier' (voir note ci-dessus) : sinon
         // getRecordTypes() ne renvoie que le type principal et masque les
@@ -14122,6 +14175,28 @@ async function buildPDF(r, analyses) {
     }
 
   } else {
+    // ✅ v13.37 — CRP / Widal / Groupe sanguin explicites (dossier Immuno seul) :
+    // le rendu générique n'affichait pas les antigènes Widal (objets .titre).
+    const _crpV = res['CRP - Valeur'];
+    if (_crpV) {
+      sectionTitle('🔥 CRP — Protéine C-réactive');
+      const _lbl = _crpV === 'neg' ? 'Négatif (< 6 mg/L)' : _crpV + ' mg/L';
+      addTable(['Test','Résultat','Valeurs normales'], [['CRP Latex', _lbl, '< 6 mg/L']]);
+    }
+    const _wid2 = (typeof widalReport === 'function') ? widalReport(res) : { show:false, rows:[], concl:'' };
+    if (_wid2.show) {
+      sectionTitle('🦠 Sérodiagnostic de Widal & Félix');
+      const _wr = _wid2.rows.map(w => [w.name, w.titre, w.cinetique||'—', w.interp||'—']);
+      if (_wr.length) addTable(['Antigène','Titre','Cinétique','Commentaire'], _wr);
+      if (_wid2.concl) { doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(80,80,80); doc.text(_wid2.concl.replace(/^[🔴🟠🟡⚪]\s*/,''), MARGIN, y, {maxWidth:W-2*MARGIN}); y += 6; }
+    }
+    const _gA = res['Groupe ABO'] || res['GS - ABO'];
+    const _gR = res['Rhésus'] || res['GS - Rhésus'];
+    if (_gA || _gR) {
+      sectionTitle('🩸 Groupe Sanguin ABO / Rhésus');
+      const _gr = []; if (_gA) _gr.push(['Groupe ABO', _gA, '']); if (_gR) _gr.push(['Rhésus', _gR, '']);
+      addTable(['Paramètre','Résultat',''], _gr);
+    }
     // Pour les autres types : affichage générique clé/valeur
     // ✅ v13.17 — index nom→paramètre pour les valeurs normales
     const _pbn = {};
@@ -14133,6 +14208,9 @@ async function buildPDF(r, analyses) {
     ].forEach(pp => { if (pp && pp.name) _pbn[pp.name] = pp; });
     Object.entries(res).forEach(([k, v]) => {
       if (k.startsWith('_')) return; // ✅ v12 — ignorer clés techniques
+      // ✅ v13.37 — CRP/Widal/GS déjà rendus explicitement ci-dessus
+      if (k.startsWith('Widal - ') || k.startsWith('CRP - ') || k.startsWith('GS - ')
+          || k === 'Groupe ABO' || k === 'Rhésus' || k === 'Commentaire GS') return;
       if (typeof v === 'object' && v !== null) {
         const val = v.valeur || v.resultat || '';
         if (val) rows.push([k, val, v.unite || '', refDisplayFor(_pbn[k], profile) || '', v.interp || v.obs || '']);
