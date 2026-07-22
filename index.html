@@ -2699,6 +2699,7 @@ select {
             <select id="nu_role">
               <option value="agent">Agent (saisie)</option>
               <option value="caissier">Caissier (caisse uniquement)</option>
+              <option value="spectateur">Spectateur (lecture seule caisse)</option>
               <option value="admin">Administrateur</option>
             </select>
           </div>
@@ -2795,6 +2796,7 @@ select {
   <div id="ac-journal" class="admin-section">
     <div class="admin-tabs-sub">
       <button class="admin-tab-sub active" onclick="adminShowSub('ac-audit',this)">🛡️ Audit</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-connexions',this)">🔐 Connexions</button>
       <button class="admin-tab-sub" onclick="adminShowSub('ac-rapport',this)">📑 Rapport PDF</button>
       <button class="admin-tab-sub" onclick="adminShowSub('ac-topex',this)">🔬 Top examens</button>
     </div>
@@ -2816,6 +2818,25 @@ select {
           <table id="audit-table">
             <thead><tr><th>Date/heure</th><th>Utilisateur</th><th>Action</th><th>Détails</th></tr></thead>
             <tbody id="audit-body"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:14px">Cliquez sur « Actualiser » pour charger le journal.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Connexions (v13.37) -->
+    <div id="ac-connexions" class="admin-sub-section">
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>🔐 Connexions & déconnexions</span>
+          <button class="btn btn-outline" onclick="renderConnexions()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Historique des connexions et déconnexions de chaque compte (heure exacte). Pratique pour surveiller les comptes caissier / spectateur.
+        </p>
+        <div class="table-wrap">
+          <table class="result-table" style="width:100%">
+            <thead><tr><th>Date / heure</th><th>Utilisateur</th><th>Événement</th></tr></thead>
+            <tbody id="connexions-body"><tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:14px">Cliquez sur « Actualiser » pour charger.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -4659,7 +4680,8 @@ function updateMontantCurrent() {
 
 function showView(v) {
   // ✅ v13.33 — Le caissier ne peut pas accéder à la saisie ni aux comptes
-  if (isCaissier() && (v === 'saisie' || v === 'comptes')) return;
+  // ✅ v13.37 — Le spectateur non plus (lecture caisse uniquement)
+  if ((isCaissier() || isSpectateur()) && (v === 'saisie' || v === 'comptes')) return;
 
   // ✅ v13.33 — Déterminer quel conteneur caisse afficher
   // Admin et Caissier → caisse complète ; Agent → vue personnelle simplifiée
@@ -4875,8 +4897,8 @@ function getDB() {
     if (isAdmin()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy);
     return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy && r.createdBy === uid);
   }
-  // Admin/Caissier : fiches actives (sans soft-delete ni hard-delete ni masquées)
-  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
+  // Admin/Caissier/Spectateur : fiches actives (sans soft-delete ni hard-delete ni masquées)
+  if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
   // Agent : ses fiches actives uniquement
   const uid = _currentUser?.username;
   if (!uid) return [];
@@ -4963,7 +4985,7 @@ function renderDashboard() {
 function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
   // Fiches verrouillées, soft-delete et hard-delete toujours exclues.
-  if (isAdmin() || isCaissier()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
+  if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
   const uid = _currentUser?.username;
   if (!uid) return [];
   return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && r.createdBy === uid);
@@ -6142,7 +6164,7 @@ function ensureInterpFresh(type) {
 }
 
 async function editRecord(id, typeOverride) {
-  if (isCaissier()) { toast('Accès lecture seule — le caissier ne peut pas modifier les fiches', 'err'); return; }
+  if (isCaissier() || isSpectateur()) { toast('Accès lecture seule — modification impossible', 'err'); return; }
   let record = getDB().find(x => x.id === id);
   if (!record) {
     await refreshDB();
@@ -6292,7 +6314,7 @@ function cancelEdit() {
 
 // ✅ v13.29 — Modifier la fiche d'accueil (patient + examens) sans changer le numéro de dossier
 async function editFicheIdentif(id) {
-  if (isCaissier()) { toast('Accès lecture seule — le caissier ne peut pas modifier les fiches', 'err'); return; }
+  if (isCaissier() || isSpectateur()) { toast('Accès lecture seule — modification impossible', 'err'); return; }
   let record = getDB().find(x => x.id === id);
   if (!record) {
     showLoading('Chargement…');
@@ -7069,7 +7091,8 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="Statut">' + statutBadge(r.id) + ' ' + paiementBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
         // ✅ v13.33 — Caissier : lecture seule (export/impression uniquement, pas de modification)
-        + (isCaissier() ? ''
+        // ✅ v13.37 — Spectateur : idem, lecture seule stricte
+        + ((isCaissier() || isSpectateur()) ? ''
             : lockBtn(r)
               + (() => {
                   const uid = _currentUser?.username;
@@ -7082,7 +7105,7 @@ async function renderHistory(forceRefresh) {
           )
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF" aria-label="Exporter en PDF">📄</button>'
-        + (isCaissier() ? ''
+        + ((isCaissier() || isSpectateur()) ? ''
             : '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
               + dossierMulti
               + (isAdmin() && isDossierRecord(r) && getRecordTypes(r).length > 0
@@ -7168,6 +7191,7 @@ async function deleteAnalyseFromDossier(recordId, type) {
 }
 
 async function deleteRecord(id) {
+  if (blockIfSpectateur()) return;
   if (!await showConfirmModal({
     icon: '🗑️', title: 'Supprimer cette fiche ?',
     message: 'Cette action est irréversible.',
@@ -7277,6 +7301,7 @@ function toggleCorbeille() {
 }
 
 async function softDeleteDossier(id) {
+  if (blockIfSpectateur()) return;
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
   const uid = _currentUser?.username;
@@ -7320,6 +7345,7 @@ async function softDeleteDossier(id) {
 }
 
 async function restoreDossier(id) {
+  if (blockIfSpectateur()) return;
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
@@ -7498,6 +7524,7 @@ async function savePatientEdit(id) {
 }
 
 async function bulkSetStatut(statut) {
+  if (blockIfSpectateur()) return;
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const labels = { attente: 'En attente', 'en cours': 'En cours', rendu: 'Rendu' };
@@ -7523,6 +7550,7 @@ async function bulkSetStatut(statut) {
 }
 
 async function bulkLock() {
+  if (blockIfSpectateur()) return;
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const eligible = ids.filter(id => {
@@ -7553,6 +7581,7 @@ async function bulkLock() {
 }
 
 async function bulkUnlock() {
+  if (blockIfSpectateur()) return;
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const eligible = ids.filter(id => {
@@ -7583,6 +7612,7 @@ async function bulkUnlock() {
 }
 
 async function bulkDelete() {
+  if (blockIfSpectateur()) return;
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
   const ids = [..._selectedIds];
   if (!ids.length) return;
@@ -7610,6 +7640,7 @@ async function bulkDelete() {
 //   jour tentait d'appeler la fonction.
 // ✅ v13.34 — Bouton modifier unifié : une modale, 3 actions
 function showEditUnifie(id) {
+  if (blockIfSpectateur()) return;
   const record = getDB().find(r => r.id === id);
   if (!record) { toast('Fiche introuvable', 'err'); return; }
   const p = record.patient || {};
@@ -7755,6 +7786,8 @@ function adminShowSub(id, btn) {
   const sub = document.getElementById(id);
   if (sub) sub.classList.add('active');
   btn.classList.add('active');
+  // ✅ v13.37 — Charger le journal des connexions à l'ouverture de l'onglet
+  if (id === 'ac-connexions' && typeof renderConnexions === 'function') renderConnexions();
 }
 
 // ✅ v13.33 — Afficher/masquer un champ mot de passe
@@ -10028,6 +10061,16 @@ function isAdmin() {
 function isCaissier() {
   return !!_currentUser && _currentUser.role === 'caissier';
 }
+// ✅ v13.37 — Rôle Spectateur : voit la caisse (comme le caissier) mais AUCUNE
+// interaction (pas d'encaissement, pas de modification, rien).
+function isSpectateur() {
+  return !!_currentUser && _currentUser.role === 'spectateur';
+}
+// Lecture seule stricte (spectateur) : bloque toute action. Retourne true si bloqué.
+function blockIfSpectateur() {
+  if (isSpectateur()) { toast('👁 Compte spectateur — lecture seule, aucune action possible', 'err'); return true; }
+  return false;
+}
 
 // ✅ v13.33 — Secousse de la carte quand une erreur de connexion apparaît.
 // Implémenté par observation du conteneur d'erreur : aucune des (nombreuses)
@@ -10086,12 +10129,41 @@ function enterApp() {
   if (typeof startTokenRefresh === 'function') startTokenRefresh();
   if (typeof checkFirstLogin === 'function') checkFirstLogin();
   if (typeof requestNotifPermission === 'function') requestNotifPermission();
+  // ✅ v13.37 — Surveillance des connexions/déconnexions pour l'admin :
+  // badge initial + notification en direct toutes les 90 s tant que l'app est ouverte.
+  if (isAdmin()) {
+    setTimeout(() => checkNewConnexions(false), 1500);
+    if (!_connPoll) _connPoll = setInterval(() => checkNewConnexions(true), 90000);
+  }
 }
+
+// ✅ v13.37 — Journalise la déconnexion à la fermeture de l'app (best-effort).
+// fetch keepalive survit à l'unload ; la session N'EST PAS supprimée (reconnexion
+// auto conservée). Permet à l'admin de voir l'heure de déconnexion même quand
+// l'utilisateur ferme l'onglet sans cliquer « Déconnexion ».
+(function setupDisconnectBeacon() {
+  function beacon() {
+    try {
+      const t = (typeof TK === 'function') ? TK() : null;
+      if (!t || typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined') return;
+      fetch(SUPABASE_URL + '/rest/v1/rpc/log_disconnect', {
+        method: 'POST', keepalive: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        },
+        body: JSON.stringify({ p_token: t })
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  window.addEventListener('pagehide', beacon);
+})();
 
 function updateUserBadge() {
   const el = document.getElementById('user-badge');
   if (el && _currentUser) {
-    const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier' : '🔬 Agent';
+    const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier' : isSpectateur() ? '👁 Spectateur' : '🔬 Agent';
     el.textContent = `${_currentUser.username} · ${roleLabel}`;
   }
   // ✅ v13.33 — btn-clear-history supprimé ; btn-masquees géré par updateMasqueesBtn()
@@ -10104,11 +10176,11 @@ function updateUserBadge() {
 
   // ✅ v13.33 — Caissier : masquer la nav "Nouvelle saisie" et afficher un message
   const saisieNavBtn = document.querySelector('header .nav-btn[data-view="saisie"]');
-  if (saisieNavBtn) saisieNavBtn.style.display = isCaissier() ? 'none' : '';
+  if (saisieNavBtn) saisieNavBtn.style.display = (isCaissier() || isSpectateur()) ? 'none' : '';
   const exportAllBtn = document.querySelector('header .nav-btn[onclick="exportAllExcel()"]');
-  if (exportAllBtn) exportAllBtn.style.display = isCaissier() ? 'none' : '';
-  // Afficher directement la caisse pour le caissier après connexion
-  if (isCaissier()) setTimeout(() => showView('caisse'), 50);
+  if (exportAllBtn) exportAllBtn.style.display = (isCaissier() || isSpectateur()) ? 'none' : '';
+  // Afficher directement la caisse pour le caissier / spectateur après connexion
+  if (isCaissier() || isSpectateur()) setTimeout(() => showView('caisse'), 50);
 }
 
 // ============================================================
@@ -10146,6 +10218,85 @@ function auditDetails(action, d) {
   if (action.includes('prescripteur')) return [d.nom||'', d.taux!=null ? d.taux+' %' : ''].filter(Boolean).join(' · ');
   return JSON.stringify(d);
 }
+// ✅ v13.37 — Journal des connexions / déconnexions (admin) + notification
+let _lastNotifiedConnTs = null;   // dernier événement déjà notifié (en mémoire)
+let _connPoll = null;             // timer de surveillance
+
+async function renderConnexions() {
+  if (!isAdmin()) { toast('Réservé aux administrateurs', 'err'); return; }
+  const body = document.getElementById('connexions-body');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:14px">⏳ Chargement…</td></tr>';
+  const { data, error } = await _sb.rpc('get_audit_log', { p_token: TK(), p_limit: 500 });
+  if (error) { body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#b91c1c;padding:14px">Erreur de chargement</td></tr>'; return; }
+  const conns = (data || []).filter(e => e.action === 'login' || e.action === 'logout');
+  if (!conns.length) { body.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:14px">Aucune connexion enregistrée.</td></tr>'; return; }
+  body.innerHTML = conns.map(e => {
+    const dt = new Date(e.ts).toLocaleString('fr-FR');
+    const isLogin = e.action === 'login';
+    // Repli sur details.user pour les anciens événements (username non rempli avant v13.37)
+    const who = e.username || e.details?.user || '—';
+    return '<tr>'
+      + '<td style="white-space:nowrap;font-size:12px">' + esc(dt) + '</td>'
+      + '<td style="font-weight:600">' + esc(who) + '</td>'
+      + '<td><span style="font-size:11.5px;font-weight:700;color:' + (isLogin ? '#166534' : '#b91c1c') + '">'
+        + (isLogin ? '🟢 Connexion' : '🔴 Déconnexion') + '</span></td>'
+      + '</tr>';
+  }).join('');
+  // Marquer comme vues → efface le badge
+  if (conns[0]?.ts) localStorage.setItem('labo_last_seen_conn', conns[0].ts);
+  updateConnexionsBadge(0);
+}
+
+function updateConnexionsBadge(n) {
+  const btn = document.getElementById('btn-nav-users');
+  if (!btn) return;
+  let badge = document.getElementById('conn-badge');
+  if (n > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'conn-badge';
+      badge.style.cssText = 'background:#dc2626;color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;margin-left:4px;font-weight:700';
+      btn.appendChild(badge);
+    }
+    badge.textContent = n;
+    badge.style.display = '';
+    badge.title = n + ' nouvelle(s) connexion/déconnexion depuis votre dernière consultation';
+  } else if (badge) {
+    badge.style.display = 'none';
+  }
+}
+
+async function checkNewConnexions(allowNotify) {
+  if (!isAdmin() || !_sb || !TK()) return;
+  try {
+    const { data } = await _sb.rpc('get_audit_log', { p_token: TK(), p_limit: 100 });
+    const conns = (data || []).filter(e =>
+      (e.action === 'login' || e.action === 'logout')
+      && (e.username || e.details?.user) !== _currentUser?.username);
+    // Badge : événements depuis la dernière consultation de l'onglet Connexions
+    const lastSeen = localStorage.getItem('labo_last_seen_conn');
+    const n = lastSeen ? conns.filter(e => e.ts > lastSeen).length : conns.length;
+    updateConnexionsBadge(n);
+    // Notification en direct : nouveaux événements depuis le dernier passage
+    const newest = conns[0]?.ts || null;
+    if (_lastNotifiedConnTs === null) {
+      _lastNotifiedConnTs = newest;   // 1er passage : on n'inonde pas de notifs
+    } else if (allowNotify && newest && newest > _lastNotifiedConnTs) {
+      const fresh = conns.filter(e => e.ts > _lastNotifiedConnTs);
+      _lastNotifiedConnTs = newest;
+      const d = fresh[0];
+      const msg = (d.username || d.details?.user || '?') + ' — ' + (d.action === 'login' ? 'connexion' : 'déconnexion')
+        + ' à ' + new Date(d.ts).toLocaleTimeString('fr-FR') + (fresh.length > 1 ? ' (+' + (fresh.length - 1) + ')' : '');
+      toast('🔔 ' + msg, 'ok');
+      try {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted')
+          new Notification('CPMI Labo — Connexion', { body: msg });
+      } catch(e) {}
+    }
+  } catch(e) {}
+}
+
 async function renderAuditLog() {
   if (!isAdmin()) { toast('Réservé aux administrateurs', 'err'); return; }
   const body = document.getElementById('audit-body');
@@ -10186,7 +10337,7 @@ async function renderUsersList() {
   }
   b.innerHTML = data.map(u => {
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : '🔬 Agent';
+    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
     return `
@@ -11018,6 +11169,7 @@ function updateBandeauPaiement() {
 
 // ── Modal de paiement ──────────────────────────────────
 function ouvrirModalPaiement(id, montantDemande) {
+  if (blockIfSpectateur()) return;
   const existing = document.getElementById('modal-paiement');
   if (existing) existing.remove();
 
@@ -11139,6 +11291,7 @@ function validerPaiement(id) {
 }
 
 function annulerPaiement(id) {
+  if (blockIfSpectateur()) return;
   if (!confirm('Annuler le paiement de ce dossier ?')) return;
   setPaiementStatus(id, 'non_paye', {});
   toast('Paiement annulé', 'err');
@@ -11156,6 +11309,7 @@ function monnaieDue(id) {
 }
 
 async function marquerMonnaieRemise(id) {
+  if (blockIfSpectateur()) return;
   const r = (_dbCache || []).find(x => x.id === id);
   if (!r) { toast('Dossier introuvable', 'err'); return; }
   const nom = r.patient?.nom || 'ce patient';
@@ -11206,8 +11360,9 @@ function renderCaisseMonnaie() {
       <td style="font-size:12px;color:var(--text-muted)">${quand}</td>
       <td style="font-weight:900;color:#b45309;text-align:right">${due} FCFA</td>
       <td style="text-align:center">
-        <button class="btn btn-primary" style="padding:4px 12px;font-size:12px;background:#16a34a"
-          onclick="marquerMonnaieRemise(${r.id})">✅ Remise</button>
+        ${isSpectateur()
+          ? '<span style="color:var(--text-muted);font-size:12px">🔒</span>'
+          : `<button class="btn btn-primary" style="padding:4px 12px;font-size:12px;background:#16a34a" onclick="marquerMonnaieRemise(${r.id})">✅ Remise</button>`}
       </td>
     </tr>`;
   }).join('');
@@ -11257,8 +11412,9 @@ function renderCaisseAEncaisser() {
       <td style="font-size:12px;color:var(--text-muted)">${date}</td>
       <td style="font-weight:700;color:var(--cpmi-deep);text-align:right">${mont} FCFA</td>
       <td style="text-align:center">
-        <button class="btn btn-primary" style="padding:4px 12px;font-size:12px"
-          onclick="ouvrirModalPaiement(${r.id}, ${r.montant || 0})">💰 Encaisser</button>
+        ${isSpectateur()
+          ? '<span style="color:var(--text-muted);font-size:12px">🔒 lecture seule</span>'
+          : `<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="ouvrirModalPaiement(${r.id}, ${r.montant || 0})">💰 Encaisser</button>`}
       </td>
     </tr>`;
   }).join('');
@@ -11278,6 +11434,7 @@ function renderCaisseAEncaisser() {
 
 
 function cycleStatut(id) {
+  if (blockIfSpectateur()) return;
   const order = ['attente','rendu','urgent'];
   const next = order[(order.indexOf(getStatut(id))+1) % order.length];
   setStatut(id, next);
@@ -11357,6 +11514,7 @@ function checkPatientExistant() {
 
 // ── Dupliquer un dossier ──
 function dupliquerDossier(id) {
+  if (blockIfSpectateur()) return;
   const record = getDB().find(r => r.id === id);
   if (!record) return;
   const p = {...record.patient};
@@ -11773,7 +11931,7 @@ async function renderCaisse() {
   await refreshDB();
   updateVerrouilleeBtn(); // ✅ v13.32 — bouton admin fiches verrouillées
   // ✅ v13.33 — Brancher selon le rôle : agent → vue simplifiée, admin/caissier → caisse complète
-  if (!isAdmin() && !isCaissier()) { renderUserCaisse(); return; }
+  if (!isAdmin() && !isCaissier() && !isSpectateur()) { renderUserCaisse(); return; }
   const db = getCalcDB(); // exclut les fiches verrouillées selon le choix admin
   const { from, to } = getCaisseRange();
   const rows = filterByDateRange(db, from, to);
@@ -12107,6 +12265,7 @@ async function saveRistourneTaux() {
     <select class="modal-input" id="um_role" aria-label="Rôle du compte">
       <option value="agent">Agent</option>
       <option value="caissier">Caissier (caisse uniquement)</option>
+      <option value="spectateur">Spectateur (lecture seule caisse)</option>
       <option value="admin">Administrateur</option>
     </select>
     <label class="modal-label" for="um_password">Nouveau mot de passe <span style="font-weight:400;color:var(--text-muted)">(laisser vide pour ne pas changer)</span></label>
