@@ -9363,7 +9363,7 @@ function examFieldIds(examId) {
   return M[examId] ? M[examId]() : [];
 }
 
-function setFieldLocked(el, locked) {
+function setFieldLocked(el, locked, keepValue) {
   if (!el) return;
   const wasUnlocked = !el.disabled;
   el.disabled = !!locked;
@@ -9371,7 +9371,9 @@ function setFieldLocked(el, locked) {
   if (locked) {
     // ✅ v13.16 — Examen décoché : on EFFACE la valeur. Un résultat non coché
     // (donc non payé) ne doit être ni enregistré, ni imprimé, ni facturé.
-    if (wasUnlocked && el.value !== undefined && el.value !== '') {
+    // ✅ v13.36 — keepValue=true (verrou « paiement requis ») : on VERROUILLE
+    // sans effacer, pour ne pas perdre d'éventuelles valeurs déjà à l'écran.
+    if (!keepValue && wasUnlocked && el.value !== undefined && el.value !== '') {
       el.value = '';
       if (el.tagName === 'SELECT') el.selectedIndex = 0;
       el.classList.remove('val-hi', 'val-lo');
@@ -9379,11 +9381,13 @@ function setFieldLocked(el, locked) {
       try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
     }
     if (el.dataset.phSaved === undefined) el.dataset.phSaved = el.getAttribute('placeholder') || '';
-    if (el.tagName === 'INPUT' && el.type !== 'checkbox') el.setAttribute('placeholder', '🔒');
-    el.title = 'Examen non coché — cochez-le sur la fiche d’examens pour pouvoir saisir';
+    if (el.tagName === 'INPUT' && el.type !== 'checkbox') el.setAttribute('placeholder', keepValue ? '🔒 Paiement requis' : '🔒');
+    el.title = keepValue
+      ? 'Paiement requis avant la saisie des résultats'
+      : 'Examen non coché — cochez-le sur la fiche d’examens pour pouvoir saisir';
   } else {
     if (el.dataset.phSaved !== undefined) { el.setAttribute('placeholder', el.dataset.phSaved); delete el.dataset.phSaved; }
-    if (el.title && el.title.indexOf('Examen non coché') === 0) el.title = '';
+    if (el.title && (el.title.indexOf('Examen non coché') === 0 || el.title.indexOf('Paiement requis') === 0)) el.title = '';
   }
 }
 
@@ -9415,16 +9419,25 @@ function applyExamLocks() {
   try {
     let cat;
     try { cat = getCatalogueComplet(); } catch(e) { return; }
+    // ✅ v13.36 — Verrou « paiement » : en édition des résultats d'un dossier
+    // NON payé, les champs des examens cochés restent verrouillés (on ne peut
+    // saisir un résultat qu'une fois l'examen encaissé). On verrouille sans
+    // effacer (keepValue) pour ne rien perdre à l'écran.
+    const enSaisieNonPaye = !!_editingRecordId
+      && typeof isDossierPaye === 'function' && !isDossierPaye(_editingRecordId);
     const checked = {};
     cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
     cat.forEach(ex => {
       // ✅ v13.34 — NE PAS masquer row_ex_* : ce sont les CASES À COCHER
       // de la fiche d'accueil, pas les lignes de résultats.
       // On verrouille uniquement les CHAMPS de saisie des résultats
-      // (dans les panneaux) quand l'examen n'est pas coché.
+      // (dans les panneaux) quand l'examen n'est pas coché OU non payé.
       examFieldIds(ex.id).forEach(fid => {
         const el = document.getElementById(fid);
-        if (el) setFieldLocked(el, !checked[ex.id]);
+        if (!el) return;
+        if (!checked[ex.id]) setFieldLocked(el, true);              // non coché → verrou + efface
+        else if (enSaisieNonPaye) setFieldLocked(el, true, true);   // coché mais non payé → verrou sans effacer
+        else setFieldLocked(el, false);                             // coché + payé → éditable
       });
       // Masquer/afficher la SECTION de résultats correspondante (sec-*)
       if (ex.section) {
@@ -9437,10 +9450,10 @@ function applyExamLocks() {
         }
       }
     });
-    // Bactério : verrou global si aucun examen bactério coché
+    // Bactério : verrou global si aucun examen bactério coché OU dossier non payé
     const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
     document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
-      .forEach(el => setFieldLocked(el, !bacOn));
+      .forEach(el => setFieldLocked(el, !bacOn || enSaisieNonPaye, enSaisieNonPaye && bacOn));
   } finally { _applyingLocks = false; }
 }
 
@@ -10979,15 +10992,15 @@ function updateBandeauPaiement() {
   if (!id) { bandeau.classList.remove('visible'); return; }
   const paye = isDossierPaye(id);
   bandeau.classList.toggle('visible', !paye);
-  // Désactiver/activer les champs de saisie
+  // ✅ v13.36 — Le verrouillage des CHAMPS est délégué à applyExamLocks (source
+  // unique de vérité : combine « examen coché » ET « dossier payé »). Ici on ne
+  // gère plus que le bandeau rouge et les boutons d'enregistrement. Avant, cette
+  // fonction ré-activait TOUS les champs quand payé, écrasant le verrou « examen
+  // non coché » posé par applyExamLocks.
+  if (typeof applyExamLocks === 'function') applyExamLocks();
   const saisieZone = document.getElementById('view-saisie');
   if (!saisieZone) return;
-  saisieZone.querySelectorAll('input:not([type=button]):not([type=submit]):not([type=checkbox]), select, textarea').forEach(el => {
-    if (el.closest('#bandeau-paiement')) return;
-    el.disabled = !paye;
-    el.classList.toggle('field-locked', !paye);
-  });
-  saisieZone.querySelectorAll('button[onclick*="saveRecord"]').forEach(btn => {
+  saisieZone.querySelectorAll('button[onclick^="saveThenNext"], button[onclick*="saveRecord"], #btn-save-all').forEach(btn => {
     btn.disabled = !paye;
     btn.title = paye ? '' : 'Paiement requis avant la saisie';
   });
