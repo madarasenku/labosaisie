@@ -7,7 +7,7 @@
    qui pouvait contenir index.html avec ref print.js externe)
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v10';
+const CACHE = 'cpmi-labo-v11';
 
 /* Pré-cacher les fichiers essentiels à l'installation */
 const PRECACHE = [

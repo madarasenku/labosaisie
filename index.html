@@ -8637,12 +8637,31 @@ function buildProfessionalSheet(wb, r, sheetName) {
   mg(row,4,row,NC); sC(ws.getCell(row,4),{bg:PAT_LABEL,fg:SEC_FG,bold:true,size:9});
   ws.getCell(row,4).value='Signature du technicien :';
   row++;
+  const sigStartRow = row; // ✅ v13.37 — ancre pour l'image de signature + QR
   for (let i=0;i<4;i++) {
     ws.getRow(row).height=14;
     mg(row,1,row,3); ws.getCell(row,1).border=tB(BRD);
     mg(row,4,row,NC); ws.getCell(row,4).border=tB(BRD);
     row++;
   }
+  // ✅ v13.37 — Nom (façon signature) + titre sous la ligne de signature,
+  // et QR : les IMAGES sont ajoutées ensuite par addQrAndSignatures(wb).
+  const _techName = (typeof _currentUser !== 'undefined' && _currentUser?.username)
+    ? _currentUser.username.toUpperCase() : '';
+  const _refDoc = getOrCreateRef(r);
+  ws.getCell(sigStartRow + 2, 4).value = _techName || '—';
+  sC(ws.getCell(sigStartRow + 2, 4), { fg: SEC_FG, bold: true, size: 9 });
+  ws.getCell(sigStartRow + 3, 4).value = 'Technicien de laboratoire · CPMI Grand-Bassam';
+  sC(ws.getCell(sigStartRow + 3, 4), { fg: MUTED, italic: true, size: 7.5 });
+  ws._qrSig = {
+    sigRow: sigStartRow,
+    techName: _techName,
+    refDoc: _refDoc,
+    NC: NC,
+    qrContent: 'CPMI GRAND-BASSAM\nREF: ' + _refDoc + '\nDOSSIER: ' + (p.dossier || '—')
+      + '\nPATIENT: ' + nomMAJ + '\nANALYSE: ' + (getDisplayType(r) || '') + '\nDATE: ' + dateF
+      + (_techName ? ('\nTECH: ' + _techName) : '')
+  };
 }
 
 
@@ -12442,6 +12461,7 @@ async function exportSingle(type) {
   wb.creator = CENTRE;
   wb.title = 'Résultat ' + displayType;
   buildProfessionalSheet(wb, saved, getDisplayTypeShort(saved).substring(0, 31));
+  await addQrAndSignatures(wb); // ✅ v13.37 — QR + signature
   await downloadWorkbook(wb, makeFilename(saved.patient.dossier, saved.patient.date, saved.patient.nom || 'PATIENT', getDisplayTypeShort(saved)));
   toast('Export Excel réussi ✓', 'ok');
   } catch(err) {
@@ -12491,6 +12511,7 @@ async function exportAllExcel() {
 
   if (!sheetCount) { toast('Aucune donnée à exporter', 'err'); return; }
   const today = new Date().toLocaleDateString('fr-FR').replace(/\//g, '-');
+  await addQrAndSignatures(wb); // ✅ v13.37 — QR + signature
   await downloadWorkbook(wb, `LaboSaisie_Export_${today}.xlsx`);
   if (failedSheets > 0) {
     toast('Export terminé, mais ' + failedSheets + ' feuille' + (failedSheets>1?'s':'') + ' en erreur (voir console F12)', 'err');
@@ -12939,6 +12960,55 @@ function generateQRDataURL(text, size = 120) {
       resolve(url);
     });
   });
+}
+
+// ✅ v13.37 — Convertit un SVG (chaîne) en PNG dataURL via canvas
+function _svgToPngDataURL(svgStr, w = 300, h = 84) {
+  return new Promise(resolve => {
+    if (!svgStr) { resolve(''); return; }
+    try {
+      const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          resolve(cv.toDataURL('image/png'));
+        } catch (e) { resolve(''); }
+      };
+      img.onerror = () => { try { URL.revokeObjectURL(url); } catch (e) {} resolve(''); };
+      img.src = url;
+    } catch (e) { resolve(''); }
+  });
+}
+
+// ✅ v13.37 — Ajoute le QR + la signature (images) aux feuilles Excel qui l'ont
+// demandé (via ws._qrSig, posé par buildProfessionalSheet). Appelé juste avant
+// le téléchargement du classeur. Silencieux si QRCode/CDN indisponible.
+async function addQrAndSignatures(wb) {
+  if (!wb || !wb.worksheets) return;
+  for (const ws of wb.worksheets) {
+    const a = ws._qrSig;
+    if (!a) continue;
+    try {
+      if (a.techName) {
+        const sigPng = await _svgToPngDataURL(generateSignatureSVG(a.techName, 220, 60), 300, 82);
+        if (sigPng) {
+          const id = wb.addImage({ base64: sigPng.split(',')[1] || sigPng, extension: 'png' });
+          // Hauteur ~28px → couvre les 2 premières lignes ; le nom/titre reste lisible en dessous.
+          ws.addImage(id, { tl: { col: 3, row: a.sigRow - 1 }, ext: { width: 148, height: 28 } });
+        }
+      }
+      const qrPng = await generateQRDataURL(a.qrContent, 130);
+      if (qrPng) {
+        const id = wb.addImage({ base64: qrPng.split(',')[1] || qrPng, extension: 'png' });
+        ws.addImage(id, { tl: { col: Math.max(0, a.NC - 1), row: a.sigRow - 1 }, ext: { width: 68, height: 68 } });
+      }
+    } catch (e) { /* QR/signature optionnels — ne bloque pas l'export */ }
+  }
 }
 
 async function buildAndPrint(r) {
@@ -13639,6 +13709,7 @@ async function exportRecord(id) {
     wb.moveWorksheet('Récapitulatif', 0);
   } catch(e) { console.warn('recap sheet:', e); }
 
+  await addQrAndSignatures(wb); // ✅ v13.37 — QR + signature
   await downloadWorkbook(wb, makeFilename(
     record.patient?.dossier, record.patient?.date,
     record.patient?.nom || 'PATIENT', 'Dossier'
@@ -13672,6 +13743,7 @@ async function exportPatientComplet(dossier) {
   });
 
   const nom = recs[0].patient.nom || 'PATIENT';
+  await addQrAndSignatures(wb); // ✅ v13.37 — QR + signature
   await downloadWorkbook(wb, makeFilename(dossier, recs[0].patient.date, nom, 'Dossier-complet'));
   toast('Dossier complet exporté ✓ (' + recs.length + ' fiches)', 'ok');
 }
