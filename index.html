@@ -370,7 +370,9 @@ header::after {
 }
 .logo-sub { font-size: 10.5px; opacity: .75; margin-top: 1px; letter-spacing: .3px; }
 
-header nav { margin-left: auto; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+/* User badge : entre logo et nav, poussé par margin-left auto sur desktop */
+#user-badge { margin-left: auto; }
+header nav { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .nav-btn {
   background: rgba(255,255,255,.13);
   border: 1px solid rgba(255,255,255,.2);
@@ -943,24 +945,66 @@ select {
 @media (max-width: 640px) {
   body { font-size: 13.5px; }
 
-  /* ── Header : logo + nav sur 2 lignes ── */
+  /* ── Header : 2 rangées — logo+badge / nav horizontale scrollable ── */
   header {
-    height: auto; flex-wrap: wrap; padding: 10px 12px; row-gap: 8px;
+    height: auto;
+    flex-wrap: wrap;
+    padding: 10px 14px 0;
+    row-gap: 0;
     animation: header-drop .45s cubic-bezier(.22,.61,.36,1);
   }
+  .logo { flex: 1; }
   .logo-sub { display: none; }
-  header nav { margin-left: 0; width: 100%; flex-wrap: wrap; gap: 5px; }
-  #user-badge { width: 100%; order: -1; font-size: 11px; }
+  /* Badge utilisateur : reste à droite du logo (flex inline) */
+  #user-badge {
+    font-size: 11px; opacity: .85;
+    white-space: nowrap; flex-shrink: 0;
+    max-width: 130px; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Nav : barre complète en scroll horizontal sous logo+badge */
+  header nav {
+    flex: 0 0 calc(100% + 28px);
+    margin-left: -14px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+    padding: 8px 14px 10px;
+    border-top: 1px solid rgba(255,255,255,.10);
+    margin-top: 8px;
+    -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
+            mask-image: linear-gradient(to right, black 88%, transparent 100%);
+    align-items: center;
+  }
+  header nav::-webkit-scrollbar { display: none; }
   .nav-btn {
-    flex: 1 1 auto; padding: 8px 10px; font-size: 12px; text-align: center;
+    flex: 0 0 auto;
+    padding: 8px 13px;
+    font-size: 12px;
+    white-space: nowrap;
+    min-height: 36px;
     transition: background .2s ease, transform .15s ease;
   }
   .nav-btn:active { transform: scale(.96); }
 
   /* ── Main ── */
   main { padding: 12px 10px 50px; }
-  .tabs { gap: 2px; padding: 3px; margin-bottom: 16px; }
-  .tab { padding: 8px 10px; font-size: 12px; }
+
+  /* ── Tabs : scroll horizontal, ne wrappent plus ── */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 2px; padding: 3px; margin-bottom: 16px;
+    -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
+            mask-image: linear-gradient(to right, black 88%, transparent 100%);
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; padding: 8px 14px; font-size: 12px; min-width: auto; }
 
   /* ── Dashboard : 2 colonnes ── */
   #dashboard-cards { grid-template-columns: 1fr 1fr; }
@@ -1129,9 +1173,9 @@ select {
   .kpi-val { font-size: 28px; }
 }
 
-/* ── 550px : raccourcir les boutons nav ── */
+/* ── 550px : nav scrollable, pas besoin de compresser le texte ── */
 @media (max-width: 550px) and (min-width: 421px) {
-  .nav-btn { font-size: 11.5px; padding: 7px 8px; }
+  /* nav scrollable — taille conservée */
 }
 
 /* ── 480px : forcer 2 colonnes sur le dashboard ── */
@@ -1141,19 +1185,17 @@ select {
   #dashboard-cards > div > div:last-child { font-size: 16px; }
 }
 
-/* ── 420px : nav compressée ── */
+/* ── 420px ── */
 @media (max-width: 420px) {
-  .nav-btn { font-size: 11px; padding: 7px 6px; }
   #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 6px; }
 }
 
 /* ── 380px : très petits écrans ── */
 @media (max-width: 380px) {
-  .nav-btn { font-size: 10.5px; padding: 6px 5px; }
-  .tab { min-width: 68px; font-size: 10.5px; }
-  header { padding: 8px 10px; }
+  header { padding: 8px 10px 0; }
   main { padding: 10px 8px 50px; }
   #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 5px; }
+  .stats-kpi-row { grid-template-columns: 1fr; }  /* KPI 1 colonne */
   /* Actions : icônes encore plus compactes */
   #history-table td[data-label="Actions"] .btn,
   #history-table td[data-label="Actions"] .btn-action-secondary,
@@ -1164,7 +1206,6 @@ select {
 
 /* ── 320px : écrans miniatures ── */
 @media (max-width: 320px) {
-  .nav-btn { font-size: 10px; padding: 5px 4px; }
   #history-table td[data-label="Actions"] .btn,
   #history-table td[data-label="Actions"] .btn-action-secondary,
   #history-table td[data-label="Actions"] .btn-action-primary {
@@ -1535,8 +1576,9 @@ select {
       <div class="logo-sub">Centre de Protection Mère et Infantile · Grand-Bassam</div>
     </div>
   </div>
+  <!-- Badge utilisateur hors de la nav pour éviter qu'il scrolle sur mobile -->
+  <span id="user-badge" style="font-size:12px;opacity:.85;margin-right:6px;white-space:nowrap"></span>
   <nav>
-    <span id="user-badge" style="font-size:12px;opacity:.85;margin-right:6px;white-space:nowrap"></span>
     <button class="nav-btn active" data-view="saisie" onclick="showView('saisie')">Nouvelle saisie</button>
     <button id="btn-nav-historique" class="nav-btn" data-view="historique" onclick="showView('historique')">Historique<span id="hist-badge" class="nav-badge" style="display:none"></span></button>
     <button class="nav-btn" data-view="stats" onclick="showView('stats')">📊 Statistiques</button>
