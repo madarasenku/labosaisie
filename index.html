@@ -2691,6 +2691,14 @@ select {
       style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#dcfce7;color:#166534"
       title="Marquer comme Rendu">✅ Rendu</button>
     <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Encaissement groupé -->
+    <button onclick="bulkEncaisser()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#00b4d8;color:#fff"
+      title="Encaisser tous les dossiers sélectionnés (montant reçu = montant demandé)">💰 Encaisser</button>
+    <button onclick="bulkAnnulerPaiement()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#fef2f2;color:#991b1b"
+      title="Annuler le paiement des dossiers sélectionnés">↩ Annuler paiement</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
     <!-- Restriction -->
     <button onclick="bulkLock()"
       style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e"
@@ -7835,6 +7843,120 @@ async function bulkDelete() {
   await refreshDB(true);
   renderHistory();
   toast(ok + ' fiche(s) supprimée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+}
+
+// ✅ v13.42 — Encaissement groupé : marque tous les dossiers sélectionnés
+//   comme payés au montant exact demandé (montant reçu = montant, pas de
+//   monnaie). Chaque dossier est persisté dans Supabase individuellement.
+async function bulkEncaisser() {
+  if (blockIfSpectateur()) return;
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+
+  const eligible = ids.filter(id => !isDossierPaye(id));
+  if (!eligible.length) {
+    toast('Tous les dossiers sélectionnés sont déjà payés', 'err');
+    return;
+  }
+  const total = eligible.reduce((s, id) => {
+    const r = (_dbCache || []).find(x => x.id === id);
+    return s + (Number(r?.montant) || 0);
+  }, 0);
+  const dejaPayes = ids.length - eligible.length;
+
+  if (!await showConfirmModal({
+    icon: '💰',
+    title: 'Encaissement groupé',
+    message: 'Encaisser <strong>' + eligible.length + ' dossier(s)</strong> pour un total de <strong>'
+      + total.toLocaleString('fr-FR') + ' FCFA</strong> ?<br>'
+      + 'Chaque dossier sera marqué payé à son montant exact (pas de monnaie à rendre).'
+      + (dejaPayes ? '<br><em>' + dejaPayes + ' dossier(s) déjà payé(s) seront ignorés.</em>' : ''),
+    confirmText: '💰 Encaisser ' + total.toLocaleString('fr-FR') + ' F',
+    cancelText: 'Annuler'
+  })) return;
+
+  showLoading('Encaissement groupé…');
+  const p = getPaiements();
+  let ok = 0, err = 0;
+  for (const id of eligible) {
+    try {
+      const r = (_dbCache || []).find(x => x.id === id);
+      const montant = Number(r?.montant) || 0;
+      const infos = {
+        montant_demande: montant,
+        montant_recu: montant,
+        monnaie: 0,
+        monnaie_rendue: 0,
+        monnaie_remise: true,
+        monnaie_remise_le: null,
+        monnaie_remise_par: null,
+        agent: _currentUser?.username || '?',
+        date: new Date().toISOString(),
+        encaissement_groupe: true
+      };
+      if (r) r.patient = { ...(r.patient || {}), paiement_status: 'paye', paiement_infos: infos };
+      p[id] = 'paye';
+      if (_sb && TK() && r) {
+        const { error } = await _sb.rpc('update_dossier_patient', {
+          p_token: TK(), p_id: id, p_patient: r.patient
+        });
+        if (error) throw error;
+      }
+      ok++;
+    } catch (e) { err++; }
+  }
+  localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
+  hideLoading();
+  clearBulkSelection();
+  updateBandeauPaiement();
+  if (typeof renderCaisse === 'function') renderCaisse();
+  renderHistory();
+  toast('💰 ' + ok + ' dossier(s) encaissé(s) — ' + total.toLocaleString('fr-FR') + ' FCFA'
+    + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+}
+
+// ✅ v13.42 — Annulation groupée de paiement
+async function bulkAnnulerPaiement() {
+  if (blockIfSpectateur()) return;
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+
+  const eligible = ids.filter(id => isDossierPaye(id));
+  if (!eligible.length) {
+    toast('Aucun dossier payé dans la sélection', 'err');
+    return;
+  }
+  if (!await showConfirmModal({
+    icon: '↩️',
+    title: 'Annuler les paiements ?',
+    message: eligible.length + ' dossier(s) repasseront en « non payé ». Cette action est visible en caisse.',
+    confirmText: 'Annuler les paiements', cancelText: 'Retour', confirmClass: 'btn-danger'
+  })) return;
+
+  showLoading('Annulation des paiements…');
+  const p = getPaiements();
+  let ok = 0, err = 0;
+  for (const id of eligible) {
+    try {
+      const r = (_dbCache || []).find(x => x.id === id);
+      if (r) r.patient = { ...(r.patient || {}), paiement_status: 'non_paye', paiement_infos: {} };
+      p[id] = 'non_paye';
+      if (_sb && TK() && r) {
+        const { error } = await _sb.rpc('update_dossier_patient', {
+          p_token: TK(), p_id: id, p_patient: r.patient
+        });
+        if (error) throw error;
+      }
+      ok++;
+    } catch (e) { err++; }
+  }
+  localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
+  hideLoading();
+  clearBulkSelection();
+  updateBandeauPaiement();
+  if (typeof renderCaisse === 'function') renderCaisse();
+  renderHistory();
+  toast('↩ ' + ok + ' paiement(s) annulé(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
 // ✅ v13.33 — clearHistory retiré de l'interface ; stub conservé
