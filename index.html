@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CPMI — Centre de Protection Mère et Infantile · Laboratoire</title>
 <!-- ✅ v13.34 — PWA : installation sur écran d'accueil, thème, iOS -->
-<meta name="theme-color" content="#1a4480">
+<meta name="theme-color" content="#0b2545">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -42,27 +42,27 @@
    Palette : bleu maternité + rose doux + vert santé + or chaleureux
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 :root {
-  /* Palette CPMI */
-  --cpmi-deep:    #1a4480;   /* bleu profond institutionnel */
-  --cpmi-mid:     #2563eb;   /* bleu vif */
-  --cpmi-sky:     #3b82f6;   /* bleu ciel */
-  --cpmi-teal:    #0d9488;   /* vert teal (santé) */
+  /* Palette CPMI — Clinique Médicale Professionnelle */
+  --cpmi-deep:    #0b2545;   /* navy profond institutionnel */
+  --cpmi-mid:     #0096c7;   /* bleu médical */
+  --cpmi-sky:     #00b4d8;   /* teal accent */
+  --cpmi-teal:    #0096c7;   /* bleu médical (santé) */
   --cpmi-rose:    #e11d76;   /* rose maternité */
   --cpmi-gold:    #d97706;   /* or chaleureux */
 
   /* Aliases fonctionnels */
-  --bg:           #f0f5ff;
+  --bg:           #f0f4f8;
   --surface:      #ffffff;
-  --border:       #c7d7f5;
-  --text:         #0f1f40;
-  --text-muted:   #4a5c82;  /* ✅ v13.7 — assombri pour contraste AA (≥4.5:1 sur blanc) */
-  --text-label:   #253c6b;
-  --accent:       #1a4480;
-  --accent-hover: #153568;
-  --accent-light: #e0eaff;
+  --border:       #dae4ee;
+  --text:         #0b2545;
+  --text-muted:   #4a607a;
+  --text-label:   #2d4a6a;
+  --accent:       #0b2545;
+  --accent-hover: #0d2d56;
+  --accent-light: #e8f4fb;
   --danger:       #dc2626;
   --danger-light: #fef2f2;
   --success:      #059669;
@@ -94,9 +94,11 @@
   --success-light:#0e2018;
   --warning:      #907a38;
   --warning-light:#1e1900;
-  --cpmi-deep:    #87a7c0;
-  --cpmi-mid:     #6d8fac;
-  --cpmi-soft:    #1a2635;
+  --cpmi-deep:    #7ab0cc;
+  --cpmi-mid:     #5b9ec4;
+  --cpmi-sky:     #40bcd8;
+  --cpmi-teal:    #5b9ec4;
+  --cpmi-soft:    #0d1e30;
 }
 [data-theme="dark"] body { background-color: #0d0f14; }
 [data-theme="dark"] .card { background: var(--surface); }
@@ -131,8 +133,8 @@
    ARRIÈRE-PLAN ANIMÉ — Symboles doux de la protection mère-enfant
    ================================================================ */
 body {
-  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
-  background-color: #e8f0fe;
+  font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+  background-color: #f0f4f8;
   color: var(--text);
   font-size: 14px;
   line-height: 1.55;
@@ -141,16 +143,15 @@ body {
   overflow-x: hidden;
 }
 
-/* Fond dégradé de base */
+/* Fond propre professionnel */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(219,234,254,.7) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(204,251,241,.5) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(251,207,232,.3) 0%, transparent 60%),
-    linear-gradient(145deg, #dbeafe 0%, #e0eaff 40%, #d1fae5 80%, #fce7f3 100%);
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(0,180,216,.07) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(11,37,69,.05) 0%, transparent 50%),
+    #f0f4f8;
   z-index: -2;
 }
 
@@ -307,7 +308,7 @@ html.theme-transitioning *::after {
    HEADER — Bannière CPMI
    ================================================================ */
 header {
-  background: linear-gradient(135deg, var(--cpmi-deep) 0%, #1e56a8 50%, var(--cpmi-sky) 100%);
+  background: #0b2545;
   color: #fff;
   padding: 0 28px;
   display: flex;
@@ -317,22 +318,16 @@ header {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 4px 20px rgba(26,68,128,.35);
-  border-bottom: 3px solid rgba(255,255,255,.15);
+  box-shadow: 0 2px 16px rgba(11,37,69,.28);
+  border-bottom: 3px solid #00b4d8;
   animation: header-drop .55s cubic-bezier(.22,.61,.36,1);
 }
-/* ✅ v13.33 — Balayage lumineux : passage plus lent, plus doux, suivi
-   d'une longue pause. Moins intrusif qu'un shimmer continu. */
+/* Accent teal fin en bas du header */
 header::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg,
-    transparent 0%, rgba(255,255,255,.05) 42%,
-    rgba(255,255,255,.13) 50%, rgba(255,255,255,.05) 58%,
-    transparent 100%);
-  background-size: 200% 100%;
-  animation: header-sweep 9s cubic-bezier(.4,0,.2,1) infinite;
+  bottom: -3px; left: 0; right: 0; height: 3px;
+  background: linear-gradient(to right, #00b4d8, #0096c7, #0b2545 60%);
   pointer-events: none;
 }
 
@@ -343,19 +338,19 @@ header::after {
    ne pas entrer en conflit avec la transform de l'animation. */
 .logo-icon {
   width: 44px; height: 44px;
-  background: rgba(255,255,255,.18);
+  background: rgba(0,180,216,.18);
   border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
   font-size: 22px;
-  border: 1px solid rgba(255,255,255,.25);
+  border: 1px solid rgba(0,180,216,.35);
   animation: logo-float 5.5s ease-in-out infinite;
   backdrop-filter: blur(4px);
   transition: background .3s ease, box-shadow .3s ease, border-color .3s ease;
 }
 .logo:hover .logo-icon {
-  background: rgba(255,255,255,.3);
-  border-color: rgba(255,255,255,.45);
-  box-shadow: 0 6px 18px rgba(0,0,0,.22);
+  background: rgba(0,180,216,.28);
+  border-color: rgba(0,180,216,.55);
+  box-shadow: 0 4px 14px rgba(0,180,216,.25);
 }
 .logo-icon svg {
   transition: transform .45s cubic-bezier(.34,1.56,.64,1);
@@ -374,26 +369,27 @@ header::after {
 #user-badge { margin-left: auto; }
 header nav { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .nav-btn {
-  background: rgba(255,255,255,.13);
-  border: 1px solid rgba(255,255,255,.2);
-  color: #fff;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.16);
+  color: rgba(255,255,255,.85);
   padding: 7px 14px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   transition: all .2s;
   font-family: inherit;
   white-space: nowrap;
 }
-.nav-btn:hover { background: rgba(255,255,255,.25); transform: translateY(-1px); }
+.nav-btn:hover { background: rgba(0,180,216,.22); border-color: rgba(0,180,216,.4); color: #fff; transform: translateY(-1px); }
 .nav-btn.active {
-  background: rgba(255,255,255,.28);
-  border-color: rgba(255,255,255,.5);
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  background: #00b4d8;
+  border-color: #00b4d8;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0,180,216,.35);
 }
-.logout-btn { background: rgba(225,29,118,.2); border-color: rgba(225,29,118,.35); }
-.logout-btn:hover { background: rgba(225,29,118,.35); }
+.logout-btn { background: rgba(225,29,118,.15); border-color: rgba(225,29,118,.3); }
+.logout-btn:hover { background: rgba(225,29,118,.28); }
 
 /* ================================================================
    LAYOUT
@@ -410,13 +406,13 @@ main {
 .tabs {
   display: flex;
   gap: 3px;
-  background: rgba(255,255,255,.75);
+  background: rgba(255,255,255,.9);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 5px;
   margin-bottom: 24px;
   flex-wrap: wrap;
-  box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,.6) inset;
+  box-shadow: 0 1px 4px rgba(11,37,69,.08), 0 0 0 1px rgba(255,255,255,.8) inset;
   backdrop-filter: blur(8px);
 }
 .tab {
@@ -479,19 +475,18 @@ main {
    CARD — cartes de formulaire
    ================================================================ */
 .card {
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(199,215,245,.7);
+  background: #ffffff;
+  border: 1px solid #dae4ee;
   border-radius: var(--radius-lg);
   padding: 22px 24px;
   margin-bottom: 18px;
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.7);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 4px rgba(11,37,69,.07), 0 2px 12px rgba(11,37,69,.04);
   transition: box-shadow .3s ease, transform .3s ease, border-color .3s ease;
 }
 .card:hover {
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(37,99,235,.10), inset 0 1px 0 rgba(255,255,255,.7);
-  transform: translateY(-3px);
-  border-color: rgba(199,215,245,.95);
+  box-shadow: 0 4px 20px rgba(11,37,69,.12), 0 1px 4px rgba(11,37,69,.06);
+  transform: translateY(-2px);
+  border-color: rgba(0,150,199,.2);
 }
 .card-title {
   font-size: 12px;
@@ -510,7 +505,7 @@ main {
   content: '';
   display: inline-block;
   width: 4px; height: 16px;
-  background: linear-gradient(to bottom, var(--cpmi-mid), var(--cpmi-teal));
+  background: linear-gradient(to bottom, #00b4d8, #0b2545);
   border-radius: 2px;
   flex-shrink: 0;
 }
@@ -558,17 +553,17 @@ select {
    ================================================================ */
 .result-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .result-table th {
-  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  font-size: 10.5px; font-weight: 600; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: .6px;
   padding: 8px 11px; text-align: left;
-  background: linear-gradient(to right, #e8f0fe, #f0f5ff);
+  background: #f4f8fb;
   border-bottom: 2px solid var(--border);
 }
 .result-table th:first-child { border-radius: 8px 0 0 0; }
 .result-table th:last-child  { border-radius: 0 8px 0 0; }
 .result-table td { padding: 7px 8px; border-bottom: 1px solid #edf2fc; vertical-align: middle; }
 .result-table tr:last-child td { border-bottom: none; }
-.result-table tr:hover td { background: rgba(224,234,255,.4); }
+.result-table tr:hover td { background: rgba(0,180,216,.06); }
 .result-table input[type=number], .result-table input[type=text] { padding: 6px 8px; font-size: 13px; }
 .ref-range { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 .unit { font-size: 11px; color: var(--text-muted); }
@@ -687,7 +682,7 @@ select {
   transition: background .15s ease;
 }
 .exam-row:last-child { border-bottom: none; }
-.exam-row:hover { background: rgba(224,234,255,.55); }
+.exam-row:hover { background: rgba(0,180,216,.08); }
 .exam-row.checked { background: rgba(209,250,229,.35); }
 .exam-row input[type=checkbox] {
   width: 19px; height: 19px;
@@ -790,17 +785,17 @@ select {
    ================================================================ */
 .stats-kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 22px; }
 .stats-kpi {
-  background: rgba(255,255,255,.85);
+  background: #ffffff;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid #dae4ee;
+  border-left: 3px solid #00b4d8;
   padding: 22px 16px; text-align: center;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 4px rgba(11,37,69,.07);
   transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
 }
 .stats-kpi:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(37,99,235,.1);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(11,37,69,.11);
 }
 .kpi-val { font-size: 38px; font-weight: 900; color: var(--cpmi-deep); line-height: 1.1; }
 .kpi-label { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
@@ -11134,8 +11129,8 @@ document.addEventListener('keydown', e => {
       scope: _baseUrl,
       display: 'standalone',
       orientation: 'any',
-      background_color: '#1a4480',
-      theme_color: '#1a4480',
+      background_color: '#0b2545',
+      theme_color: '#0b2545',
       lang: 'fr',
       icons: [
         { src: ICON, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
