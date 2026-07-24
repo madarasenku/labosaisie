@@ -63,6 +63,12 @@
   --accent:       #0b2545;
   --accent-hover: #0d2d56;
   --accent-light: #e8f4fb;
+  --surface-1:    #f7fafd;
+  --surface-2:    #ffffff;
+  --card:         #ffffff;
+  --bg-alt:       #eef4f9;
+  --text-primary:   #0b2545;
+  --text-secondary: #4a607a;
   --danger:       #dc2626;
   --danger-light: #fef2f2;
   --success:      #059669;
@@ -71,9 +77,11 @@
   --warning-light:#fffbeb;
   --radius:       10px;
   --radius-lg:    16px;
-  --shadow:       0 2px 8px rgba(26,68,128,.10), 0 1px 3px rgba(26,68,128,.06);
-  --shadow-lg:    0 8px 32px rgba(26,68,128,.16), 0 2px 8px rgba(26,68,128,.08);
-  --shadow-sm:    0 1px 3px rgba(26,68,128,.08);
+  --shadow:       0 1px 3px rgba(11,37,69,.06), 0 4px 14px rgba(11,37,69,.05);
+  --shadow-lg:    0 8px 30px rgba(11,37,69,.13), 0 2px 8px rgba(11,37,69,.06);
+  --shadow-sm:    0 1px 3px rgba(11,37,69,.07);
+  --ease-spring:  cubic-bezier(.34,1.56,.64,1);
+  --ease-out:     cubic-bezier(.22,.61,.36,1);
 }
 
 
@@ -99,9 +107,32 @@
   --cpmi-sky:     #40bcd8;
   --cpmi-teal:    #5b9ec4;
   --cpmi-soft:    #0d1e30;
+  --surface-1:    #171a21;
+  --surface-2:    #1c1f27;
+  --card:         #1c1f27;
+  --bg-alt:       #232733;
+  --text-primary:   #cdd2dc;
+  --text-secondary: #868d9c;
 }
 [data-theme="dark"] body { background-color: #0d0f14; }
-[data-theme="dark"] .card { background: var(--surface); }
+[data-theme="dark"] .card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+[data-theme="dark"] .card:hover { box-shadow: 0 6px 22px rgba(0,0,0,.45); border-color: rgba(64,188,216,.25); }
+[data-theme="dark"] header { background: #0a1220; border-bottom-color: #1c6e8c; }
+[data-theme="dark"] .tabs { background: rgba(28,31,39,.92); border-color: var(--border); }
+[data-theme="dark"] .stats-kpi { background: var(--surface); border-color: var(--border); border-left-color: #40bcd8; }
+[data-theme="dark"] .result-table th,
+[data-theme="dark"] #history-table th,
+[data-theme="dark"] #users-table th { background: #161922; }
+[data-theme="dark"] #toast { background: #0a1220; }
+[data-theme="dark"] ::selection { background: rgba(64,188,216,.35); color: #fff; }
+
+/* Carte fiche patient — bordure accentuée (remplace l'ancien style inline) */
+.card-fiche { border: 2px solid var(--cpmi-mid); }
+[data-theme="dark"] .card-fiche { border-color: #2b5d75; }
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
   background: #1c1f27; color: var(--text); border-color: var(--border);
 }
@@ -128,6 +159,47 @@
 
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Raffinements globaux ── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+::selection { background: rgba(0,180,216,.25); color: var(--text); }
+
+/* Scrollbars fines et élégantes (desktop) */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(11,37,69,.18);
+    border-radius: 99px;
+    border: 2.5px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(11,37,69,.32); background-clip: padding-box; border: 2.5px solid transparent; }
+  * { scrollbar-width: thin; scrollbar-color: rgba(11,37,69,.22) transparent; }
+}
+
+/* Focus clavier visible et cohérent (accessibilité) */
+:focus-visible {
+  outline: 2px solid #00b4d8;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; }
+
+/* Respect des préférences de mouvement réduit */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* ================================================================
    ARRIÈRE-PLAN ANIMÉ — Symboles doux de la protection mère-enfant
@@ -197,7 +269,7 @@ body::before {
 /* Croix médicale dorée — reflet bref et espacé */
 @keyframes cross-glint {
   0%, 90%, 100% { opacity: .9;  filter: none; }
-  95%           { opacity: 1;   filter: drop-shadow(0 0 3.5px #fbbf24); }
+  95%           { opacity: 1;   filter: drop-shadow(0 0 3.5px #00b4d8); }
 }
 
 /* ── Transition de vue (navigation entre sections) ── */
@@ -223,6 +295,12 @@ body::before {
 }
 .modal-box {
   animation: modal-box-in .32s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ── Éléments de liste — entrée douce (cartes mobiles, dropdowns) ── */
+@keyframes login-item-in {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
 }
 
 /* ── Rangées historique — entrée décalée ── */
@@ -268,8 +346,8 @@ body::before {
 
 /* ── Inputs — lueur douce au focus ── */
 @keyframes input-focus-glow {
-  from { box-shadow: 0 0 0 0 rgba(37,99,235,.3); }
-  to   { box-shadow: 0 0 0 4px rgba(37,99,235,.08); }
+  from { box-shadow: 0 0 0 0 rgba(0,150,199,.3); }
+  to   { box-shadow: 0 0 0 4px rgba(0,150,199,.10); }
 }
 input:focus, select:focus, textarea:focus {
   animation: input-focus-glow .25s ease forwards;
@@ -310,10 +388,12 @@ html.theme-transitioning *::after {
 header {
   background: #0b2545;
   color: #fff;
-  padding: 0 28px;
+  padding: 8px 28px;
   display: flex;
   align-items: center;
-  height: 68px;
+  flex-wrap: wrap;
+  min-height: 68px;
+  row-gap: 6px;
   gap: 16px;
   position: sticky;
   top: 0;
@@ -366,7 +446,15 @@ header::after {
 .logo-sub { font-size: 10.5px; opacity: .75; margin-top: 1px; letter-spacing: .3px; }
 
 /* User badge : entre logo et nav, poussé par margin-left auto sur desktop */
-#user-badge { margin-left: auto; }
+#user-badge {
+  margin-left: auto;
+  background: rgba(0,180,216,.12);
+  border: 1px solid rgba(0,180,216,.25);
+  border-radius: 99px;
+  padding: 5px 13px !important;
+  font-weight: 500;
+  letter-spacing: .2px;
+}
 header nav { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .nav-btn {
   background: rgba(255,255,255,.1);
@@ -398,6 +486,12 @@ main {
   max-width: 1120px;
   margin: 0 auto;
   padding: 28px 20px 70px;
+}
+
+/* Grands écrans : layout plus généreux */
+@media (min-width: 1500px) {
+  main { max-width: 1280px; padding: 36px 24px 80px; }
+  body { font-size: 14.5px; }
 }
 
 /* ================================================================
@@ -434,7 +528,7 @@ main {
 .tab.active {
   background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
   color: #fff;
-  box-shadow: 0 4px 16px rgba(26,68,128,.36), inset 0 1px 0 rgba(255,255,255,.15);
+  box-shadow: 0 4px 16px rgba(11,37,69,.30), inset 0 1px 0 rgba(255,255,255,.15);
   transform: translateY(-1px);
 }
 .tab-icon { display: block; font-size: 19px; margin-bottom: 3px; }
@@ -522,6 +616,7 @@ label span.req { color: var(--cpmi-rose); margin-left: 2px; }
 
 input[type=text], input[type=date], input[type=number],
 input[type=password], input[type=datetime-local],
+input[type=tel], input[type=email], input[type=search], input[type=time],
 select, textarea {
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
@@ -536,7 +631,7 @@ select, textarea {
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--cpmi-mid);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  box-shadow: 0 0 0 3px rgba(0,150,199,.13);
   background: #fff;
 }
 textarea { resize: vertical; min-height: 64px; }
@@ -561,7 +656,7 @@ select {
 }
 .result-table th:first-child { border-radius: 8px 0 0 0; }
 .result-table th:last-child  { border-radius: 0 8px 0 0; }
-.result-table td { padding: 7px 8px; border-bottom: 1px solid #edf2fc; vertical-align: middle; }
+.result-table td { padding: 7px 8px; border-bottom: 1px solid #eef3f8; vertical-align: middle; }
 .result-table tr:last-child td { border-bottom: none; }
 .result-table tr:hover td { background: rgba(0,180,216,.06); }
 .result-table input[type=number], .result-table input[type=text] { padding: 6px 8px; font-size: 13px; }
@@ -609,7 +704,7 @@ select {
 .btn-primary {
   background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
   color: #fff;
-  box-shadow: 0 3px 12px rgba(26,68,128,.32);
+  box-shadow: 0 3px 12px rgba(11,37,69,.28);
   position: relative; overflow: hidden;
 }
 .btn-primary::before {
@@ -622,7 +717,7 @@ select {
   pointer-events: none;
 }
 .btn-primary:hover::before { left: 115%; }
-.btn-primary:hover { box-shadow: 0 6px 20px rgba(26,68,128,.42); }
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(11,37,69,.36); }
 .btn-outline { background: rgba(255,255,255,.8); border: 1.5px solid var(--border); color: var(--text); }
 .btn-outline:hover { background: var(--accent-light); border-color: var(--cpmi-mid); color: var(--cpmi-deep); }
 .btn-danger { background: #fef2f2; color: #991b1b; border: 1.5px solid #fca5a5; }
@@ -634,19 +729,21 @@ select {
    TOAST
    ================================================================ */
 #toast {
-  position: fixed; bottom: 28px; right: 28px;
-  background: #0f172a;
+  position: fixed;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: 28px;
+  background: #0b2545;
   color: #fff;
   padding: 13px 20px;
   border-radius: 12px;
   font-size: 13px; font-weight: 600;
   opacity: 0; transform: translateY(12px) scale(.97);
-  transition: all .28s cubic-bezier(.34,1.56,.64,1);
+  transition: all .28s var(--ease-spring);
   pointer-events: none; z-index: 999;
   display: flex; align-items: center; gap: 9px;
   max-width: 360px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.25);
-  border-left: 4px solid rgba(255,255,255,.2);
+  box-shadow: 0 8px 28px rgba(11,37,69,.35);
+  border-left: 4px solid #00b4d8;
 }
 #toast.show { opacity: 1; transform: translateY(0) scale(1); }
 #toast.ok  { background: #064e3b; border-left-color: #34d399; }
@@ -709,7 +806,7 @@ select {
   backdrop-filter: blur(4px);
   transition: box-shadow .2s;
 }
-.exam-group-card:hover { box-shadow: 0 2px 10px rgba(26,68,128,.07); }
+.exam-group-card:hover { box-shadow: 0 2px 10px rgba(11,37,69,.07); }
 .exam-group-title {
   font-size: 10.5px; font-weight: 800; color: var(--cpmi-deep);
   text-transform: uppercase; letter-spacing: .6px;
@@ -743,21 +840,21 @@ select {
    ================================================================ */
 #history-table, #users-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
 #history-table th, #users-table th {
-  background: linear-gradient(to right, #e8f0fe, #f0f5ff);
+  background: #f4f8fb;
   padding: 9px 11px; text-align: left;
   font-size: 10.5px; font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: .5px;
   border-bottom: 2px solid var(--border); white-space: nowrap;
 }
-#history-table td, #users-table td { padding: 8px 11px; border-bottom: 1px solid #edf2fc; vertical-align: middle; }
+#history-table td, #users-table td { padding: 8px 11px; border-bottom: 1px solid #eef3f8; vertical-align: middle; }
 #history-table td[data-label="Actions"] { vertical-align: bottom; padding-bottom: 6px; }
 #history-table tr:hover td, #users-table tr:hover td { background: rgba(224,234,255,.5); }
 .badge-type {
   font-size: 10px; font-weight: 700; padding: 2px 7px;
   border-radius: 20px;
-  background: linear-gradient(135deg, var(--accent-light), #dbeafe);
+  background: #e8f4fb;
   color: var(--cpmi-deep);
-  border: 1px solid rgba(37,99,235,.2);
+  border: 1px solid rgba(0,150,199,.28);
 }
 .badge-hema     { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
 .badge-bio      { background:#fef9c3; color:#854d0e; border-color:#fde047; }
@@ -768,8 +865,8 @@ select {
 .badge-bpn      { background:#cffafe; color:#155e75; border-color:#67e8f9; }
 .bpn-compo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:6px 14px; }.bpn-compo-grid label { display:flex; align-items:center; gap:7px; font-size:12.5px; cursor:pointer; padding:3px 0; }
 .bpn-compo-grid input[type=checkbox] { width:16px; height:16px; accent-color:var(--cpmi-mid,#0891b2); cursor:pointer; }
-.modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
-.modal-box { background:var(--card,#fff); border-radius:14px; padding:20px; width:100%; max-width:420px; box-shadow:0 20px 50px rgba(0,0,0,.3); max-height:90vh; overflow-y:auto; }
+.modal-backdrop { position:fixed; inset:0; background:rgba(11,37,69,.5); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+.modal-box { background:var(--card,#fff); border-radius:16px; padding:22px; width:100%; max-width:420px; box-shadow:0 24px 64px rgba(11,37,69,.35); max-height:90vh; max-height:88dvh; overflow-y:auto; overscroll-behavior:contain; }
 .modal-title { font-size:16px; font-weight:700; margin-bottom:14px; color:var(--text,#0f172a); }
 .modal-label { display:block; font-size:12px; font-weight:600; color:var(--text-muted,#64748b); margin:10px 0 4px; }
 .modal-input { width:100%; padding:9px 11px; border:1px solid var(--border,#e2e8f0); border-radius:8px; font-size:14px; box-sizing:border-box; }
@@ -797,7 +894,7 @@ select {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(11,37,69,.11);
 }
-.kpi-val { font-size: 38px; font-weight: 900; color: var(--cpmi-deep); line-height: 1.1; }
+.kpi-val { font-size: 38px; font-weight: 800; color: var(--cpmi-deep); line-height: 1.1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
 .kpi-label { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .stats-card { min-height: 220px; }
@@ -825,7 +922,7 @@ select {
   overflow-x: auto;
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 4px rgba(26,68,128,.06);
+  box-shadow: 0 1px 4px rgba(11,37,69,.06);
   position: relative;
 }
 /* Sur petit écran, indiquer visuellement qu'il y a plus de colonnes à voir
@@ -844,7 +941,7 @@ select {
 .logout-btn { background: rgba(225,29,118,.18); border-color: rgba(225,29,118,.35); }
 
 #patient-tranche {
-  background: linear-gradient(135deg, var(--accent-light), #e0f2fe);
+  background: linear-gradient(135deg, #e8f4fb, #dcf3fa);
   border: 1px solid var(--border);
   color: var(--cpmi-deep);
   font-weight: 700;
@@ -853,9 +950,9 @@ select {
   border-radius: 99px;
 }
 #montant-preview {
-  font-weight: 900; color: var(--cpmi-deep);
+  font-weight: 800; color: var(--cpmi-deep);
   font-size: 15px;
-  text-shadow: 0 1px 2px rgba(26,68,128,.12);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ================================================================
@@ -867,7 +964,9 @@ select {
 /* ── 768px : inputs plus grands (évite le zoom iOS) ── */
 @media (max-width: 768px) {
   input[type=text], input[type=date], input[type=number],
-  input[type=password], select, textarea { font-size: 16px; }
+  input[type=password], input[type=tel], input[type=email],
+  input[type=search], input[type=time], input[type=datetime-local],
+  select, textarea { font-size: 16px; }
 }
 
 /* ── 900px : padding réduit ── */
@@ -944,7 +1043,7 @@ select {
   header {
     height: auto;
     flex-wrap: wrap;
-    padding: 10px 14px 0;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 0;
     row-gap: 0;
     animation: header-drop .45s cubic-bezier(.22,.61,.36,1);
   }
@@ -1061,7 +1160,7 @@ select {
   #history-table td[data-label="Patient"] {
     grid-column: 1 / -1; grid-row: 2;
     padding: 7px 12px;
-    background: linear-gradient(to right, #eff6ff, #f8faff);
+    background: linear-gradient(to right, #f2f9fc, #f8fbfd);
     border-top: 0.5px solid var(--border);
     border-bottom: 0.5px solid var(--border);
     font-size: 14px; font-weight: 700;
@@ -1163,7 +1262,7 @@ select {
   #fiche-identif-title button { margin-left: 0 !important; width: 100%; }
 
   /* ── Login ── */
-  #toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  #toast { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: none; }
   .stats-kpi-row { grid-template-columns: repeat(2,1fr); gap: 10px; }
   .kpi-val { font-size: 28px; }
 }
@@ -1367,7 +1466,7 @@ select {
     transform: translate(-50%,-50%) rotate(-35deg);
     font-size: 14cm; font-weight: 900;
     color: rgba(0,0,0,.03);
-    font-family: 'Playfair Display', serif;
+    font-family: 'Poppins', sans-serif;
     letter-spacing: .1em; pointer-events: none;
     z-index: -1; white-space: nowrap;
   }
@@ -1456,16 +1555,17 @@ select {
 (function() {
   const canvas = document.getElementById('cpmi-bg-canvas');
   if (!canvas) return;
+  // Respect de prefers-reduced-motion : pas d'animation de fond
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { canvas.remove(); return; }
   const ctx = canvas.getContext('2d');
 
-  // Symboles de la protection mère-enfant
-  const SYMBOLS = ['♥','✦','✚','❋','◌','✿','⊕','◎','✶'];
+  // Symboles médicaux épurés — palette clinique
+  const SYMBOLS = ['✚','◌','✦','⊕','◎'];
   const COLORS  = [
-    'rgba(26,68,128,',   // bleu CPMI
-    'rgba(13,148,136,',  // teal santé
-    'rgba(225,29,118,',  // rose maternité
-    'rgba(217,119,6,',   // or
-    'rgba(59,130,246,',  // bleu ciel
+    'rgba(11,37,69,',    // navy institutionnel
+    'rgba(0,150,199,',   // bleu médical
+    'rgba(0,180,216,',   // teal accent
+    'rgba(122,176,204,', // bleu doux
   ];
 
   let W, H, particles = [];
@@ -1482,7 +1582,7 @@ select {
       y:    H + 30,
       size: 10 + Math.random() * 28,
       speed: .25 + Math.random() * .55,
-      opacity: .12 + Math.random() * .22,
+      opacity: .07 + Math.random() * .15,
       symbol: SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
       color,
       drift: (Math.random() - .5) * .4,
@@ -1561,8 +1661,8 @@ select {
         <circle cx="32" cy="14" r="3.4" fill="#fff" opacity="0.95"/>
         <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85"/>
         <g opacity="0.9">
-          <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
-          <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+          <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#00b4d8"/>
+          <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#00b4d8"/>
         </g>
       </svg>
     </div>
@@ -1602,7 +1702,7 @@ select {
   <!-- ═══════════════════════════════════════════════════
        FICHE D'IDENTIFICATION PATIENT & PRESCRIPTION
        ═══════════════════════════════════════════════════ -->
-  <div class="card" id="fiche-identification" style="border:2px solid var(--cpmi-mid);background:rgba(255,255,255,.95)">
+  <div class="card card-fiche" id="fiche-identification">
     <div class="card-title" id="fiche-identif-title" style="font-size:13px">
       🗂 FICHE D'IDENTIFICATION PATIENT & DEMANDE D'ANALYSES
       <button class="btn btn-outline" onclick="newPatient()" style="margin-left:auto;padding:4px 12px;font-size:12px;flex-shrink:0">👤 Nouveau patient</button>
@@ -1717,7 +1817,7 @@ select {
       </div>
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Total facture :</span>
-        <span id="montant-preview" style="font-weight:900;color:var(--cpmi-deep);font-size:22px;letter-spacing:-.5px" data-montant="0">0 FCFA</span>
+        <span id="montant-preview" style="font-weight:800;color:var(--cpmi-deep);font-size:22px;letter-spacing:-.5px" data-montant="0">0 FCFA</span>
       </div>
     </div>
 
@@ -11369,7 +11469,7 @@ function ouvrirModalPaiement(id, montantDemande) {
         <div>
           <label style="font-size:12px;font-weight:700;color:var(--text-label);display:block;margin-bottom:4px">Montant demandé (FCFA)</label>
           <input type="number" id="pm-demande" value="${demand}" min="0" step="100"
-            style="font-size:18px;font-weight:900;color:var(--cpmi-deep);text-align:right"
+            style="font-size:18px;font-weight:800;color:var(--cpmi-deep);text-align:right"
             oninput="calcMonnaie()">
         </div>
         <div>
@@ -11377,12 +11477,12 @@ function ouvrirModalPaiement(id, montantDemande) {
           <!-- ✅ v13.37 — pré-rempli avec le prix normal, modifiable si le patient donne plus -->
           <input type="number" id="pm-recu" value="${demand}" min="0" step="100"
             placeholder="Saisir le montant donné par le patient"
-            style="font-size:18px;font-weight:900;text-align:right"
+            style="font-size:18px;font-weight:800;text-align:right"
             oninput="calcMonnaie()">
         </div>
         <div id="pm-monnaie-wrap" style="background:var(--success-light);border-radius:10px;padding:12px 16px;display:none">
           <div style="font-size:11px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:.5px">Monnaie à rendre</div>
-          <div id="pm-monnaie" style="font-size:26px;font-weight:900;color:var(--success)">0 FCFA</div>
+          <div id="pm-monnaie" style="font-size:26px;font-weight:800;color:var(--success)">0 FCFA</div>
           <!-- ✅ v13.36 — Suivi de la remise de la monnaie -->
           <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer">
             <input type="checkbox" id="pm-monnaie-remise" checked style="width:17px;height:17px;cursor:pointer;accent-color:var(--success)">
@@ -11810,7 +11910,7 @@ async function checkShareMode() {
       `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:14px">
         <div style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Informations patient</div>
         <table style="width:100%;font-size:13px;border-collapse:collapse">
-          <tr><td style="color:#4b5563;padding:3px 8px 3px 0;white-space:nowrap">N° Dossier</td><td><strong style="font-size:15px;color:#1a4480">${escHTML(p.dossier||'—')}</strong></td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0;white-space:nowrap">N° Dossier</td><td><strong style="font-size:15px;color:#0b2545">${escHTML(p.dossier||'—')}</strong></td></tr>
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Patient</td><td><strong style="text-transform:uppercase">${escHTML(p.nom||'—')}</strong></td></tr>
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Âge / Sexe</td><td>${escHTML(p.age||'—')} ans / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td></tr>
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Date</td><td>${escHTML(dateF)}</td></tr>
@@ -11831,10 +11931,10 @@ async function checkShareMode() {
 }
 
 function buildShareCard(title, body) {
-  return `<div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Nunito',sans-serif">
+  return `<div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Poppins',sans-serif">
     <div style="text-align:center;margin-bottom:18px">
-      <div style="width:56px;height:56px;background:linear-gradient(135deg,#1a4480,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 10px">🔬</div>
-      <div style="font-size:18px;font-weight:800;color:#1a4480">${escHTML(title)}</div>
+      <div style="width:56px;height:56px;background:linear-gradient(135deg,#0b2545,#0096c7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 10px">🔬</div>
+      <div style="font-size:18px;font-weight:800;color:#0b2545">${escHTML(title)}</div>
       <div style="font-size:11px;color:#9ca3af;margin-top:2px">CPMI · Centre de Protection Mère et Infantile · Grand-Bassam</div>
     </div>
     ${body}
@@ -12015,7 +12115,7 @@ async function requestNotifPermission() {
 function notifyResultatPret(record) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const p = record?.patient || {};
-  const icon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#1a4480"/><text x="32" y="42" font-size="32" text-anchor="middle" fill="#fff">✓</text></svg>');
+  const icon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#0b2545"/><text x="32" y="42" font-size="32" text-anchor="middle" fill="#fff">✓</text></svg>');
   try {
     new Notification('✅ Résultat prêt — CPMI Grand-Bassam', {
       body: `${p.nom || 'Patient'} — Dossier ${p.dossier || '—'}`,
@@ -12485,9 +12585,9 @@ async function saveRistourneTaux() {
 </div>
 
 <!-- Vue publique de vérification (QR code) -->
-<div id="share-view" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a4480,#2563eb,#0d9488);align-items:center;justify-content:center;z-index:3000;padding:20px">
-  <div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Nunito',sans-serif;text-align:center">
-    <div style="width:44px;height:44px;border:4px solid #e0eaff;border-top-color:#1a4480;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px"></div>
+<div id="share-view" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0b2545,#0096c7,#00b4d8);align-items:center;justify-content:center;z-index:3000;padding:20px">
+  <div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Poppins',sans-serif;text-align:center">
+    <div style="width:44px;height:44px;border:4px solid #e0eaff;border-top-color:#0b2545;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px"></div>
     <div style="font-size:14px;color:#4a5c82;font-weight:600">Vérification du dossier…</div>
   </div>
 </div>
@@ -13189,8 +13289,8 @@ async function buildAndPrint(r) {
             <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
             <circle cx="32" cy="14" r="3.4" fill="#fff"/>
             <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-            <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
-            <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+            <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#00b4d8"/>
+            <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#00b4d8"/>
           </svg>
         </div>
         <div>
@@ -13667,8 +13767,8 @@ async function printReceipt(id) {
         <circle cx="32" cy="32" r="31" fill="#1e3a8a"/>
         <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
         <circle cx="32" cy="14" r="3.4" fill="#fff"/>
-        <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
-        <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+        <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#00b4d8"/>
+        <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#00b4d8"/>
       </svg>
     </div>
     <div class="hdr-name">CPMI DE GRAND-BASSAM</div>
@@ -14739,7 +14839,7 @@ async function genererRapportMensuel() {
     const jours = Object.keys(parJour).sort();
     if (jours.length && typeof Chart !== 'undefined') {
       const cv = document.createElement('canvas'); cv.width = 800; cv.height = 360;
-      const ch = new Chart(cv, { type: 'line', data: { labels: jours.map(j => j.slice(8)), datasets: [{ data: jours.map(j => parJour[j]), borderColor: '#1a4480', backgroundColor: 'rgba(26,68,128,.1)', fill: true, tension: .3 }] }, options: { responsive: false, animation: false, plugins: { legend: { display: false } } } });
+      const ch = new Chart(cv, { type: 'line', data: { labels: jours.map(j => j.slice(8)), datasets: [{ data: jours.map(j => parJour[j]), borderColor: '#0096c7', backgroundColor: 'rgba(0,150,199,.10)', fill: true, tension: .3 }] }, options: { responsive: false, animation: false, plugins: { legend: { display: false } } } });
       await new Promise(res => setTimeout(res, 250));
       doc.addImage(cv.toDataURL('image/png'), 'PNG', M, 26, 180, 80);
       ch.destroy();

@@ -25,12 +25,29 @@ html, body {
   height: 100%;
   font-family: 'Poppins', system-ui, sans-serif;
 }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background: #e6edf3;
+}
+::selection { background: rgba(0,180,216,.25); color: #0b2545; }
 
 /* ── Layout racine ── */
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   background: #f0f4f8;
+}
+
+/* Écrans très larges : recentrer élégamment */
+@media (min-width: 1800px) {
+  body {
+    max-width: 1720px;
+    margin: 0 auto;
+    box-shadow: 0 0 90px rgba(11,37,69,.16);
+  }
 }
 
 /* ══════════════════════════
@@ -116,7 +133,7 @@ body {
 }
 
 .brand-name {
-  font-size: 52px;
+  font-size: clamp(40px, 4.2vw, 56px);
   font-weight: 800;
   color: #ffffff;
   letter-spacing: 4px;
@@ -270,11 +287,12 @@ body {
 }
 
 .form-title {
-  font-size: 30px;
+  font-size: clamp(24px, 2.4vw, 32px);
   font-weight: 700;
   color: #0b2545;
   line-height: 1.15;
   margin-bottom: 6px;
+  letter-spacing: -.3px;
 }
 .form-sub {
   font-size: 13px;
@@ -338,6 +356,40 @@ body {
   background: #fff;
   box-shadow: 0 0 0 3px rgba(0,150,199,.12);
 }
+/* Label + icône réactifs quand le champ est actif */
+.field:focus-within label { color: #0096c7; }
+.field:focus-within .field-icon { color: #0096c7; }
+.field label, .field-icon { transition: color .2s ease; }
+
+/* Autofill : pas de flash jaune navigateur */
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 60px #f7fafd inset;
+  -webkit-text-fill-color: #0b2545;
+  caret-color: #0b2545;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Bouton œil — afficher/masquer le mot de passe */
+.pwd-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #a0b4c8;
+  cursor: pointer;
+  transition: color .2s ease, background .2s ease;
+  padding: 0;
+}
+.pwd-toggle:hover { color: #0096c7; background: rgba(0,150,199,.08); }
+.pwd-toggle:focus-visible { outline: 2px solid #00b4d8; outline-offset: 1px; }
+.field-inner:has(.pwd-toggle) input { padding-right: 50px; }
 
 /* ── Bouton ── */
 .btn-login {
@@ -375,8 +427,9 @@ body {
   transform: translateY(-1px);
 }
 .btn-login:hover:not(:disabled)::after { opacity: 1; }
-.btn-login:active { transform: translateY(0); }
+.btn-login:active { transform: translateY(0) scale(.99); }
 .btn-login:disabled { opacity: .6; cursor: not-allowed; }
+.btn-login:focus-visible { outline: 2px solid #00b4d8; outline-offset: 3px; }
 
 /* Accent teal sur le bouton */
 .btn-login .btn-accent {
@@ -418,13 +471,13 @@ body {
   margin-top: 12px;
   min-height: 16px;
   line-height: 1.5;
-  background: rgba(224,82,82,.06);
   border-radius: 8px;
-  padding: 0;
-  transition: padding .2s;
 }
 #login-error:not(:empty) {
   padding: 10px 14px;
+  background: rgba(224,82,82,.07);
+  border: 1px solid rgba(224,82,82,.18);
+  animation: fadeInRight .25s ease both;
 }
 
 /* ── Spinner ── */
@@ -467,10 +520,10 @@ body {
     background: #fff;
   }
 
-  /* Panneau gauche → bandeau compact en haut */
+  /* Panneau gauche → bandeau compact en haut (respect encoche iOS) */
   .panel-brand {
     flex: none;
-    padding: 28px 24px 24px;
+    padding: calc(28px + env(safe-area-inset-top, 0px)) 24px 24px;
     flex-direction: row;
     align-items: center;
     justify-content: flex-start;
@@ -510,10 +563,34 @@ body {
   /* Panneau droit → plein écran */
   .panel-form {
     flex: 1;
-    padding: 32px 24px 40px;
+    padding: 32px 24px calc(40px + env(safe-area-inset-bottom, 0px));
     align-items: flex-start;
   }
   .form-inner { max-width: 100%; }
+}
+
+/* ── Téléphone en paysage : retour au split horizontal compact ── */
+@media (max-width: 900px) and (max-height: 480px) and (orientation: landscape) {
+  body { flex-direction: row; }
+  .panel-brand {
+    flex: 0 0 40%;
+    flex-direction: column;
+    justify-content: center;
+    padding: 16px 20px;
+    gap: 0;
+  }
+  .panel-brand::before, .panel-brand::after,
+  .brand-circle, .deco-cross,
+  .brand-eyebrow, .brand-divider, .brand-tagline,
+  .brand-bottom { display: none; }
+  .brand-top { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; flex: none; }
+  .brand-icon-wrap { width: 44px; height: 44px; border-radius: 12px; margin-bottom: 0; }
+  .brand-name { font-size: 28px; letter-spacing: 3px; margin-bottom: 2px; }
+  .brand-full-name { font-size: 10px; max-width: 180px; }
+  .panel-form { padding: 18px 24px; align-items: flex-start; overflow-y: auto; }
+  .form-sub { margin-bottom: 16px; }
+  .field { margin-bottom: 12px; }
+  .form-security { margin-top: 14px; }
 }
 
 @media (max-width: 400px) {
@@ -633,6 +710,12 @@ body {
         <input type="password" id="login-password" placeholder="••••••••"
           autocomplete="current-password"
           onkeydown="if(event.key==='Enter')doLogin()">
+        <button type="button" class="pwd-toggle" id="pwd-toggle" aria-label="Afficher le mot de passe" onclick="togglePwd()">
+          <svg id="pwd-eye" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -810,6 +893,20 @@ function shake() {
   inner.classList.remove('shake');
   void inner.offsetWidth;
   inner.classList.add('shake');
+}
+
+/* ── Afficher / masquer le mot de passe ── */
+function togglePwd() {
+  const input = document.getElementById('login-password');
+  const btn   = document.getElementById('pwd-toggle');
+  const eye   = document.getElementById('pwd-eye');
+  const show  = input.type === 'password';
+  input.type  = show ? 'text' : 'password';
+  btn.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+  eye.innerHTML = show
+    ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+    : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  input.focus({ preventScroll: true });
 }
 </script>
 </body>

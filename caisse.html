@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CPMI — Caisse · Laboratoire</title>
-<meta name="theme-color" content="#1a4480">
+<meta name="theme-color" content="#0b2545">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CPMI Caisse">
@@ -16,11 +16,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 :root {
-  --cpmi-deep:    #1a4480;
-  --cpmi-mid:     #2563eb;
+  --cpmi-deep:    #0b2545;
+  --cpmi-mid:     #0096c7;
   --cpmi-sky:     #3b82f6;
   --cpmi-teal:    #0d9488;
   --cpmi-rose:    #e11d76;
@@ -31,7 +31,7 @@
   --text:         #0f1f40;
   --text-muted:   #4a5c82;
   --text-label:   #253c6b;
-  --accent:       #1a4480;
+  --accent:       #0b2545;
   --accent-hover: #153568;
   --accent-light: #e0eaff;
   --danger:       #dc2626;
@@ -42,8 +42,8 @@
   --warning-light:#fffbeb;
   --radius:       10px;
   --radius-lg:    16px;
-  --shadow:       0 2px 8px rgba(26,68,128,.10);
-  --shadow-lg:    0 8px 32px rgba(26,68,128,.16);
+  --shadow:       0 2px 8px rgba(11,37,69,.10);
+  --shadow-lg:    0 8px 32px rgba(11,37,69,.16);
 }
 
 [data-theme="dark"] {
@@ -68,7 +68,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Poppins', sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -190,7 +190,7 @@ body {
 .kpi-card.teal   { border-left-color: var(--cpmi-teal); }
 .kpi-card.rose   { border-left-color: var(--cpmi-rose); }
 .kpi-card.purple { border-left-color: #7c3aed; }
-.kpi-val  { font-size: 22px; font-weight: 900; line-height: 1.1; margin-bottom: 4px; }
+.kpi-val  { font-size: 22px; font-weight: 800; line-height: 1.1; margin-bottom: 4px; }
 .kpi-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
 .kpi-card.green  .kpi-val { color: #15803d; }
 .kpi-card.blue   .kpi-val { color: var(--cpmi-mid); }
@@ -276,7 +276,7 @@ tfoot td { padding: 9px 10px; font-weight: 800; border-top: 2px solid var(--bord
 .encaiss-row:last-child { margin-bottom: 0; }
 .encaiss-nom { font-weight: 800; font-size: 13px; flex: 1; min-width: 120px; }
 .encaiss-meta { font-size: 11.5px; color: var(--text-muted); }
-.encaiss-mont { font-weight: 900; color: var(--cpmi-deep); font-size: 14px; white-space: nowrap; }
+.encaiss-mont { font-weight: 800; color: var(--cpmi-deep); font-size: 14px; white-space: nowrap; }
 .encaiss-empty { text-align: center; color: var(--success); font-size: 13px; padding: 20px; }
 
 /* ── Filter Bar (unifié tous onglets) ── */
@@ -369,7 +369,7 @@ th.th-sort.desc::after { content: ' ↓'; opacity: 1; color: var(--cpmi-mid); }
   width: 100%;
   font-family: inherit;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--cpmi-deep);
   text-align: right;
   border: 2px solid var(--border);
@@ -387,7 +387,7 @@ th.th-sort.desc::after { content: ' ↓'; opacity: 1; color: var(--cpmi-mid); }
   display: none;
 }
 .monnaie-box .lbl { font-size: 10px; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: .5px; }
-.monnaie-box .val { font-size: 28px; font-weight: 900; color: var(--success); }
+.monnaie-box .val { font-size: 28px; font-weight: 800; color: var(--success); }
 .insuffisant-box {
   background: var(--danger-light);
   border-radius: 10px;
@@ -459,7 +459,7 @@ th.th-sort.desc::after { content: ' ↓'; opacity: 1; color: var(--cpmi-mid); }
   margin-bottom: 16px;
 }
 .cloture-item { background: var(--bg); border-radius: 8px; padding: 12px; text-align: center; }
-.cloture-item .cv { font-size: 20px; font-weight: 900; color: var(--cpmi-deep); }
+.cloture-item .cv { font-size: 20px; font-weight: 800; color: var(--cpmi-deep); }
 .cloture-item .cl { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
 
 /* ── Two-col layout ── */
@@ -1227,7 +1227,7 @@ function renderEncaisser() {
 // ══════════════════════════════════════════════════════════════════
 //  CHARTS
 // ══════════════════════════════════════════════════════════════════
-const CHART_COLORS = ['#2563eb','#0d9488','#d97706','#e11d76','#7c3aed','#15803d','#dc2626','#0891b2','#92400e'];
+const CHART_COLORS = ['#0096c7','#0d9488','#d97706','#e11d76','#7c3aed','#15803d','#dc2626','#0891b2','#92400e'];
 
 function renderChartBar(rows) {
   const parJour = {};
@@ -1303,8 +1303,8 @@ function renderChartTendance() {
     data: {
       labels: mois.map(m=>m.label),
       datasets:[{ label:'Recettes (FCFA)', data,
-        borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,.1)',
-        borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#2563eb', fill:true, tension:.3 }]
+        borderColor:'#0096c7', backgroundColor:'rgba(0,150,199,.1)',
+        borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#0096c7', fill:true, tension:.3 }]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
@@ -1651,7 +1651,7 @@ function renderRistournes() {
     </tr>`).join('')}</tbody>
     <tfoot><tr>
       <td colspan="5" style="font-weight:800">Total ristournes — ${MOIS_FR[mois-1]} ${annee}</td>
-      <td style="text-align:right;color:var(--success);font-weight:900">${fmtF(totalRist)} FCFA</td>
+      <td style="text-align:right;color:var(--success);font-weight:800">${fmtF(totalRist)} FCFA</td>
     </tr></tfoot>
   </table></div>`;
 }
