@@ -129,10 +129,111 @@
 [data-theme="dark"] #users-table th { background: #161922; }
 [data-theme="dark"] #toast { background: #0a1220; }
 [data-theme="dark"] ::selection { background: rgba(64,188,216,.35); color: #fff; }
+[data-theme="dark"] #cmdk-panel { box-shadow: 0 24px 70px rgba(0,0,0,.6); }
+[data-theme="dark"] .cmdk-item.active, [data-theme="dark"] .cmdk-item:hover { background: rgba(64,188,216,.12); }
+[data-theme="dark"] #alerte-anciens { background: #2a1618; border-color: #7f3535; }
+[data-theme="dark"] #alerte-anciens button[onclick*="openDossier"] { background: #1c1f27 !important; border-color: #7f3535 !important; color: #f0a0a0 !important; }
 
 /* Carte fiche patient — bordure accentuée (remplace l'ancien style inline) */
 .card-fiche { border: 2px solid var(--cpmi-mid); }
 [data-theme="dark"] .card-fiche { border-color: #2b5d75; }
+
+/* ════════════════════════════════════════════════
+   PALETTE DE RECHERCHE GLOBALE (Ctrl+K / ⌘K)
+   ════════════════════════════════════════════════ */
+#cmdk-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(11,37,69,.45);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  z-index: 4000;
+  padding: 14vh 16px 16px;
+  justify-content: center;
+  align-items: flex-start;
+  animation: cmdkFadeIn .18s ease;
+}
+#cmdk-backdrop.open { display: flex; }
+@keyframes cmdkFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+#cmdk-panel {
+  width: 100%; max-width: 560px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(11,37,69,.4), 0 2px 8px rgba(11,37,69,.2);
+  overflow: hidden;
+  animation: cmdkPop .22s var(--ease-spring);
+}
+@keyframes cmdkPop {
+  from { opacity: 0; transform: translateY(-12px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#cmdk-search {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+#cmdk-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-family: inherit; font-size: 16px; font-weight: 500;
+  color: var(--text);
+  padding: 2px 0;
+}
+#cmdk-input::placeholder { color: var(--text-muted); font-weight: 400; }
+#cmdk-esc, #cmdk-foot kbd {
+  font-family: inherit; font-size: 10px; font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 5px; padding: 2px 6px;
+  letter-spacing: .5px;
+}
+
+#cmdk-results { max-height: 52vh; overflow-y: auto; overscroll-behavior: contain; padding: 6px; }
+#cmdk-results:empty { display: none; }
+
+.cmdk-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.cmdk-item.active, .cmdk-item:hover { background: var(--accent-light); }
+.cmdk-item-avatar {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #fff;
+  background: linear-gradient(135deg, #0b2545, #0096c7);
+}
+.cmdk-item-body { flex: 1; min-width: 0; }
+.cmdk-item-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmdk-item-sub { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.cmdk-item-meta { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.cmdk-item-dossier { font-size: 12px; font-weight: 700; color: var(--cpmi-mid); font-variant-numeric: tabular-nums; }
+.cmdk-pill { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 99px; text-transform: uppercase; letter-spacing: .3px; }
+.cmdk-pill.paye { background: #dcfce7; color: #166534; }
+.cmdk-pill.attente { background: #fef9c3; color: #854d0e; }
+.cmdk-item mark { background: rgba(0,180,216,.28); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+#cmdk-empty { text-align: center; padding: 34px 20px; color: var(--text-muted); font-size: 13px; }
+#cmdk-empty .cmdk-empty-icon { font-size: 30px; margin-bottom: 8px; opacity: .5; }
+
+#cmdk-foot {
+  display: flex; gap: 16px; align-items: center;
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-muted);
+  background: var(--surface-1);
+}
+#cmdk-foot span { display: flex; align-items: center; gap: 4px; }
+
+@media (max-width: 560px) {
+  #cmdk-backdrop { padding: 8vh 10px 10px; }
+  #cmdk-foot { display: none; }
+  #cmdk-input { font-size: 16px; }
+}
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
   background: #1c1f27; color: var(--text); border-color: var(--border);
 }
@@ -1652,6 +1753,24 @@ select {
   <button onclick="flushSyncQueue()" style="margin-left:10px;background:#fff;color:#b45309;border:none;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700;cursor:pointer">Synchroniser maintenant</button>
 </div>
 
+<!-- ✅ v13.43 — Palette de recherche globale (Ctrl+K / ⌘K) -->
+<div id="cmdk-backdrop" onclick="if(event.target===this)closeCmdK()">
+  <div id="cmdk-panel" role="dialog" aria-modal="true" aria-label="Recherche rapide">
+    <div id="cmdk-search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="cmdk-input" placeholder="Rechercher un patient, un dossier, un numéro…" autocomplete="off" spellcheck="false"
+        oninput="cmdkRender()" onkeydown="cmdkKeydown(event)">
+      <kbd id="cmdk-esc">ESC</kbd>
+    </div>
+    <div id="cmdk-results"></div>
+    <div id="cmdk-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span>
+      <span><kbd>↵</kbd> ouvrir</span>
+      <span><kbd>ESC</kbd> fermer</span>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="logo">
     <div class="logo-icon">
@@ -1674,6 +1793,7 @@ select {
   <!-- Badge utilisateur hors de la nav pour éviter qu'il scrolle sur mobile -->
   <span id="user-badge" style="font-size:12px;opacity:.85;margin-right:6px;white-space:nowrap"></span>
   <nav>
+    <button class="nav-btn" onclick="openCmdK()" title="Recherche rapide (Ctrl+K)" aria-label="Recherche rapide" style="display:flex;align-items:center;gap:5px">🔍 <kbd style="font-size:9px;font-weight:700;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:1px 5px;letter-spacing:.5px">⌘K</kbd></button>
     <button class="nav-btn active" data-view="saisie" onclick="showView('saisie')">Nouvelle saisie</button>
     <button id="btn-nav-historique" class="nav-btn" data-view="historique" onclick="showView('historique')">Historique<span id="hist-badge" class="nav-badge" style="display:none"></span></button>
     <button class="nav-btn" data-view="stats" onclick="showView('stats')">📊 Statistiques</button>
@@ -1698,6 +1818,9 @@ select {
 
   <!-- ✅ v13.34 — Tableau de bord synthétique du jour -->
   <div id="dashboard-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
+
+  <!-- ✅ v13.43 — Alerte dossiers en attente depuis plus de 48 h -->
+  <div id="alerte-anciens" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:12px;padding:11px 14px;margin-bottom:14px"></div>
 
   <!-- ═══════════════════════════════════════════════════
        FICHE D'IDENTIFICATION PATIENT & PRESCRIPTION
@@ -4902,6 +5025,166 @@ function showView(v) {
   if (v === 'caisse') renderCaisse();
 }
 
+/* ════════════════════════════════════════════════
+   PALETTE DE RECHERCHE GLOBALE (Ctrl+K / ⌘K)
+   Recherche instantanée par nom, N° dossier, téléphone,
+   médecin — accessible depuis n'importe quelle vue.
+   ════════════════════════════════════════════════ */
+let _cmdkActive = 0;    // index de l'élément surligné
+let _cmdkResults = [];  // résultats courants
+
+function openCmdK() {
+  const bd = document.getElementById('cmdk-backdrop');
+  const input = document.getElementById('cmdk-input');
+  if (!bd || !input) return;
+  bd.classList.add('open');
+  input.value = '';
+  _cmdkActive = 0;
+  cmdkRender();
+  setTimeout(() => input.focus(), 30);
+}
+
+function closeCmdK() {
+  const bd = document.getElementById('cmdk-backdrop');
+  if (bd) bd.classList.remove('open');
+}
+
+function cmdkIsOpen() {
+  const bd = document.getElementById('cmdk-backdrop');
+  return bd && bd.classList.contains('open');
+}
+
+// Normalise (minuscule + sans accents) pour une recherche tolérante
+function cmdkNorm(s) {
+  return (s || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function cmdkRender() {
+  const input = document.getElementById('cmdk-input');
+  const box = document.getElementById('cmdk-results');
+  if (!input || !box) return;
+  const qRaw = input.value.trim();
+  const q = cmdkNorm(qRaw);
+
+  let db = (typeof getDB === 'function') ? getDB() : (_dbCache || []);
+  // Plus récents d'abord
+  db = [...db].sort((a, b) => new Date(b.created_at || b.savedAt || 0) - new Date(a.created_at || a.savedAt || 0));
+
+  let list;
+  if (!q) {
+    // Sans recherche : les 8 dossiers les plus récents
+    list = db.slice(0, 8);
+  } else {
+    list = db.filter(r => {
+      const p = r.patient || {};
+      return cmdkNorm(p.nom).includes(q)
+        || cmdkNorm(p.dossier).includes(q)
+        || cmdkNorm(p.telephone).includes(q)
+        || cmdkNorm(p.medecin).includes(q)
+        || cmdkNorm(p.service).includes(q);
+    }).slice(0, 12);
+  }
+  _cmdkResults = list;
+  if (_cmdkActive >= list.length) _cmdkActive = Math.max(0, list.length - 1);
+
+  if (!list.length) {
+    box.innerHTML = '<div id="cmdk-empty"><div class="cmdk-empty-icon">🔍</div>Aucun dossier trouvé pour « ' + esc(qRaw) + ' »</div>';
+    return;
+  }
+
+  const hl = (txt) => {
+    const t = esc(txt || '—');
+    if (!q) return t;
+    // Surligner la portion correspondante (insensible aux accents)
+    const nt = cmdkNorm(txt);
+    const idx = nt.indexOf(q);
+    if (idx < 0) return t;
+    // Remap sur le texte échappé — approximation simple sur texte brut
+    const raw = (txt || '').toString();
+    const before = esc(raw.slice(0, idx));
+    const match = esc(raw.slice(idx, idx + q.length));
+    const after = esc(raw.slice(idx + q.length));
+    return before + '<mark>' + match + '</mark>' + after;
+  };
+
+  box.innerHTML = list.map((r, i) => {
+    const p = r.patient || {};
+    const nom = (p.nom || '—').toUpperCase();
+    const initiales = nom.split(/\s+/).map(w => w[0]).slice(0, 2).join('');
+    const paye = (typeof getPaiementStatus === 'function') && getPaiementStatus(r.id) === 'paye';
+    const sub = [p.age ? p.age + ' ans' : '', p.sexe || '', p.medecin || '', p.telephone || '']
+      .filter(Boolean).join(' · ');
+    return '<div class="cmdk-item' + (i === _cmdkActive ? ' active' : '') + '" data-idx="' + i + '"'
+      + ' onmouseenter="_cmdkActive=' + i + ';cmdkPaint()" onclick="cmdkOpen(' + i + ')">'
+      + '<div class="cmdk-item-avatar">' + esc(initiales || '?') + '</div>'
+      + '<div class="cmdk-item-body">'
+        + '<div class="cmdk-item-name">' + hl(nom) + '</div>'
+        + '<div class="cmdk-item-sub">' + (sub ? hl(sub) : '—') + '</div>'
+      + '</div>'
+      + '<div class="cmdk-item-meta">'
+        + '<span class="cmdk-item-dossier">' + hl(p.dossier || '—') + '</span>'
+        + '<span class="cmdk-pill ' + (paye ? 'paye' : 'attente') + '">' + (paye ? 'Payé' : 'À encaisser') + '</span>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+// Re-applique seulement la surbrillance active (sans reconstruire)
+function cmdkPaint() {
+  document.querySelectorAll('#cmdk-results .cmdk-item').forEach(el => {
+    el.classList.toggle('active', Number(el.dataset.idx) === _cmdkActive);
+  });
+}
+
+function cmdkKeydown(e) {
+  if (e.key === 'Escape') { e.preventDefault(); closeCmdK(); return; }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _cmdkActive = Math.min(_cmdkResults.length - 1, _cmdkActive + 1);
+    cmdkPaint(); cmdkScrollActive();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _cmdkActive = Math.max(0, _cmdkActive - 1);
+    cmdkPaint(); cmdkScrollActive();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (_cmdkResults.length) cmdkOpen(_cmdkActive);
+  }
+}
+
+function cmdkScrollActive() {
+  const el = document.querySelector('#cmdk-results .cmdk-item.active');
+  if (el) el.scrollIntoView({ block: 'nearest' });
+}
+
+// Ouvre le dossier sélectionné : bascule sur l'historique, filtre dessus,
+// et ouvre la fiche d'édition unifiée.
+function cmdkOpen(i) {
+  const r = _cmdkResults[i];
+  if (!r) return;
+  closeCmdK();
+  const p = r.patient || {};
+  showView('historique');
+  // Pré-remplir la recherche de l'historique pour retrouver le dossier
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.value = p.dossier || p.nom || '';
+    if (typeof renderHistory === 'function') renderHistory();
+  }
+  // Ouvrir directement la fiche (édition unifiée) après un court délai
+  setTimeout(() => {
+    if (typeof showEditUnifie === 'function') showEditUnifie(r.id);
+  }, 180);
+}
+
+// Raccourci clavier global Ctrl+K / ⌘K
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault();
+    if (cmdkIsOpen()) closeCmdK(); else openCmdK();
+  }
+});
+
 // ── Construction paresseuse des panneaux ──────────────────────
 // Au lieu de construire tous les formulaires (NFS, Biochimie, Bactério,
 // Sérologie, Parasito, GS, BPN — soit ~3000 éléments DOM) dès le chargement
@@ -5151,15 +5434,61 @@ function renderDashboard() {
 
   const card = (icon, label, value, color) =>
     '<div style="background:var(--surface,#fff);border:1px solid var(--border);border-left:4px solid ' + color + ';'
-    + 'border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)">'
+    + 'border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px rgba(11,37,69,.06)">'
     + '<div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">' + icon + ' ' + label + '</div>'
     + '<div style="font-size:20px;font-weight:800;color:' + color + '">' + value + '</div></div>';
 
   host.innerHTML =
-      card('📋', 'Fiches du jour', nbJour, '#2563eb')
+      card('📋', 'Fiches du jour', nbJour, '#0096c7')
     + card('💰', 'Recette du jour', recetteJour.toLocaleString('fr-FR') + ' F', '#15803d')
     + card('⏳', 'En attente', enAttente, '#d97706')
-    + card('🏥', 'Service phare', topSvc ? esc(topSvc[0]) + ' (' + topSvc[1] + ')' : '—', '#7c3aed');
+    + card('🏥', 'Service phare', topSvc ? esc(topSvc[0]) + ' (' + topSvc[1] + ')' : '—', '#0b2545');
+
+  // ✅ v13.43 — Alerte dossiers en attente depuis > 48 h
+  renderAlerteAnciens(calcDB);
+}
+
+// ✅ v13.43 — Bannière d'alerte : dossiers non rendus depuis plus de 48 h.
+// Aide l'équipe à ne pas oublier un patient dont le résultat traîne.
+function renderAlerteAnciens(calcDB) {
+  const host = document.getElementById('alerte-anciens');
+  if (!host) return;
+  const SEUIL_H = 48;
+  const now = Date.now();
+  const anciens = (calcDB || []).filter(r => {
+    const st = getStatut(r.id);
+    if (st === 'rendu') return false;
+    const t = new Date(r.created_at || r.savedAt || 0).getTime();
+    if (!t) return false;
+    return (now - t) / 36e5 >= SEUIL_H;
+  }).sort((a, b) => new Date(a.created_at || a.savedAt || 0) - new Date(b.created_at || b.savedAt || 0));
+
+  if (!anciens.length) { host.style.display = 'none'; host.innerHTML = ''; return; }
+
+  const apercu = anciens.slice(0, 3).map(r => {
+    const p = r.patient || {};
+    const t = new Date(r.created_at || r.savedAt || 0).getTime();
+    const jours = Math.floor((now - t) / 864e5);
+    const age = jours >= 1 ? jours + ' j' : Math.floor((now - t) / 36e5) + ' h';
+    return '<button onclick="openDossierFromAlerte(' + r.id + ')" '
+      + 'style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #fca5a5;'
+      + 'border-radius:99px;padding:3px 11px;font-size:12px;font-weight:600;color:#991b1b;cursor:pointer;font-family:inherit">'
+      + esc((p.nom || '—').toUpperCase()) + ' <span style="opacity:.7">· ' + esc(p.dossier || '') + ' · ' + age + '</span></button>';
+  }).join('');
+  const reste = anciens.length > 3 ? ' <span style="opacity:.8">+ ' + (anciens.length - 3) + ' autre(s)</span>' : '';
+
+  host.style.display = 'block';
+  host.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    + '<span style="font-weight:800;font-size:13.5px;color:#991b1b;white-space:nowrap">⏰ ' + anciens.length + ' dossier(s) en attente > 48 h</span>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + apercu + reste + '</div>'
+    + '<button onclick="showView(\'historique\')" style="margin-left:auto;background:#991b1b;color:#fff;border:none;border-radius:8px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Voir l\'historique</button>'
+    + '</div>';
+}
+
+function openDossierFromAlerte(id) {
+  showView('historique');
+  setTimeout(() => { if (typeof showEditUnifie === 'function') showEditUnifie(id); }, 180);
 }
 
 function getCalcDB() {
@@ -13844,110 +14173,125 @@ async function printReceipt(id) {
   const receiptNum = String(record.id).padStart(6, '0');
   const dateHeure = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
 
-  // ✅ v13.34 — Reçu modernisé : en-tête avec logo SVG inline,
-  //   séparations visuelles, total en vedette, QR en bas
+  // Infos de paiement (montant reçu, monnaie) si le dossier a été encaissé
+  const payInfos = p.paiement_infos || {};
+  const estPaye = getPaiementStatus(id) === 'paye';
+  const montantRecu = Number(payInfos.montant_recu) || null;
+  const monnaieRendue = Number(payInfos.monnaie != null ? payInfos.monnaie : payInfos.monnaie_rendue) || 0;
+  const agentCaisse = payInfos.agent || record.createdBy || '—';
+
+  // ✅ v13.43 — Reçu modernisé : classes CSS alignées, palette clinique,
+  //   bloc paiement (reçu / monnaie), statut payé, total en vedette
   const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Courier New',monospace; font-size:12px; width:80mm; margin:0 auto; padding:0; background:#fff; }
-  .receipt { padding:10px 10px 6px; }
-  .hdr-bar { height:5px; background:linear-gradient(to right,#1e3a8a,#2563eb,#cba135); }
-  .hdr { padding:8px 0 6px; text-align:center; border-bottom:2px solid #000; margin-bottom:0; }
-  .hdr-logo { display:inline-block; width:36px; height:36px; margin-bottom:3px; }
-  .hdr-name { font-weight:900; font-size:13px; letter-spacing:.5px; }
-  .hdr-sub  { font-size:9px; color:#444; }
-  .hdr-addr { font-size:8px; color:#666; font-style:italic; }
-  .title-bar { background:#1e3a8a; color:#fff; text-align:center; font-weight:700; font-size:11px; letter-spacing:2px; padding:5px 0; margin:6px 0; }
-  .meta { font-size:9.5px; margin-bottom:4px; }
-  .meta-row { display:flex; justify-content:space-between; padding:1.5px 0; }
+  body { font-family:'Courier New',monospace; font-size:12px; width:80mm; margin:0 auto; padding:0; background:#fff; color:#000; }
+  .receipt { padding:10px 11px 8px; }
+  .hdr-bar { height:5px; background:linear-gradient(to right,#0b2545,#0096c7,#00b4d8); }
+  .hdr { padding:9px 0 7px; text-align:center; border-bottom:2px solid #000; }
+  .hdr-logo { display:inline-block; width:38px; height:38px; margin-bottom:4px; }
+  .hdr-name { font-weight:800; font-size:13.5px; letter-spacing:.5px; }
+  .hdr-sub  { font-size:9px; color:#333; }
+  .hdr-addr { font-size:8px; color:#555; font-style:italic; margin-top:1px; }
+  .title-bar { background:#0b2545; color:#fff; text-align:center; font-weight:700; font-size:11px; letter-spacing:2px; padding:5px 0; margin:7px 0; border-radius:2px; }
+  .meta-row { display:flex; justify-content:space-between; font-size:9.5px; padding:1.5px 0; }
   .meta-row .lbl { color:#444; }
-  .meta-row .val { font-weight:600; }
-  .sep { border-top:1px dashed #555; margin:5px 0; }
-  .sep-solid { border-top:2px solid #000; margin:5px 0; }
-  .section-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#1e3a8a; margin:4px 0 2px; }
-  .item-row { display:flex; justify-content:space-between; font-size:10px; padding:1.5px 0; }
+  .meta-row .val { font-weight:600; text-align:right; }
+  .sep { border-top:1px dashed #666; margin:6px 0; }
+  .sep-solid { border-top:2px solid #000; margin:6px 0; }
+  .section-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#0b2545; margin:6px 0 3px; }
+  .item-row { display:flex; justify-content:space-between; font-size:10px; padding:2px 0; border-bottom:1px dotted #ddd; }
   .item-name { flex:1; padding-right:6px; }
-  .item-type { font-size:8.5px; color:#666; padding-right:8px; }
-  .item-prix { font-weight:500; white-space:nowrap; }
-  .total-box { background:#f0f5ff; border:1.5px solid #1e3a8a; border-radius:3px; padding:6px 10px; margin:6px 0; display:flex; justify-content:space-between; align-items:center; }
-  .total-lbl { font-weight:700; font-size:11px; }
-  .total-val { font-weight:900; font-size:16px; color:#1e3a8a; }
-  .qr-section { text-align:center; margin-top:6px; padding-top:5px; border-top:1px dashed #aaa; }
-  .qr-section img { width:70px; height:70px; }
+  .item-prix { font-weight:600; white-space:nowrap; }
+  .total-box { background:#eaf4fb; border:1.5px solid #0b2545; border-radius:4px; padding:7px 11px; margin:7px 0; display:flex; justify-content:space-between; align-items:center; }
+  .total-lbl { font-weight:700; font-size:11px; color:#0b2545; }
+  .total-val { font-weight:800; font-size:17px; color:#0b2545; }
+  .pay-box { background:#f0fdf4; border:1px solid #86efac; border-radius:4px; padding:6px 10px; margin:6px 0; }
+  .pay-row { display:flex; justify-content:space-between; font-size:10px; padding:1.5px 0; }
+  .pay-row .v { font-weight:700; }
+  .pay-status { text-align:center; font-weight:800; font-size:12px; color:#166534; letter-spacing:1px; padding:3px 0; }
+  .pay-status.unpaid { color:#991b1b; }
+  .sign-row { display:flex; justify-content:space-between; font-size:9.5px; margin-top:4px; }
+  .qr-section { text-align:center; margin-top:7px; padding-top:6px; border-top:1px dashed #aaa; }
+  .qr-section img { width:74px; height:74px; }
   .qr-ref { font-size:8px; color:#666; margin-top:2px; font-style:italic; }
-  .footer-msg { text-align:center; font-size:9px; color:#666; font-style:italic; margin-top:5px; }
-  .footer-bar { height:3px; background:linear-gradient(to right,#cba135,#1e3a8a); margin-top:8px; }
-  @media print { body { width:100%; } }
+  .footer-msg { text-align:center; font-size:9px; color:#555; font-style:italic; margin-top:6px; line-height:1.5; }
+  .footer-bar { height:3px; background:linear-gradient(to right,#00b4d8,#0b2545); margin-top:8px; }
+  @media print { body { width:100%; } @page { margin:0; size:80mm auto; } }
 </style>
 </head><body>
   <div class="hdr-bar"></div>
   <div class="receipt">
-  <div class="hdr">
-    <div class="hdr-logo">
-      <svg viewBox="0 0 64 64" width="36" height="36" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="32" cy="32" r="31" fill="#1e3a8a"/>
-        <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
-        <circle cx="32" cy="14" r="3.4" fill="#fff"/>
-        <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#00b4d8"/>
-        <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#00b4d8"/>
-      </svg>
+    <div class="hdr">
+      <div class="hdr-logo">
+        <svg viewBox="0 0 64 64" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="31" fill="#0b2545"/>
+          <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
+          <circle cx="32" cy="14" r="3.4" fill="#fff"/>
+          <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#00b4d8"/>
+          <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#00b4d8"/>
+        </svg>
+      </div>
+      <div class="hdr-name">CPMI DE GRAND-BASSAM</div>
+      <div class="hdr-sub">Centre de Protection Mère et Infantile</div>
+      <div class="hdr-sub">Laboratoire d'analyses médicales</div>
+      <div class="hdr-addr">Grand-Bassam, Côte d'Ivoire</div>
     </div>
-    <div class="hdr-name">CPMI DE GRAND-BASSAM</div>
-    <div class="hdr-sub">Centre de Protection Mère et Infantile</div>
-    <div class="hdr-sub">Laboratoire d'analyses médicales</div>
-    <div class="hdr-addr">Grand-Bassam, Côte d'Ivoire</div>
+
+    <div class="title-bar">REÇU DE PAIEMENT</div>
+
+    <div class="meta-row"><span class="lbl">N° Reçu</span><span class="val">${receiptNum}</span></div>
+    <div class="meta-row"><span class="lbl">Date</span><span class="val">${dateHeure}</span></div>
+    <div class="meta-row"><span class="lbl">Caissier</span><span class="val">${escHTML(agentCaisse)}</span></div>
+
+    <div class="sep"></div>
+
+    <div class="section-title">Patient</div>
+    <div class="meta-row"><span class="lbl">Nom</span><span class="val">${escHTML((p.nom||'').toUpperCase())}</span></div>
+    <div class="meta-row"><span class="lbl">N° Dossier</span><span class="val">${escHTML(p.dossier||'—')}</span></div>
+    <div class="meta-row"><span class="lbl">Âge / Sexe</span><span class="val">${escHTML(p.age||'—')} ans / ${escHTML(p.sexe||'—')}</span></div>
+    <div class="meta-row"><span class="lbl">Prescripteur</span><span class="val">${escHTML(p.medecin||'—')}</span></div>
+
+    <div class="sep"></div>
+
+    <div class="section-title">Détail des analyses</div>
+    ${lignes.map(l => `
+    <div class="item-row">
+      <span class="item-name">${escHTML(l.label)}</span>
+      <span class="item-prix">${l.prix !== null ? l.prix.toLocaleString('fr-FR') + ' F' : '—'}</span>
+    </div>`).join('')}
+
+    <div class="total-box">
+      <span class="total-lbl">TOTAL</span>
+      <span class="total-val">${montantAffiche.toLocaleString('fr-FR')} FCFA</span>
+    </div>
+
+    ${estPaye && montantRecu ? `
+    <div class="pay-box">
+      <div class="pay-row"><span>Montant reçu</span><span class="v">${montantRecu.toLocaleString('fr-FR')} F</span></div>
+      <div class="pay-row"><span>Monnaie rendue</span><span class="v">${monnaieRendue.toLocaleString('fr-FR')} F</span></div>
+    </div>
+    <div class="pay-status">✓ PAYÉ</div>` : `
+    <div class="pay-status unpaid">⚠ NON PAYÉ</div>`}
+
+    <div class="sep"></div>
+
+    <div class="sign-row"><span>Mode de paiement :</span><span>_____________</span></div>
+    <div class="sign-row" style="margin-top:6px"><span>Signature :</span><span>_____________</span></div>
+
+    ${qrUrl ? `<div class="qr-section">
+      <img src="${qrUrl}" alt="QR">
+      <div class="qr-ref">Scannez pour vérifier l'authenticité</div>
+    </div>` : ''}
+
+    <div class="footer-msg">
+      Merci de votre confiance<br>
+      Ce reçu fait foi de paiement<br>
+      <strong>CPMI Grand-Bassam</strong>
+    </div>
   </div>
-  <div class="title-bar">REÇU DE PAIEMENT</div>
-
-  <!-- Infos reçu -->
-  <div class="row"><span>N° Reçu :</span><span class="bold">${receiptNum}</span></div>
-  <div class="row"><span>Date :</span><span>${dateHeure}</span></div>
-  <div class="row"><span>Agent :</span><span>${record.createdBy || '—'}</span></div>
-  <div class="line"></div>
-
-  <!-- Patient -->
-  <div class="bold" style="margin-bottom:3px">PATIENT</div>
-  <div class="row"><span>Nom :</span><span class="bold">${escHTML((p.nom||'').toUpperCase())}</span></div>
-  <div class="row"><span>N° Dossier :</span><span>${escHTML(p.dossier||'—')}</span></div>
-  <div class="row"><span>Âge / Sexe :</span><span>${escHTML(p.age||'—')} ans / ${p.sexe||'—'}</span></div>
-  <div class="row"><span>Prescripteur :</span><span>${escHTML(p.medecin||'—')}</span></div>
-  <div class="line"></div>
-
-  <!-- Détail analyses -->
-  <div class="bold" style="margin-bottom:3px">DÉTAIL DES ANALYSES</div>
-  ${lignes.map(l => `
-  <div class="row">
-    <span style="flex:1;max-width:55mm">${escHTML(l.label)}</span>
-    <span>${l.prix !== null ? l.prix.toLocaleString('fr-FR') + ' F' : '—'}</span>
-  </div>`).join('')}
-  <div class="double-line"></div>
-
-  <!-- Total -->
-  <div class="row total-row">
-    <span>TOTAL PAYÉ :</span>
-    <span>${montantAffiche.toLocaleString('fr-FR')} FCFA</span>
-  </div>
-  <div class="line"></div>
-
-  <!-- Mode paiement -->
-  <div class="row"><span>Mode de paiement :</span><span>_________________</span></div>
-  <div class="row small"><span>Signature caissier :</span><span>_________________</span></div>
-  <div class="line"></div>
-
-  <!-- QR code -->
-  ${qrUrl ? `<div class="center" style="margin:6px 0">
-    <img src="${qrUrl}" width="80" height="80">
-    <div class="small">Scannez pour vérifier</div>
-  </div>
-  <div class="line"></div>` : ''}
-
-  <!-- Pied -->
-  <div class="center small" style="margin-top:4px">
-    Merci de votre confiance<br>
-    Ce reçu fait foi de paiement<br>
-    CPMI Grand-Bassam
-  </div>
+  <div class="footer-bar"></div>
 </body></html>`;
 
   const win = window.open('', 'receipt', 'width=400,height=700,toolbar=no,scrollbars=yes');
