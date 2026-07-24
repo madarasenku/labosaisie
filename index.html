@@ -436,7 +436,7 @@ main {
 .tab.active {
   background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
   color: #fff;
-  box-shadow: 0 3px 12px rgba(26,68,128,.3);
+  box-shadow: 0 4px 16px rgba(26,68,128,.36), inset 0 1px 0 rgba(255,255,255,.15);
   transform: translateY(-1px);
 }
 .tab-icon { display: block; font-size: 19px; margin-bottom: 3px; }
@@ -477,18 +477,19 @@ main {
    CARD — cartes de formulaire
    ================================================================ */
 .card {
-  background: rgba(255,255,255,.88);
-  border: 1px solid rgba(199,215,245,.8);
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(199,215,245,.7);
   border-radius: var(--radius-lg);
   padding: 22px 24px;
   margin-bottom: 18px;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(6px);
-  transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.7);
+  backdrop-filter: blur(8px);
+  transition: box-shadow .3s ease, transform .3s ease, border-color .3s ease;
 }
 .card:hover {
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(37,99,235,.08);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(37,99,235,.10), inset 0 1px 0 rgba(255,255,255,.7);
+  transform: translateY(-3px);
+  border-color: rgba(199,215,245,.95);
 }
 .card-title {
   font-size: 12px;
@@ -611,9 +612,20 @@ select {
 .btn-primary {
   background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
   color: #fff;
-  box-shadow: 0 3px 10px rgba(26,68,128,.3);
+  box-shadow: 0 3px 12px rgba(26,68,128,.32);
+  position: relative; overflow: hidden;
 }
-.btn-primary:hover { box-shadow: 0 6px 18px rgba(26,68,128,.4); }
+.btn-primary::before {
+  content: '';
+  position: absolute; top: 0; left: -55%;
+  width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.25), transparent);
+  transform: skewX(-18deg);
+  transition: left .55s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+}
+.btn-primary:hover::before { left: 115%; }
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(26,68,128,.42); }
 .btn-outline { background: rgba(255,255,255,.8); border: 1.5px solid var(--border); color: var(--text); }
 .btn-outline:hover { background: var(--accent-light); border-color: var(--cpmi-mid); color: var(--cpmi-deep); }
 .btn-danger { background: #fef2f2; color: #991b1b; border: 1.5px solid #fca5a5; }

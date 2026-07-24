@@ -11,221 +11,260 @@
 <meta name="apple-mobile-web-app-title" content="CPMI Labo">
 <meta name="description" content="Connexion — Laboratoire CPMI Grand-Bassam">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
+<link id="pwa-manifest" rel="manifest">
 
-<!-- Supabase uniquement — aucune autre lib nécessaire pour le login -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --cpmi-deep:  #1a4480;
-  --cpmi-mid:   #2563eb;
-  --cpmi-sky:   #3b82f6;
-  --cpmi-teal:  #0d9488;
-  --cpmi-rose:  #e11d76;
-  --text-muted: #4a5c82;
-  --danger:     #dc2626;
-  --radius:     10px;
+  --deep:   #0e2240;
+  --mid:    #1a4480;
+  --blue:   #2563eb;
+  --teal:   #0d9488;
+  --rose:   #e11d76;
+  --danger: #dc2626;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
 
 body {
-  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
-  min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  padding: 20px;
+  font-family: 'Nunito', system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 70% 60% at 15% 20%, rgba(219,234,254,.8), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 85% 75%, rgba(204,251,241,.6), transparent 50%),
-    radial-gradient(ellipse 50% 60% at 50% 50%, rgba(251,207,232,.4), transparent 55%),
-    linear-gradient(145deg, #1a4480 0%, #2563eb 50%, #0d9488 100%);
+}
+
+/* ─── Split layout ─── */
+.split { display: flex; width: 100%; height: 100%; }
+
+/* ─── LEFT : panneau marque ─── */
+.brand {
+  flex: 0 0 400px;
+  background: linear-gradient(158deg, #0e2240 0%, #1a4480 55%, #0c5f70 100%);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 48px;
+  overflow: hidden;
+  color: #fff;
 }
 
-/* Voiles aurora */
-body::before, body::after {
-  content: '';
-  position: absolute; inset: -25%;
+/* Grille de points */
+.brand-dots {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,.07) 1px, transparent 1px);
+  background-size: 26px 26px;
   pointer-events: none;
-  will-change: transform;
-}
-body::before {
-  background:
-    radial-gradient(circle at 25% 45%, rgba(255,255,255,.10) 0%, transparent 42%),
-    radial-gradient(circle at 78% 28%, rgba(204,251,241,.11) 0%, transparent 40%);
-  animation: aurora-a 26s ease-in-out infinite;
-}
-body::after {
-  background:
-    radial-gradient(circle at 68% 72%, rgba(251,207,232,.10) 0%, transparent 45%),
-    radial-gradient(circle at 15% 80%, rgba(219,234,254,.10) 0%, transparent 42%);
-  animation: aurora-b 34s ease-in-out infinite;
 }
 
-@keyframes aurora-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  33%       { transform: translate3d(3%, -2.5%, 0) scale(1.09); }
-  66%       { transform: translate3d(-2.5%, 3%, 0) scale(1.04); }
+/* Cercles décoratifs */
+.brand-ring-1 {
+  position: absolute;
+  width: 520px; height: 520px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.05);
+  top: -170px; left: -170px;
 }
-@keyframes aurora-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); }
-  50%       { transform: translate3d(-3.5%, -3%, 0) scale(1); }
+.brand-ring-2 {
+  position: absolute;
+  width: 340px; height: 340px; border-radius: 50%;
+  border: 1px solid rgba(13,148,136,.18);
+  bottom: -90px; right: -90px;
+  background: radial-gradient(circle, rgba(13,148,136,.07) 0%, transparent 70%);
 }
-@keyframes halo-ring {
-  0%   { transform: scale(1);    opacity: .5; }
-  70%  { opacity: 0; }
-  100% { transform: scale(2.15); opacity: 0; }
+.brand-ring-3 {
+  position: absolute;
+  width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(37,99,235,.14) 0%, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
 }
-@keyframes logo-breathe {
-  0%, 100% { transform: scale(1);     box-shadow: 0 8px 24px rgba(26,68,128,.35); }
-  50%       { transform: scale(1.045); box-shadow: 0 13px 32px rgba(26,68,128,.48); }
+
+.brand-content { position: relative; z-index: 1; text-align: center; }
+
+.brand-logo {
+  width: 92px; height: 92px;
+  background: rgba(255,255,255,.11);
+  border: 1.5px solid rgba(255,255,255,.2);
+  border-radius: 24px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 28px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 50px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.15);
+  animation: logoIn .85s cubic-bezier(.22,.61,.36,1) both;
 }
-@keyframes login-item-in {
+
+.brand-name {
+  font-size: 38px; font-weight: 900; letter-spacing: 3px; margin-bottom: 8px;
+  animation: textIn .8s .1s cubic-bezier(.22,.61,.36,1) both;
+}
+
+.brand-fullname {
+  font-size: 13px; font-weight: 500; opacity: .72; line-height: 1.6;
+  max-width: 230px; margin: 0 auto;
+  animation: textIn .8s .2s cubic-bezier(.22,.61,.36,1) both;
+}
+
+.brand-line {
+  width: 36px; height: 2px;
+  background: linear-gradient(to right, var(--teal), var(--rose));
+  border-radius: 2px; margin: 20px auto;
+  animation: textIn .8s .25s cubic-bezier(.22,.61,.36,1) both;
+}
+
+.brand-location {
+  font-size: 10.5px; opacity: .44; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  animation: textIn .8s .3s cubic-bezier(.22,.61,.36,1) both;
+}
+
+.brand-badges {
+  display: flex; gap: 8px; justify-content: center; margin-top: 32px;
+  flex-wrap: wrap;
+  animation: textIn .8s .4s cubic-bezier(.22,.61,.36,1) both;
+}
+.brand-badge {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 100px; padding: 4px 13px;
+  font-size: 10px; font-weight: 700; letter-spacing: .4px; opacity: .75;
+}
+
+@keyframes logoIn {
+  from { opacity: 0; transform: scale(.6) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes textIn {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes login-card-in {
-  from { opacity: 0; transform: translateY(34px) scale(.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
+
+/* ─── RIGHT : panneau formulaire ─── */
+.form-side {
+  flex: 1;
+  background: #f4f7ff;
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 32px;
+  position: relative; overflow: hidden;
 }
-@keyframes login-shake {
-  0%, 100%      { transform: translateX(0); }
-  15%, 45%, 75% { transform: translateX(-7px); }
-  30%, 60%, 90% { transform: translateX(7px); }
+.form-side::before {
+  content: '';
+  position: absolute; top: -80px; right: -80px;
+  width: 340px; height: 340px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(37,99,235,.05) 0%, transparent 65%);
 }
-@keyframes cross-glint {
-  0%, 88%, 100% { opacity: 1; }
-  92%           { opacity: .55; }
+.form-side::after {
+  content: '';
+  position: absolute; bottom: -60px; left: -60px;
+  width: 240px; height: 240px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(13,148,136,.05) 0%, transparent 65%);
 }
 
 .login-card {
-  background: rgba(255,255,255,.95);
-  border-radius: 22px;
-  padding: 42px 36px;
   width: 100%; max-width: 390px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.5) inset;
-  text-align: center;
-  animation: login-card-in .6s cubic-bezier(.22,.61,.36,1) both;
-  backdrop-filter: blur(12px);
-  position: relative; z-index: 1;
+  background: #fff;
+  border-radius: 22px;
+  padding: 46px 42px;
+  border: 1px solid rgba(199,215,245,.65);
+  box-shadow: 0 4px 6px rgba(26,68,128,.04), 0 24px 60px rgba(26,68,128,.10);
+  position: relative;
+  animation: cardIn .65s .15s cubic-bezier(.22,.61,.36,1) both;
 }
-.login-card.shake { animation: login-shake .45s ease; }
-.login-card > *:nth-child(n+2) {
-  animation: login-item-in .5s cubic-bezier(.22,.61,.36,1) both;
-}
-.login-card > *:nth-child(2) { animation-delay: .30s; }
-.login-card > *:nth-child(3) { animation-delay: .37s; }
-.login-card > *:nth-child(4) { animation-delay: .44s; }
-.login-card > *:nth-child(5) { animation-delay: .51s; }
-.login-card > *:nth-child(6) { animation-delay: .58s; }
-.login-card > *:nth-child(7) { animation-delay: .65s; }
-.login-card > *:nth-child(8) { animation-delay: .72s; }
 
-.login-card input:focus { animation: none; }
+/* Barre de couleur en haut */
 .login-card::before {
   content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 4px;
-  background: linear-gradient(to right, var(--cpmi-deep), var(--cpmi-teal), var(--cpmi-rose));
-  border-radius: 22px 22px 0 0;
+  position: absolute; top: 0; left: 36px; right: 36px; height: 3px;
+  background: linear-gradient(to right, var(--mid), var(--teal), var(--rose));
+  border-radius: 0 0 4px 4px;
 }
 
-.login-logo {
-  width: 76px; height: 76px;
-  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-sky));
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 18px;
-  box-shadow: 0 8px 24px rgba(26,68,128,.35);
-  position: relative;
-  animation: login-item-in .5s cubic-bezier(.22,.61,.36,1) .18s both,
-             logo-breathe  4.5s ease-in-out 1s infinite;
+.login-card.shake { animation: shakeX .45s ease; }
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(24px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.login-logo::before, .login-logo::after {
+@keyframes shakeX {
+  0%, 100%      { transform: translateX(0); }
+  15%, 45%, 75% { transform: translateX(-6px); }
+  30%, 60%, 90% { transform: translateX(6px); }
+}
+
+.login-title { font-size: 23px; font-weight: 900; color: #0e2240; margin-bottom: 5px; }
+.login-sub   { font-size: 13px; color: #6b7fa3; font-weight: 500; margin-bottom: 34px; }
+
+.field { margin-bottom: 18px; }
+.field label {
+  display: block; font-size: 11.5px; font-weight: 700;
+  color: #4a5c82; margin-bottom: 7px; letter-spacing: .3px;
+}
+.field input {
+  width: 100%; padding: 11px 14px;
+  border: 1.5px solid #c7d7f5; border-radius: 11px;
+  font-size: 14px; font-family: inherit; color: #0f1f40;
+  background: #f8faff; outline: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.field input::placeholder { color: #9aabc8; }
+.field input:focus {
+  border-color: #2563eb; background: #fff;
+  box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+}
+
+.btn-login {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, #0e2240, #2563eb);
+  color: #fff; border: none; border-radius: 11px;
+  font-size: 15px; font-weight: 700; font-family: inherit;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: opacity .2s, transform .15s, box-shadow .2s;
+  box-shadow: 0 4px 18px rgba(26,68,128,.32);
+  margin-top: 4px;
+}
+.btn-login::before {
   content: '';
-  position: absolute; inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(37,99,235,.45);
-  animation: halo-ring 3.8s ease-out 1.2s infinite;
-  pointer-events: none;
-}
-.login-logo::after { animation-delay: 3.1s; }
-.login-logo svg g { animation: cross-glint 7s ease-in-out infinite; }
-
-.login-card h1 { font-size: 22px; font-weight: 900; color: var(--cpmi-deep); margin-bottom: 4px; }
-.login-subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 4px; }
-.login-tagline  { font-size: 11px; color: var(--cpmi-teal); font-style: italic; margin-bottom: 24px; font-weight: 600; }
-
-input[type=text], input[type=password] {
-  border: 1.5px solid #c7d7f5;
-  border-radius: var(--radius);
-  padding: 9px 11px;
-  font-size: 15px;
-  color: #0f1f40;
-  background: rgba(255,255,255,.9);
-  width: 100%;
-  outline: none;
-  font-family: inherit;
-  text-align: center;
-  letter-spacing: .5px;
-  transition: border-color .2s, box-shadow .2s;
-  margin-bottom: 12px;
-}
-input:focus {
-  border-color: var(--cpmi-mid);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
-  background: #fff;
-}
-
-.btn {
-  padding: 13px 20px;
-  border-radius: var(--radius);
-  border: none;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: inherit;
-  width: 100%;
-  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(26,68,128,.35);
-  transition: all .2s;
-  position: relative; overflow: hidden;
-}
-.btn::before {
-  content: '';
-  position: absolute; top: 0; left: -60%;
-  width: 45%; height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,.38), transparent);
+  position: absolute; top: 0; left: -55%;
+  width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.3), transparent);
   transform: skewX(-18deg);
-  transition: left .65s cubic-bezier(.4,0,.2,1);
+  transition: left .6s cubic-bezier(.4,0,.2,1);
   pointer-events: none;
 }
-.btn:hover::before { left: 120%; }
-.btn:hover { box-shadow: 0 6px 18px rgba(26,68,128,.4); transform: translateY(-1px); }
-.btn:active { transform: translateY(0); }
-.btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.btn-login:hover::before { left: 115%; }
+.btn-login:hover { box-shadow: 0 6px 24px rgba(26,68,128,.42); transform: translateY(-1px); }
+.btn-login:active { transform: translateY(0); }
+.btn-login:disabled { opacity: .6; cursor: not-allowed; transform: none !important; }
 
 #login-error {
-  color: var(--danger);
-  font-size: 12.5px;
-  margin-top: 10px;
-  min-height: 16px;
-  line-height: 1.4;
+  color: var(--danger); font-size: 12.5px; font-weight: 600;
+  margin-top: 14px; min-height: 16px; line-height: 1.45;
 }
 
-/* Indicateur de chargement */
 .spinner {
-  display: inline-block; width: 16px; height: 16px;
-  border: 2px solid rgba(255,255,255,.4);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
+  display: inline-block; width: 15px; height: 15px;
+  border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+  border-radius: 50%; animation: spin .7s linear infinite;
   vertical-align: middle; margin-right: 6px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Mobile ─── */
+@media (max-width: 680px) {
+  .brand { display: none; }
+  body {
+    background: linear-gradient(158deg, #0e2240 0%, #1a4480 100%);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .split { display: block; }
+  .form-side { background: transparent; padding: 0; display: block; }
+  .form-side::before, .form-side::after { display: none; }
+  .login-card { border-color: rgba(255,255,255,.12); box-shadow: 0 30px 80px rgba(0,0,0,.4); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -233,38 +272,68 @@ input:focus {
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
   }
-  body::before, body::after,
-  .login-logo::before, .login-logo::after { display: none; }
-}
-
-@media (max-width: 420px) {
-  .login-card { padding: 28px 18px; }
 }
 </style>
 </head>
 <body>
 
-<div class="login-card" id="login-card">
-  <div class="login-logo">
-    <svg viewBox="0 0 64 64" width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-      <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
-      <circle cx="32" cy="14" r="3.4" fill="#fff"/>
-      <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.9"/>
-      <g>
-        <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
-        <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
-      </g>
-    </svg>
+<div class="split">
+
+  <!-- Panneau gauche : identité CPMI -->
+  <div class="brand">
+    <div class="brand-dots"></div>
+    <div class="brand-ring-1"></div>
+    <div class="brand-ring-2"></div>
+    <div class="brand-ring-3"></div>
+
+    <div class="brand-content">
+      <div class="brand-logo">
+        <svg viewBox="0 0 64 64" width="50" height="50" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
+          <circle cx="32" cy="14" r="3.4" fill="#fff"/>
+          <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.9"/>
+          <g>
+            <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#fbbf24"/>
+            <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#fbbf24"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="brand-name">CPMI</div>
+      <div class="brand-fullname">Centre de Protection<br>Mère et Infantile</div>
+      <div class="brand-line"></div>
+      <div class="brand-location">Grand-Bassam · Côte d'Ivoire</div>
+
+      <div class="brand-badges">
+        <span class="brand-badge">Analyses médicales</span>
+        <span class="brand-badge">Laboratoire</span>
+      </div>
+    </div>
   </div>
-  <h1>CPMI</h1>
-  <p class="login-subtitle">Centre de Protection Mère et Infantile</p>
-  <p class="login-tagline">Laboratoire d'analyses médicales · Grand-Bassam</p>
-  <input type="text" id="login-username" placeholder="Nom d'utilisateur" autocomplete="username"
-    onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
-  <input type="password" id="login-password" placeholder="Mot de passe" autocomplete="current-password"
-    onkeydown="if(event.key==='Enter')doLogin()">
-  <button class="btn" id="login-btn" onclick="doLogin()">🔐 Se connecter</button>
-  <div id="login-error"></div>
+
+  <!-- Panneau droit : formulaire -->
+  <div class="form-side">
+    <div class="login-card" id="login-card">
+      <div class="login-title">Connexion</div>
+      <div class="login-sub">Portail du laboratoire CPMI</div>
+
+      <div class="field">
+        <label for="login-username">Nom d'utilisateur</label>
+        <input type="text" id="login-username" placeholder="Votre identifiant" autocomplete="username"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+
+      <div class="field">
+        <label for="login-password">Mot de passe</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+
+      <button class="btn-login" id="login-btn" onclick="doLogin()">🔐 Se connecter</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -368,13 +437,11 @@ async function doLogin() {
     } : null;
 
     if (row && row.status === 'ok') {
-      /* Stocker la session */
       const session = {
         id: row.id, username: row.username, role: row.role, token: row.token,
         expiresAt: Date.now() + SESSION_DURATION_MS
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      /* Rediriger vers l'app */
       btn.innerHTML = '✅ Connexion réussie…';
       window.location.replace('index.html');
 
