@@ -7684,7 +7684,7 @@ async function renderHistory(forceRefresh) {
               + softDeleteBtn(r)
           )
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer résultats" aria-label="Imprimer les résultats">🖨</button>'
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="printReceipt(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
+        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="choisirSignataireRecu(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
         + '<button class=\'btn btn-action-menu\' style=\'display:none;padding:4px 10px;font-size:15px;margin-left:3px;line-height:1\' onclick=\'toggleActionMenu(this)\' title=\'Actions\' aria-label=\'Actions\'>⋯</button>'
       + '</td></tr>';
   }).join('');
@@ -14211,7 +14211,35 @@ function buildPrintSections(type, res, pat) {
 // REÇU DE PAIEMENT IMPRIMABLE
 // ============================================================
 
-async function printReceipt(id) {
+// ✅ v13.47 — Choix du signataire du reçu (YERIGUE ou admin)
+function choisirSignataireRecu(id) {
+  const existing = document.getElementById('modal-signataire');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'modal-signataire';
+  modal.className = 'modal-backdrop';
+  modal.innerHTML =
+    '<div class="modal-box" style="max-width:340px;text-align:center">'
+    + '<div style="font-size:32px;margin-bottom:8px">🖊️</div>'
+    + '<div class="modal-title" style="text-align:center">Qui signe le reçu ?</div>'
+    + '<p style="font-size:13px;color:var(--text-muted);margin:0 0 18px">Choisissez le signataire dont la signature apparaîtra sur le reçu.</p>'
+    + '<div style="display:flex;flex-direction:column;gap:10px">'
+      + '<button class="btn btn-primary" style="width:100%;padding:12px" onclick="lancerRecuSigne(' + id + ',\'YERIGUE\')">YERIGUE</button>'
+      + '<button class="btn btn-primary" style="width:100%;padding:12px" onclick="lancerRecuSigne(' + id + ',\'admin\')">admin</button>'
+      + '<button class="btn btn-outline" style="width:100%;padding:10px" onclick="document.getElementById(\'modal-signataire\').remove()">Sans signature</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function lancerRecuSigne(id, signataire) {
+  const m = document.getElementById('modal-signataire');
+  if (m) m.remove();
+  printReceipt(id, signataire);
+}
+
+async function printReceipt(id, signataire) {
   const record = getDB().find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
   await ensureFull(record); // ✅ v13.5 — détail complet avant le reçu
@@ -14271,6 +14299,9 @@ async function printReceipt(id) {
   const monnaieRendue = Number(payInfos.monnaie != null ? payInfos.monnaie : payInfos.monnaie_rendue) || 0;
   const agentCaisse = payInfos.agent || record.createdBy || '—';
 
+  // ✅ v13.47 — Signature cursive du signataire choisi (YERIGUE / admin)
+  const sigSVG = signataire ? generateSignatureSVG(signataire, 150, 46) : '';
+
   // ✅ v13.43 — Reçu modernisé : classes CSS alignées, palette clinique,
   //   bloc paiement (reçu / monnaie), statut payé, total en vedette
   const html = `<!DOCTYPE html>
@@ -14303,7 +14334,10 @@ async function printReceipt(id) {
   .pay-row .v { font-weight:700; }
   .pay-status { text-align:center; font-weight:800; font-size:12px; color:#166534; letter-spacing:1px; padding:3px 0; }
   .pay-status.unpaid { color:#991b1b; }
-  .sign-row { display:flex; justify-content:space-between; font-size:9.5px; margin-top:4px; }
+  .sign-row { display:flex; justify-content:space-between; align-items:flex-end; font-size:9.5px; margin-top:4px; }
+  .sig-block { text-align:right; }
+  .sig-block .sig-svg { display:block; margin-left:auto; }
+  .sig-block .sig-name { font-size:9px; font-weight:700; color:#0b2545; text-transform:uppercase; letter-spacing:.5px; border-top:.5px solid #999; padding-top:2px; margin-top:1px; }
   .qr-section { text-align:center; margin-top:7px; padding-top:6px; border-top:1px dashed #aaa; }
   .qr-section img { width:74px; height:74px; }
   .qr-ref { font-size:8px; color:#666; margin-top:2px; font-style:italic; }
@@ -14369,7 +14403,12 @@ async function printReceipt(id) {
     <div class="sep"></div>
 
     <div class="sign-row"><span>Mode de paiement :</span><span>_____________</span></div>
-    <div class="sign-row" style="margin-top:6px"><span>Signature :</span><span>_____________</span></div>
+    <div class="sign-row" style="margin-top:8px">
+      <span>Signature :</span>
+      ${sigSVG
+        ? `<span class="sig-block"><span class="sig-svg">${sigSVG}</span><span class="sig-name">${escHTML(signataire)}</span></span>`
+        : '<span>_____________</span>'}
+    </div>
 
     ${qrUrl ? `<div class="qr-section">
       <img src="${qrUrl}" alt="QR">
