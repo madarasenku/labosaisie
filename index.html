@@ -14211,22 +14211,54 @@ function buildPrintSections(type, res, pat) {
 // REÇU DE PAIEMENT IMPRIMABLE
 // ============================================================
 
-// ✅ v13.47 — Choix du signataire du reçu (YERIGUE ou admin)
+// ✅ v13.48 — Signatures dessinées à la main, enregistrées par nom
+const SIGNATURES_KEY = 'labo_signatures_v1';
+const SIGNATAIRES = ['YERIGUE', 'admin'];
+
+function getSignatures() {
+  try { return JSON.parse(localStorage.getItem(SIGNATURES_KEY) || '{}'); } catch { return {}; }
+}
+function getSignature(nom) { return getSignatures()[nom] || null; }
+function saveSignature(nom, dataURL) {
+  const all = getSignatures();
+  all[nom] = dataURL;
+  localStorage.setItem(SIGNATURES_KEY, JSON.stringify(all));
+}
+function deleteSignature(nom) {
+  const all = getSignatures();
+  delete all[nom];
+  localStorage.setItem(SIGNATURES_KEY, JSON.stringify(all));
+}
+
+// ── Choix du signataire du reçu ──────────────────────────────
 function choisirSignataireRecu(id) {
   const existing = document.getElementById('modal-signataire');
   if (existing) existing.remove();
   const modal = document.createElement('div');
   modal.id = 'modal-signataire';
   modal.className = 'modal-backdrop';
+
+  const boutons = SIGNATAIRES.map(nom => {
+    const sig = getSignature(nom);
+    const apercu = sig
+      ? '<img src="' + sig + '" style="height:26px;max-width:90px;object-fit:contain">'
+      : '<span style="font-size:11px;color:var(--text-muted)">aucune signature</span>';
+    return '<div style="display:flex;align-items:center;gap:8px">'
+      + '<button class="btn btn-primary" style="flex:1;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px" onclick="lancerRecuSigne(' + id + ',\'' + nom + '\')">'
+        + '<span>' + nom + '</span>' + apercu
+      + '</button>'
+      + '<button class="btn btn-outline" style="padding:12px 12px" title="Créer / modifier la signature de ' + nom + '" onclick="ouvrirPadSignature(\'' + nom + '\',' + id + ')">✏️</button>'
+    + '</div>';
+  }).join('');
+
   modal.innerHTML =
-    '<div class="modal-box" style="max-width:340px;text-align:center">'
+    '<div class="modal-box" style="max-width:380px;text-align:center">'
     + '<div style="font-size:32px;margin-bottom:8px">🖊️</div>'
     + '<div class="modal-title" style="text-align:center">Qui signe le reçu ?</div>'
-    + '<p style="font-size:13px;color:var(--text-muted);margin:0 0 18px">Choisissez le signataire dont la signature apparaîtra sur le reçu.</p>'
+    + '<p style="font-size:13px;color:var(--text-muted);margin:0 0 18px">Choisissez le signataire. ✏️ pour dessiner ou modifier sa signature.</p>'
     + '<div style="display:flex;flex-direction:column;gap:10px">'
-      + '<button class="btn btn-primary" style="width:100%;padding:12px" onclick="lancerRecuSigne(' + id + ',\'YERIGUE\')">YERIGUE</button>'
-      + '<button class="btn btn-primary" style="width:100%;padding:12px" onclick="lancerRecuSigne(' + id + ',\'admin\')">admin</button>'
-      + '<button class="btn btn-outline" style="width:100%;padding:10px" onclick="document.getElementById(\'modal-signataire\').remove()">Sans signature</button>'
+      + boutons
+      + '<button class="btn btn-outline" style="width:100%;padding:10px;margin-top:4px" onclick="document.getElementById(\'modal-signataire\').remove()">Sans signature</button>'
     + '</div>'
     + '</div>';
   document.body.appendChild(modal);
@@ -14237,6 +14269,117 @@ function lancerRecuSigne(id, signataire) {
   const m = document.getElementById('modal-signataire');
   if (m) m.remove();
   printReceipt(id, signataire);
+}
+
+// ── Pad de signature : dessin à la souris / au doigt ─────────
+function ouvrirPadSignature(nom, retourId) {
+  const parent = document.getElementById('modal-signataire');
+  if (parent) parent.remove();
+  const old = document.getElementById('modal-pad');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-pad';
+  modal.className = 'modal-backdrop';
+  const existante = getSignature(nom);
+  modal.innerHTML =
+    '<div class="modal-box" style="max-width:420px">'
+    + '<div class="modal-title">✍️ Signature de ' + escHTML(nom) + '</div>'
+    + '<p style="font-size:12.5px;color:var(--text-muted);margin:0 0 12px">Dessinez la signature avec la souris ou le doigt, puis enregistrez.</p>'
+    + '<div style="position:relative;border:2px dashed var(--border);border-radius:10px;background:#fff;overflow:hidden">'
+      + '<canvas id="sig-canvas" style="display:block;width:100%;height:180px;touch-action:none;cursor:crosshair"></canvas>'
+      + '<div id="sig-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#c0ccda;font-size:13px">Signez ici</div>'
+      + '<div style="position:absolute;left:14px;right:14px;bottom:24px;border-bottom:1px solid #d0dae6;pointer-events:none"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">'
+      + '<button class="btn btn-outline" style="flex:1" onclick="effacerPadSignature()">Effacer</button>'
+      + (existante ? '<button class="btn btn-danger" style="flex:1" onclick="supprimerSignature(\'' + nom + '\',' + (retourId||'null') + ')">Supprimer</button>' : '')
+      + '<button class="btn btn-primary" style="flex:2" onclick="enregistrerPadSignature(\'' + nom + '\',' + (retourId||'null') + ')">💾 Enregistrer</button>'
+    + '</div>'
+    + '<button class="btn btn-outline" style="width:100%;margin-top:10px;padding:8px" onclick="fermerPad(' + (retourId||'null') + ')">Annuler</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+
+  const canvas = document.getElementById('sig-canvas');
+  const hint = document.getElementById('sig-hint');
+  // Résolution nette (retina)
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * ratio);
+  canvas.height = Math.round(rect.height * ratio);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(ratio, ratio);
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#0b2545';
+
+  // Pré-charger la signature existante
+  if (existante) {
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, 0, 0, rect.width, rect.height); };
+    img.src = existante;
+    hint.style.display = 'none';
+    canvas.dataset.dirty = '1';
+  }
+
+  let drawing = false, lastX = 0, lastY = 0;
+  const pos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  };
+  const start = (e) => { e.preventDefault(); drawing = true; const q = pos(e); lastX = q.x; lastY = q.y; hint.style.display = 'none'; canvas.dataset.dirty = '1'; };
+  const move = (e) => {
+    if (!drawing) return; e.preventDefault();
+    const q = pos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(q.x, q.y); ctx.stroke();
+    lastX = q.x; lastY = q.y;
+  };
+  const end = () => { drawing = false; };
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+  canvas._cleanup = () => { window.removeEventListener('mouseup', end); };
+}
+
+function effacerPadSignature() {
+  const canvas = document.getElementById('sig-canvas');
+  const hint = document.getElementById('sig-hint');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.dataset.dirty = '';
+  if (hint) hint.style.display = 'flex';
+}
+
+function enregistrerPadSignature(nom, retourId) {
+  const canvas = document.getElementById('sig-canvas');
+  if (!canvas || !canvas.dataset.dirty) { toast('Dessinez d\'abord la signature', 'err'); return; }
+  // Recadrer sur le tracé + fond transparent conservé
+  const dataURL = canvas.toDataURL('image/png');
+  saveSignature(nom, dataURL);
+  fermerPad(retourId);
+  toast('✅ Signature de ' + nom + ' enregistrée', 'ok');
+}
+
+function supprimerSignature(nom, retourId) {
+  if (!confirm('Supprimer la signature enregistrée de ' + nom + ' ?')) return;
+  deleteSignature(nom);
+  fermerPad(retourId);
+  toast('Signature de ' + nom + ' supprimée', 'err');
+}
+
+function fermerPad(retourId) {
+  const canvas = document.getElementById('sig-canvas');
+  if (canvas && canvas._cleanup) canvas._cleanup();
+  const m = document.getElementById('modal-pad');
+  if (m) m.remove();
+  // Rouvrir le choix du signataire si on venait de là
+  if (retourId != null && retourId !== 'null') choisirSignataireRecu(retourId);
 }
 
 async function printReceipt(id, signataire) {
@@ -14299,8 +14442,14 @@ async function printReceipt(id, signataire) {
   const monnaieRendue = Number(payInfos.monnaie != null ? payInfos.monnaie : payInfos.monnaie_rendue) || 0;
   const agentCaisse = payInfos.agent || record.createdBy || '—';
 
-  // ✅ v13.47 — Signature cursive du signataire choisi (YERIGUE / admin)
-  const sigSVG = signataire ? generateSignatureSVG(signataire, 150, 46) : '';
+  // ✅ v13.48 — Signature : dessinée à la main si enregistrée, sinon paraphe généré
+  let sigMarkup = '';
+  if (signataire) {
+    const dessin = getSignature(signataire);
+    sigMarkup = dessin
+      ? '<img src="' + dessin + '" style="height:46px;max-width:150px;object-fit:contain;display:block;margin-left:auto">'
+      : generateSignatureSVG(signataire, 150, 46);
+  }
 
   // ✅ v13.43 — Reçu modernisé : classes CSS alignées, palette clinique,
   //   bloc paiement (reçu / monnaie), statut payé, total en vedette
@@ -14405,8 +14554,8 @@ async function printReceipt(id, signataire) {
     <div class="sign-row"><span>Mode de paiement :</span><span>_____________</span></div>
     <div class="sign-row" style="margin-top:8px">
       <span>Signature :</span>
-      ${sigSVG
-        ? `<span class="sig-block"><span class="sig-svg">${sigSVG}</span><span class="sig-name">${escHTML(signataire)}</span></span>`
+      ${sigMarkup
+        ? `<span class="sig-block"><span class="sig-svg">${sigMarkup}</span><span class="sig-name">${escHTML(signataire)}</span></span>`
         : '<span>_____________</span>'}
     </div>
 
