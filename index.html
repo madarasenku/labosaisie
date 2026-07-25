@@ -11107,6 +11107,7 @@ async function renderUsersList() {
       <td data-label="Créé le">${dateStr}</td>
       <td data-label="Actions">
         <button class="btn" style="padding:4px 10px;font-size:11px" onclick="editUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}', '${u.role}')">✏ Modifier</button>
+        <button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:#eef7fb;color:#0b2545;border:1px solid #bfe0ef" onclick="ouvrirSignatureCompte('${u.username.replace(/'/g, "\\'")}')" title="Dessiner ou modifier la signature">✍️ Signature</button>
         ${(isSelf || isProtected) ? '' : `<button class="btn btn-danger" style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="deleteUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}')">🗑</button>`}
       </td>
     </tr>`;
@@ -11158,6 +11159,13 @@ async function createUserAccount() {
   document.getElementById('nu_role').value = 'agent';
   toast('Compte "' + username + '" créé ✓', 'ok');
   renderUsersList();
+
+  // ✅ v13.49 — Proposer de dessiner la signature du nouveau compte
+  ouvrirPadSignatureGenerique({
+    titre: '✍️ Signature de ' + escHTML(username),
+    sousTitre: 'Dessinez la signature de ' + escHTML(username) + '. Elle apparaîtra automatiquement sous les résultats du patient quand cette personne se connecte. (Vous pourrez la modifier plus tard.)',
+    onSave: (dataURL) => enregistrerSignatureCompte(username, dataURL)
+  });
 }
 
 function editUserAccount(id, username, currentRole) {
@@ -11234,6 +11242,7 @@ async function initApp() {
   updateUserBadge();
   loadPrescripteurs();
   buildFicheExamens(); // fiche d'identification avec examens
+  chargerMaSignature(); // ✅ v13.49 — signature du compte pour les comptes rendus
 }
 
 
@@ -13951,7 +13960,9 @@ async function buildAndPrint(r) {
         <div class="print-sig-box" style="flex:1">
           <div class="print-sig-label">Signature du technicien</div>
           <div class="print-sig-zone" style="height:18mm;padding:2px 4px;display:flex;flex-direction:column;justify-content:center">
-            ${generateSignatureSVG(techName, 150, 38)}
+            ${(typeof _maSignature !== 'undefined' && _maSignature)
+              ? `<img src="${_maSignature}" style="height:38px;max-width:150px;object-fit:contain;margin:0 auto">`
+              : generateSignatureSVG(techName, 150, 38)}
             <div style="font-size:7pt;color:#1e3a8a;font-weight:600;margin-top:2px;letter-spacing:.3px">${techName}</div>
             <div style="font-size:6.5pt;color:#9ca3af">Technicien de laboratoire · CPMI Grand-Bassam</div>
           </div>
@@ -14380,6 +14391,105 @@ function fermerPad(retourId) {
   if (m) m.remove();
   // Rouvrir le choix du signataire si on venait de là
   if (retourId != null && retourId !== 'null') choisirSignataireRecu(retourId);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ✅ v13.49 — Signature liée au COMPTE (enregistrée en base)
+   Capturée à la création du compte, réutilisée automatiquement
+   sous les résultats du patient quand la personne est connectée.
+   ═══════════════════════════════════════════════════════════ */
+
+// Signature de l'utilisateur connecté, chargée après login
+let _maSignature = null;
+
+async function chargerMaSignature() {
+  try {
+    if (!_sb || !TK()) { _maSignature = null; return; }
+    const { data, error } = await _sb.rpc('get_my_signature', { p_token: TK() });
+    _maSignature = (!error && data) ? data : null;
+  } catch (e) { _maSignature = null; }
+}
+
+// Ouvre un pad de signature générique. onSave reçoit le dataURL PNG.
+function ouvrirPadSignatureGenerique({ titre, sousTitre, onSave }) {
+  const old = document.getElementById('modal-pad');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'modal-pad';
+  modal.className = 'modal-backdrop';
+  modal.innerHTML =
+    '<div class="modal-box" style="max-width:420px">'
+    + '<div class="modal-title">' + titre + '</div>'
+    + '<p style="font-size:12.5px;color:var(--text-muted);margin:0 0 12px">' + (sousTitre || 'Dessinez la signature avec la souris ou le doigt, puis enregistrez.') + '</p>'
+    + '<div style="position:relative;border:2px dashed var(--border);border-radius:10px;background:#fff;overflow:hidden">'
+      + '<canvas id="sig-canvas" style="display:block;width:100%;height:180px;touch-action:none;cursor:crosshair"></canvas>'
+      + '<div id="sig-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#c0ccda;font-size:13px">Signez ici</div>'
+      + '<div style="position:absolute;left:14px;right:14px;bottom:24px;border-bottom:1px solid #d0dae6;pointer-events:none"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;margin-top:16px">'
+      + '<button class="btn btn-outline" style="flex:1" onclick="effacerPadSignature()">Effacer</button>'
+      + '<button class="btn btn-primary" style="flex:2" id="pad-save-btn">💾 Enregistrer</button>'
+    + '</div>'
+    + '<button class="btn btn-outline" style="width:100%;margin-top:10px;padding:8px" onclick="(function(){var c=document.getElementById(\'sig-canvas\');if(c&&c._cleanup)c._cleanup();document.getElementById(\'modal-pad\').remove();})()">Annuler</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+  _wireSignatureCanvas();
+  document.getElementById('pad-save-btn').addEventListener('click', () => {
+    const canvas = document.getElementById('sig-canvas');
+    if (!canvas || !canvas.dataset.dirty) { toast('Dessinez d\'abord la signature', 'err'); return; }
+    const dataURL = canvas.toDataURL('image/png');
+    if (canvas._cleanup) canvas._cleanup();
+    modal.remove();
+    onSave(dataURL);
+  });
+}
+
+// Câblage du canvas (souris + tactile), factorisé
+function _wireSignatureCanvas() {
+  const canvas = document.getElementById('sig-canvas');
+  const hint = document.getElementById('sig-hint');
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.round(rect.width * ratio);
+  canvas.height = Math.round(rect.height * ratio);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(ratio, ratio);
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b2545';
+  let drawing = false, lastX = 0, lastY = 0;
+  const pos = (e) => { const r = canvas.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+  const start = (e) => { e.preventDefault(); drawing = true; const q = pos(e); lastX = q.x; lastY = q.y; if (hint) hint.style.display = 'none'; canvas.dataset.dirty = '1'; };
+  const move = (e) => { if (!drawing) return; e.preventDefault(); const q = pos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(q.x, q.y); ctx.stroke(); lastX = q.x; lastY = q.y; };
+  const end = () => { drawing = false; };
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+  canvas._cleanup = () => { window.removeEventListener('mouseup', end); };
+}
+
+// Enregistre la signature d'un compte en base (admin)
+async function enregistrerSignatureCompte(username, dataURL) {
+  try {
+    const { data, error } = await _sb.rpc('set_user_signature', { p_token: TK(), p_username: username, p_signature: dataURL });
+    if (error || data !== 'ok') { toast('Erreur : signature non enregistrée', 'err'); return false; }
+    toast('✅ Signature de ' + username + ' enregistrée', 'ok');
+    // Si c'est mon propre compte, rafraîchir ma signature en mémoire
+    if (_currentUser && _currentUser.username === username) _maSignature = dataURL;
+    if (typeof renderUsersList === 'function') renderUsersList();
+    return true;
+  } catch (e) { toast('Erreur réseau', 'err'); return false; }
+}
+
+// Bouton depuis la liste des comptes : dessiner/modifier la signature
+function ouvrirSignatureCompte(username) {
+  if (blockIfSpectateur && blockIfSpectateur()) return;
+  ouvrirPadSignatureGenerique({
+    titre: '✍️ Signature de ' + escHTML(username),
+    sousTitre: 'Cette signature apparaîtra automatiquement sous les résultats saisis par ' + escHTML(username) + '.',
+    onSave: (dataURL) => enregistrerSignatureCompte(username, dataURL)
+  });
 }
 
 async function printReceipt(id, signataire) {
