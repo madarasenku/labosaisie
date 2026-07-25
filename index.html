@@ -2925,6 +2925,14 @@ select {
       <div class="card-title">📅 Recettes mensuelles (6 mois)</div>
       <div id="chart-recettes-monthly"></div>
     </div>
+
+    <div class="card stats-card" style="grid-column:1/-1">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>🏆 Top examens les plus demandés</span>
+        <span id="top-examens-sub" style="font-size:11px;color:var(--text-muted);font-weight:500"></span>
+      </div>
+      <div id="chart-top-examens"></div>
+    </div>
   </div>
 
   <!-- Ristournes prescripteurs -->
@@ -12319,6 +12327,65 @@ function renderTopExamens() {
   ).join('');
 }
 
+// ✅ v13.44 — Top examens en barres horizontales dans l'onglet Statistiques
+// (visible par tous, sur la période filtrée). Compte chaque examen coché
+// individuellement, tous types confondus.
+function renderTopExamensChart(dbList) {
+  const el = document.getElementById('chart-top-examens');
+  if (!el) return;
+  const counts = {};
+  (dbList || []).forEach(r => {
+    const coches = r.resultats?._examens_coches || {};
+    // Format dossier : { type: [labels] } ; format ancien : [labels]
+    const labels = Array.isArray(coches) ? coches : Object.values(coches).flat();
+    labels.forEach(label => {
+      if (!label) return;
+      counts[label] = (counts[label] || 0) + 1;
+    });
+  });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const sub = document.getElementById('top-examens-sub');
+
+  if (!sorted.length) {
+    el.innerHTML = '<div class="stats-empty">Aucun examen sur cette période</div>';
+    if (sub) sub.textContent = '';
+    return;
+  }
+  const totalDemandes = Object.values(counts).reduce((a, b) => a + b, 0);
+  const nbDistinct = Object.keys(counts).length;
+  if (sub) sub.textContent = nbDistinct + ' examens distincts · ' + totalDemandes + ' demandes';
+
+  const max = sorted[0][1];
+  // Dégradé du plus demandé (teal foncé) au moins demandé (bleu clair)
+  const colorAt = (i, n) => {
+    const t = n <= 1 ? 0 : i / (n - 1);
+    // interpole entre #0b2545 (navy) et #00b4d8 (teal)
+    const lerp = (a, b) => Math.round(a + (b - a) * t);
+    const r = lerp(0x0b, 0x00), g = lerp(0x25, 0xb4), b = lerp(0x45, 0xd8);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  };
+
+  el.innerHTML =
+    '<div class="bar-chart" style="gap:9px">' +
+    sorted.map(([label, count], i) => {
+      const pct = Math.round(count / max * 100);
+      const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '';
+      return '<div style="display:flex;align-items:center;gap:10px;font-size:12px">'
+        + '<div style="width:26px;text-align:right;font-weight:800;color:var(--text-muted);flex-shrink:0">' + (i + 1) + '</div>'
+        + '<div style="flex:1;min-width:0">'
+          + '<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px">'
+            + '<span style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escHTML(label) + '">' + medal + escHTML(label) + '</span>'
+            + '<span style="font-weight:800;color:var(--cpmi-deep);flex-shrink:0;font-variant-numeric:tabular-nums">' + count + '</span>'
+          + '</div>'
+          + '<div style="height:8px;background:var(--accent-light);border-radius:99px;overflow:hidden">'
+            + '<div style="height:100%;width:' + pct + '%;background:' + colorAt(i, sorted.length) + ';border-radius:99px;transition:width .5s ease"></div>'
+          + '</div>'
+        + '</div>'
+      + '</div>';
+    }).join('') +
+    '</div>';
+}
+
 document.addEventListener('DOMContentLoaded', initTheme);
 
 // ============================================================
@@ -13421,6 +13488,9 @@ async function renderStats() {
     <div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-align:center">
       Total 6 mois : <strong>${recMonths.reduce((s,m)=>s+m.montant,0).toLocaleString('fr-FR')} FCFA</strong>
     </div>`;
+
+  // ── Top examens les plus demandés (période filtrée) ──────────
+  renderTopExamensChart(dbPeriode);
 
   // Ristournes sur la période filtrée
 
