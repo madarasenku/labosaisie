@@ -270,6 +270,17 @@ html {
 }
 ::selection { background: rgba(0,180,216,.25); color: var(--text); }
 
+/* Chiffres tabulaires — alignement vertical des colonnes de chiffres
+   (principe suisse : les données doivent s'aligner). Appliqué aux
+   montants, totaux, badges de dossier et valeurs numériques. */
+.kpi-val, .bar-count, .monthly-count, #montant-preview,
+.exam-row .exam-prix, .result-table td, .badge-type,
+td[data-label="Montant"], .cmdk-item-dossier, .total-val,
+#caisse-kpi-total, #caisse-kpi-nb, #caisse-kpi-moy, #caisse-kpi-attente {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
 /* Scrollbars fines et élégantes (desktop) */
 @media (hover: hover) and (pointer: fine) {
   ::-webkit-scrollbar { width: 10px; height: 10px; }
