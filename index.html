@@ -1903,7 +1903,7 @@ select {
           </select>
           <button type="button" onclick="showAddPrescripteur()" title="Ajouter un prescripteur" aria-label="Ajouter un prescripteur" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
         </div>
-        <input type="text" id="p_medecin" placeholder="Ou saisir manuellement..." style="margin-top:6px;font-size:12px" list="medecin-datalist" oninput="updateMontantCurrent()">
+        <input type="text" id="p_medecin" placeholder="OU SAISIR MANUELLEMENT..." style="margin-top:6px;font-size:12px;text-transform:uppercase" list="medecin-datalist" oninput="forcerMajuscule(this);updateMontantCurrent()">
         <datalist id="medecin-datalist"></datalist>
       </div>
       <div class="form-group">
@@ -3037,7 +3037,7 @@ select {
         <div class="form-grid" style="margin-bottom:12px">
           <div class="form-group">
             <label>Nom complet</label>
-            <input type="text" id="presc_nom" placeholder="Dr Nom Prénom">
+            <input type="text" id="presc_nom" placeholder="DR NOM PRÉNOM" style="text-transform:uppercase" oninput="forcerMajuscule(this)">
           </div>
           <div class="form-group">
             <label>Spécialité</label>
@@ -5299,7 +5299,7 @@ function getPatient() {
     age:          document.getElementById('p_age').value,
       telephone:    (document.getElementById('p_telephone')?.value || '').trim(),
     sexe:         document.getElementById('p_sexe').value,
-    medecin:      document.getElementById('p_medecin').value.trim(),
+    medecin:      document.getElementById('p_medecin').value.trim().toUpperCase(),
     service:      document.getElementById('p_service').value,
     clinique:     document.getElementById('p_clinique').value.trim(),
     share_token:  _shareTokenCurrent,
@@ -8010,8 +8010,9 @@ function showEditPatientModal(id) {
         </div>
         <div style="grid-column:1/-1">
           <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Médecin prescripteur</label>
-          <input id="ep_medecin" type="text" value="${esc(p.medecin || '')}"
-            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+          <input id="ep_medecin" type="text" value="${esc((p.medecin || '').toUpperCase())}"
+            oninput="forcerMajuscule(this)"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box;text-transform:uppercase">
         </div>
         <div>
           <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Service</label>
@@ -8067,7 +8068,7 @@ async function savePatientEdit(id) {
     date:      document.getElementById('ep_date')?.value      || record.patient?.date      || '',
     age:       document.getElementById('ep_age')?.value       || record.patient?.age       || '',
     sexe:      document.getElementById('ep_sexe')?.value      || record.patient?.sexe      || '',
-    medecin:   (document.getElementById('ep_medecin')?.value  || '').trim(),
+    medecin:   (document.getElementById('ep_medecin')?.value  || '').trim().toUpperCase(),
     service:   (document.getElementById('ep_service')?.value  || '').trim(),
     clinique:  (document.getElementById('ep_clinique')?.value || '').trim(),
     telephone: (document.getElementById('ep_telephone')?.value|| '').trim(),
@@ -9591,7 +9592,7 @@ function showAddPrescripteur() {
 
 async function savePrescripteur() {
   if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; } // ✅ v12
-  const nom = document.getElementById('presc_nom')?.value?.trim();
+  const nom = document.getElementById('presc_nom')?.value?.trim().toUpperCase();
   if (!nom) { toast('Nom du prescripteur obligatoire', 'err'); return; }
   // ✅ v13.28 — L'anti-doublon est géré côté serveur (qui réactive un
   // prescripteur désactivé portant le même nom au lieu de le rejeter).
@@ -9672,7 +9673,7 @@ async function submitPrescModal() {
   const errEl = document.getElementById('pm-error');
   errEl.textContent = '';
   const id = parseInt(document.getElementById('pm_id').value, 10);
-  const nom = document.getElementById('pm_nom').value.trim();
+  const nom = document.getElementById('pm_nom').value.trim().toUpperCase();
   const spec = document.getElementById('pm_spec').value.trim();
   const struct = document.getElementById('pm_struct').value.trim();
   const taux = parseFloat(document.getElementById('pm_taux').value);
@@ -13130,7 +13131,7 @@ async function saveRistourneTaux() {
     <div class="modal-title" id="presc-modal-title">Modifier le prescripteur</div>
     <input type="hidden" id="pm_id">
     <label class="modal-label" for="pm_nom">Nom</label>
-    <input class="modal-input" id="pm_nom" type="text" aria-label="Nom du prescripteur">
+    <input class="modal-input" id="pm_nom" type="text" aria-label="Nom du prescripteur" style="text-transform:uppercase" oninput="forcerMajuscule(this)">
     <label class="modal-label" for="pm_spec">Spécialité</label>
     <input class="modal-input" id="pm_spec" type="text" aria-label="Spécialité">
     <label class="modal-label" for="pm_struct">Structure</label>
