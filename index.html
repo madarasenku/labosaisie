@@ -1868,8 +1868,9 @@ select {
       <div class="form-group">
         <label>Nom complet<span class="req">*</span></label>
         <div style="position:relative">
-          <input type="text" id="p_nom" placeholder="Nom et prénom" autocomplete="off"
-                 oninput="onPatientNameInput();checkPatientExistant()"
+          <input type="text" id="p_nom" placeholder="NOM ET PRÉNOM" autocomplete="off"
+                 style="text-transform:uppercase"
+                 oninput="forcerMajuscule(this);onPatientNameInput();checkPatientExistant()"
                  onblur="setTimeout(closePatientDropdown,200)"
                  onkeydown="onPatientNameKey(event)">
           <div id="patient-suggestions" style="display:none;position:absolute;z-index:2000;left:0;right:0;top:calc(100% + 2px);background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.13);max-height:260px;overflow-y:auto"></div>
@@ -5294,7 +5295,7 @@ function getPatient() {
   return {
     dossier:      document.getElementById('p_dossier').value.trim(),
     date:         document.getElementById('p_date').value,
-    nom:          document.getElementById('p_nom').value.trim(),
+    nom:          document.getElementById('p_nom').value.trim().toUpperCase(),
     age:          document.getElementById('p_age').value,
       telephone:    (document.getElementById('p_telephone')?.value || '').trim(),
     sexe:         document.getElementById('p_sexe').value,
@@ -5947,6 +5948,17 @@ async function clearAllRemote() {
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g,
     c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ✅ v13.50 — Force la saisie en MAJUSCULES en conservant la position du curseur
+function forcerMajuscule(el) {
+  if (!el) return;
+  const start = el.selectionStart, end = el.selectionEnd;
+  const up = el.value.toUpperCase();
+  if (up !== el.value) {
+    el.value = up;
+    try { el.setSelectionRange(start, end); } catch (e) {}
+  }
 }
 
 function formatDossier(n) {
@@ -7976,8 +7988,9 @@ function showEditPatientModal(id) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div style="grid-column:1/-1">
           <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Nom complet <span style="color:#e11d48">*</span></label>
-          <input id="ep_nom" type="text" value="${esc(p.nom || '')}"
-            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
+          <input id="ep_nom" type="text" value="${esc((p.nom || '').toUpperCase())}"
+            oninput="forcerMajuscule(this)"
+            style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box;text-transform:uppercase">
         </div>
         <div>
           <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Date de la visite</label>
