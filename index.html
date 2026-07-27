@@ -3752,14 +3752,14 @@ select {
   .print-composite-section + .print-composite-section { page-break-before: always; }
   .print-composite-section { break-inside: avoid; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  @page { margin: 1.2cm 1.0cm; size: A4; }
+  @page { margin: 0.85cm 1.0cm; size: A4; }
 
   /* Masquer toute l'app, n'afficher que le rendu d'impression */
   body > *:not(#print-render) { display: none !important; }
   body::before { display: none !important; content: none !important; }
   #cpmi-bg-canvas { display: none !important; }
   body { background: #fff !important; margin: 0; }
-  #print-render { display: block !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000; background: #fff; }
+  #print-render { display: block !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12.5pt; color: #000; background: #fff; }
 
   /* ✅ v13.34 — En-tête : double liseré or/bleu + logo + badge type */
   .print-header-bar {
@@ -3774,9 +3774,9 @@ select {
   }
   .print-header-content {
     display: flex; align-items: center; gap: 18px;
-    padding: 14px 0 12px;
+    padding: 8px 0 8px;
     border-bottom: none;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
     background: #fff;
   }
   .print-logo {
@@ -3785,11 +3785,11 @@ select {
     filter: grayscale(1) contrast(1.4);
   }
   .print-center-name {
-    font-size: 17pt; font-weight: 900; color: #000; letter-spacing: .4px;
+    font-size: 19pt; font-weight: 900; color: #000; letter-spacing: .4px;
     line-height: 1.35;
   }
-  .print-center-sub { font-size: 9pt; color: #444; margin-top: 3px; line-height: 1.4; }
-  .print-center-addr { font-size: 8.5pt; color: #666; font-style: italic; margin-top: 2px; }
+  .print-center-sub { font-size: 10pt; color: #444; margin-top: 3px; line-height: 1.4; }
+  .print-center-addr { font-size: 9.5pt; color: #666; font-style: italic; margin-top: 2px; }
   .print-type-badge {
     margin-left: auto;
     background: #1e3a8a; color: #fff;
@@ -3812,25 +3812,25 @@ select {
     letter-spacing: .5px; color: #1e3a8a; margin-bottom: 5px;
     border-bottom: 1px solid #c7d9f9; padding-bottom: 3px;
   }
-  .print-patient-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+  .print-patient-table { width: 100%; border-collapse: collapse; font-size: 11.5pt; }
   .print-patient-table td { padding: 5px 9px; vertical-align: top; border-right: 1px solid #d0dcf7; }
   .print-patient-table td:last-child { border-right: none; }
-  .print-patient-table .lbl { font-size: 8.5pt; color: #444; font-weight: 600; }
+  .print-patient-table .lbl { font-size: 9.5pt; color: #444; font-weight: 600; }
   .print-patient-table .val { font-weight: 500; color: #000; }
-  .print-dossier { font-size: 15pt; font-weight: 900; color: #1e3a8a; letter-spacing: .3px; }
+  .print-dossier { font-size: 17pt; font-weight: 900; color: #1e3a8a; letter-spacing: .3px; }
 
   /* Sections */
   .print-section { margin-bottom: 8px; break-inside: avoid; }
-  .print-section-title { font-size: 10.5pt; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1.5px solid #000; padding-bottom: 3px; margin-bottom: 7px; }
+  .print-section-title { font-size: 12pt; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1.5px solid #000; padding-bottom: 3px; margin-bottom: 7px; }
 
   /* ✅ v13.34 — Tableaux résultats : en-têtes bleu CPMI, alternance douce */
-  .print-table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 8px; }
+  .print-table { width: 100%; border-collapse: collapse; font-size: 11.5pt; margin-bottom: 9px; }
   .print-table th {
     background: #1e3a8a !important; color: #fff !important;
     font-weight: 700; padding: 6px 9px; text-align: left;
-    border: 1px solid #1e3a8a; font-size: 9pt; letter-spacing: .3px;
+    border: 1px solid #1e3a8a; font-size: 10.5pt; letter-spacing: .3px;
   }
-  .print-table td { padding: 6px 9px; border: 1px solid #d0dcf7; vertical-align: middle; color: #000; }
+  .print-table td { padding: 7px 10px; border: 1px solid #d0dcf7; vertical-align: middle; color: #000; }
   .print-table tr:nth-child(even) td { background: #f0f5ff; }
   .print-table tr:nth-child(odd)  td { background: #fff; }
   .print-table tr:hover td { background: #e8f0fe; }
@@ -16222,14 +16222,14 @@ async function buildAndPrint(r) {
   ]);
 
   // ✅ v13.54 — QR agrandi (×2) dans l'angle SUPÉRIEUR GAUCHE du compte rendu
-  const qrBlock = `<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:14px">
+  const qrBlock = `<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:8px">
     ${qrUrl1 ? `<div style="text-align:center">
-      <img src="${qrUrl1}" width="132" height="132" style="display:block;border:2px solid #1e3a8a;border-radius:6px">
-      <div style="font-size:8.5px;color:#1e3a8a;font-weight:700;margin-top:3px">${shareToken ? 'Vérifier en ligne' : 'Info dossier'}</div>
+      <img src="${qrUrl1}" width="176" height="176" style="display:block;border:2px solid #1e3a8a;border-radius:6px">
+      <div style="font-size:10px;color:#1e3a8a;font-weight:700;margin-top:4px">${shareToken ? 'Vérifier en ligne' : 'Info dossier'}</div>
     </div>` : ''}
     ${qrUrl2 ? `<div style="text-align:center">
-      <img src="${qrUrl2}" width="132" height="132" style="display:block;border:1px solid #9ca3af;border-radius:6px">
-      <div style="font-size:8.5px;color:#6b7280;margin-top:3px">Infos patient</div>
+      <img src="${qrUrl2}" width="176" height="176" style="display:block;border:1px solid #9ca3af;border-radius:6px">
+      <div style="font-size:10px;color:#6b7280;margin-top:4px">Infos patient</div>
     </div>` : ''}
     <div style="font-size:8px;color:#6b7280;align-self:flex-end">Réf. ${refDoc}</div>
   </div>`;
