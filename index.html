@@ -11187,8 +11187,10 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ── Création feuille ─────────────────────────────────────────
   const NC = 6;
   const ws = wb.addWorksheet(sheetName || getDisplayType(r).substring(0,31), {
-    pageSetup: { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
-      margins:{left:0.4,right:0.4,top:0.4,bottom:0.4,header:0.15,footer:0.15} }, // ✅ v13.34
+    // ✅ v13.57 — Adapté à la page : tient sur UNE seule page A4 (largeur + hauteur)
+    pageSetup: { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:1,
+      horizontalCentered:true,
+      margins:{left:0.4,right:0.4,top:0.4,bottom:0.4,header:0.15,footer:0.15} },
     views: [{ showGridLines:false, state:'frozen', ySplit:10 }],
   });
   ws.columns = [
