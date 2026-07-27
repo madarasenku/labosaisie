@@ -11701,6 +11701,29 @@ function buildProfessionalSheet(wb, r, sheetName) {
       + '\nPATIENT: ' + nomMAJ + '\nANALYSE: ' + (getDisplayType(r) || '') + '\nDATE: ' + dateF
       + (_techName ? ('\nTECH: ' + _techName) : '')
   };
+
+  // ✅ v13.59 — Remplir toute la page : répartir l'espace vertical restant en
+  //   agrandissant proportionnellement les lignes (aucun espace vide en bas).
+  (function fillPage() {
+    const lastRow = row - 1;
+    if (lastRow < 3) return;
+    let total = 0;
+    for (let i = 1; i <= lastRow; i++) {
+      const h = ws.getRow(i).height;
+      total += (h != null ? h : 15);
+    }
+    // On vise un peu PLUS que la hauteur utile (~784 pt) : fitToHeight ramène
+    // ensuite le tout à exactement une page → page remplie, aucun espace vide.
+    const TARGET = 1000; // points (> hauteur utile réelle pour garantir le remplissage)
+    if (total > 0 && total < TARGET) {
+      const factor = Math.min(TARGET / total, 6.0); // borne anti-lignes démesurées
+      for (let i = 1; i <= lastRow; i++) {
+        const rr = ws.getRow(i);
+        const h = (rr.height != null ? rr.height : 15);
+        rr.height = Math.round(h * factor * 10) / 10;
+      }
+    }
+  })();
 }
 
 
