@@ -16071,15 +16071,29 @@ function generateQRDataURL(text, size = 120) {
     const txt = String(text ?? '').substring(0, 900);
     if (!txt) { resolve(''); return; }
 
-    // ✅ v13.53 — Générateur intégré (qrcode-generator, hors-ligne, sans CDN)
+    // ✅ v13.56 — Générateur intégré (qrcode-generator, hors-ligne, sans CDN)
+    //   Rendu en PNG via canvas (l'Excel et le PDF exigent du PNG).
     if (typeof qrcode !== 'undefined') {
       try {
         const qr = qrcode(0, 'M');   // type 0 = détection auto de la taille
         qr.addData(txt);
         qr.make();
         const count = qr.getModuleCount();
-        const cell = Math.max(2, Math.round(size / (count + 8))); // marge de 4 modules
-        resolve(qr.createDataURL(cell, 4)); // GIF data URL, noir sur blanc
+        const margin = 4;                     // zone de silence (modules)
+        const total = count + margin * 2;
+        const cell = Math.max(2, Math.floor(size / total));
+        const px = cell * total;
+        const canvas = document.createElement('canvas');
+        canvas.width = px; canvas.height = px;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, px, px);
+        ctx.fillStyle = '#1e3a8a';
+        for (let r = 0; r < count; r++) {
+          for (let c = 0; c < count; c++) {
+            if (qr.isDark(r, c)) ctx.fillRect((c + margin) * cell, (r + margin) * cell, cell, cell);
+          }
+        }
+        resolve(canvas.toDataURL('image/png')); // PNG, compatible Excel/PDF
         return;
       } catch (e) { /* repli CDN ci-dessous */ }
     }
@@ -16145,10 +16159,11 @@ async function addQrAndSignatures(wb) {
           ws.addImage(id, { tl: { col: 3, row: a.sigRow - 1 }, ext: { width: 148, height: 28 } });
         }
       }
-      const qrPng = await generateQRDataURL(a.qrContent, 130);
+      // ✅ v13.56 — QR agrandi et net (généré en 2× la taille d'affichage)
+      const qrPng = await generateQRDataURL(a.qrContent, 260);
       if (qrPng) {
         const id = wb.addImage({ base64: qrPng.split(',')[1] || qrPng, extension: 'png' });
-        ws.addImage(id, { tl: { col: Math.max(0, a.NC - 1), row: a.sigRow - 1 }, ext: { width: 68, height: 68 } });
+        ws.addImage(id, { tl: { col: Math.max(0, a.NC - 1), row: a.sigRow - 1 }, ext: { width: 120, height: 120 } });
       }
     } catch (e) { /* QR/signature optionnels — ne bloque pas l'export */ }
   }
