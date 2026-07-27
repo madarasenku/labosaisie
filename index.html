@@ -5384,11 +5384,13 @@ function getDB() {
     if (isAdmin()) return _dbCache.filter(r => !!r.deletedAt || !!r._hardDeleted);
     return _dbCache.filter(r => !!r.deletedAt && !r._hardDeleted && r.deletedBy === uid);
   }
-  // ✅ v13.33 — Fiches masquées : admin voit toutes, agent voit les siennes
+  // ✅ v13.52 — Un dossier masqué disparaît de TOUS les comptes (propriétaire,
+  //   caissier, spectateur, autres agents). Seuls L'ADMIN et CELUI QUI A MASQUÉ
+  //   le voient dans cette section, pour pouvoir le réafficher.
   if (_filterVerrouillees) {
     const uid = _currentUser?.username;
     if (isAdmin()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy);
-    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy && r.createdBy === uid);
+    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && r.restrictedBy === uid);
   }
   // Admin/Caissier/Spectateur : fiches actives (sans soft-delete ni hard-delete ni masquées)
   if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
@@ -7835,10 +7837,13 @@ function updateMasqueesBtn() {
   const btn   = document.getElementById('btn-masquees');
   const badge = document.getElementById('masquees-badge');
   if (!btn) return;
+  // ✅ v13.52 — L'admin voit toutes les fiches masquées ; un autre profil ne
+  //   voit que celles qu'il a masquées lui-même. Caissier/spectateur/agent
+  //   qui n'ont rien masqué ne voient rien.
   const uid = _currentUser?.username;
   const count = isAdmin()
     ? _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy).length
-    : _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy && r.createdBy === uid).length;
+    : _dbCache.filter(r => !r.deletedAt && r.restrictedBy === uid).length;
   if (badge) badge.textContent = count;
   btn.style.display   = count > 0 ? 'flex' : 'none';
   btn.style.opacity   = _filterVerrouillees ? '1' : '0.75';
@@ -13901,17 +13906,19 @@ async function buildAndPrint(r) {
     generateQRDataURL(qrContent2, 90),
   ]);
 
-  html += `<div style="float:right;margin:-90px 0 10px 12px;text-align:center;display:flex;flex-direction:column;gap:4px">
+  // ✅ v13.52 — QR affiché dans l'angle SUPÉRIEUR GAUCHE du compte rendu
+  const qrBlock = `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">
     ${qrUrl1 ? `<div style="text-align:center">
-      <img src="${qrUrl1}" width="72" height="72" style="display:block;border:2px solid #1e3a8a;border-radius:4px;margin:0 auto">
+      <img src="${qrUrl1}" width="66" height="66" style="display:block;border:2px solid #1e3a8a;border-radius:4px">
       <div style="font-size:7px;color:#1e3a8a;font-weight:700;margin-top:1px">${shareToken ? 'Vérifier en ligne' : 'Info dossier'}</div>
     </div>` : ''}
-    ${qrUrl2 ? `<div style="text-align:center;margin-top:3px">
-      <img src="${qrUrl2}" width="72" height="72" style="display:block;border:1px solid #9ca3af;border-radius:4px;margin:0 auto">
+    ${qrUrl2 ? `<div style="text-align:center">
+      <img src="${qrUrl2}" width="66" height="66" style="display:block;border:1px solid #9ca3af;border-radius:4px">
       <div style="font-size:7px;color:#6b7280;margin-top:1px">Infos patient</div>
     </div>` : ''}
-    <div style="font-size:7px;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:3px;margin-top:1px">Réf. ${refDoc}</div>
+    <div style="font-size:7px;color:#6b7280;align-self:flex-end">Réf. ${refDoc}</div>
   </div>`;
+  html = qrBlock + html;
 
   // ── Sections selon le type ──────────────────────────────────
   html += buildPrintSections(r.type, res, r.patient);
