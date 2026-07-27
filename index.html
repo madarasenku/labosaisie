@@ -11218,14 +11218,20 @@ function buildProfessionalSheet(wb, r, sheetName) {
   row++;
 
   // Sous-titre + type analyse (2 colonnes)
-  ws.getRow(row).height = 17;
+  // ✅ v13.58 — Badge = catégorie d'analyse (courte), pas la liste des examens.
+  //   Hauteur de ligne adaptative pour éviter tout débordement sur le titre.
+  const subT = "Laboratoire d'analyses médicales  ·  Grand-Bassam, Côte d'Ivoire";
+  const badgeType = (r.type && r.type !== 'Dossier') ? r.type : (sheetName || getDisplayType(r));
+  const typeT = 'RÉSULTAT : ' + String(badgeType).toUpperCase();
+  const hdrLines = Math.max(neededLines(subT, spanWidth(1,4)), neededLines(typeT, spanWidth(5,NC)));
+  ws.getRow(row).height = Math.max(17, hdrLines * 12 + 4);
   mg(row,1,row,4);
   const cSub = ws.getCell(row,1);
-  cSub.value = "Laboratoire d'analyses médicales  ·  Grand-Bassam, Côte d'Ivoire";
+  cSub.value = subT;
   sC(cSub, {bg:BLU, fg:'FFBFDBFE', size:9, italic:true});
   mg(row,5,row,NC);
   const cType = ws.getCell(row,5);
-  cType.value = 'RÉSULTAT : ' + getDisplayType(r).toUpperCase();
+  cType.value = typeT;
   sC(cType, {bg:BLU, fg:'FFFBBF24', bold:true, size:10, ha:'right'});
   row++;
 
