@@ -11266,11 +11266,11 @@ function buildProfessionalSheet(wb, r, sheetName) {
 
   function patRow2(l1,v1,l2,v2) {
     const rr = ws.getRow(row);
-    // ✅ v13.62 — en-tête adaptatif compact : hauteur selon le plus long des 4 contenus
-    rr.height = fitH([
-      {text:l1, c1:1}, {text:v1||'—', c1:2, c2:3},
-      {text:l2, c1:4}, {text:v2||'—', c1:5, c2:NC}
-    ], 14);
+    // ✅ v13.63 — cases patient encore plus compactes (hauteur réduite par ligne)
+    const _pl = Math.min(4, Math.max(
+      neededLines(l1, spanWidth(1,1)), neededLines(v1||'—', spanWidth(2,3)),
+      neededLines(l2||'', spanWidth(4,4)), neededLines(v2||'—', spanWidth(5,NC))));
+    rr.height = Math.max(13, _pl * 10.5 + 2);
     sC(rr.getCell(1),LS); rr.getCell(1).value = l1;
     mg(row,2,row,3); sC(rr.getCell(2),VS); rr.getCell(2).value = v1||'—';
     if (l2 !== undefined) {
@@ -11293,8 +11293,8 @@ function buildProfessionalSheet(wb, r, sheetName) {
 
   let _firstSec = true; // ✅ v13.62 — pas d'espace avant le 1er examen
   function secHdr(title) {
-    // ✅ v13.62 — un peu d'air entre deux examens (avant chaque section sauf la 1ère)
-    if (!_firstSec) { ws.getRow(row).height = 8; row++; }
+    // ✅ v13.63 — plus d'air entre deux examens (avant chaque section sauf la 1ère)
+    if (!_firstSec) { ws.getRow(row).height = 18; row++; }
     _firstSec = false;
     ws.getRow(row).height = 17;
     mg(row,1,row,NC);
