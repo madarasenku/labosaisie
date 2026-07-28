@@ -11700,13 +11700,19 @@ function buildProfessionalSheet(wb, r, sheetName) {
   sC(ws.getCell(sigStartRow + 2, 4), { fg: SEC_FG, bold: true, size: 9 });
   ws.getCell(sigStartRow + 3, 4).value = 'Technicien de laboratoire · CPMI Grand-Bassam';
   sC(ws.getCell(sigStartRow + 3, 4), { fg: MUTED, italic: true, size: 7.5 });
+  // ✅ v13.65 — QR : on retire la ligne ANALYSE et on affiche le montant payé
+  const _payInfos = p.paiement_infos || {};
+  const _recu = Number(_payInfos.montant_recu);
+  const _payeStr = (p.paiement_status === 'paye' && !isNaN(_recu) && _recu > 0)
+    ? _recu.toLocaleString('fr-FR') + ' FCFA'
+    : 'NON PAYÉ';
   ws._qrSig = {
     sigRow: sigStartRow,
     techName: _techName,
     refDoc: _refDoc,
     NC: NC,
     qrContent: 'CPMI GRAND-BASSAM\nREF: ' + _refDoc + '\nDOSSIER: ' + (p.dossier || '—')
-      + '\nPATIENT: ' + nomMAJ + '\nANALYSE: ' + (getDisplayType(r) || '') + '\nDATE: ' + dateF
+      + '\nPATIENT: ' + nomMAJ + '\nPAYE: ' + _payeStr + '\nDATE: ' + dateF
       + (_techName ? ('\nTECH: ' + _techName) : '')
   };
 
