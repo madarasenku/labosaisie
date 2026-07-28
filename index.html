@@ -11247,11 +11247,12 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ════════════════════════════════════════════════════
   row++; // espace
   // ✅ v12.2 — police 18 ≈ caractères 2x plus larges : largeur effective divisée par 2
-  ws.getRow(row).height = Math.max(20, neededLines(nomMAJ, Math.floor(spanWidth(1,NC)/2)) * 16 + 4); // ✅ v13.34
+  // ✅ v13.62 — nom encore plus grand et mis en valeur
+  ws.getRow(row).height = Math.max(30, neededLines(nomMAJ, Math.floor(spanWidth(1,NC)/2.3)) * 20 + 6);
   mg(row,1,row,NC);
   const cNom = ws.getCell(row,1);
   cNom.value = nomMAJ;
-  sC(cNom, {bg:PAT_LABEL, fg:BLU, bold:true, size:18, ha:'center'});
+  sC(cNom, {bg:PAT_LABEL, fg:BLU, bold:true, size:23, ha:'center'});
   cNom.border = { top:{style:'medium',color:{argb:BLU}}, bottom:{style:'medium',color:{argb:BLU}},
     left:tB().left, right:tB().right };
   row++;
@@ -11259,16 +11260,17 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ════════════════════════════════════════════════════
   // BLOC 3 — FICHE PATIENT (grille 2×3)
   // ════════════════════════════════════════════════════
-  const LS = {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:9.5, border:true};
-  const VS = {bg:PAT_VAL,   fg:DARK,   size:10,   border:true};
+  // ✅ v13.62 — cases patient plus compactes (police et hauteur réduites)
+  const LS = {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:8.5, border:true};
+  const VS = {bg:PAT_VAL,   fg:DARK,   size:9,    border:true};
 
   function patRow2(l1,v1,l2,v2) {
     const rr = ws.getRow(row);
-    // ✅ v12.3 — en-tête adaptatif : hauteur selon le plus long des 4 contenus
+    // ✅ v13.62 — en-tête adaptatif compact : hauteur selon le plus long des 4 contenus
     rr.height = fitH([
       {text:l1, c1:1}, {text:v1||'—', c1:2, c2:3},
       {text:l2, c1:4}, {text:v2||'—', c1:5, c2:NC}
-    ], 17);
+    ], 14);
     sC(rr.getCell(1),LS); rr.getCell(1).value = l1;
     mg(row,2,row,3); sC(rr.getCell(2),VS); rr.getCell(2).value = v1||'—';
     if (l2 !== undefined) {
@@ -11289,7 +11291,11 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ════════════════════════════════════════════════════
   let alt = false;
 
+  let _firstSec = true; // ✅ v13.62 — pas d'espace avant le 1er examen
   function secHdr(title) {
+    // ✅ v13.62 — un peu d'air entre deux examens (avant chaque section sauf la 1ère)
+    if (!_firstSec) { ws.getRow(row).height = 8; row++; }
+    _firstSec = false;
     ws.getRow(row).height = 17;
     mg(row,1,row,NC);
     const c = ws.getCell(row,1);
