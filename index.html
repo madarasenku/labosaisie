@@ -11706,13 +11706,15 @@ function buildProfessionalSheet(wb, r, sheetName) {
   const _payeStr = (p.paiement_status === 'paye' && !isNaN(_recu) && _recu > 0)
     ? _recu.toLocaleString('fr-FR') + ' FCFA'
     : 'NON PAYÉ';
+  // ✅ v13.66 — QR allégé : on garde le DOSSIER (pas la REF) et un seul mot du nom
+  const _nomCourt = (nomMAJ.split(/\s+/)[0] || nomMAJ);
   ws._qrSig = {
     sigRow: sigStartRow,
     techName: _techName,
     refDoc: _refDoc,
     NC: NC,
-    qrContent: 'CPMI GRAND-BASSAM\nREF: ' + _refDoc + '\nDOSSIER: ' + (p.dossier || '—')
-      + '\nPATIENT: ' + nomMAJ + '\nPAYE: ' + _payeStr + '\nDATE: ' + dateF
+    qrContent: 'CPMI GRAND-BASSAM\nDOSSIER: ' + (p.dossier || '—')
+      + '\nPATIENT: ' + _nomCourt + '\nPAYE: ' + _payeStr + '\nDATE: ' + dateF
       + (_techName ? ('\nTECH: ' + _techName) : '')
   };
 
