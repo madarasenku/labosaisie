@@ -11714,25 +11714,19 @@ function buildProfessionalSheet(wb, r, sheetName) {
   (function fillPage() {
     const lastRow = row - 1;
     if (lastRow < 3) return;
-    let total = 0;
+    // ✅ v13.61 — TAILLE STANDARD FIXE (même densité pour tous les onglets).
+    //   On agrandit chaque ligne d'un facteur constant, calibré pour qu'un
+    //   rapport courant (NFS + Goutte épaisse) remplisse ~90 % d'une page A4.
+    //   • Rapport plus court (ex. CRP seule) : laisse un peu d'espace en bas.
+    //   • Rapport plus long (biochimie, ATB, immuno, hormones) : garde la même
+    //     taille de ligne et s'étale naturellement sur 2 pages.
+    const STD = (typeof window !== 'undefined' && window.__stdFactor) ? window.__stdFactor : 1.45;
     for (let i = 1; i <= lastRow; i++) {
-      const h = ws.getRow(i).height;
-      total += (h != null ? h : 15);
+      const rr = ws.getRow(i);
+      const h = (rr.height != null ? rr.height : 15);
+      rr.height = Math.round(h * STD * 10) / 10;
     }
-    const USABLE = 1000; // somme de hauteurs qui remplit une page A4 (calibré)
-    if (total > 0 && total < USABLE) {
-      // Court : agrandir pour remplir une page pleine
-      const factor = Math.min(USABLE / total, 6.0);
-      for (let i = 1; i <= lastRow; i++) {
-        const rr = ws.getRow(i);
-        const h = (rr.height != null ? rr.height : 15);
-        rr.height = Math.round(h * factor * 10) / 10;
-      }
-      ws.pageSetup.fitToHeight = 1; // verrouille sur une seule page
-    } else {
-      // Long : taille normale, on laisse s'étaler sur plusieurs pages
-      ws.pageSetup.fitToHeight = 0;
-    }
+    ws.pageSetup.fitToHeight = 0; // jamais de compression : long => 2 pages
   })();
 }
 
