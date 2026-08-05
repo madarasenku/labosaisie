@@ -17,7 +17,7 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v41';
+const CACHE = 'cpmi-labo-v42';
 
 /* Pré-cacher les fichiers essentiels à l'installation */
 const PRECACHE = [

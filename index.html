@@ -7854,25 +7854,25 @@ function hideLoading() {
 }
 
 async function refreshDB(force) {
-  // ✅ v13.28 — filtrage côté serveur : on passe la période active au RPC
-  // pour ne charger que les dossiers de la période demandée (max 500).
+  // ✅ v13.68 — CHARGEMENT COMPLET, filtrage côté client.
+  //
+  //   Avant (v13.28 → v13.67), on ne demandait au serveur que la période
+  //   affichée dans l'Historique (par défaut « ce mois »). Le cache ne
+  //   contenait donc QUE le mois courant, alors que les Ristournes, les
+  //   Statistiques et le rapport PDF ont chacun leur propre sélecteur de
+  //   mois : choisir un mois passé ne déclenchait aucun rechargement et
+  //   renvoyait « Aucune activité » alors que les fiches existaient bien.
+  //
+  //   On charge maintenant toutes les fiches en métadonnées légères
+  //   (p_limit 20000, sans filtre de date) et chaque vue filtre son cache
+  //   via filterByDateRange / le préfixe de mois. L'Historique reste
+  //   correct : renderHistory() applique filterByDateRange sur les champs
+  //   de date que setHistPeriode alimente.
   if (!force && _dbCache.length) return _dbCache;
   if (!navigator.onLine) return _dbCache;
   let data, error;
   try {
-    // Récupérer la plage de dates active
-    let from, to;
-    if (_histPeriode === 'custom') {
-      from = document.getElementById('filter-date-from')?.value || '';
-      to   = document.getElementById('filter-date-to')?.value   || '';
-    } else if (_histPeriode !== 'tout') {
-      ({ from, to } = computeHistDateRange(_histPeriode || 'mois'));
-    }
-    // mode 'tout' → pas de filtre date → charger tout
-    const params = { p_token: TK() };
-    if (from) params.p_date_from = from;
-    if (to)   params.p_date_to   = to;
-    ({ data, error } = await _sb.rpc('get_resultats_light', params));
+    ({ data, error } = await _sb.rpc('get_resultats_light', { p_token: TK(), p_limit: 20000 }));
   } catch (e) {
     if (isNetworkError(e)) return _dbCache;
     console.error('Erreur de chargement Supabase:', e);
@@ -9594,24 +9594,11 @@ function setHistPeriode(periode) {
     const toEl   = document.getElementById('filter-date-to');
     if (fromEl) fromEl.value = from || '';
     if (toEl)   toEl.value   = (periode === 'tout') ? '' : (to || '');
-  } else {
-    // ✅ v13.28 — custom : ne recharger que si les deux dates sont renseignées
-    // Sinon, juste filtrer localement sur le cache existant
-    const from = document.getElementById('filter-date-from')?.value || '';
-    const to   = document.getElementById('filter-date-to')?.value   || '';
-    if (!from || !to) {
-      renderHistory(); // filtre local sans recharger
-      return;
-    }
   }
 
-  // Recharger depuis le serveur avec les nouvelles dates
-  _dbCache = [];
-  showLoading();
-  refreshDB(true).then(() => {
-    hideLoading();
-    renderHistory();
-  });
+  // ✅ v13.68 — le cache contient toutes les fiches : filtrage client instantané,
+  // plus aucun aller-retour serveur au changement de période.
+  renderHistory();
 }
 
 // Calcule la plage [from, to] pour un raccourci donné (réutilise la même
@@ -9622,26 +9609,13 @@ function appliquerFiltreCustom() {
   const to   = document.getElementById('filter-date-to')?.value   || '';
   if (!from && !to) { toast('Saisissez au moins une date', 'err'); return; }
   _histPeriode = 'custom';
-  _dbCache = [];
-  showLoading();
-  refreshDB(true).then(db => {
-    hideLoading();
-    if (db.length === 0) {
-      // ✅ Fallback : le RPC avec filtres date n'est pas encore installé
-      // → recharger sans filtre et filtrer côté client
-      console.warn('[LaboSaisie] Filtre date serveur inactif — fallback client');
-      _dbCache = [];
-      // Passer en mode "tout" pour charger sans filtre
-      const savedPeriode = _histPeriode;
-      _histPeriode = 'tout';
-      refreshDB(true).then(() => {
-        _histPeriode = savedPeriode;
-        renderHistory(); // filterByDateRange s'applique côté client
-      });
-    } else {
-      renderHistory();
-    }
+  // ✅ v13.68 — filtrage client sur le cache complet : instantané, et le
+  // fallback « filtre date serveur inactif » n'a plus lieu d'être.
+  ['jour','semaine','mois','tout'].forEach(p => {
+    const btn = document.getElementById('hist-btn-' + p);
+    if (btn) btn.classList.remove('active');
   });
+  renderHistory();
 }
 
 function computeHistDateRange(periode) {
