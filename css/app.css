@@ -1,0 +1,1637 @@
+/* ═══════════════════════════════════════════════════════════════
+   LaboSaisie CPMI — feuille de styles principale
+   Extraite de index.html (v13.70). Les deux petits blocs <style>
+   restants dans index.html sont des styles d'impression, laissés
+   au plus près de leur usage.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ============================================================
+   CPMI — Centre de Protection Mère et Infantile
+   Thème visuel : douceur, protection, santé, soin
+   Palette : bleu maternité + rose doux + vert santé + or chaleureux
+   ============================================================ */
+
+/* ✅ v13.69 — police hébergée localement (voir vendor/fonts/poppins.css) */
+
+:root {
+  /* Palette CPMI — Clinique Médicale Professionnelle */
+  --cpmi-deep:    #0b2545;   /* navy profond institutionnel */
+  --cpmi-mid:     #0096c7;   /* bleu médical */
+  --cpmi-sky:     #00b4d8;   /* teal accent */
+  --cpmi-teal:    #0096c7;   /* bleu médical (santé) */
+  --cpmi-rose:    #e11d76;   /* rose maternité */
+  --cpmi-gold:    #d97706;   /* or chaleureux */
+
+  /* Aliases fonctionnels */
+  --bg:           #f0f4f8;
+  --surface:      #ffffff;
+  --border:       #dae4ee;
+  --text:         #0b2545;
+  --text-muted:   #4a607a;
+  --text-label:   #2d4a6a;
+  --accent:       #0b2545;
+  --accent-hover: #0d2d56;
+  --accent-light: #e8f4fb;
+  --surface-1:    #f7fafd;
+  --surface-2:    #ffffff;
+  --card:         #ffffff;
+  --bg-alt:       #eef4f9;
+  --text-primary:   #0b2545;
+  --text-secondary: #4a607a;
+  --danger:       #dc2626;
+  --danger-light: #fef2f2;
+  --success:      #059669;
+  --success-light:#ecfdf5;
+  --warning:      #d97706;
+  --warning-light:#fffbeb;
+  --radius:       10px;
+  --radius-lg:    16px;
+  --shadow:       0 1px 3px rgba(11,37,69,.06), 0 4px 14px rgba(11,37,69,.05);
+  --shadow-lg:    0 8px 30px rgba(11,37,69,.13), 0 2px 8px rgba(11,37,69,.06);
+  --shadow-sm:    0 1px 3px rgba(11,37,69,.07);
+  --ease-spring:  cubic-bezier(.34,1.56,.64,1);
+  --ease-out:     cubic-bezier(.22,.61,.36,1);
+}
+
+
+/* ── Mode sombre ── */
+[data-theme="dark"] {
+  --bg:           #12141a;
+  --surface:      #1c1f27;
+  --border:       #2c3040;
+  --text:         #cdd2dc;
+  --text-muted:   #868d9c;
+  --text-label:   #a5adb8;
+  --accent:       #6d8fac;
+  --accent-hover: #87a7c0;
+  --accent-light: #1a2635;
+  --danger:       #a86868;
+  --danger-light: #221616;
+  --success:      #528a70;
+  --success-light:#0e2018;
+  --warning:      #907a38;
+  --warning-light:#1e1900;
+  --cpmi-deep:    #7ab0cc;
+  --cpmi-mid:     #5b9ec4;
+  --cpmi-sky:     #40bcd8;
+  --cpmi-teal:    #5b9ec4;
+  --cpmi-soft:    #0d1e30;
+  --surface-1:    #171a21;
+  --surface-2:    #1c1f27;
+  --card:         #1c1f27;
+  --bg-alt:       #232733;
+  --text-primary:   #cdd2dc;
+  --text-secondary: #868d9c;
+}
+[data-theme="dark"] body { background-color: #0d0f14; }
+[data-theme="dark"] .card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+[data-theme="dark"] .card:hover { box-shadow: 0 6px 22px rgba(0,0,0,.45); border-color: rgba(64,188,216,.25); }
+[data-theme="dark"] header { background: #0a1220; border-bottom-color: #1c6e8c; }
+[data-theme="dark"] .tabs { background: rgba(28,31,39,.92); border-color: var(--border); }
+[data-theme="dark"] .stats-kpi { background: var(--surface); border-color: var(--border); border-left-color: #40bcd8; }
+[data-theme="dark"] .result-table th,
+[data-theme="dark"] #history-table th,
+[data-theme="dark"] #users-table th { background: #161922; }
+[data-theme="dark"] #toast { background: #0a1220; }
+[data-theme="dark"] ::selection { background: rgba(64,188,216,.35); color: #fff; }
+[data-theme="dark"] #cmdk-panel { box-shadow: 0 24px 70px rgba(0,0,0,.6); }
+[data-theme="dark"] .cmdk-item.active, [data-theme="dark"] .cmdk-item:hover { background: rgba(64,188,216,.12); }
+[data-theme="dark"] #alerte-anciens { background: #2a1618; border-color: #7f3535; }
+[data-theme="dark"] #alerte-anciens button[onclick*="openDossier"] { background: #1c1f27 !important; border-color: #7f3535 !important; color: #f0a0a0 !important; }
+
+/* Carte fiche patient — bordure accentuée (remplace l'ancien style inline) */
+.card-fiche { border: 2px solid var(--cpmi-mid); }
+[data-theme="dark"] .card-fiche { border-color: #2b5d75; }
+
+/* ════════════════════════════════════════════════
+   PALETTE DE RECHERCHE GLOBALE (Ctrl+K / ⌘K)
+   ════════════════════════════════════════════════ */
+#cmdk-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(11,37,69,.45);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  z-index: 4000;
+  padding: 14vh 16px 16px;
+  justify-content: center;
+  align-items: flex-start;
+  animation: cmdkFadeIn .18s ease;
+}
+#cmdk-backdrop.open { display: flex; }
+@keyframes cmdkFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+#cmdk-panel {
+  width: 100%; max-width: 560px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(11,37,69,.4), 0 2px 8px rgba(11,37,69,.2);
+  overflow: hidden;
+  animation: cmdkPop .22s var(--ease-spring);
+}
+@keyframes cmdkPop {
+  from { opacity: 0; transform: translateY(-12px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#cmdk-search {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+#cmdk-input {
+  flex: 1; border: none; outline: none; background: transparent;
+  font-family: inherit; font-size: 16px; font-weight: 500;
+  color: var(--text);
+  padding: 2px 0;
+}
+#cmdk-input::placeholder { color: var(--text-muted); font-weight: 400; }
+#cmdk-esc, #cmdk-foot kbd {
+  font-family: inherit; font-size: 10px; font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 5px; padding: 2px 6px;
+  letter-spacing: .5px;
+}
+
+#cmdk-results { max-height: 52vh; overflow-y: auto; overscroll-behavior: contain; padding: 6px; }
+#cmdk-results:empty { display: none; }
+
+.cmdk-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.cmdk-item.active, .cmdk-item:hover { background: var(--accent-light); }
+.cmdk-item-avatar {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #fff;
+  background: linear-gradient(135deg, #0b2545, #0096c7);
+}
+.cmdk-item-body { flex: 1; min-width: 0; }
+.cmdk-item-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmdk-item-sub { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.cmdk-item-meta { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.cmdk-item-dossier { font-size: 12px; font-weight: 700; color: var(--cpmi-mid); font-variant-numeric: tabular-nums; }
+.cmdk-pill { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 99px; text-transform: uppercase; letter-spacing: .3px; }
+.cmdk-pill.paye { background: #dcfce7; color: #166534; }
+.cmdk-pill.attente { background: #fef9c3; color: #854d0e; }
+.cmdk-item mark { background: rgba(0,180,216,.28); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+#cmdk-empty { text-align: center; padding: 34px 20px; color: var(--text-muted); font-size: 13px; }
+#cmdk-empty .cmdk-empty-icon { font-size: 30px; margin-bottom: 8px; opacity: .5; }
+
+#cmdk-foot {
+  display: flex; gap: 16px; align-items: center;
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-muted);
+  background: var(--surface-1);
+}
+#cmdk-foot span { display: flex; align-items: center; gap: 4px; }
+
+@media (max-width: 560px) {
+  #cmdk-backdrop { padding: 8vh 10px 10px; }
+  #cmdk-foot { display: none; }
+  #cmdk-input { font-size: 16px; }
+}
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+  background: #1c1f27; color: var(--text); border-color: var(--border);
+}
+[data-theme="dark"] .exam-group-card { background: #1c1f27; }
+[data-theme="dark"] body::before, [data-theme="dark"] body::after { opacity: 0.02; }
+
+
+/* ── Statuts dossier ── */
+.badge-rendu   { background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer }
+.badge-attente { background:#fef9c3;color:#854d0e;border:1px solid #fde047;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer }
+.badge-urgent  { background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer }
+.hist-row-rendu td:first-child { border-left: 3px solid #22c55e; }
+.hist-row-attente td:first-child { border-left: 3px solid #eab308; }
+.hist-row-urgent td:first-child { border-left: 3px solid #ef4444; }
+
+/* ── Aperçu survol ── */
+.record-preview {
+  position:fixed; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:14px 18px; box-shadow:var(--shadow-lg);
+  font-size:12px; z-index:9999; max-width:280px; pointer-events:none;
+  transition:opacity .15s; opacity:0;
+}
+.record-preview.visible { opacity:1; }
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Raffinements globaux ── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+::selection { background: rgba(0,180,216,.25); color: var(--text); }
+
+/* Chiffres tabulaires — alignement vertical des colonnes de chiffres
+   (principe suisse : les données doivent s'aligner). Appliqué aux
+   montants, totaux, badges de dossier et valeurs numériques. */
+.kpi-val, .bar-count, .monthly-count, #montant-preview,
+.exam-row .exam-prix, .result-table td, .badge-type,
+td[data-label="Montant"], .cmdk-item-dossier, .total-val,
+#caisse-kpi-total, #caisse-kpi-nb, #caisse-kpi-moy, #caisse-kpi-attente {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Scrollbars fines et élégantes (desktop) */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(11,37,69,.18);
+    border-radius: 99px;
+    border: 2.5px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(11,37,69,.32); background-clip: padding-box; border: 2.5px solid transparent; }
+  * { scrollbar-width: thin; scrollbar-color: rgba(11,37,69,.22) transparent; }
+}
+
+/* Focus clavier visible et cohérent (accessibilité) */
+:focus-visible {
+  outline: 2px solid #00b4d8;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; }
+
+/* Respect des préférences de mouvement réduit */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ================================================================
+   ARRIÈRE-PLAN ANIMÉ — Symboles doux de la protection mère-enfant
+   ================================================================ */
+body {
+  font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+  background-color: #f0f4f8;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Fond propre professionnel */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(0,180,216,.07) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(11,37,69,.05) 0%, transparent 50%),
+    #f0f4f8;
+  z-index: -2;
+}
+
+/* Canvas SVG animé — particules symboliques */
+#cpmi-bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .45;
+}
+
+/* ── Animations de base ── */
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Header — balayage périodique avec temps de repos (au lieu d'un
+   shimmer continu qui attirait l'oeil en permanence) */
+@keyframes header-sweep {
+  0%   { background-position: -180% center; }
+  28%  { background-position:  180% center; }
+  100% { background-position:  180% center; }
+}
+
+/* Header — descente à l'ouverture de l'application */
+@keyframes header-drop {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo du header — flottement discret */
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2.5px); }
+}
+
+/* Croix médicale dorée — reflet bref et espacé */
+@keyframes cross-glint {
+  0%, 90%, 100% { opacity: .9;  filter: none; }
+  95%           { opacity: 1;   filter: drop-shadow(0 0 3.5px #00b4d8); }
+}
+
+/* ── Transition de vue (navigation entre sections) ── */
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(14px) scale(.99); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);   }
+}
+.view-entering {
+  animation: view-enter .32s cubic-bezier(.22,.61,.36,1) both;
+}
+
+/* ── Modal — entrée avec effet spring ── */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-box-in {
+  from { opacity: 0; transform: scale(.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1)  translateY(0);   }
+}
+.modal-backdrop {
+  animation: modal-backdrop-in .2s ease both;
+}
+.modal-box {
+  animation: modal-box-in .32s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ── Éléments de liste — entrée douce (cartes mobiles, dropdowns) ── */
+@keyframes login-item-in {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* ── Rangées historique — entrée décalée ── */
+@keyframes row-slide-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.hist-row-anim {
+  animation: row-slide-in .22s ease both;
+}
+
+/* ── KPI — pop-in sur la valeur ── */
+@keyframes kpi-pop {
+  0%   { transform: scale(.7);  opacity: 0; }
+  70%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.kpi-pop {
+  animation: kpi-pop .38s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ── Boutons — effet ripple au clic ── */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,.35) 0%, transparent 65%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform .5s ease, opacity .5s ease;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.btn:active::after {
+  transform: scale(2.5);
+  opacity: 1;
+  transition: none;
+}
+
+/* ── Inputs — lueur douce au focus ── */
+@keyframes input-focus-glow {
+  from { box-shadow: 0 0 0 0 rgba(0,150,199,.3); }
+  to   { box-shadow: 0 0 0 4px rgba(0,150,199,.10); }
+}
+input:focus, select:focus, textarea:focus {
+  animation: input-focus-glow .25s ease forwards;
+}
+
+/* ── Toast — rebond en sortie ── */
+@keyframes toast-bounce-out {
+  0%   { opacity: 1; transform: translateY(0) scale(1);    }
+  40%  { opacity: 1; transform: translateY(-6px) scale(1.03); }
+  100% { opacity: 0; transform: translateY(-16px) scale(.96); }
+}
+#toast.hiding {
+  animation: toast-bounce-out .35s ease forwards;
+}
+
+/* ── Carte d'entrée décalée au chargement ── */
+.card {
+  animation: slide-in-up .35s ease both;
+}
+.card:nth-child(2) { animation-delay: .05s; }
+.card:nth-child(3) { animation-delay: .10s; }
+.card:nth-child(4) { animation-delay: .15s; }
+
+/* ── Transitions couleurs pour mode nuit (activées temporairement) ── */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color .3s ease,
+    color .3s ease,
+    border-color .28s ease,
+    box-shadow .28s ease !important;
+}
+
+/* ================================================================
+   HEADER — Bannière CPMI
+   ================================================================ */
+header {
+  background: #0b2545;
+  color: #fff;
+  padding: 8px 28px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-height: 68px;
+  row-gap: 6px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(11,37,69,.28);
+  border-bottom: 3px solid #00b4d8;
+  animation: header-drop .55s cubic-bezier(.22,.61,.36,1);
+}
+/* Accent teal fin en bas du header */
+header::after {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0; right: 0; height: 3px;
+  background: linear-gradient(to right, #00b4d8, #0096c7, #0b2545 60%);
+  pointer-events: none;
+}
+
+.logo { display: flex; align-items: center; gap: 12px; cursor: default; }
+/* ✅ v13.33 — Le logo ne clignote plus (l'ancien pulse-soft faisait
+   varier l'opacité de .7 à 1, ce qui donnait un effet « défectueux »).
+   Flottement discret + réaction au survol sur le SVG interne, afin de
+   ne pas entrer en conflit avec la transform de l'animation. */
+.logo-icon {
+  width: 44px; height: 44px;
+  background: rgba(0,180,216,.18);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  border: 1px solid rgba(0,180,216,.35);
+  animation: logo-float 5.5s ease-in-out infinite;
+  backdrop-filter: blur(4px);
+  transition: background .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+.logo:hover .logo-icon {
+  background: rgba(0,180,216,.28);
+  border-color: rgba(0,180,216,.55);
+  box-shadow: 0 4px 14px rgba(0,180,216,.25);
+}
+.logo-icon svg {
+  transition: transform .45s cubic-bezier(.34,1.56,.64,1);
+}
+.logo:hover .logo-icon svg { transform: scale(1.12) rotate(-5deg); }
+/* Reflet bref sur la croix médicale dorée */
+.logo-icon svg g { animation: cross-glint 7s ease-in-out infinite; }
+.logo-name {
+  font-size: 18px; font-weight: 800;
+  letter-spacing: .5px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.logo-sub { font-size: 10.5px; opacity: .75; margin-top: 1px; letter-spacing: .3px; }
+
+/* User badge : entre logo et nav, poussé par margin-left auto sur desktop */
+#user-badge {
+  margin-left: auto;
+  background: rgba(0,180,216,.12);
+  border: 1px solid rgba(0,180,216,.25);
+  border-radius: 99px;
+  padding: 5px 13px !important;
+  font-weight: 500;
+  letter-spacing: .2px;
+}
+header nav { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.nav-btn {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.16);
+  color: rgba(255,255,255,.85);
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all .2s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.nav-btn:hover { background: rgba(0,180,216,.22); border-color: rgba(0,180,216,.4); color: #fff; transform: translateY(-1px); }
+.nav-btn.active {
+  background: #00b4d8;
+  border-color: #00b4d8;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0,180,216,.35);
+}
+.logout-btn { background: rgba(225,29,118,.15); border-color: rgba(225,29,118,.3); }
+.logout-btn:hover { background: rgba(225,29,118,.28); }
+
+/* ================================================================
+   LAYOUT
+   ================================================================ */
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 20px 70px;
+}
+
+/* Grands écrans : layout plus généreux */
+@media (min-width: 1500px) {
+  main { max-width: 1280px; padding: 36px 24px 80px; }
+  body { font-size: 14.5px; }
+}
+
+/* ================================================================
+   TABS — onglets d'analyses
+   ================================================================ */
+.tabs {
+  display: flex;
+  gap: 3px;
+  background: rgba(255,255,255,.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 5px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  box-shadow: 0 1px 4px rgba(11,37,69,.08), 0 0 0 1px rgba(255,255,255,.8) inset;
+  backdrop-filter: blur(8px);
+}
+.tab {
+  flex: 1; min-width: 110px;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: all .2s;
+  text-align: center;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.tab:hover { color: var(--cpmi-deep); background: var(--accent-light); }
+.tab.active {
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(11,37,69,.30), inset 0 1px 0 rgba(255,255,255,.15);
+  transform: translateY(-1px);
+}
+.tab-icon { display: block; font-size: 19px; margin-bottom: 3px; }
+
+/* ✅ v13.33 — Sous-onglets admin */
+.admin-tabs-main { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
+.admin-tab-main {
+  padding:8px 16px; font-size:13px; font-weight:500;
+  border-radius:var(--radius); cursor:pointer;
+  color:var(--text-secondary); background:var(--surface-1);
+  border:1px solid var(--border); transition:all .15s;
+}
+.admin-tab-main.active {
+  background:var(--cpmi-deep); color:#fff; border-color:var(--cpmi-deep);
+}
+.admin-tab-main:hover:not(.active) { color:var(--text-primary); background:var(--surface-2); }
+.admin-section { display:none; }
+.admin-section.active { display:block; }
+.admin-tabs-sub { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; flex-wrap:wrap; }
+.admin-tab-sub {
+  padding:7px 16px; font-size:12.5px; cursor:pointer;
+  color:var(--text-secondary); background:transparent;
+  border:none; border-bottom:2px solid transparent; margin-bottom:-2px;
+  transition:all .15s; font-family:inherit;
+}
+.admin-tab-sub.active { color:var(--cpmi-deep); border-bottom-color:var(--cpmi-deep); font-weight:600; }
+.admin-tab-sub:hover:not(.active) { color:var(--text-primary); background:var(--accent-light); }
+.admin-sub-section { display:none; }
+.admin-sub-section.active { display:block; }
+
+/* ================================================================
+   PANELS
+   ================================================================ */
+.panel { display: none; }
+.panel.active { display: block; animation: fade-in .3s ease; }
+
+/* ================================================================
+   CARD — cartes de formulaire
+   ================================================================ */
+.card {
+  background: #ffffff;
+  border: 1px solid #dae4ee;
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 4px rgba(11,37,69,.07), 0 2px 12px rgba(11,37,69,.04);
+  transition: box-shadow .3s ease, transform .3s ease, border-color .3s ease;
+}
+.card:hover {
+  box-shadow: 0 4px 20px rgba(11,37,69,.12), 0 1px 4px rgba(11,37,69,.06);
+  transform: translateY(-2px);
+  border-color: rgba(0,150,199,.2);
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cpmi-deep);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--accent-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title::before {
+  content: '';
+  display: inline-block;
+  width: 4px; height: 16px;
+  background: linear-gradient(to bottom, #00b4d8, #0b2545);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   FORMULAIRES
+   ================================================================ */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 15px; }
+.form-grid.col-3 { grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1/-1; }
+label { font-size: 12px; font-weight: 600; color: var(--text-label); letter-spacing: .2px; }
+label span.req { color: var(--cpmi-rose); margin-left: 2px; }
+
+input[type=text], input[type=date], input[type=number],
+input[type=password], input[type=datetime-local],
+input[type=tel], input[type=email], input[type=search], input[type=time],
+select, textarea {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  font-size: 13px;
+  color: var(--text);
+  background: rgba(255,255,255,.9);
+  width: 100%;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  outline: none;
+  font-family: inherit;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--cpmi-mid);
+  box-shadow: 0 0 0 3px rgba(0,150,199,.13);
+  background: #fff;
+}
+textarea { resize: vertical; min-height: 64px; }
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a739f' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  padding-right: 30px;
+}
+
+/* ================================================================
+   TABLEAUX DE RÉSULTATS
+   ================================================================ */
+.result-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.result-table th {
+  font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .6px;
+  padding: 8px 11px; text-align: left;
+  background: #f4f8fb;
+  border-bottom: 2px solid var(--border);
+}
+.result-table th:first-child { border-radius: 8px 0 0 0; }
+.result-table th:last-child  { border-radius: 0 8px 0 0; }
+.result-table td { padding: 7px 8px; border-bottom: 1px solid #eef3f8; vertical-align: middle; }
+.result-table tr:last-child td { border-bottom: none; }
+.result-table tr:hover td { background: rgba(0,180,216,.06); }
+.result-table input[type=number], .result-table input[type=text] { padding: 6px 8px; font-size: 13px; }
+.ref-range { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.unit { font-size: 11px; color: var(--text-muted); }
+
+/* ================================================================
+   BADGES D'INTERPRÉTATION
+   ================================================================ */
+.interp {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px;
+  white-space: nowrap; display: inline-block;
+  letter-spacing: .3px;
+}
+.interp.ok  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.interp.hi  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.interp.lo  { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+
+/* NFS — la case Valeur elle-même se colore quand le résultat est anormal,
+   sans colonne Interprétation dédiée */
+.result-table input.val-hi { background: #fee2e2 !important; color: #991b1b !important; border-color: #fca5a5 !important; font-weight: 700; }
+.result-table input.val-lo { background: #dbeafe !important; color: #1e40af !important; border-color: #93c5fd !important; font-weight: 700; }
+
+/* ================================================================
+   BOUTONS
+   ================================================================ */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  letter-spacing: .2px;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.btn:active { transform: translateY(0); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--cpmi-deep), var(--cpmi-mid));
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(11,37,69,.28);
+  position: relative; overflow: hidden;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute; top: 0; left: -55%;
+  width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.25), transparent);
+  transform: skewX(-18deg);
+  transition: left .55s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+}
+.btn-primary:hover::before { left: 115%; }
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(11,37,69,.36); }
+.btn-outline { background: rgba(255,255,255,.8); border: 1.5px solid var(--border); color: var(--text); }
+.btn-outline:hover { background: var(--accent-light); border-color: var(--cpmi-mid); color: var(--cpmi-deep); }
+.btn-danger { background: #fef2f2; color: #991b1b; border: 1.5px solid #fca5a5; }
+.btn-danger:hover { background: #fee2e2; }
+.btn-success { background: #f0fdf4; color: #065f46; border: 1.5px solid #6ee7b7; }
+.btn-success:hover { background: #d1fae5; }
+
+/* ================================================================
+   TOAST
+   ================================================================ */
+#toast {
+  position: fixed;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: 28px;
+  background: #0b2545;
+  color: #fff;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 13px; font-weight: 600;
+  opacity: 0; transform: translateY(12px) scale(.97);
+  transition: all .28s var(--ease-spring);
+  pointer-events: none; z-index: 999;
+  display: flex; align-items: center; gap: 9px;
+  max-width: 360px;
+  box-shadow: 0 8px 28px rgba(11,37,69,.35);
+  border-left: 4px solid #00b4d8;
+}
+#toast.show { opacity: 1; transform: translateY(0) scale(1); }
+#toast.ok  { background: #064e3b; border-left-color: #34d399; }
+#toast.err { background: #7f1d1d; border-left-color: #f87171; }
+
+/* ================================================================
+   SECTION LABEL
+   ================================================================ */
+.section-label {
+  font-size: 10.5px; font-weight: 800;
+  color: var(--cpmi-teal);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin: 22px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after {
+  content: ''; flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--cpmi-teal), transparent);
+  opacity: .4;
+}
+
+/* ================================================================
+   LIGNES D'EXAMENS — fiche d'accueil et grille tarifaire admin
+   Confort visuel : zone cliquable élargie, checkbox agrandie, survol net
+   ================================================================ */
+.exam-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px; margin: 0 -8px;
+  border-radius: 8px;
+  border-bottom: 1px dashed rgba(199,215,245,.5);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.exam-row:last-child { border-bottom: none; }
+.exam-row:hover { background: rgba(0,180,216,.08); }
+.exam-row.checked { background: rgba(209,250,229,.35); }
+.exam-row input[type=checkbox] {
+  width: 19px; height: 19px;
+  accent-color: var(--cpmi-mid);
+  cursor: pointer; flex-shrink: 0;
+}
+.exam-row label {
+  flex: 1; cursor: pointer;
+  font-size: 12.5px; font-weight: 500; color: var(--text);
+  line-height: 1.3;
+}
+.exam-row input[type=number] {
+  width: 80px; text-align: right;
+  font-weight: 700; color: var(--cpmi-deep);
+  font-size: 12.5px; padding: 4px 7px;
+  flex-shrink: 0;
+}
+.exam-row .exam-unit { font-size: 10px; color: var(--text-muted); flex-shrink: 0; width: 14px; }
+.exam-group-card {
+  background: rgba(255,255,255,.82);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  backdrop-filter: blur(4px);
+  transition: box-shadow .2s;
+}
+.exam-group-card:hover { box-shadow: 0 2px 10px rgba(11,37,69,.07); }
+.exam-group-title {
+  font-size: 10.5px; font-weight: 800; color: var(--cpmi-deep);
+  text-transform: uppercase; letter-spacing: .6px;
+  margin-bottom: 6px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.accordion-header:hover { background: var(--bg-alt); border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+
+/* ================================================================
+   ANTIBIOGRAMME
+   ================================================================ */
+.abg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px,1fr)); gap: 8px; }
+.abg-row {
+  display: flex; align-items: center; gap: 9px;
+  background: rgba(255,255,255,.7);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 11px;
+  transition: border-color .15s, background .15s;
+}
+.abg-row:hover { background: rgba(255,255,255,.95); }
+.abg-name { flex: 1; font-size: 12px; color: var(--text-label); font-weight: 500; }
+.abg-row select { width: auto; padding: 4px 26px 4px 8px; font-size: 12px; min-width: 82px; }
+.S { border-left: 4px solid #059669; background: rgba(209,250,229,.3); }
+.I { border-left: 4px solid #d97706; background: rgba(254,243,199,.3); }
+.R { border-left: 4px solid #dc2626; background: rgba(254,226,226,.3); }
+.nd { border-left: 4px solid var(--border); }
+
+/* ================================================================
+   HISTORIQUE
+   ================================================================ */
+#history-table, #users-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+#history-table th, #users-table th {
+  background: #f4f8fb;
+  padding: 9px 11px; text-align: left;
+  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 2px solid var(--border); white-space: nowrap;
+}
+#history-table td, #users-table td { padding: 8px 11px; border-bottom: 1px solid #eef3f8; vertical-align: middle; }
+#history-table td[data-label="Actions"] { vertical-align: bottom; padding-bottom: 6px; }
+#history-table tr:hover td, #users-table tr:hover td { background: rgba(224,234,255,.5); }
+.badge-type {
+  font-size: 10px; font-weight: 700; padding: 2px 7px;
+  border-radius: 20px;
+  background: #e8f4fb;
+  color: var(--cpmi-deep);
+  border: 1px solid rgba(0,150,199,.28);
+}
+.badge-hema     { background:#fee2e2; color:#b91c1c; border-color:#fca5a5; }
+.badge-bio      { background:#fef9c3; color:#854d0e; border-color:#fde047; }
+.badge-bacterio { background:#dcfce7; color:#166534; border-color:#86efac; }
+.badge-sero     { background:#ede9fe; color:#5b21b6; border-color:#c4b5fd; }
+.badge-parasito { background:#fce7f3; color:#9d174d; border-color:#f9a8d4; }
+.badge-gs       { background:#ffedd5; color:#9a3412; border-color:#fdba74; }
+.badge-bpn      { background:#cffafe; color:#155e75; border-color:#67e8f9; }
+.bpn-compo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:6px 14px; }.bpn-compo-grid label { display:flex; align-items:center; gap:7px; font-size:12.5px; cursor:pointer; padding:3px 0; }
+.bpn-compo-grid input[type=checkbox] { width:16px; height:16px; accent-color:var(--cpmi-mid,#0891b2); cursor:pointer; }
+.modal-backdrop { position:fixed; inset:0; background:rgba(11,37,69,.5); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+.modal-box { background:var(--card,#fff); border-radius:16px; padding:22px; width:100%; max-width:420px; box-shadow:0 24px 64px rgba(11,37,69,.35); max-height:90vh; max-height:88dvh; overflow-y:auto; overscroll-behavior:contain; }
+.modal-title { font-size:16px; font-weight:700; margin-bottom:14px; color:var(--text,#0f172a); }
+.modal-label { display:block; font-size:12px; font-weight:600; color:var(--text-muted,#64748b); margin:10px 0 4px; }
+.modal-input { width:100%; padding:9px 11px; border:1px solid var(--border,#e2e8f0); border-radius:8px; font-size:14px; box-sizing:border-box; }
+.modal-input:focus { outline:2px solid var(--cpmi-mid,#0891b2); outline-offset:-1px; }
+.modal-error { color:#b91c1c; font-size:12.5px; min-height:16px; margin-top:8px; }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+.field-locked { background:#eef2f7 !important; color:#94a3b8 !important; cursor:not-allowed !important; opacity:.75; border-style:dashed !important; }
+.field-locked::placeholder { color:#94a3b8; }
+.empty-state { text-align: center; padding: 52px 20px; color: var(--text-muted); }
+
+/* ================================================================
+   STATISTIQUES — KPI & GRAPHIQUES
+   ================================================================ */
+.stats-kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 22px; }
+.stats-kpi {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid #dae4ee;
+  border-left: 3px solid #00b4d8;
+  padding: 22px 16px; text-align: center;
+  box-shadow: 0 1px 4px rgba(11,37,69,.07);
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.stats-kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(11,37,69,.11);
+}
+.kpi-val { font-size: 38px; font-weight: 800; color: var(--cpmi-deep); line-height: 1.1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.kpi-label { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.stats-card { min-height: 220px; }
+.bar-chart { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.bar-row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.bar-label { width: 120px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.bar-track { flex: 1; background: var(--accent-light); border-radius: 99px; height: 13px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+.bar-count { width: 28px; text-align: right; font-weight: 700; color: var(--text); font-size: 12px; }
+.pie-chart { display: flex; gap: 16px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.pie-legend { display: flex; flex-direction: column; gap: 8px; font-size: 12px; flex: 1; min-width: 120px; }
+.pie-legend-item { display: flex; align-items: center; gap: 8px; }
+.pie-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.monthly-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; margin-top: 12px; padding-bottom: 24px; position: relative; }
+.monthly-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.monthly-bar { width: 100%; background: linear-gradient(to top, var(--cpmi-deep), var(--cpmi-sky)); border-radius: 5px 5px 0 0; transition: height .5s ease; min-height: 2px; }
+.monthly-month { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.monthly-count { font-size: 10px; font-weight: 700; color: var(--cpmi-deep); }
+.stats-empty { text-align: center; color: var(--text-muted); font-size: 13px; padding: 30px 0; }
+
+/* ================================================================
+   TABLE WRAPPER
+   ================================================================ */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(11,37,69,.06);
+  position: relative;
+}
+/* Sur petit écran, indiquer visuellement qu'il y a plus de colonnes à voir
+   en scrollant horizontalement (sinon "Valeurs normales" / "Commentaire"
+   restent invisibles sans que l'utilisateur sache qu'il peut les faire défiler) */
+
+
+/* ================================================================
+   ÉCRAN DE CONNEXION ANIMÉ
+   ================================================================ */
+
+/* ================================================================
+   STYLES SPÉCIAUX
+   ================================================================ */
+.sync-status { font-size: 11px; opacity: .85; margin-left: 4px; }
+.logout-btn { background: rgba(225,29,118,.18); border-color: rgba(225,29,118,.35); }
+
+#patient-tranche {
+  background: linear-gradient(135deg, #e8f4fb, #dcf3fa);
+  border: 1px solid var(--border);
+  color: var(--cpmi-deep);
+  font-weight: 700;
+  font-size: 11.5px;
+  padding: 3px 12px;
+  border-radius: 99px;
+}
+#montant-preview {
+  font-weight: 800; color: var(--cpmi-deep);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ================================================================
+   ✅ v13.34 — RESPONSIVE COMPLET — breakpoints tous les ~50px
+   Colonnes masquées progressivement, actions sur une ligne,
+   animations fluides à chaque transition.
+   ================================================================ */
+
+/* ── 768px : inputs plus grands (évite le zoom iOS) ── */
+@media (max-width: 768px) {
+  input[type=text], input[type=date], input[type=number],
+  input[type=password], input[type=tel], input[type=email],
+  input[type=search], input[type=time], input[type=datetime-local],
+  select, textarea { font-size: 16px; }
+}
+
+/* ── 900px : padding réduit ── */
+@media (max-width: 900px) {
+  main { padding: 16px 14px 50px; }
+  .card { padding: 16px 14px; }
+  .form-grid { grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 10px; }
+}
+
+/* ── 900px (réduit) + 641px (min) : navigation + actions ⋯ ── */
+@media (max-width: 900px) and (min-width: 641px) {
+  header { height: auto; min-height: 68px; flex-wrap: wrap; padding: 10px 20px; row-gap: 8px; }
+  header nav { flex-wrap: wrap; row-gap: 8px; }
+
+  /* Colonnes masquées à cette largeur */
+  #history-table th:nth-child(5),  /* Âge */
+  #history-table td:nth-child(5),
+  #history-table th:nth-child(6),  /* Sexe */
+  #history-table td:nth-child(6),
+  #history-table th:nth-child(9),  /* Saisi par */
+  #history-table td:nth-child(9) { display: none; }
+
+  /* Actions : ligne unique avec scroll horizontal */
+  #history-table td[data-label="Actions"] {
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    vertical-align: bottom;
+    padding-bottom: 6px;
+  }
+  #history-table td[data-label="Actions"]::-webkit-scrollbar { display: none; }
+
+  /* Secondaires cachés — remplacés par ⋯ */
+  #history-table .btn-action-secondary { display: none !important; }
+  #history-table .btn-action-menu { display: inline-flex !important; }
+
+  /* Menu dropdown ⋯ */
+  .action-dropdown { position: relative; display: inline-block; }
+  .action-dropdown-content {
+    display: none; position: absolute; right: 0; top: 100%;
+    background: var(--surface-2); border: 0.5px solid var(--border);
+    border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.14);
+    z-index: 999; min-width: 170px; padding: 5px;
+    animation: login-item-in .18s ease both;
+  }
+  .action-dropdown.open .action-dropdown-content { display: block; }
+  .action-dropdown-content button {
+    display: flex !important; width: 100%; padding: 8px 11px;
+    font-size: 12px; border: none; background: none; color: var(--text-primary);
+    cursor: pointer; border-radius: 7px; gap: 8px; align-items: center; text-align: left;
+  }
+  .action-dropdown-content button:hover { background: var(--accent-light); }
+}
+
+/* ── 850px : masquer le service ── */
+@media (max-width: 850px) and (min-width: 641px) {
+  #history-table th:nth-child(7),
+  #history-table td:nth-child(7) { display: none; }
+}
+
+/* ── 750px : masquer le type, raccourcir N° dossier ── */
+@media (max-width: 750px) and (min-width: 641px) {
+  #history-table th:nth-child(8),
+  #history-table td:nth-child(8) { display: none; }
+  #history-table th:nth-child(3),
+  #history-table td:nth-child(3) { max-width: 80px; }
+}
+
+/* ── 641px → 320px : MODE CARTE — tout s'empile proprement ── */
+@media (max-width: 640px) {
+  body { font-size: 13.5px; }
+
+  /* ── Header : 2 rangées — logo+badge / nav horizontale scrollable ── */
+  header {
+    height: auto;
+    flex-wrap: wrap;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 0;
+    row-gap: 0;
+    animation: header-drop .45s cubic-bezier(.22,.61,.36,1);
+  }
+  .logo { flex: 1; }
+  .logo-sub { display: none; }
+  /* Badge utilisateur : reste à droite du logo (flex inline) */
+  #user-badge {
+    font-size: 11px; opacity: .85;
+    white-space: nowrap; flex-shrink: 0;
+    max-width: 130px; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Nav : barre complète en scroll horizontal sous logo+badge */
+  header nav {
+    flex: 0 0 calc(100% + 28px);
+    margin-left: -14px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+    padding: 8px 14px 10px;
+    border-top: 1px solid rgba(255,255,255,.10);
+    margin-top: 8px;
+    -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
+            mask-image: linear-gradient(to right, black 88%, transparent 100%);
+    align-items: center;
+  }
+  header nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    flex: 0 0 auto;
+    padding: 8px 13px;
+    font-size: 12px;
+    white-space: nowrap;
+    min-height: 36px;
+    transition: background .2s ease, transform .15s ease;
+  }
+  .nav-btn:active { transform: scale(.96); }
+
+  /* ── Main ── */
+  main { padding: 12px 10px 50px; }
+
+  /* ── Tabs : scroll horizontal, ne wrappent plus ── */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 2px; padding: 3px; margin-bottom: 16px;
+    -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
+            mask-image: linear-gradient(to right, black 88%, transparent 100%);
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; padding: 8px 14px; font-size: 12px; min-width: auto; }
+
+  /* ── Dashboard : 2 colonnes ── */
+  #dashboard-cards { grid-template-columns: 1fr 1fr; }
+
+  /* ── Tableau → cartes ── */
+  #view-historique .table-wrap,
+  #view-comptes .table-wrap { border: none; overflow: visible; }
+
+  #history-table thead { display: none; }
+  #history-table tbody { display: flex; flex-direction: column; gap: 10px; }
+
+  #history-table tr {
+    display: grid;
+    grid-template-columns: 28px auto 1fr auto;
+    grid-template-rows: auto auto auto auto auto auto;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    animation: login-item-in .25s cubic-bezier(.22,.61,.36,1) both;
+    transition: box-shadow .2s ease, transform .15s ease;
+  }
+  #history-table tr:active { transform: scale(.99); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+
+  /* Checkbox */
+  #history-table td:nth-child(1) {
+    grid-column: 1; grid-row: 1;
+    padding: 9px 2px 9px 10px;
+    border: none; display: flex; align-items: center;
+  }
+  #history-table td:nth-child(1)::before { display: none; }
+
+  /* Date */
+  #history-table td[data-label="Date"] {
+    grid-column: 2; grid-row: 1;
+    padding: 9px 4px; font-size: 11px; color: var(--text-muted);
+    border: none; display: flex; align-items: center;
+  }
+  #history-table td[data-label="Date"]::before { display: none; }
+
+  /* N° Dossier */
+  #history-table td[data-label="N° Dossier"] {
+    grid-column: 3; grid-row: 1;
+    padding: 9px 4px; font-size: 12px; font-weight: 700; color: var(--cpmi-deep);
+    border: none; display: flex; align-items: center;
+  }
+  #history-table td[data-label="N° Dossier"]::before { display: none; }
+
+  /* Montant dans l'en-tête */
+  #history-table td[data-label="Montant"] {
+    grid-column: 4; grid-row: 1;
+    padding: 9px 10px 9px 4px; font-size: 12px; font-weight: 800; color: #059669;
+    border: none; display: flex; align-items: center; white-space: nowrap;
+  }
+  #history-table td[data-label="Montant"]::before { display: none; }
+
+  /* Patient — toute la largeur, ligne 2 */
+  #history-table td[data-label="Patient"] {
+    grid-column: 1 / -1; grid-row: 2;
+    padding: 7px 12px;
+    background: linear-gradient(to right, #f2f9fc, #f8fbfd);
+    border-top: 0.5px solid var(--border);
+    border-bottom: 0.5px solid var(--border);
+    font-size: 14px; font-weight: 700;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  }
+  #history-table td[data-label="Patient"]::before { display: none; }
+
+  /* Type d'analyse — ligne 3 */
+  #history-table td[data-label="Type"] {
+    grid-column: 1 / -1; grid-row: 3;
+    padding: 6px 12px 3px; border: none;
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  }
+  #history-table td[data-label="Type"]::before { display: none; }
+
+  /* Service — ligne 4, compact */
+  #history-table td[data-label="Service"] {
+    grid-column: 1 / -1; grid-row: 4;
+    padding: 2px 12px 6px; font-size: 11px; color: var(--text-muted);
+    border: none; display: flex; align-items: center; gap: 5px;
+  }
+  #history-table td[data-label="Service"]::before {
+    content: "🏥"; font-size: 11px;
+    font-weight: normal; text-transform: none; color: inherit;
+  }
+
+  /* Statut — ligne 5, à gauche */
+  #history-table td[data-label="Statut"] {
+    grid-column: 1 / -1; grid-row: 5;
+    padding: 5px 12px 6px; border-top: 0.5px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+  }
+  #history-table td[data-label="Statut"]::before { display: none; }
+
+  /* Colonnes masquées sur mobile */
+  #history-table td[data-label="Âge"],
+  #history-table td[data-label="Sexe"],
+  #history-table td[data-label="Saisi par"] { display: none; }
+
+  /* ── ACTIONS — ligne unique horizontale ────────────────── */
+  #history-table td[data-label="Actions"] {
+    grid-column: 1 / -1; grid-row: 6;
+    padding: 8px 10px;
+    border-top: 0.5px solid var(--border);
+    background: var(--surface-1);
+    display: flex;
+    flex-direction: row;          /* ← ligne, pas colonne */
+    flex-wrap: nowrap;
+    gap: 5px;
+    align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    vertical-align: bottom;
+    /* dégradé indicateur de scroll */
+    -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+            mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  }
+  #history-table td[data-label="Actions"]::-webkit-scrollbar { display: none; }
+  #history-table td[data-label="Actions"]::before { display: none; }
+
+  /* Tous les boutons visibles, même taille, même ligne */
+  #history-table td[data-label="Actions"] .btn,
+  #history-table td[data-label="Actions"] .btn-action-secondary,
+  #history-table td[data-label="Actions"] .btn-action-primary {
+    display: inline-flex !important;
+    align-items: center; justify-content: center;
+    flex: 0 0 auto;
+    width: 34px; height: 34px;
+    padding: 0;
+    font-size: 15px;
+    border-radius: 8px;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  #history-table td[data-label="Actions"] .btn:active { transform: scale(.9); }
+  /* Bouton ⋯ masqué (tout est déjà visible) */
+  #history-table td[data-label="Actions"] .btn-action-menu { display: none !important; }
+
+  /* Séparateur vertical entre groupes */
+  #history-table td[data-label="Actions"] .btn-action-sep {
+    display: inline-flex !important;
+    width: 1px; height: 22px;
+    background: var(--border);
+    flex-shrink: 0; margin: 0 2px;
+  }
+
+  /* ── Fiche patient : grille 2 colonnes ── */
+  #fiche-identification .form-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  #fiche-identification .form-group:has(#p_nom),
+  #fiche-identification .form-group:has(#p_age),
+  #fiche-identification .form-group:has(#p_prescripteur_id),
+  #fiche-identification .form-group:has(#p_medecin),
+  #fiche-identification .form-group.full { grid-column: 1 / -1; }
+
+  #fiche-identif-title { flex-wrap: wrap; font-size: 11.5px; line-height: 1.4; gap: 6px 8px; }
+  #fiche-identif-title button { margin-left: 0 !important; width: 100%; }
+
+  /* ── Login ── */
+  #toast { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-width: none; }
+  .stats-kpi-row { grid-template-columns: repeat(2,1fr); gap: 10px; }
+  .kpi-val { font-size: 28px; }
+
+  /* ── Statistiques : cartes empilées (évite le débordement horizontal) ── */
+  .stats-grid { grid-template-columns: 1fr; gap: 12px; }
+  .stats-card { min-height: 0; }
+  .charts-2col { grid-template-columns: 1fr !important; }
+
+  /* Filet de sécurité : aucun débordement horizontal de la page sur mobile.
+     Les zones défilables (nav, onglets, tableaux) gardent leur propre
+     overflow-x:auto et restent défilables. */
+  main { overflow-x: clip; }
+}
+
+/* ── 550px : nav scrollable, pas besoin de compresser le texte ── */
+@media (max-width: 550px) and (min-width: 421px) {
+  /* nav scrollable — taille conservée */
+}
+
+/* ── 480px : forcer 2 colonnes sur le dashboard ── */
+@media (max-width: 480px) {
+  #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+  #dashboard-cards > div { padding: 9px 10px; }
+  #dashboard-cards > div > div:last-child { font-size: 16px; }
+}
+
+/* ── 420px ── */
+@media (max-width: 420px) {
+  #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 6px; }
+}
+
+/* ── 380px : très petits écrans ── */
+@media (max-width: 380px) {
+  header { padding: 8px 10px 0; }
+  main { padding: 10px 8px 50px; }
+  #dashboard-cards { grid-template-columns: 1fr 1fr; gap: 5px; }
+  .stats-kpi-row { grid-template-columns: 1fr; }  /* KPI 1 colonne */
+  /* Actions : icônes encore plus compactes */
+  #history-table td[data-label="Actions"] .btn,
+  #history-table td[data-label="Actions"] .btn-action-secondary,
+  #history-table td[data-label="Actions"] .btn-action-primary {
+    width: 30px; height: 30px; font-size: 13px;
+  }
+}
+
+/* ── 320px : écrans miniatures ── */
+@media (max-width: 320px) {
+  #history-table td[data-label="Actions"] .btn,
+  #history-table td[data-label="Actions"] .btn-action-secondary,
+  #history-table td[data-label="Actions"] .btn-action-primary {
+    width: 28px; height: 28px; font-size: 12px;
+  }
+}
+
+/* ================================================================
+   IMPRESSION — Filigrane CPMI
+   ================================================================ */
+/* ── Loading overlay ───────────────────────────────── */
+#loading-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(255,255,255,.75); backdrop-filter: blur(3px);
+  align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+}
+#loading-overlay.active { display: flex; }
+.loading-spinner {
+  width: 44px; height: 44px; border: 4px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.loading-label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+
+@media print {
+  #loading-overlay { display: none !important; }
+  .print-composite-section + .print-composite-section { page-break-before: always; }
+  .print-composite-section { break-inside: avoid; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  @page { margin: 0.85cm 1.0cm; size: A4; }
+
+  /* Masquer toute l'app, n'afficher que le rendu d'impression */
+  body > *:not(#print-render) { display: none !important; }
+  body::before { display: none !important; content: none !important; }
+  #cpmi-bg-canvas { display: none !important; }
+  body { background: #fff !important; margin: 0; }
+  #print-render { display: block !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12.5pt; color: #000; background: #fff; }
+
+  /* ✅ v13.34 — En-tête : double liseré or/bleu + logo + badge type */
+  .print-header-bar {
+    height: 3px;
+    background: linear-gradient(to right, #1e3a8a 0%, #2563eb 60%, #cba135 100%);
+    margin-bottom: 0;
+  }
+  .print-header-bar.bottom {
+    height: 2px;
+    background: linear-gradient(to right, #cba135 0%, #1e3a8a 100%);
+    margin-top: 0;
+  }
+  .print-header-content {
+    display: flex; align-items: center; gap: 18px;
+    padding: 8px 0 8px;
+    border-bottom: none;
+    margin-bottom: 10px;
+    background: #fff;
+  }
+  .print-logo {
+    display: flex; align-items: center; justify-content: center;
+    width: 46px; height: 46px; flex-shrink: 0;
+    filter: grayscale(1) contrast(1.4);
+  }
+  .print-center-name {
+    font-size: 19pt; font-weight: 900; color: #000; letter-spacing: .4px;
+    line-height: 1.35;
+  }
+  .print-center-sub { font-size: 10pt; color: #444; margin-top: 3px; line-height: 1.4; }
+  .print-center-addr { font-size: 9.5pt; color: #666; font-style: italic; margin-top: 2px; }
+  .print-type-badge {
+    margin-left: auto;
+    background: #1e3a8a; color: #fff;
+    padding: 7px 16px; border-radius: 4px;
+    font-size: 9pt; font-weight: 800; letter-spacing: .8px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ✅ v13.34 — Fiche patient : fond très léger, N° dossier en vedette */
+  .print-patient-card {
+    background: #f8faff;
+    border: 1.5px solid #1e3a8a;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .print-patient-label {
+    font-size: 7pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: #1e3a8a; margin-bottom: 5px;
+    border-bottom: 1px solid #c7d9f9; padding-bottom: 3px;
+  }
+  .print-patient-table { width: 100%; border-collapse: collapse; font-size: 11.5pt; }
+  .print-patient-table td { padding: 5px 9px; vertical-align: top; border-right: 1px solid #d0dcf7; }
+  .print-patient-table td:last-child { border-right: none; }
+  .print-patient-table .lbl { font-size: 9.5pt; color: #444; font-weight: 600; }
+  .print-patient-table .val { font-weight: 500; color: #000; }
+  .print-dossier { font-size: 17pt; font-weight: 900; color: #1e3a8a; letter-spacing: .3px; }
+
+  /* Sections */
+  .print-section { margin-bottom: 8px; break-inside: avoid; }
+  .print-section-title { font-size: 12pt; font-weight: 700; color: #000; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1.5px solid #000; padding-bottom: 3px; margin-bottom: 7px; }
+
+  /* ✅ v13.34 — Tableaux résultats : en-têtes bleu CPMI, alternance douce */
+  .print-table { width: 100%; border-collapse: collapse; font-size: 11.5pt; margin-bottom: 9px; }
+  .print-table th {
+    background: #1e3a8a !important; color: #fff !important;
+    font-weight: 700; padding: 6px 9px; text-align: left;
+    border: 1px solid #1e3a8a; font-size: 10.5pt; letter-spacing: .3px;
+  }
+  .print-table td { padding: 7px 10px; border: 1px solid #d0dcf7; vertical-align: middle; color: #000; }
+  .print-table tr:nth-child(even) td { background: #f0f5ff; }
+  .print-table tr:nth-child(odd)  td { background: #fff; }
+  .print-table tr:hover td { background: #e8f0fe; }
+  /* Résultats anormaux : pas de fond coloré (économie d'encre) — texte en gras
+     + un repère textuel ▲/▼ explicite pour rester lisible même en noir pur */
+  /* ✅ v13.34 — Anomalies : fond coloré léger (économie encre modérée) + repère texte */
+  .print-hi   { color: #991b1b !important; background: #fde8e8 !important; font-weight: 800; }
+  .print-hi::before   { content: '▲ '; }
+  .print-lo   { color: #1e40af !important; background: #dbeafe !important; font-weight: 800; }
+  .print-lo::before   { content: '▼ '; }
+  .print-ok   { color: #155724 !important; background: #f0fff4 !important; font-weight: 400; }
+  .print-warn { color: #92400e !important; background: #fef9c3 !important; font-weight: 800; }
+  .print-warn::before { content: '⚠ '; }
+
+  /* Notes et conclusions — fond blanc, bordure gauche noire en guise d'accent */
+  .print-note   { font-size: 8pt; color: #000; margin: 3px 0; padding: 3px 8px; }
+  .print-italic { font-style: italic; }
+  .print-conclusion { font-size: 8.5pt; font-weight: 700; padding: 5px 10px; border-radius: 0; margin: 4px 0; background: #fff; border: 1px solid #000; border-left: 4px solid #000; color: #000; }
+  .print-conclusion.print-hi   { border-left-color: #000; }
+  .print-conclusion.print-warn { border-left-color: #000; }
+  .print-conclusion.print-note { border-left-color: #999; }
+
+  /* ✅ v13.34 — Pied de page : 3 zones + confidentialité */
+  .print-footer { margin-top: 14px; }
+  .print-footer-bar {
+    height: 2px;
+    background: linear-gradient(to right, #1e3a8a, #cba135);
+    margin-bottom: 8px;
+  }
+  .print-footer-content { display: flex; gap: 12px; align-items: flex-start; }
+  .print-sig-box { flex: 1; }
+  .print-sig-label {
+    font-size: 7.5pt; font-weight: 700; color: #fff;
+    background: #1e3a8a; padding: 3px 8px;
+    margin-bottom: 3px; display: inline-block; letter-spacing: .3px;
+  }
+  .print-sig-zone {
+    border: 1px solid #1e3a8a; height: 18mm;
+    border-radius: 0; background: #f8faff;
+  }
+  .print-meta {
+    font-size: 7pt; color: #444; font-style: italic;
+    align-self: flex-end; text-align: right; margin-left: auto;
+    line-height: 1.5;
+  }
+  .print-confidential {
+    text-align: center; font-size: 7pt; color: #888;
+    font-style: italic; margin-top: 6px; padding-top: 4px;
+    border-top: 1px dashed #ccc;
+  }
+
+  /* Filigrane CPMI — extrêmement léger, ne consomme quasiment pas d'encre */
+  body::after {
+    content: 'CPMI';
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%,-50%) rotate(-35deg);
+    font-size: 14cm; font-weight: 900;
+    color: rgba(0,0,0,.03);
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: .1em; pointer-events: none;
+    z-index: -1; white-space: nowrap;
+  }
+  #print-render::after {
+    content: 'Centre de Protection Mère et Infantile · Grand-Bassam';
+    position: fixed; bottom: 1cm; left: 0; right: 0;
+    text-align: center; font-size: 7.5pt;
+    color: rgba(0,0,0,.35); font-style: italic; font-weight: 600;
+  }
+}
+
+/* Masquer print-render hors impression */
+#print-render { display: none; }
+
+/* ✅ v13.28 — Modèles rapides d'examens */
+.btn-modele {
+  font-family: inherit; font-size: 11.5px; font-weight: 700;
+  background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc;
+  border-radius: 99px; padding: 5px 12px; cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.btn-modele:hover { background: #bae6fd; transform: translateY(-1px); }
+.btn-modele:active { transform: translateY(0); }
+.btn-modele-clear { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+.btn-modele-clear:hover { background: #fecaca; }
+
+/* ✅ v13.28 — Alerte valeurs critiques (non bloquante) */
+#critical-alert-box {
+  display: none; margin-bottom: 16px; padding: 12px 16px;
+  background: var(--danger-light); border: 2px solid var(--danger);
+  border-radius: var(--radius); color: var(--danger); font-size: 13px; font-weight: 600;
+  animation: critPulse 1.4s ease-in-out infinite;
+}
+@keyframes critPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.25); } 50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); } }
+.badge-critique {
+  display: inline-block; background: var(--danger); color: #fff;
+  font-size: 9.5px; font-weight: 800; border-radius: 4px; padding: 1px 6px; margin-left: 4px;
+  vertical-align: middle; white-space: nowrap;
+}
+.nav-badge {
+  display: inline-block; min-width: 16px; padding: 0 5px; margin-left: 4px;
+  background: var(--warning); color: #fff; border-radius: 99px;
+  font-size: 10px; font-weight: 800; line-height: 16px; text-align: center;
+}
+
+
+/* ── v13.35 — Statut paiement ── */
+#bandeau-paiement {
+  display:none;
+  background:#b91c1c;
+  color:#fff;
+  text-align:center;
+  padding:10px 16px;
+  font-size:13.5px;
+  font-weight:700;
+  position:sticky;
+  top:0;
+  z-index:850;
+  border-bottom:2px solid #991b1b;
+  gap:12px;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+#bandeau-paiement.visible { display:flex; }
+.btn-payer {
+  background:#fff;
+  color:#b91c1c;
+  border:none;
+  border-radius:6px;
+  padding:5px 14px;
+  font-size:12.5px;
+  font-weight:800;
+  cursor:pointer;
+  transition:background .15s;
+}
+.btn-payer:hover { background:#fee2e2; }

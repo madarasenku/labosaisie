@@ -17,7 +17,7 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v43';
+const CACHE = 'cpmi-labo-v44';
 
 /* Pré-cacher les fichiers essentiels à l'installation.
    ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,
@@ -25,6 +25,23 @@ const CACHE = 'cpmi-labo-v43';
 const PRECACHE = [
   './index.html',
   './login.html',
+  './css/app.css',
+  // ✅ v13.70 — modules extraits de index.html. L'ORDRE n'a pas d'importance
+  // ici (simple mise en cache) mais il est critique dans index.html.
+  './js/qr-generator.js',
+  './js/pwa-manifest.js',
+  './js/donnees-analyses.js',
+  './js/navigation.js',
+  './js/supabase-db.js',
+  './js/historique.js',
+  './js/export-excel.js',
+  './js/prescripteurs.js',
+  './js/saisie.js',
+  './js/ui-auth.js',
+  './js/session-pwa.js',
+  './js/stats.js',
+  './js/impression.js',
+  './js/export-pdf.js',
   './vendor/exceljs-4.4.0.min.js',
   './vendor/chart-4.4.1.umd.js',
   './vendor/qrcode-1.0.0.min.js',

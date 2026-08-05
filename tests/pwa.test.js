@@ -26,7 +26,7 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   }, CACHE);
   // Toutes les ressources sont same-origin depuis v13.69 : le pré-cache ne
   // peut plus être mis en échec par un CDN injoignable.
-  for (const f of ['/index.html', '/login.html',
+  for (const f of ['/index.html', '/login.html', '/css/app.css',
                    '/vendor/supabase-2.39.7.umd.js', '/vendor/chart-4.4.1.umd.js',
                    '/vendor/exceljs-4.4.0.min.js', '/vendor/jspdf-2.5.1.umd.min.js',
                    '/vendor/fonts/poppins.css']) {
@@ -34,6 +34,21 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   }
   r.check('aucune ressource externe pré-cachée',
           cached.every(u => u.startsWith('/')), true);
+
+  // ✅ v13.70 — tous les modules extraits de index.html doivent être
+  // pré-cachés : il en manquerait un et l'application serait inutilisable
+  // hors-ligne, avec une erreur difficile à diagnostiquer sur le terrain.
+  const modules = fs.readdirSync(path.join(__dirname, '..', 'js')).filter(f => f.endsWith('.js'));
+  r.check('nombre de modules js/', modules.length, 14);
+  const manquants = modules.filter(f => !cached.includes('/js/' + f));
+  r.check('tous les modules pré-cachés', manquants.join(',') || 'aucun manquant', 'aucun manquant');
+
+  // Le HTML doit référencer exactement ces modules, dans l'ordre.
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const refs = [...html.matchAll(/<script src="\.\/(js\/[^"]+)"><\/script>/g)].map(x => x[1]);
+  r.check('modules référencés par index.html', refs.length, 14);
+  r.check('aucun module orphelin',
+          modules.filter(f => !refs.includes('js/' + f)).join(',') || 'aucun', 'aucun');
 
   r.section('Hors-ligne');
   await ctx.setOffline(true);
