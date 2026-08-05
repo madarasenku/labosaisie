@@ -14,27 +14,23 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<!-- ⚠ SÉCURITÉ (SRI) — Pour verrouiller ces CDN contre toute altération,
-     ajoutez un attribut integrity="sha384-…" à chaque balise ci-dessous.
-     Générez le hash de chaque fichier ainsi (dans un terminal) :
-       curl -s <URL_DU_SCRIPT> | openssl dgst -sha384 -binary | openssl base64 -A
-     puis : integrity="sha384-<RÉSULTAT>" (crossorigin est déjà présent).
-     Alternative plus robuste : héberger ces 6 fichiers dans le dépôt GitHub.
-     ⚠ N'ajoutez PAS de hash au hasard : un hash erroné bloque le chargement. -->
-<!-- ✅ v13.28 — CDN tiers : crossorigin="anonymous" pour permettre la vérification d'intégrité (SRI).
-     Ajoutez integrity="sha384-…" une fois les hachages officiels confirmés (voir audit_report.md). -->
-<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js" crossorigin="anonymous"></script>
-<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
-<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
-<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-<!-- TODO: vérifier hash SRI (integrity="sha384-…") -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="./vendor/fonts/poppins.css">
+<!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
+     Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
+       1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
+          une application médicale qui garde le jeton de session en localStorage.
+          Aucun hash SRI n'était posé. En same-origin, la question disparaît.
+       2. Disponibilité — une première visite pendant une coupure CDN donnait
+          une application cassée. Le labo travaille avec une connexion instable.
+     Versions figées, identiques à celles servies auparavant par le CDN.
+     Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
+     dans vendor/, puis bumper CACHE dans sw.js. -->
+<script src="./vendor/exceljs-4.4.0.min.js"></script>
+<script src="./vendor/chart-4.4.1.umd.js"></script>
+<script src="./vendor/qrcode-1.0.0.min.js"></script>
+<script src="./vendor/supabase-2.39.7.umd.js"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
 <script>
 //---------------------------------------------------------------------
@@ -2343,7 +2339,7 @@ var qrcode = function() {
    Palette : bleu maternité + rose doux + vert santé + or chaleureux
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+/* ✅ v13.69 — police hébergée localement (voir vendor/fonts/poppins.css) */
 
 :root {
   /* Palette CPMI — Clinique Médicale Professionnelle */

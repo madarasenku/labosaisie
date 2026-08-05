@@ -17,19 +17,25 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v42';
+const CACHE = 'cpmi-labo-v43';
 
-/* Pré-cacher les fichiers essentiels à l'installation */
+/* Pré-cacher les fichiers essentiels à l'installation.
+   ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,
+   donc le pré-cache ne peut plus échouer à cause d'un tiers injoignable. */
 const PRECACHE = [
   './index.html',
   './login.html',
-  './caisse.html',
-  'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+  './vendor/exceljs-4.4.0.min.js',
+  './vendor/chart-4.4.1.umd.js',
+  './vendor/qrcode-1.0.0.min.js',
+  './vendor/supabase-2.39.7.umd.js',
+  './vendor/jspdf-2.5.1.umd.min.js',
+  './vendor/jspdf-autotable-3.8.2.min.js',
+  './vendor/fonts/poppins.css',
+  './vendor/fonts/poppins-latin-400-normal.woff2',
+  './vendor/fonts/poppins-latin-500-normal.woff2',
+  './vendor/fonts/poppins-latin-600-normal.woff2',
+  './vendor/fonts/poppins-latin-700-normal.woff2',
 ];
 
 self.addEventListener('install', e => {
