@@ -1,18 +1,29 @@
 /* ============================================================
-   LaboSaisie CPMI — Service Worker v13.36
+   LaboSaisie CPMI — Service Worker v13.67
    Stratégie : Network-First avec fallback cache
    (réseau prioritaire → toujours la version à jour ;
     si hors-ligne → version en cache)
-   v13.36 : bump cache → cpmi-labo-v2 (purge ancien cache
-   qui pouvait contenir index.html avec ref print.js externe)
+
+   v13.67 : bump cache v40 → v41 (purge d'office tout résidu
+   d'un déploiement antérieur) + caisse.html pré-caché
+   + handler SKIP_WAITING pour activation à la demande.
+
+   ⚠️  RAPPEL DÉPLOIEMENT : bumper CACHE à chaque mise en ligne.
+   Le navigateur ne réinstalle le SW que si ce fichier change
+   octet pour octet ; sans bump, 'activate' ne rejoue jamais et
+   les anciens caches ne sont pas purgés. La détection de
+   nouvelle version côté client ne dépend toutefois PAS de ce
+   bump : index.html surveille l'ETag du déploiement (voir
+   checkForUpdate() dans index.html).
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v40';
+const CACHE = 'cpmi-labo-v41';
 
 /* Pré-cacher les fichiers essentiels à l'installation */
 const PRECACHE = [
   './index.html',
   './login.html',
+  './caisse.html',
   'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
@@ -24,7 +35,11 @@ const PRECACHE = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(PRECACHE).catch(() => {})) // échec silencieux si hors-ligne à l'install
+      /* ✅ v13.67 — mise en cache fichier par fichier.
+         addAll() est tout-ou-rien : un seul CDN injoignable faisait échouer
+         l'ensemble, y compris index.html/login.html/caisse.html, et l'app se
+         retrouvait sans aucun pré-cache hors-ligne. */
+      .then(c => Promise.all(PRECACHE.map(u => c.add(u).catch(() => {}))))
       .then(() => self.skipWaiting())
   );
 });
@@ -36,6 +51,11 @@ self.addEventListener('activate', e => {
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
+});
+
+/* Permet à la page de demander l'activation immédiate du nouveau SW */
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {

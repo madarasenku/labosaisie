@@ -14126,8 +14126,106 @@ document.addEventListener('keydown', e => {
   });
 
   // ✅ v13.34+ — Service worker externe sw.js (meilleure compatibilité hébergeurs)
+  // ✅ v13.67 — Détection de mise à jour pour les onglets restés ouverts.
+  //    Le SW est en network-first : une page RECHARGÉE reçoit toujours la
+  //    dernière version. Mais un poste qui laisse l'app ouverte toute la
+  //    journée garde en mémoire le JS du démarrage. On surveille donc le
+  //    déploiement et on propose un rechargement explicite.
+
+  let _updateBannerShown = false;
+
+  function showUpdateBanner() {
+    if (_updateBannerShown || !document.body) return;
+    _updateBannerShown = true;
+
+    const bar = document.createElement('div');
+    bar.id = 'update-banner';
+    bar.setAttribute('role', 'status');
+    bar.style.cssText =
+      'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:99999;' +
+      'display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;' +
+      'background:#1e293b;color:#f1f5f9;font-size:14px;font-weight:500;' +
+      'box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:92vw';
+
+    const txt = document.createElement('span');
+    txt.textContent = '🔄 Nouvelle version disponible';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Recharger';
+    btn.style.cssText =
+      'cursor:pointer;border:0;border-radius:8px;padding:7px 14px;' +
+      'background:#38bdf8;color:#0f172a;font-weight:700;font-size:14px';
+
+    // Jamais de rechargement automatique : une saisie en cours serait perdue.
+    btn.addEventListener('click', async () => {
+      if (typeof showConfirmModal === 'function') {
+        const ok = await showConfirmModal({
+          icon: '🔄',
+          title: 'Recharger l’application',
+          message: 'Toute saisie en cours non enregistrée sera perdue. Continuer ?',
+          confirmText: 'Recharger'
+        });
+        if (!ok) return;
+      }
+      location.reload();
+    });
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = '✕';
+    close.setAttribute('aria-label', 'Plus tard');
+    close.style.cssText =
+      'cursor:pointer;border:0;background:transparent;color:#94a3b8;font-size:16px;line-height:1';
+    close.addEventListener('click', () => {
+      bar.remove();
+      _updateBannerShown = false; // réapparaîtra à la prochaine vérification
+    });
+
+    bar.append(txt, btn, close);
+    document.body.appendChild(bar);
+  }
+
+  // Signature du déploiement : requête HEAD (aucun corps transféré, donc
+  // négligeable en data) et non interceptée par le SW, qui ignore les
+  // requêtes non-GET. Ne dépend d'aucun numéro de version à maintenir.
+  let _deploySig = null;
+
+  async function checkForUpdate() {
+    if (!navigator.onLine) return;
+    let sig = null;
+    try {
+      const res = await fetch('./index.html', { method: 'HEAD', cache: 'no-store' });
+      if (!res.ok) return;
+      sig = res.headers.get('etag') || res.headers.get('last-modified');
+    } catch (_) {
+      return; // hors-ligne ou réseau instable : on réessaiera
+    }
+    if (!sig) return;                       // hébergeur sans ETag → on s'appuie sur le SW
+    if (_deploySig === null) { _deploySig = sig; return; }  // référence au démarrage
+    if (sig !== _deploySig) showUpdateBanner();
+  }
+
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('[PWA] SW:', err.message));
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // Signal complémentaire : nouveau sw.js détecté par le navigateur.
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          // 'installed' + contrôleur déjà actif = mise à jour, pas 1re installation
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            showUpdateBanner();
+          }
+        });
+      });
+
+      const poll = () => { reg.update().catch(() => {}); checkForUpdate(); };
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+      window.addEventListener('online', poll);
+      setInterval(poll, 30 * 60 * 1000);   // filet de sécurité toutes les 30 min
+      checkForUpdate();                     // établit la référence au démarrage
+    }).catch(err => console.warn('[PWA] SW:', err.message));
   }
 })();
 
