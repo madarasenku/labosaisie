@@ -1,7 +1,7 @@
 // Filtres de l'Historique, des Statistiques et de la Caisse.
 // Régression couverte : v13.68 — un mois passé était invisible dans les
 // Ristournes parce que le cache ne contenait que la période de l'Historique.
-const { serve, openApp, createReporter, histRows, setField, numeric } = require('./helpers');
+const { serve, openApp, createReporter, histRows, setField, numeric, ATTENDU } = require('./helpers');
 
 (async () => {
   const srv = await serve();
@@ -19,19 +19,20 @@ const { serve, openApp, createReporter, histRows, setField, numeric } = require(
   await page.waitForTimeout(1200);
   await clearAll();
 
-  r.section('Historique — périodes');
-  for (const [p, exp] of [['tout',10],['mois',4],['jour',2],['semaine',3]]) {
+  r.section(`Historique — périodes (aujourd'hui = ${ATTENDU.aujourdhui})`);
+  for (const [p, exp] of [['tout',ATTENDU.tout],['mois',ATTENDU.mois],
+                          ['jour',ATTENDU.jour],['semaine',ATTENDU.semaine]]) {
     await page.evaluate(x => setHistPeriode(x), p);
     await page.waitForTimeout(700);
     r.check(`période « ${p} »`, await histRows(page), exp);
   }
 
   await clearAll();
-  await setField(page, 'filter-date-from', '2026-07-20');
-  await setField(page, 'filter-date-to',   '2026-07-30');
+  await setField(page, 'filter-date-from', ATTENDU.plageDe);
+  await setField(page, 'filter-date-to',   ATTENDU.plageA);
   await page.evaluate(() => appliquerFiltreCustom());
   await page.waitForTimeout(800);
-  r.check('plage personnalisée 20→30 juillet', await histRows(page), 4);
+  r.check(`plage ${ATTENDU.plageDe} → ${ATTENDU.plageA}`, await histRows(page), ATTENDU.plage);
 
   r.section('Historique — critères');
   const cas = [
@@ -70,12 +71,13 @@ const { serve, openApp, createReporter, histRows, setField, numeric } = require(
   await setField(page, 'filter-service', 'Maternité'); await page.waitForTimeout(700);
   r.check('+ service Maternité', await histRows(page), 2);
   await clearAll();
-  r.check('réinitialisation', await histRows(page), 10);
+  r.check('réinitialisation', await histRows(page), ATTENDU.tout);
 
   r.section('Statistiques');
   await page.evaluate(() => showView('stats'));
   await page.waitForTimeout(1200);
-  for (const [p, exp] of [['tout',10],['mois',4],['jour',2],['semaine',3]]) {
+  for (const [p, exp] of [['tout',ATTENDU.tout],['mois',ATTENDU.mois],
+                          ['jour',ATTENDU.jour],['semaine',ATTENDU.semaine]]) {
     await page.evaluate(x => setStatsPeriode(x), p);
     await page.waitForTimeout(800);
     const n = await page.evaluate(() => {
@@ -88,7 +90,8 @@ const { serve, openApp, createReporter, histRows, setField, numeric } = require(
   r.section('Caisse');
   await page.evaluate(() => showView('caisse'));
   await page.waitForTimeout(1200);
-  for (const [p, nb, total] of [['mois',4,24000],['jour',2,12000]]) {
+  for (const [p, nb, total] of [['mois', ATTENDU.caisseMois.nb, ATTENDU.caisseMois.total],
+                                ['jour', ATTENDU.caisseJour.nb, ATTENDU.caisseJour.total]]) {
     await page.evaluate(x => setCaissePeriode(x), p);
     await page.waitForTimeout(1600);
     const t = numeric(await page.evaluate(() => document.getElementById('caisse-kpi-total').textContent));
@@ -97,10 +100,14 @@ const { serve, openApp, createReporter, histRows, setField, numeric } = require(
   }
 
   r.section('Ristournes — mois courant ET mois passé (régression v13.68)');
-  for (const [m, nb, brut] of [[8,4,24000],[7,6,28000]]) {
-    const d = await page.evaluate(mm => JSON.stringify(
-      computeRistournesData(mm, 2026).map(x => ({ nb:x.nb, brut:x.montantBrut }))), m);
-    r.check(`ristournes ${m}/2026`, d, JSON.stringify([{ nb, brut }]));
+  const moisATester = [
+    [ATTENDU.moisCourantNum,   ATTENDU.moisCourantAnnee,   ATTENDU.ristournesCourant],
+    [ATTENDU.moisPrecedentNum, ATTENDU.moisPrecedentAnnee, ATTENDU.ristournesPrecedent],
+  ];
+  for (const [m, annee, att] of moisATester) {
+    const d = await page.evaluate(([mm, aa]) => JSON.stringify(
+      computeRistournesData(mm, aa).map(x => ({ nb:x.nb, brut:x.montantBrut }))), [m, annee]);
+    r.check(`ristournes ${m}/${annee}`, d, JSON.stringify([{ nb: att.nb, brut: att.total }]));
   }
 
   r.section('Modes admin');
@@ -109,11 +116,11 @@ const { serve, openApp, createReporter, histRows, setField, numeric } = require(
   await page.evaluate(() => toggleCorbeille());     await page.waitForTimeout(900);
   r.check('corbeille vide', await histRows(page), 0);
   await page.evaluate(() => toggleCorbeille());     await page.waitForTimeout(900);
-  r.check('retour vue normale', await histRows(page), 10);
+  r.check('retour vue normale', await histRows(page), ATTENDU.tout);
   await page.evaluate(() => toggleVerrouillees());  await page.waitForTimeout(900);
   r.check('fiches verrouillées vides', await histRows(page), 0);
   await page.evaluate(() => toggleVerrouillees());  await page.waitForTimeout(900);
-  r.check('retour vue normale', await histRows(page), 10);
+  r.check('retour vue normale', await histRows(page), ATTENDU.tout);
 
   r.check('aucune erreur JS', errors.length, 0);
   if (errors.length) console.log('   ', errors.slice(0, 3));

@@ -30,19 +30,77 @@ function serve(port = 8099) {
   return new Promise(r => srv.listen(port, '127.0.0.1', () => r(srv)));
 }
 
-// ── Jeu de données : 6 fiches en juillet, 4 en août ──────────────────
+// ── Dates RELATIVES à aujourd'hui ────────────────────────────────────
+// ⚠️ Ne jamais remettre de dates en dur ici. La première version de ces
+// tests figeait « aujourd'hui » au 5 août 2026 : trois jours plus tard, les
+// contrôles « aujourd'hui » et « cette semaine » échouaient alors que
+// l'application était parfaitement saine. Une suite qui devient rouge toute
+// seule finit par être ignorée — c'est pire que pas de tests du tout.
+const AUJ = new Date();
+const iso = d => d.toISOString().slice(0, 10);
+const decale = n => { const d = new Date(AUJ); d.setDate(d.getDate() - n); return iso(d); };
+const premierDuMois = iso(new Date(AUJ.getFullYear(), AUJ.getMonth(), 1));
+// Bornée au 1er du mois : le jeu reste valide même le 1er ou le 2 du mois.
+const dansLeMois = n => { const d = decale(n); return d < premierDuMois ? premierDuMois : d; };
+// 6 fiches dans le mois PRÉCÉDENT, à des jours valides quel que soit le mois
+const moisPrec = j => {
+  const d = new Date(AUJ.getFullYear(), AUJ.getMonth() - 1, j);
+  return iso(d);
+};
+
+const AUJOURDHUI = iso(AUJ);
+const MOIS_COURANT = AUJOURDHUI.slice(0, 7);
+const MOIS_PRECEDENT = moisPrec(5).slice(0, 7);
+
 const FICHES = [
-  [101,'2026-07-05', 4000,'Hématologie',     'agent1','Maternité',   1,'rendu',  'KOUAME AYA'],
-  [102,'2026-07-12', 6000,'Biochimie',       'agent1','Pédiatrie',   1,'attente','BAMBA SALIF'],
-  [103,'2026-07-20', 5000,'Hématologie',     'agent2','Maternité',   1,'urgent', 'KOUAME AYA'],
-  [104,'2026-07-22', 3000,'Parasitologie',   'agent2','Consultation',1,'rendu',  'TRAORE MOUSSA'],
-  [105,'2026-07-28', 8000,'Immuno-Sérologie','agent1','Maternité',   1,'attente','DIALLO FATOU'],
-  [106,'2026-07-30', 2000,'Biochimie',       'agent2','Pédiatrie',   1,'rendu',  'BAMBA SALIF'],
-  [201,'2026-08-02', 5000,'Hématologie',     'agent1','Maternité',   2,'urgent', 'KOUAME AYA'],
-  [202,'2026-08-04', 7000,'Biochimie',       'agent2','Pédiatrie',   2,'rendu',  'YAO KOFFI'],
-  [203,'2026-08-05', 3000,'Hématologie',     'agent1','Consultation',2,'attente','TRAORE MOUSSA'],
-  [204,'2026-08-05', 9000,'Parasitologie',   'agent2','Maternité',   2,'rendu',  'DIALLO FATOU'],
+  [101, moisPrec(5),  4000,'Hématologie',     'agent1','Maternité',   1,'rendu',  'KOUAME AYA'],
+  [102, moisPrec(12), 6000,'Biochimie',       'agent1','Pédiatrie',   1,'attente','BAMBA SALIF'],
+  [103, moisPrec(18), 5000,'Hématologie',     'agent2','Maternité',   1,'urgent', 'KOUAME AYA'],
+  [104, moisPrec(22), 3000,'Parasitologie',   'agent2','Consultation',1,'rendu',  'TRAORE MOUSSA'],
+  [105, moisPrec(25), 8000,'Immuno-Sérologie','agent1','Maternité',   1,'attente','DIALLO FATOU'],
+  [106, moisPrec(27), 2000,'Biochimie',       'agent2','Pédiatrie',   1,'rendu',  'BAMBA SALIF'],
+  [201, dansLeMois(5),5000,'Hématologie',     'agent1','Maternité',   2,'urgent', 'KOUAME AYA'],
+  [202, dansLeMois(3),7000,'Biochimie',       'agent2','Pédiatrie',   2,'rendu',  'YAO KOFFI'],
+  [203, AUJOURDHUI,   3000,'Hématologie',     'agent1','Consultation',2,'attente','TRAORE MOUSSA'],
+  [204, AUJOURDHUI,   9000,'Parasitologie',   'agent2','Maternité',   2,'rendu',  'DIALLO FATOU'],
 ];
+
+// ── Attendus CALCULÉS, avec la même logique que computeHistDateRange ──
+const lundiDeCetteSemaine = (() => {
+  const d = new Date(AUJ);
+  const j = d.getDay();                 // dimanche = 0
+  d.setDate(d.getDate() - (j === 0 ? 6 : j - 1));
+  return iso(d);
+})();
+
+const dansPlage = (d, de, a) => (!de || d >= de) && (!a || d <= a);
+const compte = (de, a) => FICHES.filter(f => dansPlage(f[1], de, a)).length;
+const agrege = prefixe => {
+  const s = FICHES.filter(f => f[1].startsWith(prefixe));
+  return { nb: s.length, total: s.reduce((t, f) => t + f[2], 0) };
+};
+
+const ATTENDU = {
+  aujourdhui: AUJOURDHUI,
+  moisCourantPrefixe: MOIS_COURANT,
+  moisPrecedentPrefixe: MOIS_PRECEDENT,
+  moisPrecedentNum: Number(MOIS_PRECEDENT.slice(5, 7)),
+  moisPrecedentAnnee: Number(MOIS_PRECEDENT.slice(0, 4)),
+  moisCourantNum: Number(MOIS_COURANT.slice(5, 7)),
+  moisCourantAnnee: Number(MOIS_COURANT.slice(0, 4)),
+  jour:    compte(AUJOURDHUI, AUJOURDHUI),
+  semaine: compte(lundiDeCetteSemaine, AUJOURDHUI),
+  mois:    compte(premierDuMois, AUJOURDHUI),
+  tout:    FICHES.length,
+  caisseMois:       agrege(MOIS_COURANT),
+  caisseJour:       (() => { const s = FICHES.filter(f => f[1] === AUJOURDHUI);
+                             return { nb: s.length, total: s.reduce((t, f) => t + f[2], 0) }; })(),
+  ristournesCourant:   agrege(MOIS_COURANT),
+  ristournesPrecedent: agrege(MOIS_PRECEDENT),
+  // Plage personnalisée : du 18 au 27 du mois précédent → 3 fiches
+  plageDe: moisPrec(18), plageA: moisPrec(27),
+  plage:   compte(moisPrec(18), moisPrec(27)),
+};
 
 const rows = () => FICHES.map(([id,d,m,t,by,svc,p,st,nom]) => ({
   id, type:t, montant:m, created_at:d+'T09:00:00Z',
@@ -130,4 +188,4 @@ const setField = (page, id, v) => page.evaluate(([i, x]) => {
 
 const numeric = s => Number(String(s || '').replace(/[^0-9]/g, ''));
 
-module.exports = { serve, openApp, createReporter, histRows, setField, numeric, rows, FICHES };
+module.exports = { serve, openApp, createReporter, histRows, setField, numeric, rows, FICHES, ATTENDU };

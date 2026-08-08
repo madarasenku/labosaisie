@@ -31,10 +31,29 @@ node tests/filtres.test.js
 ## Sécurité des tests
 
 **Aucun test ne touche la base de production.** `helpers.js` intercepte les
-appels `**/rest/v1/rpc/**` et renvoie un jeu de données fixe : 10 fiches,
-6 en juillet 2026 et 4 en août 2026, réparties sur 2 agents, 4 types
-d'analyse, 3 services et 3 statuts. Ce jeu est calibré pour qu'un filtre
-correct et un filtre cassé ne donnent jamais le même nombre de lignes.
+appels `**/rest/v1/rpc/**` et renvoie un jeu de 10 fiches : 6 dans le mois
+précédent, 4 dans le mois courant (dont 2 datées d'aujourd'hui), réparties
+sur 2 agents, 4 types d'analyse, 3 services et 3 statuts. Ce jeu est calibré
+pour qu'un filtre correct et un filtre cassé ne donnent jamais le même
+nombre de lignes.
+
+### ⚠️ Les dates sont RELATIVES, jamais écrites en dur
+
+La première version de ces tests figeait « aujourd'hui » au 5 août 2026.
+Trois jours plus tard, les contrôles « aujourd'hui » et « cette semaine »
+échouaient alors que l'application était parfaitement saine. Une suite qui
+devient rouge toute seule finit par être ignorée — c'est pire que pas de
+tests du tout.
+
+`helpers.js` construit donc les dates à partir de `new Date()` et exporte
+un objet `ATTENDU` dont chaque valeur est **calculée** à partir du même jeu
+de données, avec la même logique que `computeHistDateRange` (semaine
+démarrant le lundi, mois du 1er à aujourd'hui). Les tests comparent à
+`ATTENDU.jour`, `ATTENDU.mois`, `ATTENDU.ristournesPrecedent`… et jamais à
+un nombre écrit à la main.
+
+Si tu ajoutes un contrôle qui dépend d'une date, dérive l'attendu de
+`FICHES` ou de `ATTENDU`. N'écris jamais `'2026-08-05'` dans un test.
 
 Les tests servent le dépôt sur `127.0.0.1:8099` via un petit serveur HTTP
 interne — pas de dépendance à un serveur externe.
