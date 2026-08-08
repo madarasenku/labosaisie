@@ -79,7 +79,8 @@ js/                14 modules, 14 886 lignes au total
   export-pdf.js         export PDF, rapport mensuel, configuration des tarifs
   qr-generator.js       bibliothèque QR embarquée (tierce, ne pas modifier)
   pwa-manifest.js       manifest PWA généré
-vendor/             bibliothèques hébergées localement (1,7 Mo)
+vendor/             bibliothèques hébergées localement (~1,7 Mo)
+docs/               audits archivés
 tests/              suite de tests automatisés
 sw.js               service worker
 ```
@@ -114,7 +115,7 @@ npm install --no-save playwright && npx playwright install chromium
 node tests/run.js
 ```
 
-**66 contrôles** sur 3 fichiers (`filtres`, `roles`, `pwa`). Code de sortie
+**75 contrôles** sur 4 fichiers (`filtres`, `roles`, `pwa`, `qr`). Code de sortie
 non nul en cas d'échec. **Aucun test ne touche la production** : les appels
 `**/rest/v1/rpc/**` sont interceptés et renvoient un jeu de 10 fiches.
 
@@ -164,6 +165,22 @@ Voir `tests/README.md` pour le détail.
   création de la suite de tests.
 - **v13.70** — découpage du monolithe.
 - **`cc6c223`** — correction des tests : dates relatives au jour courant.
+- **v13.71** — suppression de la 2e bibliothèque QR (repli mort depuis que
+  tout est same-origin) ; ajout de `tests/qr.test.js` en remplacement du
+  filet supprimé.
+
+### ⚠️ Intégration continue : fichier prêt, PAS ENCORE INSTALLÉ
+Un workflow GitHub Actions (`tests.yml`) a été écrit mais **n'a pas pu être
+poussé** : GitHub refuse qu'un PAT crée un fichier dans `.github/workflows/`
+sans la permission **Workflows**. Deux façons de l'installer :
+- ajouter la permission *Workflows: Read and write* au PAT, puis le pousser ;
+- ou le créer directement depuis l'interface GitHub (**Actions → New workflow
+  → set up a workflow yourself**) en collant le contenu fourni.
+
+Il lance les tests à chaque push, chaque PR sur `main`, et une fois par jour
+— le passage quotidien n'est pas décoratif : les périodes testées dépendent
+du calendrier, donc un cas de bord (1er du mois, fin de mois courte) est
+attrapé tout de suite plutôt que le jour où quelqu'un pousse du code.
 
 ### Migrations Supabase appliquées (ne pas rejouer)
 `raise_get_resultats_light_limit` · `harden_auth_v13_69` · `drop_dead_overloads_v13_69`
@@ -181,10 +198,7 @@ comparer la version du dépôt avant d'écraser un fichier.**
 - **Migration bcrypt en cours : 3 comptes sur 4 sont déjà passés en coût 12**
   (vérifié le 8 août). Le dernier basculera à sa prochaine connexion. Rien à
   faire, juste à constater : `select username, left(password_hash,7) from labo_users`.
-- Deux bibliothèques QR coexistent (`vendor/qrcode-1.0.0.min.js` et
-  `js/qr-generator.js`) — redondance à trancher.
 - Étendre les tests : ils couvrent la logique client, pas les permissions
   RLS réelles ni le rendu visuel.
-- `AUDIT_v13.36.md` à la racine est daté ; le mettre à jour ou l'archiver.
-- Aucune CI configurée : `node tests/run.js` pourrait tourner sur chaque push
-  via GitHub Actions.
+- Étendre la CI : elle vérifie la syntaxe et lance les tests, mais ne
+  déploie rien. Le déploiement Pages reste déclenché par le push sur `main`.

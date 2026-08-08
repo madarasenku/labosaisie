@@ -17,7 +17,7 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v44';
+const CACHE = 'cpmi-labo-v45';
 
 /* Pré-cacher les fichiers essentiels à l'installation.
    ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,
@@ -44,7 +44,6 @@ const PRECACHE = [
   './js/export-pdf.js',
   './vendor/exceljs-4.4.0.min.js',
   './vendor/chart-4.4.1.umd.js',
-  './vendor/qrcode-1.0.0.min.js',
   './vendor/supabase-2.39.7.umd.js',
   './vendor/jspdf-2.5.1.umd.min.js',
   './vendor/jspdf-autotable-3.8.2.min.js',

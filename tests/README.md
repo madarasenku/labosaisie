@@ -27,6 +27,7 @@ node tests/filtres.test.js
 | `filtres.test.js` | Périodes, type, agent, service, statut, recherche texte, cumul de filtres, Statistiques, Caisse, Ristournes, corbeille et fiches verrouillées |
 | `roles.test.js` | Cloisonnement admin / caissier / agent, caisse personnelle |
 | `pwa.test.js` | Service worker, pré-cache, mode hors-ligne, bannière de mise à jour |
+| `qr.test.js` | Génération des QR (reçus, Excel, PDF) — format, densité, cas limites |
 
 ## Sécurité des tests
 
@@ -69,6 +70,10 @@ interne — pas de dépendance à un serveur externe.
   confirmation (une saisie patient en cours serait perdue).
 - **v13.69** — le pré-cache ne doit contenir que des ressources same-origin ;
   plus aucune dépendance CDN ne peut le mettre en échec.
+- **v13.71** — le repli vers QRCode.js a été supprimé : il n'existe plus
+  qu'une seule implémentation QR, donc plus de filet. `qr.test.js` vérifie
+  que le générateur produit bien un PNG carré, de densité cohérente, et
+  qu'il encaisse les cas limites (texte vide, texte de 5 000 caractères).
 
 ## Deux pièges rencontrés en écrivant ces tests
 

@@ -177,17 +177,27 @@ function generateSignatureSVG(name, width=160, height=45) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${paths.join('')}</svg>`;
 }
 // ============================================================
-// QR CODE — Génération asynchrone via QRCode.js (CDN)
+// QR CODE — Génération asynchrone (générateur intégré, hors-ligne)
 // ============================================================
+// ✅ v13.71 — Le repli vers QRCode.js a été supprimé. Il datait de l'époque
+//   où le générateur venait d'un CDN et pouvait manquer à l'appel. Depuis
+//   v13.69 tout est same-origin : `qrcode` (js/qr-generator.js) est toujours
+//   chargé, le repli n'était donc jamais atteint. Deux implémentations QR
+//   pour le même besoin, c'était 19 Ko inutiles dans le cache de chaque
+//   poste et une ambiguïté de plus à la lecture.
+//   Rendu en PNG via canvas : l'Excel et le PDF exigent du PNG.
 
 function generateQRDataURL(text, size = 120) {
   return new Promise((resolve) => {
     const txt = String(text ?? '').substring(0, 900);
     if (!txt) { resolve(''); return; }
 
-    // ✅ v13.56 — Générateur intégré (qrcode-generator, hors-ligne, sans CDN)
-    //   Rendu en PNG via canvas (l'Excel et le PDF exigent du PNG).
-    if (typeof qrcode !== 'undefined') {
+    if (typeof qrcode === 'undefined') {
+      console.error('[QR] générateur indisponible — js/qr-generator.js non chargé ?');
+      resolve(''); return;
+    }
+
+    {
       try {
         const qr = qrcode(0, 'M');   // type 0 = détection auto de la taille
         qr.addData(txt);
@@ -209,27 +219,11 @@ function generateQRDataURL(text, size = 120) {
         }
         resolve(canvas.toDataURL('image/png')); // PNG, compatible Excel/PDF
         return;
-      } catch (e) { /* repli CDN ci-dessous */ }
+      } catch (e) {
+        console.error('[QR] échec de génération :', e);
+        resolve('');
+      }
     }
-
-    // Repli : QRCode.js (CDN) si présent
-    if (typeof QRCode === 'undefined') { resolve(''); return; }
-    const div = document.createElement('div');
-    div.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
-    document.body.appendChild(div);
-    try {
-      new QRCode(div, {
-        text: txt, width: size, height: size,
-        colorDark: '#1e3a8a', colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M,
-      });
-    } catch(e) { document.body.removeChild(div); resolve(''); return; }
-    requestAnimationFrame(() => {
-      const canvas = div.querySelector('canvas');
-      const url = canvas ? canvas.toDataURL('image/png') : '';
-      document.body.removeChild(div);
-      resolve(url);
-    });
   });
 }
 
@@ -258,7 +252,7 @@ function _svgToPngDataURL(svgStr, w = 300, h = 84) {
 
 // ✅ v13.37 — Ajoute le QR + la signature (images) aux feuilles Excel qui l'ont
 // demandé (via ws._qrSig, posé par buildProfessionalSheet). Appelé juste avant
-// le téléchargement du classeur. Silencieux si QRCode/CDN indisponible.
+// le téléchargement du classeur. Silencieux si la génération échoue.
 async function addQrAndSignatures(wb) {
   if (!wb || !wb.worksheets) return;
   for (const ws of wb.worksheets) {
