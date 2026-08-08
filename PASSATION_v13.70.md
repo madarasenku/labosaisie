@@ -116,7 +116,12 @@ node tests/run.js
 
 **66 contrôles** sur 3 fichiers (`filtres`, `roles`, `pwa`). Code de sortie
 non nul en cas d'échec. **Aucun test ne touche la production** : les appels
-`**/rest/v1/rpc/**` sont interceptés et renvoient un jeu fixe de 10 fiches.
+`**/rest/v1/rpc/**` sont interceptés et renvoient un jeu de 10 fiches.
+
+⚠️ **Les dates des tests sont RELATIVES au jour courant** (commit `cc6c223`).
+N'écris jamais une date en dur dans un test : dérive l'attendu de `FICHES`
+ou de l'objet `ATTENDU` exporté par `helpers.js`. La première version figeait
+« aujourd'hui » et devenait rouge toute seule au bout de trois jours.
 
 Voir `tests/README.md` pour le détail.
 
@@ -158,6 +163,7 @@ Voir `tests/README.md` pour le détail.
   passent du CDN à `vendor/` ; suppression de `caisse.html` (page orpheline) ;
   création de la suite de tests.
 - **v13.70** — découpage du monolithe.
+- **`cc6c223`** — correction des tests : dates relatives au jour courant.
 
 ### Migrations Supabase appliquées (ne pas rejouer)
 `raise_get_resultats_light_limit` · `harden_auth_v13_69` · `drop_dead_overloads_v13_69`
@@ -172,9 +178,9 @@ comparer la version du dépôt avant d'écraser un fichier.**
 
 ## 💡 PISTES POUR LA SUITE (aucune n'est urgente)
 
-- **Les 4 comptes ont encore un hash bcrypt en coût 6.** C'est normal : la
-  migration se fait à la prochaine connexion réelle de chacun. À vérifier
-  dans quelques jours (`select left(password_hash,7) from labo_users`).
+- **Migration bcrypt en cours : 3 comptes sur 4 sont déjà passés en coût 12**
+  (vérifié le 8 août). Le dernier basculera à sa prochaine connexion. Rien à
+  faire, juste à constater : `select username, left(password_hash,7) from labo_users`.
 - Deux bibliothèques QR coexistent (`vendor/qrcode-1.0.0.min.js` et
   `js/qr-generator.js`) — redondance à trancher.
 - Étendre les tests : ils couvrent la logique client, pas les permissions
