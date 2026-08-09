@@ -31,9 +31,8 @@ réseau), donc ce dernier maillon n'a pas pu être vérifié automatiquement.
 Une session entière a été perdue à cause de cette erreur.
 
 **Accès Git** : le proxy Git d'Anthropic n'autorisait pas ce dépôt. Il a
-fallu un **PAT fine-grained** (portée `labosaisie`, *Contents: Read/Write*),
-créé le 5 août 2026 et **expirant le 4 septembre 2026**. Prévoir d'en
-regénérer un. Astuce qui a marché : préfixer les commandes git de
+fallu un **PAT fine-grained** (portée `labosaisie`, *Contents: Read/Write*
+**et Workflows: Read/Write**). Le token courant **expire le 7 novembre 2026**. Astuce qui a marché : préfixer les commandes git de
 `no_proxy=github.com NO_PROXY=github.com` pour contourner le proxy.
 
 ---
@@ -80,6 +79,7 @@ js/                14 modules, 14 886 lignes au total
   qr-generator.js       bibliothèque QR embarquée (tierce, ne pas modifier)
   pwa-manifest.js       manifest PWA généré
 vendor/             bibliothèques hébergées localement (~1,7 Mo)
+.github/workflows/  intégration continue (tests à chaque push)
 docs/               audits archivés
 tests/              suite de tests automatisés
 sw.js               service worker
@@ -169,18 +169,17 @@ Voir `tests/README.md` pour le détail.
   tout est same-origin) ; ajout de `tests/qr.test.js` en remplacement du
   filet supprimé.
 
-### ⚠️ Intégration continue : fichier prêt, PAS ENCORE INSTALLÉ
-Un workflow GitHub Actions (`tests.yml`) a été écrit mais **n'a pas pu être
-poussé** : GitHub refuse qu'un PAT crée un fichier dans `.github/workflows/`
-sans la permission **Workflows**. Deux façons de l'installer :
-- ajouter la permission *Workflows: Read and write* au PAT, puis le pousser ;
-- ou le créer directement depuis l'interface GitHub (**Actions → New workflow
-  → set up a workflow yourself**) en collant le contenu fourni.
-
-Il lance les tests à chaque push, chaque PR sur `main`, et une fois par jour
-— le passage quotidien n'est pas décoratif : les périodes testées dépendent
-du calendrier, donc un cas de bord (1er du mois, fin de mois courte) est
+### ✅ Intégration continue ACTIVE
+`.github/workflows/tests.yml` lance la suite à chaque push, chaque PR sur
+`main`, et une fois par jour (06h17 UTC). Première exécution : `success`.
+Le passage quotidien n'est pas décoratif — les périodes testées dépendent du
+calendrier, donc un cas de bord (1er du mois, fin de mois courte, lundi) est
 attrapé tout de suite plutôt que le jour où quelqu'un pousse du code.
+
+⚠️ Modifier un fichier dans `.github/workflows/` exige un PAT avec la
+permission **Workflows: Read and write** (en plus de *Contents*). Sans elle,
+GitHub rejette le push avec `refusing to allow a Personal Access Token to
+create or update workflow`.
 
 ### Migrations Supabase appliquées (ne pas rejouer)
 `raise_get_resultats_light_limit` · `harden_auth_v13_69` · `drop_dead_overloads_v13_69`
