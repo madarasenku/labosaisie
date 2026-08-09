@@ -1,0 +1,44 @@
+name: Tests
+
+# Les tests ne servent à rien s'ils ne tournent que quand on y pense.
+# Ce workflow les exécute à chaque push et à chaque pull request sur main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Exécution quotidienne : les tests dépendent de la date du jour
+  # (périodes « aujourd'hui », « cette semaine », mois courant / précédent).
+  # Un passage quotidien attrape tout de suite un cas de bord de calendrier —
+  # le 1er du mois, un lundi, une fin de mois courte — plutôt que le jour où
+  # quelqu'un pousse du code et se retrouve face à un échec déroutant.
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Installer Playwright et Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Vérifier la syntaxe des modules
+        run: |
+          for f in js/*.js sw.js tests/*.js; do
+            node --check "$f" || exit 1
+          done
+          echo "Tous les modules parsent."
+
+      - name: Lancer la suite de tests
+        run: node tests/run.js
