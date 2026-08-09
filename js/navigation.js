@@ -56,7 +56,8 @@ function showView(v) {
     if (typeof majNavPeriode === 'function') majNavPeriode();
     renderHistory(true);
   }
-  if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
+  if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors();
+    if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
   if (v === 'caisse') renderCaisse();
 }

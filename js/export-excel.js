@@ -937,11 +937,50 @@ function buildTarifsRefDefault() {
 }
 
 // Examens personnalisés ajoutés par l'admin
+// ✅ v13.77 — EXAMENS PERSONNALISÉS PARTAGÉS
+//   Ils vivaient dans le localStorage du poste où ils avaient été créés :
+//   les autres postes ne pouvaient tout simplement PAS les prescrire, et ils
+//   disparaissaient si le cache du navigateur était vidé. Même faille que la
+//   grille tarifaire, en plus grave — ce n'est pas un prix faux, c'est un
+//   examen absent du formulaire.
+//   La liste vit désormais en base ; le localStorage sert de cache hors-ligne.
+let _examensCustomCache = null;
+
 function getExamensCustom() {
-  try { return JSON.parse(localStorage.getItem('examens_custom') || '[]'); }
-  catch(e) { return []; }
+  if (_examensCustomCache) return _examensCustomCache;
+  try {
+    const local = JSON.parse(localStorage.getItem('examens_custom') || 'null');
+    if (Array.isArray(local)) { _examensCustomCache = local; return local; }
+  } catch (e) { /* cache illisible */ }
+  return [];
 }
-function saveExamensCustom(list) { localStorage.setItem('examens_custom', JSON.stringify(list)); }
+
+/** Charge la liste depuis la base et rafraîchit le cache local. */
+async function chargerExamensCustomDepuisBase() {
+  if (!navigator.onLine || typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('get_examens_custom', { p_token: TK() });
+    if (error || !Array.isArray(data)) return;
+    _examensCustomCache = data;
+    try { localStorage.setItem('examens_custom', JSON.stringify(data)); } catch (e) {}
+    if (typeof rechargeFichePrix === 'function') rechargeFichePrix();
+  } catch (e) { /* hors-ligne : le cache local prend le relais */ }
+}
+
+async function saveExamensCustom(list) {
+  _examensCustomCache = list;
+  try { localStorage.setItem('examens_custom', JSON.stringify(list)); } catch (e) {}
+  if (typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('save_examens_custom', { p_token: TK(), p_liste: list });
+    if (error)                { toast('Examen enregistré sur ce poste seulement (serveur injoignable)', 'err'); return; }
+    if (data === 'forbidden') { toast('Seul un administrateur peut modifier le catalogue', 'err'); return; }
+    if (data !== 'ok')        { toast('Examen non enregistré : ' + data, 'err'); return; }
+    toast('Catalogue mis à jour pour tous les postes', 'ok');
+  } catch (e) {
+    toast('Examen enregistré sur ce poste seulement (hors-ligne)', 'err');
+  }
+}
 
 // Catalogue complet = défauts + personnalisés
 function getCatalogueComplet() {
@@ -957,7 +996,7 @@ function showAddExamenModal() {
   }
 }
 
-function addExamenPersonnalise() {
+async function addExamenPersonnalise() {
   const label = document.getElementById('new_ex_label')?.value?.trim();
   if (!label) { toast('Le nom de l\'examen est obligatoire', 'err'); return; }
 
@@ -975,30 +1014,38 @@ function addExamenPersonnalise() {
 
   const custom = getExamensCustom();
   custom.push({ id, label, groupe, prix, tab, custom: true });
-  saveExamensCustom(custom);
 
   const ref = getTarifsRef();
   ref[id] = prix;
-  saveTarifsRef(ref);
+
+  // ✅ v13.77 — les deux écritures partent en base ; saveExamensCustom et
+  // saveTarifsRef signalent eux-mêmes le succès ou l'échec.
+  await saveExamensCustom(custom);
+  await saveTarifsRef(ref);
 
   document.getElementById('add-examen-modal').style.display = 'none';
   document.getElementById('new_ex_label').value = '';
   document.getElementById('new_ex_prix').value = '0';
   buildAdminExamensGrid();
   buildFicheExamens();
-  toast('Examen "' + label + '" ajouté ✓', 'ok');
 }
 
-function removeExamenCustom(id) {
-  if (!confirm('Supprimer cet examen personnalisé ?')) return;
-  const custom = getExamensCustom().filter(ex => ex.id !== id);
-  saveExamensCustom(custom);
+async function removeExamenCustom(id) {
+  const ex = getExamensCustom().find(x => x.id === id);
+  const ok = (typeof showConfirmModal === 'function')
+    ? await showConfirmModal({ icon:'🗑', title:'Supprimer cet examen',
+        message:'« ' + (ex ? ex.label : id) + ' » sera retiré du catalogue de TOUS les postes. '
+              + 'Les dossiers déjà enregistrés avec cet examen ne sont pas modifiés.',
+        confirmText:'Supprimer', confirmClass:'btn-danger' })
+    : confirm('Supprimer cet examen personnalisé ?');
+  if (!ok) return;
+  const custom = getExamensCustom().filter(x => x.id !== id);
   const ref = getTarifsRef();
   delete ref[id];
-  saveTarifsRef(ref);
+  await saveExamensCustom(custom);
+  await saveTarifsRef(ref);
   buildAdminExamensGrid();
   buildFicheExamens();
-  toast('Examen supprimé', 'ok');
 }
 
 // Recharge les prix de la fiche d'accueil depuis les tarifs de référence
