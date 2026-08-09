@@ -32,6 +32,7 @@ node tests/filtres.test.js
 | `navigation-autres-onglets.test.js` | Même navigation sur Statistiques, Caisse et Caisse personnelle |
 | `deploiement.test.js` | Versionnement des actifs (`?v=`), cohérence index/login/sw, précache complet |
 | `sauvegarde-examens.test.js` | Export complet (contenu, avertissement de confidentialité, réservé à l'admin), examens personnalisés partagés, alerte de sauvegarde ancienne, restauration (aller-retour, non-écrasement, découpage en lots, fichiers refusés, confirmation obligatoire) |
+| `securite.test.js` | Jeton exigé pour le compteur de dossiers (avec repli local), imprévisibilité du jeton de partage, restitution fidèle de l'audit serveur, audit réservé à l'admin |
 | `retour-arriere.test.js` | Instantanés nocturnes : liste des dates, analyse sans écriture, remise des fiches disparues, réparation d'une fiche isolée, confirmation obligatoire, réservé à l'admin |
 | `tarifs.test.js` | Grille tarifaire partagée : base prioritaire sur le catalogue, cache hors-ligne, écriture réservée à l'admin, estimation des dossiers |
 | `ristournes-prescripteurs.test.js` | Flèches sur le sélecteur de mois des Ristournes (dont le passage d'année), recherche dans la liste des prescripteurs |
@@ -101,7 +102,22 @@ interne — pas de dépendance à un serveur externe.
 
 ## Ce qui n'est pas couvert
 
-Ces tests portent sur la logique client. Ils ne vérifient ni les permissions
-réelles côté serveur, ni les politiques RLS, ni le rendu visuel. Un test qui
-passe ne garantit pas qu'un rôle est correctement cloisonné **dans la base** —
-seulement dans l'interface.
+Ces tests portent sur la logique client : ils ne vérifient pas le rendu
+visuel, et ils ne peuvent pas prouver qu'un rôle est réellement cloisonné
+**dans la base** — seulement dans l'interface.
+
+Ce trou est désormais couvert ailleurs, et volontairement : la vérification
+des permissions serveur ne peut pas vivre ici. Une suite de tests tourne en
+intégration continue, sans accès à la base de production — et lui donner cet
+accès serait pire que le trou qu'on cherche à boucher.
+
+Le contrôle vit donc **dans la base elle-même**, sous la forme de la fonction
+`auditer_securite`, lancée depuis Administration → Sauvegarde → Audit de
+sécurité. Elle vérifie sur le serveur réel que toute fonction joignable sans
+être connecté exige un jeton de session (seules exceptions assumées :
+`login_user` et `get_public_result`), que toutes les tables ont la sécurité au
+niveau ligne, et qu'aucun mot de passe ne reste sur un hachage bcrypt faible.
+`securite.test.js` vérifie que cet audit est correctement restitué — qu'un
+échec s'affiche comme un échec — mais c'est le serveur qui juge.
+
+**À lancer après chaque déploiement touchant la base.**

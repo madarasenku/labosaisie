@@ -672,7 +672,12 @@ async function getNextDossierNum() {
 
   // ── Essayer la RPC atomique Supabase en priorité (évite les doublons) ──
   try {
-    const { data, error } = await _sb.rpc('get_next_dossier_num', { p_month_year: mm + yy });
+    // ✅ v13.80 — le compteur exige désormais un jeton : sans lui, n'importe
+    // qui pouvait mesurer l'activité du laboratoire. Un poste resté sur une
+    // ancienne version reçoit une erreur et bascule sur le calcul local
+    // juste en dessous : la saisie n'est jamais bloquée.
+    const { data, error } = await _sb.rpc('get_next_dossier_num',
+      { p_month_year: mm + yy, p_token: TK() });
     if (!error && data && typeof data === 'number') {
       return data; // ✅ v12 — retourner le NOMBRE (formatDossier ajoute le suffixe)
     }

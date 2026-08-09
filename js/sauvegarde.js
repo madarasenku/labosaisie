@@ -453,6 +453,64 @@ async function reparerFicheDepuisInstantane(id, date) {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   AUDIT DE SÉCURITÉ  (v13.80)
+
+   Un contrôle de sécurité qui ne tourne qu'une fois, le jour où on y
+   pense, ne protège de rien. Celui-ci interroge le serveur réel et
+   vérifie trois invariants :
+
+   • toute fonction joignable sans être connecté doit exiger un jeton
+     de session (deux exceptions assumées : la connexion elle-même, et
+     la vérification publique d'un résultat par QR) ;
+   • toutes les tables ont la sécurité au niveau ligne activée ;
+   • aucun mot de passe ne reste sur un hachage bcrypt faible.
+
+   Il ne remplace pas la relecture du code : il attrape les régressions
+   silencieuses, celles qu'on introduit sans s'en rendre compte.
+   ───────────────────────────────────────────────────────────── */
+
+async function lancerAuditSecurite() {
+  const zone = document.getElementById('audit-securite-resultat');
+  if (!zone) return;
+  if (!isAdmin()) { toast('Audit réservé aux administrateurs', 'err'); return; }
+
+  try {
+    showLoading('Audit du serveur…');
+    const { data, error } = await _sb.rpc('auditer_securite', { p_token: TK() });
+    hideLoading();
+    if (error || !data || data.erreur) {
+      zone.innerHTML = '<span style="color:#b91c1c">Audit impossible'
+        + (data?.erreur ? ' (' + data.erreur + ')' : '') + '</span>';
+      return;
+    }
+
+    const fn      = data.fonctions_sans_controle_de_jeton || [];
+    const tables  = data.tables_sans_rls || [];
+    const comptes = data.comptes_a_hachage_faible || [];
+    const ligne = (ok, txtOk, txtKo) => '<div style="margin:4px 0">'
+      + (ok ? '<span style="color:#15803d;font-weight:600">✓ ' + txtOk + '</span>'
+            : '<span style="color:#b91c1c;font-weight:700">✗ ' + txtKo + '</span>') + '</div>';
+
+    zone.innerHTML = '<div style="font-size:12.5px;line-height:1.6">'
+      + ligne(fn.length === 0,
+              'Toutes les fonctions exposées exigent une session',
+              fn.length + ' fonction(s) accessibles sans jeton : '
+                + fn.map(f => f.fonction + (f.ecrit ? ' (écrit !)' : '')).join(', '))
+      + ligne(tables.length === 0,
+              'Sécurité au niveau ligne active sur toutes les tables',
+              'Tables sans RLS : ' + tables.join(', '))
+      + ligne(comptes.length === 0,
+              'Tous les mots de passe utilisent un hachage fort',
+              'Hachage faible (se corrigera à leur prochaine connexion) : ' + comptes.join(', '))
+      + '<div style="color:var(--text-muted);margin-top:8px">Vérifié le '
+      + new Date(data.verifie_le).toLocaleString('fr-FR') + '</div></div>';
+  } catch (e) {
+    hideLoading();
+    zone.innerHTML = '<span style="color:#b91c1c">Audit impossible</span>';
+  }
+}
+
 /**
  * Affiche l'ancienneté de la dernière sauvegarde, et alerte si elle date.
  * Volontairement discret quand tout va bien : une alerte permanente finit

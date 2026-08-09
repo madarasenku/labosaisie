@@ -289,6 +289,15 @@ function resetPanel(name) {
 function genShareToken() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID)
     return crypto.randomUUID().replace(/-/g, '');
+  // ✅ v13.80 — Le repli reposait sur Math.random(), qui n'est pas
+  // cryptographique : ce jeton est la seule chose qui protège l'accès au
+  // résultat d'un patient depuis l'extérieur, il ne doit jamais être
+  // devinable. getRandomValues existe partout où crypto existe.
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const o = new Uint8Array(16);
+    crypto.getRandomValues(o);
+    return [...o].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
   return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
