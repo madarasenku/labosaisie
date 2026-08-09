@@ -8,6 +8,20 @@
    d'un déploiement antérieur) + caisse.html pré-caché
    + handler SKIP_WAITING pour activation à la demande.
 
+   ⚠️  v13.72 — VERSIONNEMENT DES ACTIFS (APP_VERSION)
+   Les modules js/ et css/ portent des noms de fichiers stables. Un
+   navigateur pouvait donc servir un index.html tout neuf ET un
+   js/historique.js périmé issu de son cache HTTP : la nouvelle interface
+   s'affichait, mais ses fonctions n'existaient pas encore
+   (« decalerPeriode is not defined »). Le symptôme était trompeur — des
+   boutons visibles qui ne font rien — et se serait reproduit à CHAQUE
+   déploiement. Les URL portent maintenant ?v=APP_VERSION : après une mise
+   en ligne, le navigateur demande une URL qu'aucun cache ne connaît, donc
+   HTML et JS sont forcément de la même génération.
+   À CHAQUE DÉPLOIEMENT : incrémenter APP_VERSION *et* CACHE, et propager
+   APP_VERSION dans index.html et login.html (tests/deploiement.test.js
+   échoue si les trois divergent).
+
    ⚠️  RAPPEL DÉPLOIEMENT : bumper CACHE à chaque mise en ligne.
    Le navigateur ne réinstalle le SW que si ce fichier change
    octet pour octet ; sans bump, 'activate' ne rejoue jamais et
@@ -17,7 +31,9 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v46';
+const APP_VERSION = '13.72';
+const CACHE = 'cpmi-labo-v47';
+const v = url => url + '?v=' + APP_VERSION;
 
 /* Pré-cacher les fichiers essentiels à l'installation.
    ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,
@@ -25,33 +41,33 @@ const CACHE = 'cpmi-labo-v46';
 const PRECACHE = [
   './index.html',
   './login.html',
-  './css/app.css',
+  v('./css/app.css'),
   // ✅ v13.70 — modules extraits de index.html. L'ORDRE n'a pas d'importance
   // ici (simple mise en cache) mais il est critique dans index.html.
-  './js/qr-generator.js',
-  './js/pwa-manifest.js',
-  './js/donnees-analyses.js',
-  './js/navigation.js',
-  './js/supabase-db.js',
-  './js/historique.js',
-  './js/export-excel.js',
-  './js/prescripteurs.js',
-  './js/saisie.js',
-  './js/ui-auth.js',
-  './js/session-pwa.js',
-  './js/stats.js',
-  './js/impression.js',
-  './js/export-pdf.js',
-  './vendor/exceljs-4.4.0.min.js',
-  './vendor/chart-4.4.1.umd.js',
-  './vendor/supabase-2.39.7.umd.js',
-  './vendor/jspdf-2.5.1.umd.min.js',
-  './vendor/jspdf-autotable-3.8.2.min.js',
-  './vendor/fonts/poppins.css',
-  './vendor/fonts/poppins-latin-400-normal.woff2',
-  './vendor/fonts/poppins-latin-500-normal.woff2',
-  './vendor/fonts/poppins-latin-600-normal.woff2',
-  './vendor/fonts/poppins-latin-700-normal.woff2',
+  v('./js/qr-generator.js'),
+  v('./js/pwa-manifest.js'),
+  v('./js/donnees-analyses.js'),
+  v('./js/navigation.js'),
+  v('./js/supabase-db.js'),
+  v('./js/historique.js'),
+  v('./js/export-excel.js'),
+  v('./js/prescripteurs.js'),
+  v('./js/saisie.js'),
+  v('./js/ui-auth.js'),
+  v('./js/session-pwa.js'),
+  v('./js/stats.js'),
+  v('./js/impression.js'),
+  v('./js/export-pdf.js'),
+  v('./vendor/exceljs-4.4.0.min.js'),
+  v('./vendor/chart-4.4.1.umd.js'),
+  v('./vendor/supabase-2.39.7.umd.js'),
+  v('./vendor/jspdf-2.5.1.umd.min.js'),
+  v('./vendor/jspdf-autotable-3.8.2.min.js'),
+  v('./vendor/fonts/poppins.css'),
+  v('./vendor/fonts/poppins-latin-400-normal.woff2'),
+  v('./vendor/fonts/poppins-latin-500-normal.woff2'),
+  v('./vendor/fonts/poppins-latin-600-normal.woff2'),
+  v('./vendor/fonts/poppins-latin-700-normal.woff2'),
 ];
 
 self.addEventListener('install', e => {
@@ -97,6 +113,6 @@ self.addEventListener('fetch', e => {
         }
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() => caches.match(e.request, { ignoreSearch: true }))
   );
 });

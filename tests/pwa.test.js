@@ -20,6 +20,7 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   r.check('service worker actif', reg, 'activated');
   r.check('nom du cache', (await page.evaluate(() => caches.keys()))[0], CACHE);
 
+  // pathname ignore la query : un actif versionné reste comparable.
   const cached = await page.evaluate(async c => {
     const box = await caches.open(c);
     return (await box.keys()).map(k => new URL(k.url).pathname).sort();
@@ -45,7 +46,9 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
 
   // Le HTML doit référencer exactement ces modules, dans l'ordre.
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  const refs = [...html.matchAll(/<script src="\.\/(js\/[^"]+)"><\/script>/g)].map(x => x[1]);
+  // ✅ v13.72 — les URL portent ?v=APP_VERSION, on compare sur le chemin nu.
+  const refs = [...html.matchAll(/<script src="\.\/(js\/[^"?]+)(?:\?[^"]*)?"><\/script>/g)]
+    .map(x => x[1]);
   r.check('modules référencés par index.html', refs.length, 14);
   r.check('aucun module orphelin',
           modules.filter(f => !refs.includes('js/' + f)).join(',') || 'aucun', 'aucun');
