@@ -1,10 +1,12 @@
 name: Tests
 
 # Les tests ne servent à rien s'ils ne tournent que quand on y pense.
-# Ce workflow les exécute à chaque push et à chaque pull request sur main.
 on:
+  # Toutes les branches, pas seulement main : une branche de travail doit
+  # être testée pendant qu'on la développe, pas seulement au moment de la
+  # fusion — c'est là qu'un retour coûte le moins cher à corriger.
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
     branches: [main]
   # Exécution quotidienne : les tests dépendent de la date du jour
