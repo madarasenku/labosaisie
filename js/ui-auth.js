@@ -156,6 +156,10 @@ function enterApp() {
     } catch(e) { /* RPC non disponible → utiliser localStorage */ }
     updateAllRefs();
   })();
+  // ✅ v13.75 — grille tarifaire partagée : rechargée depuis la base à chaque
+  // connexion, pour qu'un prix modifié par l'admin s'applique à tous les
+  // postes dès leur prochaine ouverture de session.
+  if (typeof chargerTarifsDepuisBase === 'function') chargerTarifsDepuisBase();
   initApp();
   updateSyncBanner();          // ✅ v13.4
   flushSyncQueue(true);        // ✅ v13.4 — tenter la synchro silencieuse au démarrage

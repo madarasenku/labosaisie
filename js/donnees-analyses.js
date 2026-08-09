@@ -355,79 +355,58 @@ function updateAllRefs() {
 // TARIFICATION (FCFA)
 // ============================================================
 
-// Tarifs de base par type d'analyse (modifiables dans la page config)
-const TARIFS_BASE_DEFAULT = {
-  'Hématologie':      3500,
-  'Biochimie':        0,
-  'Bactériologie':    5000,
-  'Immuno-Sérologie':        0,
-  'Parasitologie':    2500,
-  'Groupe sanguin':   3000,
-  'Bilan prénatal':   20000,
-};
+// ✅ v13.75 — LA TABLE DE PRIX HÉRITÉE A ÉTÉ SUPPRIMÉE.
+//
+//   Deux grilles coexistaient : TARIFS_BASE_DEFAULT / TARIFS_PARAMS_DEFAULT
+//   ici, et le prix porté par chaque examen du CATALOGUE_EXAMENS (js/saisie).
+//   Seul le catalogue facture réellement ; la table d'ici ne servait plus
+//   qu'à l'estimation affichée dans l'historique — et elle avait dérivé :
+//   hématologie annoncée 3 500 contre 3 000 facturés, groupe sanguin 3 000
+//   contre 2 000, bactériologie 5 000 contre 10 000. Six examens de
+//   sérologie (TPHA/VDRL, ASLO, Latex, TSH, T4 libre, PSA) n'y avaient
+//   aucun prix et s'estimaient donc à zéro, tandis que sept entrées
+//   pointaient vers des noms d'examens qui n'existent plus.
+//
+//   Vérifié sur 629 dossiers réels : les prix du catalogue correspondent à
+//   ce qui est facturé (NFS 3 000 dans 88,6 % des cas, CRP 3 500 dans
+//   70,5 %, groupe sanguin 2 000 dans 100 %). Le catalogue est donc la
+//   seule source de vérité, et l'estimation s'y appuie désormais.
 
-// Prix par paramètre individuel (Biochimie et Sérologie surtout)
-const TARIFS_PARAMS_DEFAULT = {
-  // Biochimie
-  'Glycémie à jeun': 1000, 'HbA1c': 7500,
-  'Créatinine': 1500, 'Urée': 1500, 'Acide urique': 1500,
-  'ASAT (TGO)': 2000, 'ALAT (TGP)': 2000, 'Gamma GT': 2000,
-  'Phosphatases alcalines': 2000, 'Bilirubine totale': 2000, 'Bilirubine directe': 2000,
-  'Protéines totales': 1500, 'Albumine': 1500,
-  'Cholestérol total': 2000, 'Triglycérides': 2000, 'HDL-cholestérol': 2000, 'LDL-cholestérol ⚙': 0,
-  'Sodium (Na⁺)': 1500, 'Potassium (K⁺)': 1500, 'Chlore (Cl⁻)': 1500,
-  'Calcium (Ca²⁺)': 1500, 'Phosphore': 1500, 'Magnésium (Mg²⁺)': 1500, 'Bicarbonates (HCO₃⁻)': 1500,
-  // Sérologie
-  'VIH 1 & 2': 3500, 'Ag HBs': 2500, 'Ac anti-HBc total': 2500, 'Ac anti-HBs': 3000,
-  'Ac anti-VHC': 2500, 'Syphilis TPHA': 2000, 'VDRL': 1500,
-  'Toxoplasmose IgG': 3500, 'Toxoplasmose IgM': 3500,
-  'Rubéole IgG': 3500, 'Rubéole IgM': 3500,
-  'CMV IgG': 3500, 'CMV IgM': 3500,
-  'Dengue NS1/IgM/IgG': 5000, 'H. pylori Ag': 5000,
-};
+/** Prix d'un examen, grille admin comprise, sinon prix du catalogue. */
+function prixExamen(idExamen) {
+  const ref = (typeof getTarifsRef === 'function') ? getTarifsRef() : {};
+  if (ref && ref[idExamen] !== undefined) return Number(ref[idExamen]) || 0;
+  const ex = (typeof CATALOGUE_EXAMENS !== 'undefined')
+    ? CATALOGUE_EXAMENS.find(e => e.id === idExamen) : null;
+  return ex ? (Number(ex.prix) || 0) : 0;
+}
 
-function getTarifsBase() {
-  try { return JSON.parse(localStorage.getItem('tarifs_base') || 'null') || TARIFS_BASE_DEFAULT; } catch(e) { return TARIFS_BASE_DEFAULT; }
+/** Somme des prix des examens cochés pour un type d'analyse donné. */
+function montantDepuisCatalogue(type, examensCoches) {
+  if (typeof CATALOGUE_EXAMENS === 'undefined') return 0;
+  const libelles = Array.isArray(examensCoches) ? examensCoches : [];
+  return CATALOGUE_EXAMENS
+    .filter(ex => libelles.includes(ex.label))
+    .reduce((total, ex) => total + prixExamen(ex.id), 0);
 }
-function getTarifsParams() {
-  try { return JSON.parse(localStorage.getItem('tarifs_params') || 'null') || TARIFS_PARAMS_DEFAULT; } catch(e) { return TARIFS_PARAMS_DEFAULT; }
-}
-function saveTarifsBase(t) { localStorage.setItem('tarifs_base', JSON.stringify(t)); }
-function saveTarifsParams(t) { localStorage.setItem('tarifs_params', JSON.stringify(t)); }
 
 function calculateMontant(type, resultats) {
-  const base = getTarifsBase();
-  const params = getTarifsParams();
-  let total = base[type] || 0;
-  if (resultats && (type === 'Biochimie' || type === 'Immuno-Sérologie')) {
-    Object.entries(resultats).forEach(([nom, v]) => {
-      const val = typeof v === 'object' ? (v.valeur || v.resultat || '') : (v || '');
-      if (val && val !== '—' && params[nom]) total += params[nom];
-    });
-  }
-  return total;
+  // Les examens réellement demandés sont mémorisés dans _examens_coches.
+  const coches = resultats && resultats._examens_coches
+    ? (resultats._examens_coches[type] || []) : [];
+  return montantDepuisCatalogue(type, coches);
 }
 
 // Calcule et affiche le montant en temps réel lors de la saisie
 function updateMontant(type) {
+  // ✅ v13.75 — Le montant affiché pendant la saisie est calculé par
+  // calcFicheTotal() (js/saisie.js) à partir des lignes d'examens cochées,
+  // dont le prix reste modifiable dossier par dossier. Cette fonction ne
+  // recalcule donc plus rien : elle délègue, pour qu'il n'existe qu'un seul
+  // calcul du montant dans toute l'application.
+  if (typeof calcFicheTotal === 'function') { calcFicheTotal(); return; }
   const el = document.getElementById('montant-preview');
-  if (!el) return;
-  const base = getTarifsBase();
-  const params = getTarifsParams();
-  let total = base[type] || 0;
-  if (type === 'Biochimie') {
-    [...BIO_GLUCIDES,...BIO_REIN,...BIO_FOIE,...BIO_LIPIDES,...BIO_IONO,...BIO_FER,...BIO_CARD,...BIO_HORM,...BIO_COAG,...BIO_AUTRE].forEach(p => {
-      const valEl = document.getElementById('v_' + p.id);
-      if (valEl && valEl.value.trim() !== '' && params[p.name]) total += params[p.name];
-    });
-  } else if (type === 'Immuno-Sérologie') {
-    SERO_TESTS.forEach(p => {
-      const sel = document.getElementById('sr_' + p.id + '_r');
-      if (sel && sel.value && params[p.name]) total += params[p.name];
-    });
-  }
-  el.textContent = total.toLocaleString('fr-FR') + ' FCFA';
-  el.dataset.montant = total;
+  if (el && !el.dataset.montant) { el.textContent = '0 FCFA'; el.dataset.montant = 0; }
 }
 
 const HEMA_PARAMS = [
