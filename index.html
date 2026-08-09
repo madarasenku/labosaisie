@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.78">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.79">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,21 +25,21 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.78"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.78"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.78"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.78"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.78"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.79"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.79"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.79"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.79"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.79"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.78"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.78">
+<script src="./js/qr-generator.js?v=13.79"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.79">
 </head>
 <body>
 
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.78"></script>
+<script src="./js/pwa-manifest.js?v=13.79"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -1524,6 +1524,40 @@
                  style="display:none" onchange="restaurerDepuisFichier(this)">
         </div>
       </div>
+
+      <!-- ✅ v13.79 — Retour arrière sur les instantanés nocturnes du serveur.
+           Le filet existait depuis toujours ; il n'était exposé nulle part. -->
+      <div class="card" id="retour-arriere-card">
+        <div class="section-title"><span>🕑 Retour arrière</span></div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+          Le serveur photographie la base <strong>chaque nuit à 23h</strong> et conserve
+          les 15 derniers jours. Choisissez une date pour voir ce qui a disparu depuis,
+          et remettre en place les fiches manquantes. Les fiches créées ou modifiées
+          depuis ne sont jamais touchées.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <select id="instantane-date" onchange="analyserInstantane()" style="min-width:280px">
+            <option value="">— choisir une date —</option>
+          </select>
+          <button class="btn btn-primary" id="btn-retour-arriere"
+                  onclick="lancerRetourArriere()" style="display:none"></button>
+        </div>
+        <div id="instantane-resultat" style="margin-top:12px"></div>
+
+        <div style="border-top:1px solid var(--border,#e2e8f0);margin-top:14px;padding-top:12px">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin-bottom:8px">
+            <strong>Réparer une fiche</strong> abîmée par une mauvaise saisie : elle reviendra
+            à son contenu de la date choisie ci-dessus. Contrairement au bouton précédent,
+            celui-ci <strong>écrase</strong> la version actuelle de cette fiche — d'où le
+            passage par un numéro de dossier précis.
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="reparer-dossier" placeholder="N° de dossier (ex. 0102-0826)"
+                   style="min-width:220px">
+            <button class="btn btn-outline" onclick="reparerFicheParDossier()">↺ Réparer cette fiche</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="ac-rapport" class="admin-sub-section">
@@ -1868,16 +1902,16 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.78"></script>
-<script src="./js/donnees-analyses.js?v=13.78"></script>
-<script src="./js/navigation.js?v=13.78"></script>
-<script src="./js/supabase-db.js?v=13.78"></script>
-<script src="./js/historique.js?v=13.78"></script>
-<script src="./js/export-excel.js?v=13.78"></script>
-<script src="./js/prescripteurs.js?v=13.78"></script>
-<script src="./js/saisie.js?v=13.78"></script>
-<script src="./js/ui-auth.js?v=13.78"></script>
-<script src="./js/session-pwa.js?v=13.78"></script>
+<script src="./js/periode-nav.js?v=13.79"></script>
+<script src="./js/donnees-analyses.js?v=13.79"></script>
+<script src="./js/navigation.js?v=13.79"></script>
+<script src="./js/supabase-db.js?v=13.79"></script>
+<script src="./js/historique.js?v=13.79"></script>
+<script src="./js/export-excel.js?v=13.79"></script>
+<script src="./js/prescripteurs.js?v=13.79"></script>
+<script src="./js/saisie.js?v=13.79"></script>
+<script src="./js/ui-auth.js?v=13.79"></script>
+<script src="./js/session-pwa.js?v=13.79"></script>
 
 </div><!-- /#app-root -->
 
@@ -1958,9 +1992,9 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.78"></script>
-<script src="./js/impression.js?v=13.78"></script>
-<script src="./js/export-pdf.js?v=13.78"></script>
-<script src="./js/sauvegarde.js?v=13.78"></script>
+<script src="./js/stats.js?v=13.79"></script>
+<script src="./js/impression.js?v=13.79"></script>
+<script src="./js/export-pdf.js?v=13.79"></script>
+<script src="./js/sauvegarde.js?v=13.79"></script>
 </body>
 </html>

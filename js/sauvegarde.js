@@ -245,6 +245,214 @@ async function restaurerBase(texte) {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   RETOUR ARRIÈRE  (v13.79)
+
+   Un instantané complet de la base est pris chaque nuit à 23h côté
+   serveur et conservé 15 jours. Ce filet existait déjà, mais n'était
+   exposé nulle part : personne ne pouvait tomber dedans.
+
+   Deux gestes distincts, volontairement séparés parce qu'ils n'ont pas
+   du tout le même risque :
+
+   • Remettre les fiches DISPARUES d'une journée — purement additif,
+     rien n'est écrasé, rejouable sans conséquence.
+   • Réparer UNE fiche abîmée par une mauvaise saisie — là on écrase
+     vraiment, donc une seule fiche à la fois, désignée à la main.
+   ───────────────────────────────────────────────────────────── */
+
+let _instantaneChoisi = null;
+
+/** Remplit le sélecteur de dates avec les instantanés disponibles. */
+async function chargerInstantanes() {
+  const sel = document.getElementById('instantane-date');
+  if (!sel || !isAdmin()) return;
+  if (!navigator.onLine || typeof _sb === 'undefined' || !_sb) return;
+
+  try {
+    const { data, error } = await _sb.rpc('liste_instantanes', { p_token: TK() });
+    if (error || !data || data.erreur || !Array.isArray(data.instantanes)) return;
+
+    const liste = data.instantanes;
+    if (!liste.length) {
+      sel.innerHTML = '<option value="">Aucun instantané disponible</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— choisir une date —</option>' + liste.map(i => {
+      const d = new Date(i.date + 'T12:00:00');
+      const libelle = d.toLocaleDateString('fr-FR',
+        { weekday: 'long', day: 'numeric', month: 'long' });
+      // On annonce dès la liste combien de fiches manquent à l'appel :
+      // c'est ce qui permet de repérer la bonne date sans tâtonner.
+      const alerte = i.disparues > 0 ? ' — ' + i.disparues + ' fiche(s) disparue(s)' : '';
+      return '<option value="' + i.date + '">' + libelle
+           + ' (' + i.nb_fiches + ' fiches)' + alerte + '</option>';
+    }).join('');
+  } catch (e) { /* sans réseau, on laisse le sélecteur en l'état */ }
+}
+
+/** Compare une date d'instantané à l'état actuel et affiche le verdict. */
+async function analyserInstantane() {
+  const sel  = document.getElementById('instantane-date');
+  const zone = document.getElementById('instantane-resultat');
+  const btn  = document.getElementById('btn-retour-arriere');
+  if (!sel || !zone) return;
+  if (btn) btn.style.display = 'none';
+  _instantaneChoisi = null;
+
+  const date = sel.value;
+  if (!date) { zone.innerHTML = ''; return; }
+  if (!isAdmin()) { toast('Retour arrière réservé aux administrateurs', 'err'); return; }
+
+  try {
+    showLoading('Comparaison…');
+    const { data, error } = await _sb.rpc('comparer_instantane', { p_token: TK(), p_date: date });
+    hideLoading();
+    if (error || !data || data.erreur) {
+      zone.innerHTML = '<span style="color:#b91c1c">Comparaison impossible'
+        + (data?.erreur ? ' (' + data.erreur + ')' : '') + '</span>';
+      return;
+    }
+
+    const gris = 'color:var(--text-muted)';
+    let html = '<div style="font-size:12.5px;line-height:1.7">'
+      + '<strong>' + data.nb_fiches + '</strong> fiches dans cet instantané. ';
+
+    if (data.disparues > 0) {
+      html += '<span style="color:#b45309;font-weight:700">'
+            + data.disparues + ' ne sont plus en base.</span>';
+      const noms = (data.apercu || []).map(f =>
+        '<li>' + (f.dossier || '?') + ' — ' + (f.nom || 'sans nom')
+        + ' <span style="' + gris + '">(' + (f.montant || 0) + ' FCFA, saisi par '
+        + (f.cree_par || '?') + ')</span></li>').join('');
+      if (noms) html += '<ul style="margin:8px 0 0 18px;padding:0">' + noms
+        + (data.disparues > 20 ? '<li style="' + gris + '">… et ' + (data.disparues - 20)
+           + ' autres</li>' : '') + '</ul>';
+    } else {
+      html += '<span style="color:#15803d;font-weight:600">Aucune fiche manquante ✓</span>';
+    }
+
+    // Les deux autres compteurs sont informatifs : le retour arrière n'y touche pas.
+    html += '<div style="' + gris + ';margin-top:8px">'
+          + data.creees_depuis + ' fiche(s) créée(s) depuis — elles seront conservées. '
+          + data.modifiees + ' fiche(s) modifiée(s) depuis — elles ne seront pas touchées '
+          + '(pour en réparer une, utilisez le champ « réparer une fiche » ci-dessous).'
+          + '</div></div>';
+    zone.innerHTML = html;
+
+    if (data.disparues > 0 && btn) {
+      _instantaneChoisi = { date, disparues: data.disparues };
+      btn.style.display = '';
+      btn.textContent = '♻️ Remettre les ' + data.disparues + ' fiche(s) disparue(s)';
+    }
+  } catch (e) {
+    hideLoading();
+    zone.innerHTML = '<span style="color:#b91c1c">Comparaison impossible</span>';
+  }
+}
+
+/** Remet en place les fiches manquantes de l'instantané sélectionné. */
+async function lancerRetourArriere() {
+  if (!isAdmin())        { toast('Retour arrière réservé aux administrateurs', 'err'); return; }
+  if (!_instantaneChoisi) { toast('Choisissez d\'abord une date', 'err'); return; }
+
+  const { date, disparues } = _instantaneChoisi;
+  const jour = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR');
+  const ok = await showConfirmModal({
+    icon: '♻️',
+    title: 'Remettre ' + disparues + ' fiche(s) ?',
+    message: 'Les fiches présentes le ' + jour + ' et absentes aujourd\'hui seront '
+           + 'réinsérées avec leur contenu, leur date et leur auteur d\'origine. '
+           + 'Aucune fiche actuelle ne sera modifiée ni supprimée.',
+    confirmText: 'Remettre',
+  });
+  if (!ok) return;
+
+  const btn = document.getElementById('btn-retour-arriere');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Restauration…'; }
+  try {
+    showLoading('Retour arrière…');
+    const { data, error } = await _sb.rpc('restaurer_depuis_instantane',
+      { p_token: TK(), p_date: date });
+    hideLoading();
+    if (error || !data || data.erreur) {
+      toast('Retour arrière échoué : ' + (error?.message || data?.erreur || '?'), 'err');
+      return;
+    }
+    let msg = data.restaurees + ' fiche(s) remise(s) en place ✓';
+    if (data.sans_prescripteur) msg += ' — ' + data.sans_prescripteur + ' sans prescripteur retrouvé';
+    toast(msg, 'ok');
+    await refreshDB(true);
+    if (typeof renderHistory === 'function') renderHistory();
+    await chargerInstantanes();
+    await analyserInstantane();
+  } catch (e) {
+    hideLoading();
+    toast('Retour arrière échoué : ' + (e.message || e), 'err');
+  } finally {
+    if (btn) { btn.disabled = false; }
+  }
+}
+
+/**
+ * Répare une fiche désignée par son numéro de dossier, à la date choisie
+ * dans le sélecteur. Passer par le numéro de dossier plutôt que par un
+ * identifiant technique : c'est ce que l'admin a sous les yeux sur le reçu.
+ */
+async function reparerFicheParDossier() {
+  const champ = document.getElementById('reparer-dossier');
+  const sel   = document.getElementById('instantane-date');
+  if (!champ || !sel) return;
+
+  const numero = (champ.value || '').trim();
+  if (!numero)     { toast('Indiquez un numéro de dossier', 'err'); return; }
+  if (!sel.value)  { toast('Choisissez d\'abord une date ci-dessus', 'err'); return; }
+
+  const db = (typeof getCalcDB === 'function' ? getCalcDB() : []) || [];
+  const fiche = db.find(r => String(r.patient?.dossier || '').trim() === numero);
+  if (!fiche) { toast('Dossier ' + numero + ' introuvable', 'err'); return; }
+
+  await reparerFicheDepuisInstantane(fiche.id, sel.value);
+  champ.value = '';
+}
+
+/**
+ * Répare UNE fiche en la ramenant à son état d'une date donnée.
+ * Contrairement au retour arrière de masse, celui-ci écrase le contenu
+ * actuel : d'où la confirmation qui nomme explicitement le patient.
+ */
+async function reparerFicheDepuisInstantane(id, date) {
+  if (!isAdmin()) { toast('Réservé aux administrateurs', 'err'); return; }
+  const jour = new Date(date + 'T12:00:00').toLocaleDateString('fr-FR');
+  const ok = await showConfirmModal({
+    icon: '↺',
+    title: 'Revenir à la version du ' + jour + ' ?',
+    message: 'Le contenu actuel de cette fiche (patient, résultats, montant) sera '
+           + 'remplacé par celui du ' + jour + '. Cette action est tracée dans le '
+           + 'journal d\'audit, mais elle écrase la version d\'aujourd\'hui.',
+    confirmText: 'Revenir en arrière',
+    confirmClass: 'btn-danger',
+  });
+  if (!ok) return;
+
+  try {
+    showLoading('Restauration de la fiche…');
+    const { data, error } = await _sb.rpc('restaurer_fiche_depuis_instantane',
+      { p_token: TK(), p_id: id, p_date: date });
+    hideLoading();
+    if (error || !data || data.erreur) {
+      toast('Échec : ' + (error?.message || data?.erreur || '?'), 'err');
+      return;
+    }
+    toast('Fiche ' + (data.dossier || id) + ' revenue au ' + jour + ' ✓', 'ok');
+    await refreshDB(true);
+    if (typeof renderHistory === 'function') renderHistory();
+  } catch (e) {
+    hideLoading();
+    toast('Échec : ' + (e.message || e), 'err');
+  }
+}
+
 /**
  * Affiche l'ancienneté de la dernière sauvegarde, et alerte si elle date.
  * Volontairement discret quand tout va bien : une alerte permanente finit

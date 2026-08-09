@@ -1261,6 +1261,13 @@ function adminShowSub(id, btn) {
   btn.classList.add('active');
   // ✅ v13.37 — Charger le journal des connexions à l'ouverture de l'onglet
   if (id === 'ac-connexions' && typeof renderConnexions === 'function') renderConnexions();
+  // ✅ v13.79 — Les instantanés ne sont chargés qu'à l'ouverture de l'onglet :
+  // inutile d'interroger le serveur à chaque connexion pour un écran rarement
+  // visité, mais indispensable de rafraîchir la liste quand on l'ouvre.
+  if (id === 'ac-sauvegarde') {
+    if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde();
+    if (typeof chargerInstantanes   === 'function') chargerInstantanes();
+  }
 }
 
 // ✅ v13.33 — Afficher/masquer un champ mot de passe
