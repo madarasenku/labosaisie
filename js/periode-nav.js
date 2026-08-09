@@ -159,3 +159,57 @@ function synchroniserChampsDate(prefixe, periode, decalage) {
   if (f) f.value = from || '';
   if (t) t.value = (periode === 'tout') ? '' : (to || '');
 }
+
+/* ───────────────────────────────────────────────────────────────
+   Navigation pour les paires de sélecteurs mois/année déjà en place
+   (Ristournes, Ristournes agent, Rapport mensuel).
+
+   ✅ v13.74 — Ces sélecteurs fonctionnaient, mais consulter trois mois
+   d'affilée demandait deux manipulations à chaque fois (ouvrir la liste,
+   choisir). Les flèches rendent le geste immédiat.
+
+   Attention : contrairement au bandeau ci-dessus, ces listes portent des
+   valeurs de mois de 1 à 12 (et non 0 à 11), car elles préexistaient.
+   ─────────────────────────────────────────────────────────────── */
+
+/** Décale d'un mois une paire de sélecteurs mois(1-12)/année, puis relance le rendu. */
+function decalerSelecteursMois(idMois, idAnnee, pas, onChange) {
+  const mEl = document.getElementById(idMois);
+  const aEl = document.getElementById(idAnnee);
+  if (!mEl || !aEl) return;
+
+  let m = Number(mEl.value) + pas;
+  let a = Number(aEl.value);
+  if (m > 12) { m = 1;  a++; }
+  if (m < 1)  { m = 12; a--; }
+
+  // Pas de futur : aucune fiche n'existe après le mois en cours.
+  const now = new Date();
+  if (a > now.getFullYear() || (a === now.getFullYear() && m > now.getMonth() + 1)) return;
+  // L'année doit figurer dans la liste proposée (3 ans d'historique).
+  if (![...aEl.options].some(o => Number(o.value) === a)) return;
+
+  mEl.value = String(m);
+  aEl.value = String(a);
+  if (typeof onChange === 'function') onChange();
+  majLibelleSelecteursMois(idMois, idAnnee);
+}
+
+/** Met à jour le libellé et grise la flèche « suivant » sur le mois en cours. */
+function majLibelleSelecteursMois(idMois, idAnnee) {
+  const mEl = document.getElementById(idMois);
+  const aEl = document.getElementById(idAnnee);
+  if (!mEl || !aEl) return;
+  const m = Number(mEl.value), a = Number(aEl.value);
+  const now = new Date();
+  const auMax = (a === now.getFullYear() && m >= now.getMonth() + 1) || a > now.getFullYear();
+
+  const suivant = document.getElementById(idMois + '-suivant');
+  if (suivant) {
+    suivant.disabled = auMax;
+    suivant.style.opacity = auMax ? '.35' : '1';
+    suivant.style.cursor  = auMax ? 'default' : 'pointer';
+  }
+  const lbl = document.getElementById(idMois + '-label');
+  if (lbl && m >= 1 && m <= 12) lbl.textContent = MOIS_LONG[m - 1] + ' ' + a;
+}

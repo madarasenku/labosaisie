@@ -1402,6 +1402,7 @@ function populateUCaisseMoisAnnee() {
 }
 
 function renderUCaisseRistournes() {
+  majLibelleSelecteursMois('ucaisse-rist-mois', 'ucaisse-rist-annee');
   const el = document.getElementById('ucaisse-rist-table');
   if (!el) return;
   const mois  = parseInt(document.getElementById('ucaisse-rist-mois')?.value  || (new Date().getMonth() + 1));
@@ -1520,6 +1521,11 @@ function tauxFor(presc) {
   return Number(presc.taux_ristourne) || 0;
 }
 function populateMoisAnneeSelectors() {
+  // ✅ v13.74 — après remplissage, synchroniser les libellés des flèches.
+  setTimeout(() => {
+    majLibelleSelecteursMois('rist-mois', 'rist-annee');
+    majLibelleSelecteursMois('rapport-mois', 'rapport-annee');
+  }, 0);
   const now = new Date();
   const y = now.getFullYear();
   const annees = [y, y - 1, y - 2];
@@ -1547,6 +1553,7 @@ function computeRistournesData(mois, annee) {
   }).filter(r => r.nb > 0);
 }
 function renderRistournesMois() {
+  majLibelleSelecteursMois('rist-mois', 'rist-annee');
   const el = document.getElementById('rist-mois-table');
   if (!el) return;
   const mois = parseInt(document.getElementById('rist-mois')?.value || (new Date().getMonth() + 1));

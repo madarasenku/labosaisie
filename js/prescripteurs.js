@@ -83,10 +83,47 @@ async function deletePrescripteur(id) {
 }
 
 // ✅ v2: ajout bouton ✏ modification + fonction editPrescripteur
+// ✅ v13.74 — Recherche dans la liste des prescripteurs. Ils sont 25 en
+// base : retrouver « DR KOUASSI » imposait de parcourir le tableau à l'œil.
+let _prescRecherche = '';
+
+function filtrerPrescripteurs(valeur) {
+  _prescRecherche = (valeur || '').trim().toLowerCase();
+  renderPrescripteursList();
+}
+
+function effacerRecherchePresc() {
+  _prescRecherche = '';
+  const el = document.getElementById('presc-search');
+  if (el) el.value = '';
+  renderPrescripteursList();
+}
+
 function renderPrescripteursList() {
   const el = document.getElementById('prescripteurs-list');
   if (!el) return;
   if (!_prescripteurs.length) { el.innerHTML = '<p style="font-size:12.5px;color:var(--text-muted)">Aucun prescripteur enregistré.</p>'; return; }
+
+  // La recherche porte sur le nom, la spécialité et la structure : c'est
+  // ainsi qu'on cherche un prescripteur dans la vraie vie.
+  const q = _prescRecherche;
+  const liste = q
+    ? _prescripteurs.filter(p => [p.nom, p.specialite, p.structure]
+        .filter(Boolean).join(' ').toLowerCase().includes(q))
+    : _prescripteurs;
+
+  const compteur = document.getElementById('presc-count');
+  if (compteur) {
+    compteur.textContent = q
+      ? `${liste.length} sur ${_prescripteurs.length} prescripteur${_prescripteurs.length > 1 ? 's' : ''}`
+      : `${_prescripteurs.length} prescripteur${_prescripteurs.length > 1 ? 's' : ''}`;
+  }
+
+  if (!liste.length) {
+    el.innerHTML = '<p style="font-size:12.5px;color:var(--text-muted);padding:10px 0">Aucun prescripteur ne correspond à « ' + esc(q) + ' ».</p>';
+    return;
+  }
+
   el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12.5px">
     <thead><tr style="background:var(--bg)">
       <th style="padding:8px;text-align:left;border-bottom:1px solid var(--border)">Nom</th>
@@ -96,7 +133,7 @@ function renderPrescripteursList() {
       <th style="padding:8px;border-bottom:1px solid var(--border)"></th>
     </tr></thead>
     <tbody>
-      ${_prescripteurs.map(p => `<tr>
+      ${liste.map(p => `<tr>
         <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${esc(p.nom)}</td>
         <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${esc(p.specialite||'—')}</td>
         <td style="padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-muted)">${esc(p.structure||'—')}</td>
