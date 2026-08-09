@@ -880,11 +880,55 @@ function buildProfessionalSheet(wb, r, sheetName) {
 // disponible avant de tenter un export — évite un échec silencieux si
 // la connexion internet est coupée ou trop lente au moment du clic.
 // ✅ v13.35 — Code impression/export déplacé dans print.js
+// ✅ v13.75 — TARIFS PARTAGÉS ENTRE TOUS LES POSTES
+//   Auparavant, la grille vivait dans le localStorage de chaque navigateur.
+//   Changer un prix sur un poste laissait les autres facturer l'ancien
+//   montant, sans aucun signal : deux guichets pouvaient encaisser des
+//   sommes différentes pour le même examen le même jour.
+//   La grille est désormais en base (table labo_tarifs, RPC get_tarifs /
+//   save_tarifs). Le localStorage ne sert plus que de cache hors-ligne :
+//   un poste sans réseau continue de facturer avec la dernière grille
+//   connue plutôt que de retomber sur les prix d'usine.
+let _tarifsRefCache = null;
+
 function getTarifsRef() {
-  try { return JSON.parse(localStorage.getItem('tarifs_ref') || 'null') || buildTarifsRefDefault(); }
-  catch(e) { return buildTarifsRefDefault(); }
+  if (_tarifsRefCache) return _tarifsRefCache;
+  try {
+    const local = JSON.parse(localStorage.getItem('tarifs_ref') || 'null');
+    if (local) { _tarifsRefCache = local; return local; }
+  } catch (e) { /* cache illisible : on repart des prix du catalogue */ }
+  return buildTarifsRefDefault();
 }
-function saveTarifsRef(t) { localStorage.setItem('tarifs_ref', JSON.stringify(t)); }
+
+/** Charge la grille depuis la base et rafraîchit le cache local. */
+async function chargerTarifsDepuisBase() {
+  if (!navigator.onLine || typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('get_tarifs', { p_token: TK() });
+    if (error || !data || typeof data !== 'object') return;
+    // Grille vide = aucun prix personnalisé : on garde ceux du catalogue.
+    const grille = Object.keys(data).length ? { ...buildTarifsRefDefault(), ...data }
+                                            : buildTarifsRefDefault();
+    _tarifsRefCache = grille;
+    try { localStorage.setItem('tarifs_ref', JSON.stringify(grille)); } catch (e) {}
+  } catch (e) { /* hors-ligne : le cache local prend le relais */ }
+}
+
+/** Enregistre la grille en base ; le cache local suit. */
+async function saveTarifsRef(t) {
+  _tarifsRefCache = t;
+  try { localStorage.setItem('tarifs_ref', JSON.stringify(t)); } catch (e) {}
+  if (typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('save_tarifs', { p_token: TK(), p_grille: t });
+    if (error)            { toast('Tarifs enregistrés sur ce poste seulement (serveur injoignable)', 'err'); return; }
+    if (data === 'forbidden') { toast('Seul un administrateur peut modifier les tarifs', 'err'); return; }
+    if (data !== 'ok')    { toast('Tarifs non enregistrés : ' + data, 'err'); return; }
+    toast('Tarifs enregistrés pour tous les postes', 'ok');
+  } catch (e) {
+    toast('Tarifs enregistrés sur ce poste seulement (hors-ligne)', 'err');
+  }
+}
 
 function buildTarifsRefDefault() {
   const ref = {};

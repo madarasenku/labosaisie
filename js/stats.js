@@ -14,7 +14,7 @@
    Variables globales attendues : _sb, TK(), _currentUser,
      getDB(), getRecordTypes(), getRecordResultats(), _fmtF(),
      _recDate(), toast(), showLoading(), hideLoading(), esc(),
-     TARIFS_BASE_DEFAULT, HEMA_FL, HEMA_PARAMS, BIO_*, SERO_*,
+     HEMA_FL, HEMA_PARAMS, BIO_*, SERO_*,
      CATALOGUE_EXAMENS, _prescripteurs, etc.
    ============================================================ */
 
