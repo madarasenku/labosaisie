@@ -168,14 +168,41 @@ async function submitPrescModal() {
 
 let _statsPeriode = 'mois'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
 
-function setStatsPeriode(periode) {
+// ✅ v13.73 — décalage temporel des Statistiques (voir js/periode-nav.js)
+let _statsDecalage = 0;
+
+function setStatsPeriode(periode, garderDecalage) {
+  // Changer de granularité repart de la période en cours : « trois périodes
+  // en arrière » n'a pas le même sens en jours et en mois.
+  if (!garderDecalage) _statsDecalage = 0;
   _statsPeriode = periode;
   // Mettre en évidence le bouton actif
   ['jour','semaine','mois','tout'].forEach(p => {
     const btn = document.getElementById('stats-btn-' + p);
     if (btn) btn.classList.toggle('active', p === periode);
   });
+  majBandeauPeriode('stats', _statsPeriode, _statsDecalage);
   renderStats();
+}
+
+function decalerStats(pas) {
+  if (!['jour','semaine','mois'].includes(_statsPeriode)) return;
+  if (_statsDecalage + pas > 0) return;      // pas de futur
+  _statsDecalage += pas;
+  setStatsPeriode(_statsPeriode, true);
+}
+
+function retourStatsCourant() {
+  _statsDecalage = 0;
+  setStatsPeriode(_statsPeriode, true);
+}
+
+function allerAuMoisStats() {
+  const d = decalageDepuisSelecteurs('stats');
+  if (d === null) { majBandeauPeriode('stats', _statsPeriode, _statsDecalage); return; }
+  _statsPeriode = 'mois';
+  _statsDecalage = d;
+  setStatsPeriode('mois', true);
 }
 
 function getStatsDateRange() {
@@ -183,18 +210,11 @@ function getStatsDateRange() {
   const today = now.toISOString().slice(0,10);
   let from = null, to = today, label = '';
 
-  if (_statsPeriode === 'jour') {
-    from = today; label = "Aujourd'hui (" + today.split('-').reverse().join('/') + ')';
-  } else if (_statsPeriode === 'semaine') {
-    const d = new Date(now);
-    const jour = d.getDay(); // 0 = dimanche, 1 = lundi, ... 6 = samedi
-    const decalage = jour === 0 ? 6 : jour - 1; // nombre de jours depuis le lundi de cette semaine
-    d.setDate(d.getDate() - decalage);
-    from = d.toISOString().slice(0,10);
-    label = 'Semaine du ' + from.split('-').reverse().join('/');
-  } else if (_statsPeriode === 'mois') {
-    from = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
-    label = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
+  if (['jour','semaine','mois'].includes(_statsPeriode)) {
+    // ✅ v13.73 — plage et libellé délégués au module partagé, décalage compris.
+    const plage = calcPlagePeriode(_statsPeriode, _statsDecalage);
+    from = plage.from; to = plage.to;
+    label = libelleDePeriode(_statsPeriode, _statsDecalage);
   } else if (_statsPeriode === 'tout') {
     from = null; label = 'Toute la période';
   } else if (_statsPeriode === 'custom') {

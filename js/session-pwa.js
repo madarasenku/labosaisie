@@ -1212,14 +1212,41 @@ async function submitFirstLoginPassword() {
 // ── FEATURE 5 : tableau de bord Caisse ────────────────────────────
 let _caissePeriode = 'jour';
 let _caisseChart = null;
-function setCaissePeriode(p) {
+// ✅ v13.73 — décalage temporel de la Caisse (voir js/periode-nav.js)
+let _caisseDecalage = 0;
+
+function setCaissePeriode(p, garderDecalage) {
+  if (!garderDecalage) _caisseDecalage = 0;
   _caissePeriode = p;
   ['jour','semaine','mois'].forEach(k => {
     const b = document.getElementById('caisse-btn-' + k);
     if (b) b.classList.toggle('active', k === p);
   });
+  if (p !== 'custom') synchroniserChampsDate('caisse', p, _caisseDecalage);
+  majBandeauPeriode('caisse', _caissePeriode, _caisseDecalage);
   renderCaisse();
 }
+
+function decalerCaisse(pas) {
+  if (!['jour','semaine','mois'].includes(_caissePeriode)) return;
+  if (_caisseDecalage + pas > 0) return;      // pas de futur
+  _caisseDecalage += pas;
+  setCaissePeriode(_caissePeriode, true);
+}
+
+function retourCaisseCourante() {
+  _caisseDecalage = 0;
+  setCaissePeriode(_caissePeriode, true);
+}
+
+function allerAuMoisCaisse() {
+  const d = decalageDepuisSelecteurs('caisse');
+  if (d === null) { majBandeauPeriode('caisse', _caissePeriode, _caisseDecalage); return; }
+  _caissePeriode = 'mois';
+  _caisseDecalage = d;
+  setCaissePeriode('mois', true);
+}
+
 function getCaisseRange() {
   if (_caissePeriode === 'custom') {
     return {
@@ -1227,7 +1254,7 @@ function getCaisseRange() {
       to:   document.getElementById('caisse-date-to')?.value || '',
     };
   }
-  return computeHistDateRange(_caissePeriode || 'jour');
+  return calcPlagePeriode(_caissePeriode || 'jour', _caisseDecalage);
 }
 async function renderCaisse() {
   await refreshDB();
@@ -1311,13 +1338,39 @@ async function renderCaisse() {
 let _uCaissePeriode = 'jour';
 let _uCaisseChart   = null;
 
-function setUCaissePeriode(p) {
+// ✅ v13.73 — décalage temporel de la caisse personnelle
+let _uCaisseDecalage = 0;
+
+function setUCaissePeriode(p, garderDecalage) {
+  if (!garderDecalage) _uCaisseDecalage = 0;
   _uCaissePeriode = p;
   ['jour','semaine','mois'].forEach(k => {
     const b = document.getElementById('ucaisse-btn-' + k);
     if (b) b.classList.toggle('active', k === p);
   });
+  if (p !== 'custom') synchroniserChampsDate('ucaisse', p, _uCaisseDecalage);
+  majBandeauPeriode('ucaisse', _uCaissePeriode, _uCaisseDecalage);
   renderUserCaisse();
+}
+
+function decalerUCaisse(pas) {
+  if (!['jour','semaine','mois'].includes(_uCaissePeriode)) return;
+  if (_uCaisseDecalage + pas > 0) return;
+  _uCaisseDecalage += pas;
+  setUCaissePeriode(_uCaissePeriode, true);
+}
+
+function retourUCaisseCourante() {
+  _uCaisseDecalage = 0;
+  setUCaissePeriode(_uCaissePeriode, true);
+}
+
+function allerAuMoisUCaisse() {
+  const d = decalageDepuisSelecteurs('ucaisse');
+  if (d === null) { majBandeauPeriode('ucaisse', _uCaissePeriode, _uCaisseDecalage); return; }
+  _uCaissePeriode = 'mois';
+  _uCaisseDecalage = d;
+  setUCaissePeriode('mois', true);
 }
 
 function getUCaisseRange() {
@@ -1327,7 +1380,7 @@ function getUCaisseRange() {
       to:   document.getElementById('ucaisse-date-to')?.value || '',
     };
   }
-  return computeHistDateRange(_uCaissePeriode || 'jour');
+  return calcPlagePeriode(_uCaissePeriode || 'jour', _uCaisseDecalage);
 }
 
 function populateUCaisseMoisAnnee() {

@@ -28,7 +28,9 @@ node tests/filtres.test.js
 | `roles.test.js` | Cloisonnement admin / caissier / agent, caisse personnelle |
 | `pwa.test.js` | Service worker, pré-cache, mode hors-ligne, bannière de mise à jour |
 | `qr.test.js` | Génération des QR (reçus, Excel, PDF) — format, densité, cas limites |
-| `navigation-periode.test.js` | Flèches ◀ ▶ mois/semaine/jour, saut direct par mois, interdiction du futur |
+| `navigation-periode.test.js` | Historique : flèches ◀ ▶ mois/semaine/jour, saut direct par mois, interdiction du futur |
+| `navigation-autres-onglets.test.js` | Même navigation sur Statistiques, Caisse et Caisse personnelle |
+| `deploiement.test.js` | Versionnement des actifs (`?v=`), cohérence index/login/sw, précache complet |
 
 ## Sécurité des tests
 

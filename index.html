@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.72">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.73">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,21 +25,21 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.72"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.72"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.72"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.72"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.72"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.73"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.73"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.73"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.73"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.73"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.72"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.72">
+<script src="./js/qr-generator.js?v=13.73"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.73">
 </head>
 <body>
 
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.72"></script>
+<script src="./js/pwa-manifest.js?v=13.73"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -1030,7 +1030,7 @@
         <button class="btn btn-outline" id="hist-nav-precedent" onclick="decalerPeriode(-1)"
                 title="Période précédente" aria-label="Période précédente"
                 style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
-        <span id="hist-periode-label"
+        <span id="hist-nav-label"
               style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
         <button class="btn btn-outline" id="hist-nav-suivant" onclick="decalerPeriode(1)"
                 title="Période suivante" aria-label="Période suivante"
@@ -1179,6 +1179,27 @@
       <button class="btn btn-outline" id="stats-btn-semaine" onclick="setStatsPeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
       <button class="btn btn-outline active" id="stats-btn-mois" onclick="setStatsPeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
       <button class="btn btn-outline" id="stats-btn-tout" onclick="setStatsPeriode('tout')" style="padding:6px 14px;font-size:12.5px">Tout</button>
+      <!-- ✅ v13.73 — Navigation dans le temps (composant partagé js/periode-nav.js) -->
+      <div id="stats-nav-periode" style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <button class="btn btn-outline" id="stats-nav-precedent" onclick="decalerStats(-1)"
+                title="Période précédente" aria-label="Période précédente"
+                style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+        <span id="stats-nav-label"
+              style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="stats-nav-suivant" onclick="decalerStats(1)"
+                title="Période suivante" aria-label="Période suivante"
+                style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+        <button class="btn btn-outline" id="stats-nav-retour" onclick="retourStatsCourant()"
+                title="Revenir à la période en cours"
+                style="padding:5px 9px;font-size:11.5px;display:none">↻ Actuel</button>
+      </div>
+      <div id="stats-mois-annee" style="display:flex;align-items:center;gap:5px">
+        <select id="stats-sel-mois" onchange="allerAuMoisStats()" aria-label="Aller au mois"
+                style="width:auto;min-width:104px;padding:4px 8px;font-size:11.5px"></select>
+        <select id="stats-sel-annee" onchange="allerAuMoisStats()" aria-label="Aller à l'année"
+                style="width:auto;min-width:78px;padding:4px 8px;font-size:11.5px"></select>
+      </div>
+
       <div style="display:flex;align-items:center;gap:6px;margin-left:8px;flex-wrap:wrap">
         <label style="font-size:12px;color:var(--text-muted)">Du</label>
         <input type="date" id="stats-date-from" style="width:auto;max-width:150px">
@@ -1557,6 +1578,27 @@
       <button class="btn btn-outline active" id="caisse-btn-jour" onclick="setCaissePeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
       <button class="btn btn-outline" id="caisse-btn-semaine" onclick="setCaissePeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
       <button class="btn btn-outline" id="caisse-btn-mois" onclick="setCaissePeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
+      <!-- ✅ v13.73 — Navigation dans le temps (composant partagé js/periode-nav.js) -->
+      <div id="caisse-nav-periode" style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <button class="btn btn-outline" id="caisse-nav-precedent" onclick="decalerCaisse(-1)"
+                title="Période précédente" aria-label="Période précédente"
+                style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+        <span id="caisse-nav-label"
+              style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="caisse-nav-suivant" onclick="decalerCaisse(1)"
+                title="Période suivante" aria-label="Période suivante"
+                style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+        <button class="btn btn-outline" id="caisse-nav-retour" onclick="retourCaisseCourante()"
+                title="Revenir à la période en cours"
+                style="padding:5px 9px;font-size:11.5px;display:none">↻ Actuel</button>
+      </div>
+      <div id="caisse-mois-annee" style="display:flex;align-items:center;gap:5px">
+        <select id="caisse-sel-mois" onchange="allerAuMoisCaisse()" aria-label="Aller au mois"
+                style="width:auto;min-width:104px;padding:4px 8px;font-size:11.5px"></select>
+        <select id="caisse-sel-annee" onchange="allerAuMoisCaisse()" aria-label="Aller à l'année"
+                style="width:auto;min-width:78px;padding:4px 8px;font-size:11.5px"></select>
+      </div>
+
       <div style="display:flex;align-items:center;gap:6px;margin-left:8px;flex-wrap:wrap">
         <label style="font-size:12px;color:var(--text-muted)">Du</label>
         <input type="date" id="caisse-date-from" style="width:auto;max-width:150px">
@@ -1668,6 +1710,27 @@
         <button class="btn btn-outline active" id="ucaisse-btn-jour" onclick="setUCaissePeriode('jour')" style="padding:5px 12px;font-size:12px">Aujourd'hui</button>
         <button class="btn btn-outline" id="ucaisse-btn-semaine" onclick="setUCaissePeriode('semaine')" style="padding:5px 12px;font-size:12px">Cette semaine</button>
         <button class="btn btn-outline" id="ucaisse-btn-mois" onclick="setUCaissePeriode('mois')" style="padding:5px 12px;font-size:12px">Ce mois</button>
+      <!-- ✅ v13.73 — Navigation dans le temps (composant partagé js/periode-nav.js) -->
+      <div id="ucaisse-nav-periode" style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <button class="btn btn-outline" id="ucaisse-nav-precedent" onclick="decalerUCaisse(-1)"
+                title="Période précédente" aria-label="Période précédente"
+                style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+        <span id="ucaisse-nav-label"
+              style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="ucaisse-nav-suivant" onclick="decalerUCaisse(1)"
+                title="Période suivante" aria-label="Période suivante"
+                style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+        <button class="btn btn-outline" id="ucaisse-nav-retour" onclick="retourUCaisseCourante()"
+                title="Revenir à la période en cours"
+                style="padding:5px 9px;font-size:11px;display:none">↻ Actuel</button>
+      </div>
+      <div id="ucaisse-mois-annee" style="display:flex;align-items:center;gap:5px">
+        <select id="ucaisse-sel-mois" onchange="allerAuMoisUCaisse()" aria-label="Aller au mois"
+                style="width:auto;min-width:104px;padding:4px 8px;font-size:11.5px"></select>
+        <select id="ucaisse-sel-annee" onchange="allerAuMoisUCaisse()" aria-label="Aller à l'année"
+                style="width:auto;min-width:78px;padding:4px 8px;font-size:11.5px"></select>
+      </div>
+
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <label style="font-size:11px;color:var(--text-muted)">Du</label>
           <input type="date" id="ucaisse-date-from" style="width:auto;max-width:150px;font-size:12px">
@@ -1737,15 +1800,16 @@
 
 <div id="toast"></div>
 
-<script src="./js/donnees-analyses.js?v=13.72"></script>
-<script src="./js/navigation.js?v=13.72"></script>
-<script src="./js/supabase-db.js?v=13.72"></script>
-<script src="./js/historique.js?v=13.72"></script>
-<script src="./js/export-excel.js?v=13.72"></script>
-<script src="./js/prescripteurs.js?v=13.72"></script>
-<script src="./js/saisie.js?v=13.72"></script>
-<script src="./js/ui-auth.js?v=13.72"></script>
-<script src="./js/session-pwa.js?v=13.72"></script>
+<script src="./js/periode-nav.js?v=13.73"></script>
+<script src="./js/donnees-analyses.js?v=13.73"></script>
+<script src="./js/navigation.js?v=13.73"></script>
+<script src="./js/supabase-db.js?v=13.73"></script>
+<script src="./js/historique.js?v=13.73"></script>
+<script src="./js/export-excel.js?v=13.73"></script>
+<script src="./js/prescripteurs.js?v=13.73"></script>
+<script src="./js/saisie.js?v=13.73"></script>
+<script src="./js/ui-auth.js?v=13.73"></script>
+<script src="./js/session-pwa.js?v=13.73"></script>
 
 </div><!-- /#app-root -->
 
@@ -1826,8 +1890,8 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.72"></script>
-<script src="./js/impression.js?v=13.72"></script>
-<script src="./js/export-pdf.js?v=13.72"></script>
+<script src="./js/stats.js?v=13.73"></script>
+<script src="./js/impression.js?v=13.73"></script>
+<script src="./js/export-pdf.js?v=13.73"></script>
 </body>
 </html>

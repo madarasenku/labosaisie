@@ -16,7 +16,7 @@ const compteMois = prefixe => FICHES.filter(f => f[1].startsWith(prefixe)).lengt
   await page.waitForTimeout(1500);
 
   const label = () => page.evaluate(() =>
-    document.getElementById('hist-periode-label')?.textContent || '');
+    document.getElementById('hist-nav-label')?.textContent || '');
   const visible = id => page.evaluate(i => {
     const e = document.getElementById(i);
     return !!e && e.offsetParent !== null;

@@ -40,7 +40,6 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   // pré-cachés : il en manquerait un et l'application serait inutilisable
   // hors-ligne, avec une erreur difficile à diagnostiquer sur le terrain.
   const modules = fs.readdirSync(path.join(__dirname, '..', 'js')).filter(f => f.endsWith('.js'));
-  r.check('nombre de modules js/', modules.length, 14);
   const manquants = modules.filter(f => !cached.includes('/js/' + f));
   r.check('tous les modules pré-cachés', manquants.join(',') || 'aucun manquant', 'aucun manquant');
 
@@ -49,7 +48,10 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   // ✅ v13.72 — les URL portent ?v=APP_VERSION, on compare sur le chemin nu.
   const refs = [...html.matchAll(/<script src="\.\/(js\/[^"?]+)(?:\?[^"]*)?"><\/script>/g)]
     .map(x => x[1]);
-  r.check('modules référencés par index.html', refs.length, 14);
+  // Pas de nombre figé : ajouter un module ne doit pas faire échouer le test
+  // pour une mauvaise raison. Ce qui compte, c'est que les trois listes
+  // (fichiers présents, référencés, pré-cachés) coïncident exactement.
+  r.check('modules présents et référencés identiques', modules.length, refs.length);
   r.check('aucun module orphelin',
           modules.filter(f => !refs.includes('js/' + f)).join(',') || 'aucun', 'aucun');
 
