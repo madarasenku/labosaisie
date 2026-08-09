@@ -17,7 +17,7 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const CACHE = 'cpmi-labo-v45';
+const CACHE = 'cpmi-labo-v46';
 
 /* Pré-cacher les fichiers essentiels à l'installation.
    ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,

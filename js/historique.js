@@ -37,7 +37,154 @@ function clearSearchFilters() {
 // ── Raccourcis de période pour l'Historique (même logique que Statistiques) ──
 let _histPeriode = 'mois'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
 
-function setHistPeriode(periode) {
+// ✅ v13.72 — NAVIGATION DANS LE TEMPS
+//   Décalage par rapport à la période courante : 0 = aujourd'hui / cette
+//   semaine / ce mois, -1 = la précédente, +1 = la suivante. Auparavant,
+//   consulter juillet depuis août imposait de saisir deux dates à la main.
+let _histDecalage = 0;
+
+const MOIS_LONG = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet',
+                   'Août','Septembre','Octobre','Novembre','Décembre'];
+
+function _isoLocal(d) {
+  // toISOString() bascule en UTC et peut décaler d'un jour selon le fuseau.
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+       + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function _lundiDe(d) {
+  const x = new Date(d);
+  const j = x.getDay();                    // dimanche = 0
+  x.setDate(x.getDate() - (j === 0 ? 6 : j - 1));
+  return x;
+}
+
+/** Plage [from, to] de la période active, décalage compris. */
+function getHistRange() {
+  const now = new Date();
+
+  if (_histPeriode === 'jour') {
+    const d = new Date(now); d.setDate(d.getDate() + _histDecalage);
+    const s = _isoLocal(d);
+    return { from: s, to: s };
+  }
+
+  if (_histPeriode === 'semaine') {
+    const lundi = _lundiDe(now);
+    lundi.setDate(lundi.getDate() + _histDecalage * 7);
+    const dim = new Date(lundi); dim.setDate(dim.getDate() + 6);
+    // Semaine en cours : on ne va pas au-delà d'aujourd'hui.
+    const fin = (_histDecalage === 0 && dim > now) ? now : dim;
+    return { from: _isoLocal(lundi), to: _isoLocal(fin) };
+  }
+
+  if (_histPeriode === 'mois') {
+    const debut = new Date(now.getFullYear(), now.getMonth() + _histDecalage, 1);
+    const fin   = new Date(now.getFullYear(), now.getMonth() + _histDecalage + 1, 0);
+    return { from: _isoLocal(debut),
+             to:   _isoLocal(_histDecalage === 0 ? now : fin) };
+  }
+
+  return { from: null, to: null }; // 'tout'
+}
+
+/** Libellé lisible de la période affichée. */
+function libellePeriode() {
+  const { from, to } = getHistRange();
+  if (_histPeriode === 'tout')   return 'Toutes les fiches';
+  if (_histPeriode === 'custom') return (from || '…') + ' → ' + (to || '…');
+
+  const d = new Date(from + 'T12:00:00');
+  if (_histPeriode === 'jour') {
+    if (_histDecalage === 0)  return "Aujourd'hui";
+    if (_histDecalage === -1) return 'Hier';
+    return d.toLocaleDateString('fr-FR',
+      { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  }
+  if (_histPeriode === 'semaine') {
+    const f = new Date(to + 'T12:00:00');
+    const meme = d.getMonth() === f.getMonth();
+    const txt = 'Semaine du ' + d.getDate() + (meme ? '' : ' ' + MOIS_LONG[d.getMonth()].toLowerCase())
+              + ' au ' + f.getDate() + ' ' + MOIS_LONG[f.getMonth()].toLowerCase()
+              + (d.getFullYear() !== new Date().getFullYear() ? ' ' + f.getFullYear() : '');
+    return _histDecalage === 0 ? txt + ' (en cours)' : txt;
+  }
+  return MOIS_LONG[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+/** Rafraîchit le bandeau de navigation (libellé, flèches, sélecteurs). */
+function majNavPeriode() {
+  const zone = document.getElementById('hist-nav-periode');
+  if (!zone) return;
+  const navigable = ['jour','semaine','mois'].includes(_histPeriode);
+  zone.style.display = navigable ? 'flex' : 'none';
+
+  const lbl = document.getElementById('hist-periode-label');
+  if (lbl) lbl.textContent = libellePeriode();
+
+  // Interdit d'aller dans le futur : aucune fiche n'y existe.
+  const suivant = document.getElementById('hist-nav-suivant');
+  if (suivant) {
+    suivant.disabled = _histDecalage >= 0;
+    suivant.style.opacity = _histDecalage >= 0 ? '.35' : '1';
+    suivant.style.cursor  = _histDecalage >= 0 ? 'default' : 'pointer';
+  }
+  const retour = document.getElementById('hist-nav-retour');
+  if (retour) retour.style.display = _histDecalage === 0 ? 'none' : '';
+
+  // Sélecteurs mois / année : visibles uniquement en mode « mois »
+  const selZone = document.getElementById('hist-mois-annee');
+  if (selZone) selZone.style.display = (_histPeriode === 'mois') ? 'flex' : 'none';
+  if (_histPeriode === 'mois') {
+    const { from } = getHistRange();
+    const d = new Date(from + 'T12:00:00');
+    const mEl = document.getElementById('hist-sel-mois');
+    const aEl = document.getElementById('hist-sel-annee');
+    if (mEl && !mEl.dataset.rempli) {
+      mEl.innerHTML = MOIS_LONG.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+      mEl.dataset.rempli = '1';
+    }
+    if (aEl && !aEl.dataset.rempli) {
+      const a = new Date().getFullYear();
+      aEl.innerHTML = [a, a - 1, a - 2].map(y => `<option value="${y}">${y}</option>`).join('');
+      aEl.dataset.rempli = '1';
+    }
+    if (mEl) mEl.value = d.getMonth();
+    if (aEl) aEl.value = d.getFullYear();
+  }
+}
+
+/** Flèches ◀ ▶ : recule ou avance d'une période entière. */
+function decalerPeriode(pas) {
+  if (!['jour','semaine','mois'].includes(_histPeriode)) return;
+  if (_histDecalage + pas > 0) return;     // pas de futur
+  _histDecalage += pas;
+  setHistPeriode(_histPeriode, true);
+}
+
+/** Retour direct à la période en cours. */
+function retourPeriodeCourante() {
+  _histDecalage = 0;
+  setHistPeriode(_histPeriode, true);
+}
+
+/** Saut direct à un mois précis via les listes déroulantes. */
+function allerAuMois() {
+  const m = Number(document.getElementById('hist-sel-mois')?.value);
+  const a = Number(document.getElementById('hist-sel-annee')?.value);
+  if (Number.isNaN(m) || Number.isNaN(a)) return;
+  const now = new Date();
+  const diff = (a - now.getFullYear()) * 12 + (m - now.getMonth());
+  if (diff > 0) { toast('Ce mois n\'est pas encore arrivé', 'err'); majNavPeriode(); return; }
+  _histPeriode = 'mois';
+  _histDecalage = diff;
+  setHistPeriode('mois', true);
+}
+
+function setHistPeriode(periode, garderDecalage) {
+  // Changer de granularité repart de la période en cours, sauf si l'appel
+  // vient de la navigation elle-même (flèches, sélecteurs).
+  if (!garderDecalage) _histDecalage = 0;
   _histPeriode = periode;
   ['jour','semaine','mois','tout'].forEach(p => {
     const btn = document.getElementById('hist-btn-' + p);
@@ -45,12 +192,14 @@ function setHistPeriode(periode) {
   });
 
   if (periode !== 'custom') {
-    const { from, to } = computeHistDateRange(periode);
+    const { from, to } = getHistRange();
     const fromEl = document.getElementById('filter-date-from');
     const toEl   = document.getElementById('filter-date-to');
     if (fromEl) fromEl.value = from || '';
     if (toEl)   toEl.value   = (periode === 'tout') ? '' : (to || '');
   }
+
+  majNavPeriode();
 
   // ✅ v13.68 — le cache contient toutes les fiches : filtrage client instantané,
   // plus aucun aller-retour serveur au changement de période.
@@ -65,12 +214,14 @@ function appliquerFiltreCustom() {
   const to   = document.getElementById('filter-date-to')?.value   || '';
   if (!from && !to) { toast('Saisissez au moins une date', 'err'); return; }
   _histPeriode = 'custom';
+  _histDecalage = 0;
   // ✅ v13.68 — filtrage client sur le cache complet : instantané, et le
   // fallback « filtre date serveur inactif » n'a plus lieu d'être.
   ['jour','semaine','mois','tout'].forEach(p => {
     const btn = document.getElementById('hist-btn-' + p);
     if (btn) btn.classList.remove('active');
   });
+  majNavPeriode();
   renderHistory();
 }
 

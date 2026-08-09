@@ -50,7 +50,12 @@ function showView(v) {
   if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
   if (v === 'saisie' && typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34
   if (v === 'saisie' && typeof updateBandeauPaiement === 'function') updateBandeauPaiement(); // ✅ v13.35
-  if (v === 'historique') renderHistory(true);
+  if (v === 'historique') {
+    // ✅ v13.72 — le bandeau de navigation doit refléter la période active
+    // dès l'ouverture de l'onglet, sinon le libellé reste vide.
+    if (typeof majNavPeriode === 'function') majNavPeriode();
+    renderHistory(true);
+  }
   if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
   if (v === 'caisse') renderCaisse();
