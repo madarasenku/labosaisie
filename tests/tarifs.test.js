@@ -106,6 +106,73 @@ const { serve, openApp, createReporter } = require('./helpers');
     await ctx.close();
   }
 
+  // ── « Remettre les prix par défaut » restaure les prix ACTUELS ──
+  {
+    // En base, des prix fantaisistes : la remise à zéro doit les effacer.
+    const { ctx, page, errors } = await openApp({
+      role: 'admin',
+      rpc: { get_tarifs: { ex_nfs: 1, ex_crp: 2, ex_ecbu: 3 }, save_tarifs: 'ok' },
+    });
+    r.section('Remise aux prix par défaut');
+    await page.evaluate(() => chargerTarifsDepuisBase());
+    await page.waitForTimeout(700);
+    r.check('prix fantaisistes bien chargés', await page.evaluate(
+      () => prixExamen('ex_nfs')), 1);
+
+    // On confirme la modale et on capture ce qui part vers le serveur.
+    const envoye = await page.evaluate(async () => {
+      window.showConfirmModal = async () => true;      // l'admin confirme
+      let payload = null;
+      const vraiRpc = _sb.rpc.bind(_sb);
+      _sb.rpc = (fn, args) => {
+        if (fn === 'save_tarifs') payload = args.p_grille;
+        return vraiRpc(fn, args);
+      };
+      await resetAdminTarifs();
+      return payload;
+    });
+
+    r.check('une grille est envoyée au serveur', !!envoye, true);
+    r.check('NFS revient au prix du laboratoire', envoye && envoye.ex_nfs, 3000);
+    r.check('CRP revient au prix du laboratoire', envoye && envoye.ex_crp, 3500);
+    r.check('ECBU revient au prix du laboratoire', envoye && envoye.ex_ecbu, 10000);
+    // Le point qui compte : jamais zéro pour un examen facturé.
+    const zeros = envoye ? Object.entries(envoye)
+      .filter(([id, p]) => p === 0)
+      .map(([id]) => id) : ['(rien envoyé)'];
+    // Seuls ces examens sont gratuits au catalogue (inclus dans un forfait).
+    r.check('aucun examen facturé remis à zéro',
+            zeros.sort().join(',') , 'ex_ge,ex_prot,ex_pg,ex_pus,ex_vs'.split(',').sort().join(','));
+
+    r.check('écran rafraîchi avec les nouveaux prix', await page.evaluate(
+      () => prixExamen('ex_nfs')), 3000);
+    r.check('aucune erreur JS', errors.length, 0);
+    if (errors.length) console.log('   ', errors.slice(0, 3));
+    await ctx.close();
+  }
+
+  // ── Un refus dans la modale ne doit rien changer ──
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', rpc: { get_tarifs: { ex_nfs: 1234 }, save_tarifs: 'ok' },
+    });
+    r.section('Annuler la remise à zéro');
+    await page.evaluate(() => chargerTarifsDepuisBase());
+    await page.waitForTimeout(700);
+    const appels = await page.evaluate(async () => {
+      window.showConfirmModal = async () => false;     // l'admin annule
+      let n = 0;
+      const vraiRpc = _sb.rpc.bind(_sb);
+      _sb.rpc = (fn, args) => { if (fn === 'save_tarifs') n++; return vraiRpc(fn, args); };
+      await resetAdminTarifs();
+      return n;
+    });
+    r.check('aucun envoi au serveur', appels, 0);
+    r.check('prix inchangé', await page.evaluate(() => prixExamen('ex_nfs')), 1234);
+    r.check('aucune erreur JS', errors.length, 0);
+    await ctx.close();
+  }
+
   const s = r.summary();
   srv.close();
   process.exit(s.allPassed ? 0 : 1);

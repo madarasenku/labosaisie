@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.75">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.76">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,21 +25,21 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.75"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.75"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.75"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.75"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.75"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.76"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.76"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.76"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.76"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.76"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.75"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.75">
+<script src="./js/qr-generator.js?v=13.76"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.76">
 </head>
 <body>
 
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.75"></script>
+<script src="./js/pwa-manifest.js?v=13.76"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -1832,16 +1832,16 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.75"></script>
-<script src="./js/donnees-analyses.js?v=13.75"></script>
-<script src="./js/navigation.js?v=13.75"></script>
-<script src="./js/supabase-db.js?v=13.75"></script>
-<script src="./js/historique.js?v=13.75"></script>
-<script src="./js/export-excel.js?v=13.75"></script>
-<script src="./js/prescripteurs.js?v=13.75"></script>
-<script src="./js/saisie.js?v=13.75"></script>
-<script src="./js/ui-auth.js?v=13.75"></script>
-<script src="./js/session-pwa.js?v=13.75"></script>
+<script src="./js/periode-nav.js?v=13.76"></script>
+<script src="./js/donnees-analyses.js?v=13.76"></script>
+<script src="./js/navigation.js?v=13.76"></script>
+<script src="./js/supabase-db.js?v=13.76"></script>
+<script src="./js/historique.js?v=13.76"></script>
+<script src="./js/export-excel.js?v=13.76"></script>
+<script src="./js/prescripteurs.js?v=13.76"></script>
+<script src="./js/saisie.js?v=13.76"></script>
+<script src="./js/ui-auth.js?v=13.76"></script>
+<script src="./js/session-pwa.js?v=13.76"></script>
 
 </div><!-- /#app-root -->
 
@@ -1922,8 +1922,8 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.75"></script>
-<script src="./js/impression.js?v=13.75"></script>
-<script src="./js/export-pdf.js?v=13.75"></script>
+<script src="./js/stats.js?v=13.76"></script>
+<script src="./js/impression.js?v=13.76"></script>
+<script src="./js/export-pdf.js?v=13.76"></script>
 </body>
 </html>

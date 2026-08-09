@@ -1048,29 +1048,66 @@ function buildAdminExamensGrid() {
     </div>`).join('');
 }
 
-function saveAdminTarifs() {
+async function saveAdminTarifs() {
   const ref = getTarifsRef();
   getCatalogueComplet().forEach(ex => {
     const el = document.getElementById('adm_px_' + ex.id);
     if (el) ref[ex.id] = parseInt(el.value) || 0;
   });
-  saveTarifsRef(ref);
+  // ✅ v13.76 — on attend la confirmation du serveur avant de rafraîchir la
+  // fiche : saveTarifsRef signale lui-même le succès ou l'échec, inutile
+  // d'annoncer « enregistré » avant d'en être sûr.
+  await saveTarifsRef(ref);
   rechargeFichePrix();
-  toast('Prix de référence enregistrés ✓ — Fiche d\'accueil mise à jour', 'ok');
 }
 
-function resetAdminTarifs() {
-  if (!confirm('Remettre tous les prix aux valeurs par défaut ? Les examens personnalisés seront conservés.')) return;
-  localStorage.removeItem('tarifs_ref');
+// ✅ v13.76 — « Remettre les prix par défaut » restaure LES PRIX ACTUELS.
+//
+//   Deux défauts corrigés ici.
+//
+//   1. La fonction se contentait d'effacer le cache local. Depuis que la
+//      grille vit en base (v13.75), cela ne remettait rien à zéro : le poste
+//      rechargeait la grille du serveur à la connexion suivante, et les
+//      autres postes n'étaient jamais concernés. La remise à zéro était donc
+//      illusoire — l'utilisateur voyait un message de succès sans effet réel.
+//
+//   2. Le cache mémoire (_tarifsRefCache) n'était pas vidé, donc l'écran
+//      continuait d'afficher les anciens prix jusqu'à un rechargement.
+//
+//   « Par défaut » signifie désormais : les prix du catalogue de
+//   l'application, c'est-à-dire ceux effectivement pratiqués au laboratoire
+//   (NFS 3 000, CRP 3 500, groupe sanguin 2 000, ECBU 10 000…). Jamais zéro.
+//   Les examens ajoutés à la main par l'admin gardent leur prix : ils n'ont
+//   pas de « valeur d'usine » à laquelle revenir.
+async function resetAdminTarifs() {
+  const message = 'Remettre tous les prix aux tarifs par défaut du laboratoire ?\n\n'
+                + 'Les examens que vous avez ajoutés vous-même garderont leur prix. '
+                + 'Le changement s\'appliquera à TOUS les postes.';
+  const ok = (typeof showConfirmModal === 'function')
+    ? await showConfirmModal({ icon:'↺', title:'Remettre les prix par défaut',
+                               message, confirmText:'Remettre par défaut' })
+    : confirm(message);
+  if (!ok) return;
+
+  // Prix d'usine du catalogue…
+  const grille = buildTarifsRefDefault();
+  // …auxquels on rattache les examens personnalisés, absents du catalogue.
+  const actuelle = getTarifsRef();
+  getExamensCustom().forEach(ex => {
+    grille[ex.id] = (actuelle && actuelle[ex.id] !== undefined)
+      ? actuelle[ex.id] : (Number(ex.prix) || 0);
+  });
+
+  _tarifsRefCache = null;                 // sinon l'écran garde les anciens prix
+  await saveTarifsRef(grille);            // écrit en base ET dans le cache local
   buildAdminExamensGrid();
   rechargeFichePrix();
-  toast('Prix réinitialisés aux valeurs par défaut', 'ok');
 }
 
 // Compatibilité
 function renderTarifsConfig() { buildAdminExamensGrid(); }
-function saveTarifsConfig()   { saveAdminTarifs(); }
-function resetTarifsConfig()  { resetAdminTarifs(); }
+function saveTarifsConfig()   { return saveAdminTarifs(); }
+function resetTarifsConfig()  { return resetAdminTarifs(); }
 
 // ──────────────────────────────────────────────────────────────
 // PRESCRIPTEURS
