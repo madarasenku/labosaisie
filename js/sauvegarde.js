@@ -96,6 +96,155 @@ async function sauvegarderBase() {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────
+   RESTAURATION  (v13.78)
+
+   Une sauvegarde qu'on ne sait pas relire n'est pas une sauvegarde.
+
+   Règle de sécurité fondamentale : la restauration N'ÉCRASE JAMAIS une
+   fiche existante. Elle ne réinsère que les identifiants absents de la
+   base. Le cas réel visé est la perte (purge accidentelle, incident),
+   pas la synchronisation entre deux versions divergentes. Conséquence
+   utile : relancer la restauration deux fois ne fait rien la seconde fois.
+
+   Les tarifs et les examens personnalisés ne sont VOLONTAIREMENT pas
+   restaurés : ils vivent déjà en base, se modifient en deux clics, et
+   les réécrire depuis un fichier ancien ferait revenir des prix périmés
+   sans que personne ne s'en aperçoive.
+   ───────────────────────────────────────────────────────────── */
+
+/** Taille des lots envoyés au serveur : un envoi unique de 600 fiches
+ *  complètes dépasse largement ce qu'une connexion de labo encaisse. */
+const RESTAURATION_LOT = 50;
+
+/** Vérifie qu'un fichier ressemble vraiment à une sauvegarde LaboSaisie. */
+function _valideSauvegarde(o) {
+  if (!o || typeof o !== 'object')      return 'Fichier illisible';
+  if (!o._meta || !o._meta.application) return "Ce fichier n'est pas une sauvegarde LaboSaisie";
+  if (!Array.isArray(o.fiches))         return 'Sauvegarde incomplète : aucune fiche';
+  return null;
+}
+
+/** Ouvre le sélecteur de fichier puis enchaîne sur la restauration. */
+function choisirFichierRestauration() {
+  if (!isAdmin()) { toast('Restauration réservée aux administrateurs', 'err'); return; }
+  const input = document.getElementById('fichier-restauration');
+  if (!input) return;
+  input.value = '';           // sinon re-choisir le même fichier ne déclenche rien
+  input.click();
+}
+
+async function restaurerDepuisFichier(input) {
+  const fichier = input && input.files && input.files[0];
+  if (!fichier) return;
+  await restaurerBase(await fichier.text());
+}
+
+/**
+ * Restaure une sauvegarde à partir de son contenu texte.
+ * Séparée de la lecture du fichier pour être testable sans boîte de dialogue.
+ */
+async function restaurerBase(texte) {
+  if (!isAdmin())        { toast('Restauration réservée aux administrateurs', 'err'); return; }
+  if (!navigator.onLine) { toast('Restauration impossible hors-ligne', 'err');        return; }
+
+  let paquet = null;
+  try { paquet = JSON.parse(texte); }
+  catch (e) { toast('Fichier illisible : ce n\'est pas du JSON valide', 'err'); return; }
+
+  const souci = _valideSauvegarde(paquet);
+  if (souci) { toast(souci, 'err'); return; }
+
+  const btn = document.getElementById('btn-restauration');
+  try {
+    // ── Aperçu : on annonce ce qui va se passer AVANT de toucher à quoi que ce soit.
+    showLoading('Comparaison avec la base…');
+    const { data: actuelles, error } = await _sb.rpc('get_resultats', { p_token: TK() });
+    hideLoading();
+    if (error || !Array.isArray(actuelles)) {
+      toast('Comparaison impossible : ' + (error?.message || 'réponse inattendue'), 'err');
+      return;
+    }
+
+    const presents = new Set(actuelles.map(f => String(f.id)));
+    const aRestaurer = paquet.fiches.filter(f => f && f.id != null && !presents.has(String(f.id)));
+
+    if (!aRestaurer.length) {
+      toast('Rien à restaurer : les ' + paquet.fiches.length
+            + ' fiches du fichier sont déjà en base ✓', 'ok');
+      return;
+    }
+
+    const dateExport = paquet._meta.exporte_le
+      ? new Date(paquet._meta.exporte_le).toLocaleDateString('fr-FR') : 'date inconnue';
+    const ok = await showConfirmModal({
+      icon: '♻️',
+      title: 'Restaurer ' + aRestaurer.length + ' fiche' + (aRestaurer.length > 1 ? 's' : '') + ' ?',
+      message: 'Sauvegarde du ' + dateExport + ' (' + paquet.fiches.length + ' fiches). '
+             + aRestaurer.length + ' sont absentes de la base et vont être réinsérées ; '
+             + (paquet.fiches.length - aRestaurer.length) + ' sont déjà présentes et seront ignorées. '
+             + 'Aucune fiche existante ne sera modifiée ni supprimée. '
+             + 'Les tarifs et le catalogue ne sont pas touchés.',
+      confirmText: 'Restaurer',
+    });
+    if (!ok) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Restauration…'; }
+
+    // ── Les prescripteurs d'abord : une fiche dont le prescripteur manque
+    //    serait restaurée sans lui (clé étrangère), et la ristourne serait perdue.
+    let prescrRestaures = 0;
+    if (Array.isArray(paquet.prescripteurs) && paquet.prescripteurs.length) {
+      showLoading('Restauration des prescripteurs…');
+      const { data: rp } = await _sb.rpc('restaurer_prescripteurs', {
+        p_token: TK(), p_liste: paquet.prescripteurs,
+      });
+      if (rp && rp.erreur) {
+        hideLoading();
+        toast('Restauration refusée : ' + rp.erreur, 'err');
+        return;
+      }
+      prescrRestaures = (rp && rp.restaures) || 0;
+    }
+
+    // ── Puis les fiches, par lots, avec une progression visible.
+    let restaurees = 0, sansPrescripteur = 0;
+    for (let i = 0; i < aRestaurer.length; i += RESTAURATION_LOT) {
+      const lot = aRestaurer.slice(i, i + RESTAURATION_LOT);
+      showLoading('Restauration… ' + Math.min(i + lot.length, aRestaurer.length)
+                  + ' / ' + aRestaurer.length);
+      const { data: rf, error: ef } = await _sb.rpc('restaurer_fiches', {
+        p_token: TK(), p_fiches: lot,
+      });
+      if (ef || (rf && rf.erreur)) {
+        hideLoading();
+        // On ne cache pas ce qui a déjà été fait : c'est acquis, pas perdu.
+        toast('Interrompue après ' + restaurees + ' fiche' + (restaurees > 1 ? 's' : '')
+              + ' : ' + (ef?.message || rf.erreur), 'err');
+        await refreshDB(true);
+        return;
+      }
+      restaurees      += (rf && rf.restaurees) || 0;
+      sansPrescripteur += (rf && rf.sans_prescripteur) || 0;
+    }
+    hideLoading();
+
+    let msg = restaurees + ' fiche' + (restaurees > 1 ? 's' : '') + ' restaurée'
+            + (restaurees > 1 ? 's' : '') + ' ✓';
+    if (prescrRestaures)  msg += ' — ' + prescrRestaures + ' prescripteur(s)';
+    if (sansPrescripteur) msg += ' — ' + sansPrescripteur + ' sans prescripteur retrouvé';
+    toast(msg, 'ok');
+
+    await refreshDB(true);
+    if (typeof renderHistory === 'function') renderHistory();
+  } catch (e) {
+    hideLoading();
+    toast('Restauration échouée : ' + (e.message || e), 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '♻️ Restaurer une sauvegarde'; }
+  }
+}
+
 /**
  * Affiche l'ancienneté de la dernière sauvegarde, et alerte si elle date.
  * Volontairement discret quand tout va bien : une alerte permanente finit

@@ -31,7 +31,7 @@ node tests/filtres.test.js
 | `navigation-periode.test.js` | Historique : flèches ◀ ▶ mois/semaine/jour, saut direct par mois, interdiction du futur |
 | `navigation-autres-onglets.test.js` | Même navigation sur Statistiques, Caisse et Caisse personnelle |
 | `deploiement.test.js` | Versionnement des actifs (`?v=`), cohérence index/login/sw, précache complet |
-| `sauvegarde-examens.test.js` | Export complet (contenu, avertissement de confidentialité, réservé à l'admin), examens personnalisés partagés, alerte de sauvegarde ancienne |
+| `sauvegarde-examens.test.js` | Export complet (contenu, avertissement de confidentialité, réservé à l'admin), examens personnalisés partagés, alerte de sauvegarde ancienne, restauration (aller-retour, non-écrasement, découpage en lots, fichiers refusés, confirmation obligatoire) |
 | `tarifs.test.js` | Grille tarifaire partagée : base prioritaire sur le catalogue, cache hors-ligne, écriture réservée à l'admin, estimation des dossiers |
 | `ristournes-prescripteurs.test.js` | Flèches sur le sélecteur de mois des Ristournes (dont le passage d'année), recherche dans la liste des prescripteurs |
 
@@ -81,7 +81,7 @@ interne — pas de dépendance à un serveur externe.
   que le générateur produit bien un PNG carré, de densité cohérente, et
   qu'il encaisse les cas limites (texte vide, texte de 5 000 caractères).
 
-## Deux pièges rencontrés en écrivant ces tests
+## Trois pièges rencontrés en écrivant ces tests
 
 1. `labo_resultats.created_by` contient le **nom d'utilisateur** (texte), pas
    un identifiant numérique. Un jeu de données qui y met un `id` fait
@@ -89,6 +89,14 @@ interne — pas de dépendance à un serveur externe.
 2. Le sélecteur de mois du rapport PDF vit dans l'onglet **Comptes** et n'est
    peuplé qu'à son ouverture. Le tester sans passer par cet onglet fait
    retomber le rapport sur le mois courant sans aucune erreur.
+3. **Un test vert ne prouve rien tant qu'on ne l'a pas vu rouge.** Les
+   contrôles « fichier de sauvegarde refusé » passaient au vert même après
+   avoir supprimé toute la validation : le code partait ensuite en erreur de
+   son côté, et le test ne regardait que l'absence d'écriture. Ils comptent
+   désormais **tous** les appels réseau et vérifient le message exact. Chaque
+   nouveau garde-fou de cette suite a été validé en le cassant volontairement
+   pour voir le test échouer. `_sb` est déclaré avec `let` : il n'existe pas
+   sur `window`, il faut écrire `_sb.rpc = …` et non `window._sb.rpc = …`.
 
 ## Ce qui n'est pas couvert
 
