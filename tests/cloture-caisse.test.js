@@ -63,6 +63,14 @@ const FICHES = [
     resultats: { _types: ['Hématologie','Groupe sanguin','Immuno-Sérologie','Biochimie','Bactériologie'],
                  _examens_coches: { 'Hématologie': ['Bilan prénatal complet (forfait)'] } },
     prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
+  // Un BPN EXTERNE : facturé 20 000, il RESTE dans la recette. C'est lui qui
+  // vérifie l'affichage « BPN » sans se confondre avec la sortie de recette.
+  { id: 9, type: 'Dossier', montant: 20000, created_at: AUJ + 'T16:00:00Z', created_by: 'nadia',
+    patient: { nom: 'DIABATE AWA', dossier: 'D9', date: AUJ, age: 31, medecin: 'EXTERNE',
+               paiement_status: 'paye', paiement_infos: paiement(20000, 'nadia') },
+    resultats: { _types: ['Hématologie','Groupe sanguin','Immuno-Sérologie','Biochimie','Bactériologie'],
+                 _examens_coches: { 'Hématologie': ['Bilan prénatal complet (forfait)'] } },
+    prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
   // Une régularisation : encaissée, mais pas de l'argent entré aujourd'hui.
   { id: 7, type: 'Biochimie', montant: 6000, created_at: AUJ + 'T14:00:00Z', created_by: 'nadia',
     patient: { nom: 'BORE ISSA', dossier: 'D7', date: AUJ, paiement_status: 'paye',
@@ -70,9 +78,10 @@ const FICHES = [
     resultats: {}, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
 ];
 
-// Recette attendue = tous les payés NON verrouillés :
-// 3000+5000+2000+4000+6000+10000 (BPN)
-const RECETTE = 30000;
+// Recette attendue = payés, NON verrouillés, HORS cahier jaune :
+// 3000+5000+2000+4000+6000 + 20000 (BPN externe). Le BPN interne (10 000)
+// en sort : il revient au personnel.
+const RECETTE = 40000;
 
 (async () => {
   const srv = await serve();
@@ -91,8 +100,12 @@ const RECETTE = 30000;
 
     r.check('recette du jour', c.total, RECETTE);
     r.check('dossiers encaissés', c.dossiers, 6);
-    // Le point qui compte : 40 000 verrouillés ne gonflent pas la recette.
-    r.check('le verrouillé est hors recette', c.total < 40000, true);
+    // Le point qui compte : les 40 000 verrouillés ne gonflent pas la recette.
+    // On vérifie l'absence de la fiche elle-même, pas une inégalité sur le
+    // total : une comparaison « < 40000 » devient fausse dès que la recette
+    // atteint ce montant par ailleurs, et le contrôle se met à mentir.
+    r.check('le verrouillé est hors recette',
+            c.detail.some(d => d.dossier === 'D5'), false);
     r.check('mais il est compté à part', c.totalVerrouille, 40000);
     r.check('et dénombré', c.verrouilles, 1);
     r.check('non encaissé signalé', c.totalImpaye, 7000);
@@ -100,7 +113,7 @@ const RECETTE = 30000;
     r.check('régularisation isolée', c.totalRegularise, 6000);
 
     r.section('Responsabilité par agent');
-    r.check('nadia', c.parAgent.nadia && c.parAgent.nadia.total, 18000);
+    r.check('nadia', c.parAgent.nadia && c.parAgent.nadia.total, 28000);
     r.check('YERIGUE', c.parAgent.YERIGUE && c.parAgent.YERIGUE.total, 6000);
     // La régularisation est portée par qui l'a faite, pas par le caissier
     // du jour : c'est admin qui doit en répondre.
@@ -113,11 +126,17 @@ const RECETTE = 30000;
 
     r.section('Détail nominatif et forfait prénatal');
     r.check('une ligne par encaissement', c.detail.length, 6);
-    const bpn = c.detail.find(d => d.dossier === 'D8');
-    r.check('le patient est nommé', bpn && bpn.nom, 'SANKARA AWA');
-    r.check('son âge y est', bpn && bpn.age, '27');
-    r.check('son prescripteur aussi', bpn && bpn.prescripteur, 'SFDE YAPI');
-    r.check('la somme payée aussi', bpn && bpn.montant, 10000);
+    const bpn = c.detail.find(d => d.dossier === 'D9');
+    r.check('le patient est nommé', bpn && bpn.nom, 'DIABATE AWA');
+    r.check('son âge y est', bpn && bpn.age, '31');
+    r.check('son prescripteur aussi', bpn && bpn.prescripteur, 'EXTERNE');
+    r.check('la somme payée aussi', bpn && bpn.montant, 20000);
+
+    // Le BPN INTERNE sort de la recette : il revient au personnel.
+    r.check('le BPN interne est hors recette',
+            c.detail.some(d => d.dossier === 'D8'), false);
+    r.check('mais compté au cahier jaune', c.totalCahierJaune, 10000);
+    r.check('et dénombré', c.cahierJaune, 1);
     // Le point demandé : un forfait prénatal s'annonce « BPN », pas par les
     // cinq catégories qu'il coche mécaniquement.
     r.check('le forfait prénatal s\'affiche BPN', bpn && bpn.examens, 'BPN');
@@ -136,7 +155,7 @@ const RECETTE = 30000;
     // \s couvre l'espace insécable étroite (U+202F) que fr-FR utilise comme
     // séparateur de milliers : chercher une espace ordinaire échouait alors
     // que le document était parfaitement juste.
-    r.check('la recette y figure', /30\s?000\s?FCFA/.test(doc), true);
+    r.check('la recette y figure', /40\s?000\s?FCFA/.test(doc), true);
     r.check('titre de clôture', /CL[ÔO]TURE DE CAISSE/.test(doc), true);
     r.check('les deux signatures sont prévues',
             /Le caissier/.test(doc) && /Le responsable/.test(doc), true);
@@ -146,8 +165,10 @@ const RECETTE = 30000;
     r.check('la régularisation est signalée', /r[ée]gularisation/i.test(doc), true);
     r.check('l\'auteur de l\'édition est nommé', /admin1/.test(doc), true);
     r.check('le détail nominatif est imprimé', /D[ée]tail des encaissements/.test(doc), true);
-    r.check('avec le nom du patient', /SANKARA AWA/.test(doc), true);
-    r.check('son prescripteur', /SFDE YAPI/.test(doc), true);
+    r.check('avec le nom du patient', /DIABATE AWA/.test(doc), true);
+    r.check('le cahier jaune est expliqué', /cahier jaune/i.test(doc), true);
+    r.check('et le BPN interne n\'est pas dans le détail',
+            !/SANKARA AWA/.test(doc), true);
     r.check('et « BPN » plutôt que les cinq analyses',
             /BPN/.test(doc) && !/Bact[ée]riologie/.test(doc), true);
     r.check('aucune erreur JS', errors.length, 0);

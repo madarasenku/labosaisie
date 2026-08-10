@@ -29,6 +29,9 @@ function showView(v) {
     { id: 'view-comptes',      show: v === 'comptes' },
     { id: 'view-caisse',       show: caisseAdminVisible },
     { id: 'view-caisse-user',  show: caisseUserVisible },
+    // ✅ v13.86 — Le cahier jaune est un document de caisse : il ne concerne
+    // ni les agents ni la saisie. Même cloisonnement que la caisse complète.
+    { id: 'view-cahier',       show: (v === 'cahier' && (isAdmin() || isCaissier() || isSpectateur())) },
   ];
 
   allViews.forEach(({ id, show }) => {
@@ -60,6 +63,7 @@ function showView(v) {
     if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
   if (v === 'caisse') renderCaisse();
+  if (v === 'cahier' && typeof chargerCahierJaune === 'function') chargerCahierJaune();
 }
 
 /* ════════════════════════════════════════════════

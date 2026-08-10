@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.85">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.86">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,21 +25,21 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.85"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.85"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.85"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.85"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.85"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.86"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.86"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.86"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.86"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.86"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.85"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.85">
+<script src="./js/qr-generator.js?v=13.86"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.86">
 </head>
 <body>
 
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.85"></script>
+<script src="./js/pwa-manifest.js?v=13.86"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -97,6 +97,7 @@
     <button id="btn-nav-historique" class="nav-btn" data-view="historique" onclick="showView('historique')">Historique<span id="hist-badge" class="nav-badge" style="display:none"></span></button>
     <button class="nav-btn" data-view="stats" onclick="showView('stats')">📊 Statistiques</button>
     <button id="btn-nav-caisse" class="nav-btn" data-view="caisse" onclick="showView('caisse')">💰 Caisse</button>
+    <button id="btn-nav-cahier" class="nav-btn" data-view="cahier" onclick="showView('cahier')" style="display:none">📒 Cahier jaune</button>
     <button id="btn-nav-users" class="nav-btn" data-view="comptes" onclick="showView('comptes')" style="display:none">👤 Comptes</button>
     <button class="nav-btn" onclick="exportAllExcel()">⬇ Exporter tout</button>
     <button id="btn-install-pwa" class="nav-btn" onclick="installPWA()" title="Installer l'application sur cet appareil" style="display:none;background:rgba(255,255,255,.25);align-items:center;gap:5px">📲 Installer</button>
@@ -1660,6 +1661,43 @@
 <!-- ═══════════════════════════════════════════════════
      ✅ v13.28 — VUE CAISSE (tableau de bord financier)
      ═══════════════════════════════════════════════════ -->
+<!-- ✅ v13.86 — Cahier jaune : reprise du cahier Excel du laboratoire.
+     Une ligne par jour ouvré, colonnes nommées configurables, montants
+     négatifs pour les sorties, sous-total par semaine, total du mois. -->
+<div id="view-cahier" style="display:none">
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>📒 Cahier jaune</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="month" id="cahier-mois" onchange="changerMoisCahier()"
+               style="padding:5px 8px;font-size:12.5px" aria-label="Mois du cahier">
+        <button class="btn btn-outline" onclick="chargerCahierJaune()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+      Registre des sommes qui reviennent au personnel plutôt qu'au laboratoire.
+      Un <strong>bilan prénatal interne</strong> y est reporté automatiquement pour son
+      montant (10 000 FCFA : 5 000 sage-femme, 5 000 laboratoire) et <strong>sort de la
+      recette du jour</strong> dans la clôture de caisse. Les montants négatifs sont des
+      sorties et exigent une explication.
+    </p>
+    <div id="cahier-tableau"></div>
+  </div>
+
+  <div class="card" id="cahier-colonnes-card" style="margin-bottom:16px">
+    <div class="card-title">➕ Ajouter une colonne</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px">
+      Les intervenants changent d'un mois à l'autre. Une colonne retirée est archivée,
+      jamais supprimée : les mois déjà clos ne doivent pas changer.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="cahier-nouvelle-colonne" placeholder="SFHG, ZEHI, DIABAGATE…"
+             style="min-width:220px;padding:6px 10px">
+      <button class="btn btn-outline" onclick="ajouterColonneCahier()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <div id="view-caisse" style="display:none">
 
   <!-- ✅ v13.37 — Enregistrer un nouveau patient depuis la caisse -->
@@ -1931,16 +1969,16 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.85"></script>
-<script src="./js/donnees-analyses.js?v=13.85"></script>
-<script src="./js/navigation.js?v=13.85"></script>
-<script src="./js/supabase-db.js?v=13.85"></script>
-<script src="./js/historique.js?v=13.85"></script>
-<script src="./js/export-excel.js?v=13.85"></script>
-<script src="./js/prescripteurs.js?v=13.85"></script>
-<script src="./js/saisie.js?v=13.85"></script>
-<script src="./js/ui-auth.js?v=13.85"></script>
-<script src="./js/session-pwa.js?v=13.85"></script>
+<script src="./js/periode-nav.js?v=13.86"></script>
+<script src="./js/donnees-analyses.js?v=13.86"></script>
+<script src="./js/navigation.js?v=13.86"></script>
+<script src="./js/supabase-db.js?v=13.86"></script>
+<script src="./js/historique.js?v=13.86"></script>
+<script src="./js/export-excel.js?v=13.86"></script>
+<script src="./js/prescripteurs.js?v=13.86"></script>
+<script src="./js/saisie.js?v=13.86"></script>
+<script src="./js/ui-auth.js?v=13.86"></script>
+<script src="./js/session-pwa.js?v=13.86"></script>
 
 </div><!-- /#app-root -->
 
@@ -2021,10 +2059,11 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.85"></script>
-<script src="./js/impression.js?v=13.85"></script>
-<script src="./js/export-pdf.js?v=13.85"></script>
-<script src="./js/sauvegarde.js?v=13.85"></script>
-<script src="./js/cloture-caisse.js?v=13.85"></script>
+<script src="./js/stats.js?v=13.86"></script>
+<script src="./js/impression.js?v=13.86"></script>
+<script src="./js/export-pdf.js?v=13.86"></script>
+<script src="./js/sauvegarde.js?v=13.86"></script>
+<script src="./js/cloture-caisse.js?v=13.86"></script>
+<script src="./js/cahier-jaune.js?v=13.86"></script>
 </body>
 </html>

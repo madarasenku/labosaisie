@@ -46,8 +46,16 @@ function calculerCloture(jour) {
   // On le sort donc de la recette, mais on le compte à part : de l'argent
   // qui disparaît sans ligne d'explication, c'est exactement le problème
   // qu'on cherche à ne plus reproduire.
-  const visibles   = duJour.filter(r => !r.restrictedBy);
+  // ✅ v13.86 — Un bilan prénatal INTERNE est encaissé mais son produit
+  // revient au personnel (5 000 sage-femme, 5 000 laboratoire) : il est
+  // porté au cahier jaune et sort de la recette, exactement comme un
+  // dossier verrouillé. L'argent ne reste pas dans le tiroir du labo.
+  const versCahierJaune = r => typeof estBPN === 'function' && estBPN(r)
+                            && (r.patient?.medecin || '') !== 'EXTERNE';
+
   const verrouilles = duJour.filter(r => !!r.restrictedBy);
+  const cahierJaune = duJour.filter(r => !r.restrictedBy && versCahierJaune(r));
+  const visibles    = duJour.filter(r => !r.restrictedBy && !versCahierJaune(r));
 
   const payes    = visibles.filter(r => r.patient?.paiement_status === 'paye');
   const impayes  = visibles.filter(r => r.patient?.paiement_status !== 'paye');
@@ -116,6 +124,8 @@ function calculerCloture(jour) {
     totalImpaye: somme(impayes),
     verrouilles: verrouilles.length,
     totalVerrouille: somme(verrouilles),
+    cahierJaune: cahierJaune.length,
+    totalCahierJaune: somme(cahierJaune.filter(r => r.patient?.paiement_status === 'paye')),
     monnaieDue: monnaieDues.map(x => ({ dossier: x.r.patient?.dossier || '—',
                                         nom: x.r.patient?.nom || '—', montant: x.du })),
     totalMonnaieDue: monnaieDues.reduce((t, x) => t + x.du, 0),
@@ -157,6 +167,11 @@ function renderCloture() {
     + '<th style="text-align:right">Encaissé</th></tr></thead><tbody>' + lignesAgent + '</tbody></table>'
     + alerte('Monnaie promise non rendue', c.monnaieDue.length, c.totalMonnaieDue, '#b45309')
     + alerte('Dossiers non encaissés', c.impayes.length, c.totalImpaye, '#b91c1c')
+    + (c.cahierJaune
+        ? '<div style="margin-top:6px;color:#92400e">📒 ' + c.cahierJaune
+          + ' BPN interne(s), ' + _fcfa(c.totalCahierJaune)
+          + ' — portés au cahier jaune, hors recette</div>'
+        : '')
     + (c.verrouilles
         ? '<div style="margin-top:6px;color:#92400e">🔒 ' + c.verrouilles
           + ' dossier(s) verrouillé(s), ' + _fcfa(c.totalVerrouille)
@@ -265,6 +280,14 @@ function imprimerCloture() {
         listeSimple(c.impayes, 'Aucun — tous les dossiers du jour ont été encaissés.')
         + (c.totalImpaye ? '<div style="text-align:right;font-weight:800;margin-top:4px">Total : '
             + _fcfa(c.totalImpaye) + '</div>' : ''))
+
+    + (c.cahierJaune
+        ? bloc('Hors recette — cahier jaune',
+            '<div style="font-size:10pt">' + c.cahierJaune + ' bilan(s) prénatal(aux) interne(s), '
+            + _fcfa(c.totalCahierJaune) + '. Ces sommes sont encaissées mais reviennent au '
+            + 'personnel (5 000 FCFA à la sage-femme, 5 000 FCFA au laboratoire) : elles sont '
+            + 'portées au cahier jaune et ne font pas partie de la recette ci-dessus.</div>')
+        : '')
 
     + (c.verrouilles
         ? bloc('Hors recette — dossiers verrouillés',
