@@ -32,6 +32,7 @@ node tests/filtres.test.js
 | `navigation-autres-onglets.test.js` | Même navigation sur Statistiques, Caisse et Caisse personnelle |
 | `deploiement.test.js` | Versionnement des actifs (`?v=`), cohérence index/login/sw, précache complet |
 | `sauvegarde-examens.test.js` | Export complet (contenu, avertissement de confidentialité, réservé à l'admin), examens personnalisés partagés, alerte de sauvegarde ancienne, restauration (aller-retour, non-écrasement, découpage en lots, fichiers refusés, confirmation obligatoire) |
+| `droits-verrouillage-suppression.test.js` | Verrouillage réservé à l'admin (boutons masqués, appels bloqués), suppression ouverte à tous y compris au caissier, spectateur en lecture seule |
 | `actions-groupees.test.js` | Statut et encaissement groupés en un seul appel, respect des refus du serveur, échec réseau sans mensonge à l'écran, spectateur bloqué |
 | `securite.test.js` | Jeton exigé pour le compteur de dossiers (avec repli local), imprévisibilité du jeton de partage, restitution fidèle de l'audit serveur, audit réservé à l'admin |
 | `retour-arriere.test.js` | Instantanés nocturnes : liste des dates, analyse sans écriture, remise des fiches disparues, réparation d'une fiche isolée, confirmation obligatoire, réservé à l'admin |

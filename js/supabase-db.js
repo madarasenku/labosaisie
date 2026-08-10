@@ -1703,8 +1703,8 @@ async function toggleRestriction(id) {
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Fiche introuvable', 'err'); return; }
 
-  const canToggle = isAdmin() || record.createdBy === _currentUser?.username;
-  if (!canToggle) { toast('Vous ne pouvez pas modifier la restriction de cette fiche', 'err'); return; }
+  // ✅ v13.82 — Verrouillage réservé à l'administrateur.
+  if (!isAdmin()) { toast('Le verrouillage est réservé à l\'administrateur', 'err'); return; }
 
   const isRestricted = !!record.restrictedBy;
   const confirmed = await showConfirmModal({

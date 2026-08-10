@@ -297,13 +297,14 @@ async function renderHistory(forceRefresh) {
     return;
   }
 
-  // ✅ v13.31 — Bouton suppression douce (propriétaire ou admin, mode normal)
-  // En mode Corbeille admin : boutons restaurer + suppression définitive à la place
+  // ✅ v13.82 — Suppression ouverte à tous : chacun peut envoyer n'importe quel
+  // dossier à la corbeille, plus seulement les siens. Réversible (corbeille +
+  // instantanés nocturnes) et tracée nominativement au journal d'audit.
+  // Le spectateur reste en lecture seule, et la suppression DÉFINITIVE reste
+  // réservée à l'administrateur depuis la corbeille.
   const softDeleteBtn = (r) => {
     if (_filterCorbeille) return ''; // handled separately in corbeille row
-    const uid = _currentUser?.username;
-    const canDel = isAdmin() || r.createdBy === uid;
-    if (!canDel) return '';
+    if (typeof isSpectateur === 'function' && isSpectateur()) return '';
     return '<button class="btn btn-danger" style="padding:4px 8px;font-size:11px;margin-left:3px;opacity:.85" '
       + 'title="Supprimer (envoyé dans la corbeille)" aria-label="Supprimer, envoyer dans la corbeille" onclick="softDeleteDossier(' + r.id + ')">🗑️</button>';
   };
@@ -313,15 +314,13 @@ async function renderHistory(forceRefresh) {
     return dupl + del;
   };
 
-  // ✅ v13.32 — Bouton verrouillage : visible uniquement pour le propriétaire de la fiche,
-  // Bouton masquer : visible pour l'admin sur toutes les fiches,
-  // pour un agent uniquement sur ses propres fiches.
+  // ✅ v13.82 — Le verrouillage est désormais RÉSERVÉ À L'ADMINISTRATEUR.
+  // Motif tiré des données : un dossier masqué disparaît aussi de l'écran
+  // « À encaisser », donc le caissier ne peut pas l'encaisser. 106 dossiers,
+  // 607 500 FCFA, étaient devenus invisibles exactement de cette façon.
   const lockBtn = (r) => {
     if (_filterVerrouillees || _filterCorbeille) return ''; // géré par les rows spéciaux
-    const uid = _currentUser?.username;
-    if (!uid) return '';
-    const canToggle = isAdmin() || r.createdBy === uid;
-    if (!canToggle) return '';
+    if (!isAdmin()) return '';
     const locked = !!r.restrictedBy;
     const style = locked
       ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
@@ -467,8 +466,12 @@ async function renderHistory(forceRefresh) {
                       '<button class="btn btn-danger" style="padding:3px 7px;font-size:10px;margin-left:2px;opacity:.75" title="Supprimer ' + t + '" onclick="deleteAnalyseFromDossier(' + r.id + ',\'' + t.replace(/'/g,"\\'") + '\')">✕ ' + t.substring(0,4) + '</button>'
                     ).join('')
                   : '')
-              + softDeleteBtn(r)
           )
+        // ✅ v13.82 — La corbeille sort du bloc réservé aux agents et à l'admin :
+        // « chacun peut supprimer » inclut le caissier, qui en était privé au
+        // même titre que la duplication. Seul le spectateur en reste exclu, et
+        // c'est softDeleteBtn qui le décide — un seul endroit qui tranche.
+        + softDeleteBtn(r)
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer résultats" aria-label="Imprimer les résultats">🖨</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="choisirSignataireRecu(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
         + '<button class=\'btn btn-action-menu\' style=\'display:none;padding:4px 10px;font-size:15px;margin-left:3px;line-height:1\' onclick=\'toggleActionMenu(this)\' title=\'Actions\' aria-label=\'Actions\'>⋯</button>'
@@ -586,6 +589,13 @@ function updateBulkToolbar() {
   if (toolbar) toolbar.style.display = n > 0 ? 'flex' : 'none';
   if (countEl) countEl.textContent = n + ' fiche' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '');
   if (delBtn) delBtn.style.display = isAdmin() ? '' : 'none';
+  // ✅ v13.82 — Verrouillage réservé à l'administrateur : on masque les boutons
+  // plutôt que de laisser cliquer pour refuser ensuite. Un bouton qui dit
+  // toujours non est plus agaçant qu'un bouton absent.
+  ['bulk-lock-btn', 'bulk-unlock-btn'].forEach(idBtn => {
+    const b = document.getElementById(idBtn);
+    if (b) b.style.display = isAdmin() ? '' : 'none';
+  });
   // État de la case "tout sélectionner"
   if (selectAll) {
     const total = document.querySelectorAll('.bulk-chk').length;
@@ -662,13 +672,18 @@ async function softDeleteDossier(id) {
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
   const uid = _currentUser?.username;
-  const canDel = isAdmin() || record.createdBy === uid;
-  if (!canDel) { toast('Action non autorisée', 'err'); return; }
-
+  // ✅ v13.82 — Chacun peut désormais supprimer n'importe quel dossier, plus
+  // seulement les siens. Le geste reste réversible (corbeille + instantanés
+  // nocturnes) et il est tracé nominativement au journal d'audit : ouvrir la
+  // suppression sans la tracer l'aurait rendue irresponsable.
   if (!await showConfirmModal({
     icon: '🗑️',
     title: 'Supprimer ce dossier ?',
-    message: 'Le dossier sera masqué et placé dans la corbeille. L\'administrateur pourra le restaurer à tout moment.',
+    message: (record.createdBy && record.createdBy !== uid
+        ? 'Ce dossier a été saisi par <strong>' + esc(record.createdBy) + '</strong>. '
+        : '')
+      + 'Il sera placé dans la corbeille et l\'administrateur pourra le restaurer '
+      + 'à tout moment. Votre nom sera enregistré dans le journal d\'audit.',
     confirmText: 'Supprimer',
     cancelText: 'Annuler',
     confirmClass: 'btn-danger'
@@ -926,11 +941,13 @@ async function bulkSetStatut(statut) {
 
 async function bulkLock() {
   if (blockIfSpectateur()) return;
+  // ✅ v13.82 — Verrouillage réservé à l'administrateur.
+  if (!isAdmin()) { toast('Le verrouillage est réservé à l\'administrateur', 'err'); return; }
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
-    return r && (!r.restrictedBy) && (isAdmin() || r.createdBy === _currentUser?.username);
+    return r && !r.restrictedBy;
   });
   if (!eligible.length) { toast('Aucune fiche éligible au verrouillage', 'err'); return; }
   if (!await showConfirmModal({
@@ -957,11 +974,13 @@ async function bulkLock() {
 
 async function bulkUnlock() {
   if (blockIfSpectateur()) return;
+  // ✅ v13.82 — Déverrouillage réservé à l'administrateur, comme le verrouillage.
+  if (!isAdmin()) { toast('Le déverrouillage est réservé à l\'administrateur', 'err'); return; }
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
-    return r && r.restrictedBy && (isAdmin() || r.restrictedBy === _currentUser?.username);
+    return r && r.restrictedBy;
   });
   if (!eligible.length) { toast('Aucune fiche verrouillée dans la sélection', 'err'); return; }
   if (!await showConfirmModal({
