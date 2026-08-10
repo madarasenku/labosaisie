@@ -96,13 +96,42 @@ function renderCahierJaune() {
   colonnes.forEach(c => { totauxColonne[c.id] = 0; });
   let totalMois = 0;
 
+  // ✅ v13.87 — Chaque écriture reste visible avec le nom de la patiente et
+  // son montant, précédée d'un NUMÉRO D'ORDRE continu sur le mois. Une somme
+  // seule (« 20000 ») ne permet pas de pointer le cahier contre les
+  // dossiers ; un numéro d'ordre permet de dire « le n° 14 » sans ambiguïté.
+  const numeros = {};
+  [...ecritures]
+    .sort((a, b) => String(a.jour).localeCompare(String(b.jour)) || (a.id - b.id))
+    .forEach((e, i) => { numeros[e.id] = i + 1; });
+
+  // L'explication d'un report automatique a la forme
+  // « BPN interne — NOM (0092-0826) » : on en extrait le nom pour l'afficher
+  // seul, et on retombe sur le texte entier si la forme change.
+  const nomDeLigne = l => {
+    const t = l.explication || '';
+    const m = t.match(/^BPN interne\s*[—-]\s*(.+?)\s*\(/);
+    if (m) return m[1];
+    return t || (l.origine === 'bpn_interne' ? 'BPN interne' : '—');
+  };
+
   const cellule = (j, c) => {
     const d = parJour[j] && parJour[j][c.id];
-    if (!d || !d.total) return '<td style="text-align:right;color:#cbd5e1">·</td>';
-    const negatif = d.total < 0;
-    const titre = d.lignes.map(l => (l.explication || l.origine)).join(' | ');
-    return '<td style="text-align:right;font-weight:600;color:' + (negatif ? '#b91c1c' : '#0b2545')
-      + '" title="' + esc(titre) + '">' + _cjFcfa(d.total) + '</td>';
+    if (!d || !d.lignes.length) return '<td style="text-align:right;color:#cbd5e1">·</td>';
+    const corps = d.lignes.map(l => {
+      const v = Number(l.montant) || 0;
+      return '<div style="white-space:nowrap;color:' + (v < 0 ? '#b91c1c' : '#0b2545') + '">'
+        + '<span style="color:var(--text-muted);font-weight:400">' + numeros[l.id] + '.</span> '
+        + '<span style="font-weight:400">' + esc(nomDeLigne(l)) + '</span> '
+        + '<strong>' + _cjFcfa(v) + '</strong></div>';
+    }).join('');
+    // Le sous-total de la cellule n'apparaît que s'il y a plusieurs écritures :
+    // le répéter sous un montant unique n'apprend rien et alourdit la page.
+    const sous = d.lignes.length > 1
+      ? '<div style="border-top:1px solid #e2e8f0;margin-top:2px;padding-top:2px;font-weight:800">'
+        + _cjFcfa(d.total) + '</div>'
+      : '';
+    return '<td style="text-align:right;font-size:11.5px;vertical-align:top">' + corps + sous + '</td>';
   };
 
   let corps = '';

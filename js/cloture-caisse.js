@@ -53,8 +53,14 @@ function calculerCloture(jour) {
   const versCahierJaune = r => typeof estBPN === 'function' && estBPN(r)
                             && (r.patient?.medecin || '') !== 'EXTERNE';
 
-  const verrouilles = duJour.filter(r => !!r.restrictedBy);
-  const cahierJaune = duJour.filter(r => !r.restrictedBy && versCahierJaune(r));
+  // Le cahier jaune PRIME sur le verrouillage : un bilan prénatal interne y
+  // est porté même si la fiche est masquée, parce que l'argent est dû à la
+  // sage-femme que la fiche soit visible ou non. Les classer en
+  // « verrouillés » ferait mentir la clôture sur la destination de la somme.
+  // Les deux rubriques sont hors recette, l'ordre ne change donc pas le
+  // total — seulement ce que le document annonce.
+  const cahierJaune = duJour.filter(r => versCahierJaune(r));
+  const verrouilles = duJour.filter(r => !!r.restrictedBy && !versCahierJaune(r));
   const visibles    = duJour.filter(r => !r.restrictedBy && !versCahierJaune(r));
 
   const payes    = visibles.filter(r => r.patient?.paiement_status === 'paye');

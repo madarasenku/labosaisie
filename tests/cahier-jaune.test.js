@@ -24,7 +24,12 @@ const COLONNES = [
 const ECRITURES = [
   { id: 1, jour: '2026-06-01', colonne_id: 1, montant: 60000, origine: 'manuelle' },
   { id: 2, jour: '2026-06-01', colonne_id: 3, montant: -6000, explication: 'sous-traitance', origine: 'manuelle' },
-  { id: 3, jour: '2026-06-03', colonne_id: 1, montant: 20000, origine: 'manuelle' },
+  // Deux écritures le même jour et la même colonne : la cellule doit
+  // afficher « 10000+10000 », pas « 20000 ».
+  { id: 3, jour: '2026-06-03', colonne_id: 1, montant: 10000,
+    explication: 'BPN interne — KOUAME AYA (0201-0626)', origine: 'bpn_interne', resultat_id: 201 },
+  { id: 31, jour: '2026-06-03', colonne_id: 1, montant: 10000,
+    explication: 'BPN interne — DIALLO FATOU (0202-0626)', origine: 'bpn_interne', resultat_id: 202 },
   { id: 4, jour: '2026-06-03', colonne_id: 3, montant: -2000, explication: 'sous-traitance', origine: 'manuelle' },
   { id: 5, jour: '2026-06-05', colonne_id: 1, montant: 30000, origine: 'manuelle' },
   { id: 6, jour: '2026-06-05', colonne_id: 2, montant: 30000, origine: 'manuelle' },
@@ -82,6 +87,45 @@ const preparer = (page, extra) => page.evaluate(([cols, ecr, sup]) => {
             vu && vu.pied.some(c => /137\s?000/.test(c)), true);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 3));
+
+    r.section('Le détail reste lisible dans la cellule');
+    const cellules = await page.evaluate(() => {
+      const t = document.querySelector('#cahier-tableau table');
+      const lignes = [...t.querySelectorAll('tbody tr')]
+        .filter(tr => !/^SEMAINE/.test(tr.children[0].textContent.trim()));
+      // 3 juin = 3e jour ouvré du mois (1er, 2, 3 juin sont lun/mar/mer).
+      const l = lignes.find(tr => /03\/06/.test(tr.children[0].textContent));
+      return { sfpmi: l ? l.children[1].textContent.trim() : '',
+               soust: l ? l.children[3].textContent.trim() : '' };
+    });
+    // Deux bilans dans la journée doivent rester deux nombres visibles :
+    // additionnés, on ne peut plus pointer le cahier contre les dossiers.
+    // Comparaison par motif, pas par chaîne : fr-FR sépare les milliers par
+    // une espace insécable étroite (U+202F). Une égalité littérale échoue
+    // sur un affichage parfaitement juste — c'est le piège 4 du README.
+    // Chaque écriture porte son nom, son montant et un numéro d'ordre :
+    // une somme seule ne permet pas de pointer le cahier contre les dossiers.
+    r.check('la première patiente est nommée', /KOUAME AYA/.test(cellules.sfpmi), true);
+    r.check('la seconde aussi', /DIALLO FATOU/.test(cellules.sfpmi), true);
+    r.check('chacune avec son montant',
+            (cellules.sfpmi.match(/10\s?000/g) || []).length >= 2, true);
+    // Numéro d'ordre continu sur le MOIS : le 1er juin porte le n° 1 et le
+    // n° 2, donc le 3 juin commence au n° 3.
+    r.check('numéro d\'ordre du mois', /\b3\.\s*KOUAME AYA/.test(cellules.sfpmi), true);
+    // Le n° 4 revient à la sortie SOUS-TRAITANCE du même jour : la
+    // numérotation court sur TOUT le mois, colonnes confondues, dans l'ordre
+    // de saisie. DIALLO FATOU porte donc le n° 5.
+    // Pas de \b devant le chiffre : dans textContent les lignes se collent
+    // (« …10 0005. DIALLO… »), et « 0 » suivi de « 5 » n'offre aucune
+    // frontière de mot. Le rendu à l'écran, lui, est bien sur deux lignes.
+    r.check('et il s\'incrémente', /5\.\s*DIALLO FATOU/.test(cellules.sfpmi), true);
+    r.check('le sous-total de la cellule reste affiché',
+            /20\s?000/.test(cellules.sfpmi), true);
+    // La cellule contient désormais « n°. libellé montant » : on cherche le
+    // montant négatif dans le texte et non la cellule entière.
+    r.check('une sortie garde son signe', /-2\s?000/.test(cellules.soust), true);
+    r.check('et son explication', /sous-traitance/i.test(cellules.soust), true);
+    r.check('aucune erreur JS', errors.length, 0);
 
     r.section('Arithmétique');
     // La première semaine du cahier réel : 110 000 − 13 000 = 97 000 pour

@@ -71,6 +71,14 @@ const FICHES = [
     resultats: { _types: ['Hématologie','Groupe sanguin','Immuno-Sérologie','Biochimie','Bactériologie'],
                  _examens_coches: { 'Hématologie': ['Bilan prénatal complet (forfait)'] } },
     prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
+  // Un BPN interne VERROUILLÉ : le cahier jaune prime sur le verrouillage,
+  // l'argent est dû à la sage-femme que la fiche soit masquée ou non.
+  { id: 10, type: 'Dossier', montant: 10000, created_at: AUJ + 'T17:00:00Z', created_by: 'nadia',
+    patient: { nom: 'BAMBA ROKIA', dossier: 'D10', date: AUJ, age: 24, medecin: 'SFDE KOUAME',
+               paiement_status: 'paye', paiement_infos: paiement(10000, 'nadia') },
+    resultats: { _types: ['Hématologie'],
+                 _examens_coches: { 'Hématologie': ['Bilan prénatal complet (forfait)'] } },
+    prescripteur_id: 1, est_bpn: false, restricted_by: 'admin', deleted_at: null },
   // Une régularisation : encaissée, mais pas de l'argent entré aujourd'hui.
   { id: 7, type: 'Biochimie', montant: 6000, created_at: AUJ + 'T14:00:00Z', created_by: 'nadia',
     patient: { nom: 'BORE ISSA', dossier: 'D7', date: AUJ, paiement_status: 'paye',
@@ -93,7 +101,8 @@ const RECETTE = 40000;
         // refreshDB écrase restrictedBy avec ce RPC dédié : sans lui, la
         // fiche verrouillée du jeu d'essai redeviendrait visible et le
         // contrôle « hors recette » ne testerait plus rien.
-        get_restriction_status: [{ id: 5, restricted_by: 'admin' }] },
+        get_restriction_status: [{ id: 5, restricted_by: 'admin' },
+                                  { id: 10, restricted_by: 'admin' }] },
     });
     r.section('Calcul de la journée');
     const c = await page.evaluate(j => calculerCloture(j), AUJ);
@@ -135,8 +144,12 @@ const RECETTE = 40000;
     // Le BPN INTERNE sort de la recette : il revient au personnel.
     r.check('le BPN interne est hors recette',
             c.detail.some(d => d.dossier === 'D8'), false);
-    r.check('mais compté au cahier jaune', c.totalCahierJaune, 10000);
-    r.check('et dénombré', c.cahierJaune, 1);
+        // 10 000 (interne visible) + 10 000 (interne verrouillé) : le
+    // verrouillage ne détourne pas l'argent de sa destination.
+    r.check('mais compté au cahier jaune', c.totalCahierJaune, 20000);
+    r.check('le BPN interne verrouillé y est aussi', c.cahierJaune, 2);
+    r.check('et pas compté deux fois en verrouillé', c.verrouilles, 1);
+    r.check('le total verrouillé ne retient que le vrai', c.totalVerrouille, 40000);
     // Le point demandé : un forfait prénatal s'annonce « BPN », pas par les
     // cinq catégories qu'il coche mécaniquement.
     r.check('le forfait prénatal s\'affiche BPN', bpn && bpn.examens, 'BPN');
@@ -216,7 +229,8 @@ const RECETTE = 40000;
         // refreshDB écrase restrictedBy avec ce RPC dédié : sans lui, la
         // fiche verrouillée du jeu d'essai redeviendrait visible et le
         // contrôle « hors recette » ne testerait plus rien.
-        get_restriction_status: [{ id: 5, restricted_by: 'admin' }] },
+        get_restriction_status: [{ id: 5, restricted_by: 'admin' },
+                                  { id: 10, restricted_by: 'admin' }] },
     });
     r.section('Journée vide');
     const c = await page.evaluate(() => calculerCloture('2019-01-01'));
