@@ -592,6 +592,13 @@ async function updateRecordRemote(id, record, opts = {}) {
   try {
     const { data, error } = await _sb.rpc('update_resultat', payload);
     if (error) throw error;
+    // ✅ v13.90 — Le RPC renvoie la ligne mise à jour. S'il renvoie autre
+    // chose (droit refusé, ancienne version de la fonction), on recopiait
+    // `undefined` dans le cache : la fiche perdait son patient et TOUT
+    // l'Historique cessait de s'afficher. Mieux vaut échouer franchement.
+    if (!data || typeof data !== 'object' || data.id === undefined) {
+      throw new Error('Réponse inattendue du serveur : ' + JSON.stringify(data));
+    }
     const idx = _dbCache.findIndex(r => r.id === id);
     const updated = { id: data.id, type: data.type, patient: data.patient, resultats: data.resultats, savedAt: data.created_at, createdBy: data.created_by, montant: data.montant || 0, prescripteur_id: data.prescripteur_id, est_bpn: data.est_bpn };
     if (idx >= 0) _dbCache[idx] = updated; else _dbCache.push(updated);

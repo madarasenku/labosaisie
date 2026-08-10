@@ -362,7 +362,14 @@ async function renderHistory(forceRefresh) {
       const lockedBy  = r.restrictedBy || '?';
       const montantStr2 = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
       return '<tr style="background:#fffbeb;border-left:3px solid #fbbf24">'
-        + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.3"></td>'
+        // ✅ v13.90 — La case était désactivée : l'admin ne pouvait donc rien
+        // faire en masse sur les fiches verrouillées, alors que c'est
+        // justement là qu'il en a besoin (déverrouiller un lot, encaisser,
+        // supprimer). Le verrouillage sert à masquer aux autres profils, pas
+        // à priver l'administrateur de ses outils.
+        + '<td style="text-align:center;padding:4px"><input type="checkbox" class="bulk-chk" data-id="' + r.id + '" '
+          + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
+          + ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)"></td>'
         + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
         + '<td data-label="N° Dossier">' + celluleNumDossier(r, esc) + '</td>'
         + '<td data-label="Patient">' + esc(r.patient.nom)
@@ -517,8 +524,14 @@ async function deleteAnalyseFromDossier(recordId, type) {
   const record = getDB().find(r => r.id === recordId);
   if (!record || !isDossierRecord(record)) { toast('Dossier introuvable', 'err'); return; }
   await ensureFull(record); // ✅ v13.5 — détail complet avant de recomposer le dossier
-  const declaredTypes = record.resultats?._types || [];
-  if (record._light || declaredTypes.some(t => !record.resultats[t])) {
+  // ✅ v13.90 — Le garde-fou exigeait aussi qu'une entrée de résultats existe
+  // pour CHAQUE type déclaré. Il confondait deux choses : « le détail n'a pas
+  // été chargé » et « les résultats ne sont pas encore saisis ». Or une
+  // analyse cochée mais non remplie est le cas NORMAL — et précisément celui
+  // où l'on veut la retirer, quand elle a été cochée par erreur. Résultat :
+  // 633 des 658 dossiers multi-analyses refusaient la suppression, en
+  // accusant le réseau. Seul `_light` dit si le chargement a échoué.
+  if (record._light) {
     toast('⚠ Détail du dossier non chargé (réseau ?). Réessayez.', 'err'); return;
   }
   const types = getRecordTypes(record);
@@ -658,6 +671,11 @@ function updateVerrouilleeBtn() { updateMasqueesBtn(); }
 function toggleMasquees() {
   _filterVerrouillees = !_filterVerrouillees;
   if (_filterVerrouillees) { _filterCorbeille = false; updateCorbeilleBtn(); }
+  // ✅ v13.90 — Vider la sélection en changeant de vue : depuis que les
+  // fiches verrouillées sont cochables, une sélection oubliée agirait sur
+  // des lignes devenues invisibles. Une action de masse ne doit porter que
+  // sur ce que l'on a sous les yeux.
+  if (typeof clearBulkSelection === 'function') clearBulkSelection();
   updateMasqueesBtn();
   renderHistory();
 }
@@ -684,6 +702,7 @@ function updateCorbeilleBtn() {
 function toggleCorbeille() {
   _filterCorbeille = !_filterCorbeille;
   if (_filterCorbeille) { _filterVerrouillees = false; updateVerrouilleeBtn(); }
+  if (typeof clearBulkSelection === 'function') clearBulkSelection();
   updateCorbeilleBtn();
   renderHistory();
 }

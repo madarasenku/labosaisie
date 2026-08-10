@@ -300,6 +300,95 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     }
   }
 
+  // ── Deux blocages signalés par l'administrateur (v13.90) ───────────
+  {
+    const AUJ = new Date().toISOString().slice(0, 10);
+    // Un dossier à 2 analyses dont UNE n'a pas encore de résultats saisis :
+    // c'est le cas de 633 des 658 dossiers multi-analyses en production.
+    const JEU = [
+      { id: 601, type: 'Dossier', montant: 6000, created_at: AUJ + 'T08:00:00Z',
+        created_by: 'admin1', patient: { nom: 'PATIENT DEUX ANALYSES', dossier: 'Y1', date: AUJ },
+        resultats: { _types: ['Hématologie', 'Biochimie'], 'Hématologie': { Hb: '12' } },
+        prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
+      { id: 602, type: 'Hématologie', montant: 3000, created_at: AUJ + 'T09:00:00Z',
+        created_by: 'admin1', patient: { nom: 'PATIENT VERROUILLE', dossier: 'Y2', date: AUJ },
+        resultats: {}, prescripteur_id: 1, est_bpn: false,
+        restricted_by: 'admin', deleted_at: null },
+    ];
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', rpc: { get_tarifs: {}, get_examens_custom: [], get_resultats_light: JEU,
+        get_restriction_status: [{ id: 602, restricted_by: 'admin' }] },
+    });
+
+    r.section('Supprimer une analyse dont les résultats ne sont pas saisis');
+    const res = await page.evaluate(async () => {
+      window.__appels = [];
+      const vraiRpc = _sb.rpc;
+      _sb.rpc = async (nom, params) => {
+        window.__appels.push({ nom, params });
+        if (nom === 'get_resultat_full')
+          return { data: { resultats: { _types: ['Hématologie','Biochimie'],
+                                        'Hématologie': { Hb: '12' } } }, error: null };
+        // Le RPC renvoie la LIGNE mise à jour, pas 'ok' : un simulacre
+        // infidèle faisait recopier `undefined` dans le cache et
+        // l'Historique cessait de s'afficher. C'est ce qui a fait ajouter
+        // un garde-fou dans updateRecordRemote.
+        if (nom === 'update_resultat') return { data: {
+          id: 601, type: 'Dossier', patient: { nom: 'PATIENT DEUX ANALYSES', dossier: 'Y1' },
+          resultats: params.p_resultats, created_at: new Date().toISOString(),
+          created_by: 'admin1', montant: params.p_montant, prescripteur_id: 1,
+          est_bpn: false }, error: null };
+        return { data: [], error: null };
+      };
+      window.showConfirmModal = async () => true;
+      let capté = ''; const vrai = window.toast; window.toast = m => { capté = m; };
+      await deleteAnalyseFromDossier(601, 'Biochimie');
+      window.toast = vrai; _sb.rpc = vraiRpc;
+      return { capté, appels: window.__appels.map(a => a.nom) };
+    });
+    // Le message accusait le réseau alors que tout allait bien : une analyse
+    // cochée mais non remplie est le cas NORMAL, et justement celui où l'on
+    // veut la retirer.
+    r.check('plus de faux message réseau', /non chargé/.test(res.capté), false);
+    r.check('la suppression atteint le serveur',
+            res.appels.includes('update_resultat'), true);
+    r.check('aucune erreur JS', errors.length, 0);
+    if (errors.length) console.log('   ', errors.slice(0, 3));
+
+    r.section('Actions de groupe sur les fiches verrouillées');
+    const coches = await page.evaluate(async () => {
+      showView('historique');
+      await new Promise(r => setTimeout(r, 900));
+      setHistPeriode('tout');
+      await new Promise(r => setTimeout(r, 700));
+      toggleMasquees();                       // passer en vue « verrouillées »
+      await new Promise(r => setTimeout(r, 700));
+      const cases = [...document.querySelectorAll('#history-body input[type=checkbox]')];
+      return { total: cases.length,
+               desactivees: cases.filter(c => c.disabled).length,
+               selectionnables: cases.filter(c => c.classList.contains('bulk-chk')).length };
+    });
+    r.check('la fiche verrouillée est listée', coches.total > 0, true);
+    // C'est justement sur ces fiches que l'admin a besoin d'agir en masse :
+    // déverrouiller un lot, encaisser, supprimer.
+    r.check('sa case n\'est plus désactivée', coches.desactivees, 0);
+    r.check('et elle entre dans la sélection', coches.selectionnables > 0, true);
+
+    const selection = await page.evaluate(async () => {
+      toggleRowSelect(602, true);
+      const apres = _selectedIds.size;
+      toggleMasquees();                       // revenir à la vue normale
+      await new Promise(r => setTimeout(r, 500));
+      // Une sélection oubliée agirait sur des lignes devenues invisibles.
+      return { apres, apresChangementDeVue: _selectedIds.size };
+    });
+    r.check('la sélection fonctionne', selection.apres, 1);
+    r.check('et se vide en changeant de vue', selection.apresChangementDeVue, 0);
+    r.check('aucune erreur JS', errors.length, 0);
+    if (errors.length) console.log('   ', errors.slice(0, 3));
+    await ctx.close();
+  }
+
   const s = r.summary();
   srv.close();
   process.exit(s.allPassed ? 0 : 1);
