@@ -66,8 +66,13 @@ function calculerCloture(jour) {
 
   const parType = {};
   payes.forEach(r => {
-    const types = (typeof getRecordTypes === 'function' ? getRecordTypes(r) : null)
-                  || [r.type].filter(Boolean);
+    // ✅ v13.85 — Un forfait prénatal compte pour UNE prestation « BPN », pas
+    // pour les cinq catégories qu'il coche : sinon la répartition annonce
+    // cinq analyses vendues là où le laboratoire en a facturé une.
+    const types = (typeof estBPN === 'function' && estBPN(r))
+      ? ['BPN']
+      : ((typeof getRecordTypes === 'function' ? getRecordTypes(r) : null)
+         || [r.type].filter(Boolean));
     const liste = types.length ? types : ['—'];
     // Le montant d'un dossier couvre plusieurs analyses : on l'attribue au
     // dossier entier sur sa première ligne plutôt que de le répartir au
@@ -79,6 +84,24 @@ function calculerCloture(jour) {
     });
   });
 
+  // ✅ v13.85 — Le détail nominatif : c'est lui qui permet de pointer la
+  // clôture ligne à ligne contre le cahier de caisse. Trié par heure de
+  // saisie, dans l'ordre où les patients se sont présentés.
+  const detail = payes
+    .slice()
+    .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')))
+    .map(r => ({
+      dossier: r.patient?.dossier || r.patient?.ancien_dossier || '—',
+      nom: r.patient?.nom || '—',
+      age: r.patient?.age !== undefined && r.patient?.age !== '' ? String(r.patient.age) : '—',
+      prescripteur: r.patient?.medecin || '—',
+      // getDisplayType renvoie « BPN » pour un forfait prénatal plutôt que
+      // les cinq catégories qu'il coche : c'est la prestation vendue.
+      examens: (typeof getDisplayType === 'function' ? getDisplayType(r) : (r.type || '—')),
+      montant: Number(r.montant) || 0,
+      regularisation: !!r.patient?.paiement_infos?.regularisation,
+    }));
+
   const monnaieDues = visibles
     .map(r => ({ r, du: (typeof monnaieDue === 'function' ? monnaieDue(r.id) : 0) }))
     .filter(x => x.du > 0);
@@ -87,7 +110,7 @@ function calculerCloture(jour) {
     jour,
     dossiers: payes.length,
     total: somme(payes),
-    parAgent, parType,
+    parAgent, parType, detail,
     impayes: impayes.map(r => ({ id: r.id, dossier: r.patient?.dossier || '—',
                                  nom: r.patient?.nom || '—', montant: Number(r.montant) || 0 })),
     totalImpaye: somme(impayes),
@@ -198,6 +221,31 @@ function imprimerCloture() {
         + '<thead><tr><th style="text-align:left">Agent</th><th style="text-align:right">Dossiers</th>'
         + '<th style="text-align:right">Montant</th></tr></thead><tbody>'
         + rangs(c.parAgent, true) + '</tbody></table>')
+
+    // ✅ v13.85 — Détail nominatif : c'est ce qui permet de pointer la
+    // clôture ligne à ligne contre le cahier de caisse. Sans lui, le
+    // document n'est qu'un total qu'on ne peut ni vérifier ni contester.
+    + bloc('Détail des encaissements',
+        '<table style="width:100%;font-size:9.5pt;border-collapse:collapse">'
+        + '<thead><tr style="border-bottom:1px solid #000">'
+        + '<th style="text-align:left">N°</th><th style="text-align:left">Patient</th>'
+        + '<th style="text-align:center">Âge</th><th style="text-align:left">Prescripteur</th>'
+        + '<th style="text-align:left">Examens</th><th style="text-align:right">Payé</th>'
+        + '</tr></thead><tbody>'
+        + (c.detail.length
+            ? c.detail.map(d =>
+                '<tr style="border-bottom:1px solid #e5e5e5">'
+                + '<td>' + escHTML(d.dossier) + '</td>'
+                + '<td>' + escHTML(d.nom) + '</td>'
+                + '<td style="text-align:center">' + escHTML(d.age) + '</td>'
+                + '<td>' + escHTML(d.prescripteur) + '</td>'
+                + '<td>' + escHTML(d.examens)
+                + (d.regularisation ? ' <em style="font-size:8pt">(régul.)</em>' : '') + '</td>'
+                + '<td style="text-align:right">' + _fcfa(d.montant) + '</td></tr>').join('')
+            : '<tr><td colspan="6" style="font-style:italic">Aucun encaissement ce jour.</td></tr>')
+        + '</tbody><tfoot><tr style="border-top:2px solid #000;font-weight:800">'
+        + '<td colspan="5">TOTAL</td><td style="text-align:right">' + _fcfa(c.total) + '</td>'
+        + '</tr></tfoot></table>')
 
     + bloc('Répartition par analyse',
         '<table style="width:100%;font-size:10.5pt;border-collapse:collapse">'

@@ -217,9 +217,15 @@ async function renderHistory(forceRefresh) {
       // ✅ v13.83 — `ancien_dossier` est inclus : le numéro d'un dossier
       // verrouillé est libéré au bout de deux semaines, mais un patient peut
       // revenir avec son vieux reçu. La recherche doit encore le retrouver.
+      // ✅ v13.85 — Les types détaillés sont indexés EN PLUS de l'affichage :
+      // un dossier prénatal s'affiche « BPN », mais chercher
+      // « Immuno-Sérologie » doit continuer de le trouver. Raccourcir
+      // l'affichage ne doit pas rétrécir la recherche.
       const txt = [r.patient?.nom, r.patient?.dossier, r.patient?.ancien_dossier,
                    r.patient?.medecin, r.patient?.service, r.createdBy,
-                   getDisplayType(r)].filter(Boolean).join(' ').toLowerCase();
+                   getDisplayType(r),
+                   (typeof getRecordTypes === 'function' ? getRecordTypes(r).join(' ') : '')
+                  ].filter(Boolean).join(' ').toLowerCase();
       if (!txt.includes(q)) return false;
     }
     return true;

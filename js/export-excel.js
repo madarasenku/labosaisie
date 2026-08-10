@@ -231,7 +231,33 @@ function getRecordResultats(r, type) {
   return r.resultats || {};
 }
 
+/**
+ * ✅ v13.85 — Le bilan prénatal est un FORFAIT : une seule prestation, un
+ * seul prix. Il coche mécaniquement cinq catégories d'analyses, et le
+ * dossier s'affichait donc « Hématologie · Groupe sanguin · Immuno-Sérologie
+ * · Biochimie · Bactériologie » — illisible sur un reçu comme sur une
+ * clôture, alors que le laboratoire l'appelle simplement « BPN ».
+ *
+ * On ne se fie pas à la seule colonne `est_bpn` : sur les 41 dossiers
+ * prénatals de la base, elle vaut `false` partout. C'est la présence du
+ * forfait parmi les examens cochés qui fait foi.
+ */
+function estBPN(r) {
+  if (!r) return false;
+  if (r.est_bpn === true) return true;
+  const types = r.resultats?._types;
+  if (Array.isArray(types) && types.some(t => /pr[ée]natal/i.test(String(t)))) return true;
+  const coches = r.resultats?._examens_coches;
+  if (!coches) return false;
+  // Deux formats coexistent : un tableau à plat (ancien) ou un objet
+  // { type: [examens] } (dossier). Les deux doivent être reconnus.
+  const liste = Array.isArray(coches) ? coches : Object.values(coches).flat();
+  return liste.some(x => /pr[ée]natal/i.test(String(x)));
+}
+
 function getDisplayType(r) {
+  // Le forfait prime sur le détail : c'est le nom de la prestation vendue.
+  if (estBPN(r)) return 'BPN';
   if (isDossierRecord(r)) {
     const types = r.resultats?._types || [];
     return types.length ? types.join(' · ') : 'Dossier';

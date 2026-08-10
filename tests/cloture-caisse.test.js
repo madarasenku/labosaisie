@@ -55,6 +55,14 @@ const FICHES = [
                paiement_infos: paiement(4000, 'YERIGUE',
                  { montant_recu: 5500, monnaie: 1500, monnaie_remise: false }) },
     resultats: {}, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
+  // Un bilan prénatal : forfait unique qui coche cinq catégories. Il doit
+  // s'imprimer « BPN », pas la liste des cinq.
+  { id: 8, type: 'Dossier', montant: 10000, created_at: AUJ + 'T15:00:00Z', created_by: 'nadia',
+    patient: { nom: 'SANKARA AWA', dossier: 'D8', date: AUJ, age: 27, medecin: 'SFDE YAPI',
+               paiement_status: 'paye', paiement_infos: paiement(10000, 'nadia') },
+    resultats: { _types: ['Hématologie','Groupe sanguin','Immuno-Sérologie','Biochimie','Bactériologie'],
+                 _examens_coches: { 'Hématologie': ['Bilan prénatal complet (forfait)'] } },
+    prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
   // Une régularisation : encaissée, mais pas de l'argent entré aujourd'hui.
   { id: 7, type: 'Biochimie', montant: 6000, created_at: AUJ + 'T14:00:00Z', created_by: 'nadia',
     patient: { nom: 'BORE ISSA', dossier: 'D7', date: AUJ, paiement_status: 'paye',
@@ -62,8 +70,9 @@ const FICHES = [
     resultats: {}, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
 ];
 
-// Recette attendue = tous les payés NON verrouillés : 3000+5000+2000+4000+6000
-const RECETTE = 20000;
+// Recette attendue = tous les payés NON verrouillés :
+// 3000+5000+2000+4000+6000+10000 (BPN)
+const RECETTE = 30000;
 
 (async () => {
   const srv = await serve();
@@ -81,7 +90,7 @@ const RECETTE = 20000;
     const c = await page.evaluate(j => calculerCloture(j), AUJ);
 
     r.check('recette du jour', c.total, RECETTE);
-    r.check('dossiers encaissés', c.dossiers, 5);
+    r.check('dossiers encaissés', c.dossiers, 6);
     // Le point qui compte : 40 000 verrouillés ne gonflent pas la recette.
     r.check('le verrouillé est hors recette', c.total < 40000, true);
     r.check('mais il est compté à part', c.totalVerrouille, 40000);
@@ -91,7 +100,7 @@ const RECETTE = 20000;
     r.check('régularisation isolée', c.totalRegularise, 6000);
 
     r.section('Responsabilité par agent');
-    r.check('nadia', c.parAgent.nadia && c.parAgent.nadia.total, 8000);
+    r.check('nadia', c.parAgent.nadia && c.parAgent.nadia.total, 18000);
     r.check('YERIGUE', c.parAgent.YERIGUE && c.parAgent.YERIGUE.total, 6000);
     // La régularisation est portée par qui l'a faite, pas par le caissier
     // du jour : c'est admin qui doit en répondre.
@@ -101,6 +110,20 @@ const RECETTE = 20000;
             Object.values(c.parAgent).reduce((t, v) => t + v.total, 0), RECETTE);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 3));
+
+    r.section('Détail nominatif et forfait prénatal');
+    r.check('une ligne par encaissement', c.detail.length, 6);
+    const bpn = c.detail.find(d => d.dossier === 'D8');
+    r.check('le patient est nommé', bpn && bpn.nom, 'SANKARA AWA');
+    r.check('son âge y est', bpn && bpn.age, '27');
+    r.check('son prescripteur aussi', bpn && bpn.prescripteur, 'SFDE YAPI');
+    r.check('la somme payée aussi', bpn && bpn.montant, 10000);
+    // Le point demandé : un forfait prénatal s'annonce « BPN », pas par les
+    // cinq catégories qu'il coche mécaniquement.
+    r.check('le forfait prénatal s\'affiche BPN', bpn && bpn.examens, 'BPN');
+    const ordinaire = c.detail.find(d => d.dossier === 'D1');
+    r.check('un dossier ordinaire garde son détail',
+            ordinaire && /Hématologie/.test(ordinaire.examens), true);
 
     r.section('Document imprimé');
     const doc = await page.evaluate(() => {
@@ -113,7 +136,7 @@ const RECETTE = 20000;
     // \s couvre l'espace insécable étroite (U+202F) que fr-FR utilise comme
     // séparateur de milliers : chercher une espace ordinaire échouait alors
     // que le document était parfaitement juste.
-    r.check('la recette y figure', /20\s?000\s?FCFA/.test(doc), true);
+    r.check('la recette y figure', /30\s?000\s?FCFA/.test(doc), true);
     r.check('titre de clôture', /CL[ÔO]TURE DE CAISSE/.test(doc), true);
     r.check('les deux signatures sont prévues',
             /Le caissier/.test(doc) && /Le responsable/.test(doc), true);
@@ -122,6 +145,11 @@ const RECETTE = 20000;
     r.check('et présenté hors recette', /[Hh]ors recette/.test(doc), true);
     r.check('la régularisation est signalée', /r[ée]gularisation/i.test(doc), true);
     r.check('l\'auteur de l\'édition est nommé', /admin1/.test(doc), true);
+    r.check('le détail nominatif est imprimé', /D[ée]tail des encaissements/.test(doc), true);
+    r.check('avec le nom du patient', /SANKARA AWA/.test(doc), true);
+    r.check('son prescripteur', /SFDE YAPI/.test(doc), true);
+    r.check('et « BPN » plutôt que les cinq analyses',
+            /BPN/.test(doc) && !/Bact[ée]riologie/.test(doc), true);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 3));
     await ctx.close();
