@@ -74,27 +74,24 @@ function getDB() {
     if (isAdmin()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy);
     return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && r.restrictedBy === uid);
   }
-  // ✅ v13.89 — Un bilan prénatal interne n'existe plus pour personne SAUF
-  // pour l'administrateur : pour le reste du personnel, tout se passe comme
-  // si seuls les dossiers ordinaires existaient. L'admin, lui, doit tout
-  // voir — c'est lui qui répond du cahier jaune.
-  const cacheCahier = r => !isAdmin() && estCahierJaune(r);
-
+  // ✅ v13.91 — Les bilans prénatals internes redeviennent visibles de tous.
+  // Les avoir masqués (v13.89) les sortait aussi de « À encaisser » : le
+  // caissier ne pouvait plus encaisser la patiente. Un dossier qu'on ne voit
+  // pas est un dossier qu'on ne peut pas traiter.
+  //
   // Admin/Caissier/Spectateur : fiches actives (sans soft-delete ni hard-delete ni masquées)
   if (isAdmin() || isCaissier() || isSpectateur())
-    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && !cacheCahier(r));
+    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
   // Agent : ses fiches actives uniquement
   const uid = _currentUser?.username;
   if (!uid) return [];
   return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy
-                              && !cacheCahier(r) && r.createdBy === uid);
+                              && r.createdBy === uid);
 }
 
 /**
- * ✅ v13.89 — Un bilan prénatal INTERNE est porté au cahier jaune : son
- * produit revient au personnel, pas au laboratoire. Il ne doit donc jamais
- * entrer dans la Caisse, les Statistiques, les Ristournes ni la clôture.
- * Défini ici, à côté du verrouillage, pour qu'une seule ligne décide.
+ * Un bilan prénatal INTERNE alimente le cahier jaune. Conservé comme
+ * repère, mais il n'exclut plus rien : voir la note ci-dessous.
  */
 function estCahierJaune(r) {
   return !!(r && typeof estBPN === 'function' && estBPN(r)
@@ -103,9 +100,15 @@ function estCahierJaune(r) {
 
 // ✅ v13.32 — Fiches verrouillées toujours exclues des calculs (elles ont leur propre total
 // dans la section admin « Fiches verrouillées »).
-// ✅ v13.89 — Les bilans prénatals internes aussi : leur argent vit au cahier jaune.
+//
+// ✅ v13.91 — Les bilans prénatals internes en avaient été exclus (v13.89),
+// puis remis. Le motif du retour en arrière mérite d'être retenu : les
+// masquer les faisait disparaître de « À encaisser », donc le caissier ne
+// pouvait plus prendre les 10 000 FCFA de la patiente et le dossier restait
+// impayé pour toujours, invisible même des listes d'impayés. Le cahier jaune
+// suit ce qui est DÛ AU PERSONNEL ; il ne retire rien de la caisse.
 function isExcludedFromCalc(r) {
-  return !!(r && (r.restrictedBy || estCahierJaune(r)));
+  return !!(r && r.restrictedBy);
 }
 
 // ✅ v13.34 — Tableau de bord : synthèse du jour, affichée en haut de la Saisie
@@ -227,9 +230,7 @@ function openDossierFromAlerte(id) {
 
 function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
-  // ✅ v13.89 — Trois exclusions, une seule règle : isExcludedFromCalc.
-  // Fiches supprimées, fiches verrouillées, et bilans prénatals internes
-  // (leur argent est au cahier jaune, pas dans le tiroir du laboratoire).
+  // Une seule règle décide de l'exclusion : isExcludedFromCalc.
   const vivante = r => !r.deletedAt && !r._hardDeleted && !isExcludedFromCalc(r);
   if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(vivante);
   const uid = _currentUser?.username;

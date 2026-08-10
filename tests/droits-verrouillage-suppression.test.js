@@ -255,7 +255,7 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await ctx.close();
   }
 
-  // ── Ce qui va au cahier jaune n'existe pas pour le personnel (v13.89) ──
+  // ── Un BPN interne se voit et s'encaisse comme les autres (v13.91) ──
   {
     // Un BPN interne et un dossier ordinaire, le même jour.
     const AUJ = new Date().toISOString().slice(0, 10);
@@ -271,9 +271,9 @@ const A_MOI = 101, A_UN_AUTRE = 104;
         prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
     ];
 
-    for (const [role, username, visible] of [
-      ['agent', 'agent1', false], ['caissier', 'caisse1', false],
-      ['spectateur', 'obs', false], ['admin', 'admin1', true],
+    for (const [role, username] of [
+      ['agent', 'agent1'], ['caissier', 'caisse1'],
+      ['spectateur', 'obs'], ['admin', 'admin1'],
     ]) {
       const { ctx, page, errors } = await openApp({
         role, username, userId: 3,
@@ -287,13 +287,15 @@ const A_MOI = 101, A_UN_AUTRE = 104;
         calculees: (getCalcDB() || []).map(x => x.patient?.dossier),
       }));
       r.check('le dossier ordinaire reste visible', vu.affichees.includes('X1'), true);
-      // Pour le personnel, tout se passe comme si le BPN interne n'existait
-      // pas. L'admin, lui, doit tout voir : c'est lui qui répond du cahier.
-      r.check('BPN interne ' + (visible ? 'visible' : 'invisible') + ' à l\'écran',
-              vu.affichees.includes('X2'), visible);
-      // Son argent, en revanche, ne compte pour PERSONNE — pas même pour
-      // l'admin : il est au cahier jaune, pas dans le tiroir du laboratoire.
-      r.check('son argent hors des calculs', vu.calculees.includes('X2'), false);
+      // ✅ v13.91 — Le BPN interne est visible de TOUS. L'avoir masqué le
+      // sortait de « À encaisser » : le caissier ne pouvait plus prendre les
+      // 10 000 FCFA, et le dossier serait resté impayé pour toujours sans
+      // apparaître dans aucune liste d'impayés. Un dossier qu'on ne voit pas
+      // est un dossier qu'on ne peut pas traiter.
+      r.check('BPN interne visible à l\'écran', vu.affichees.includes('X2'), true);
+      // Et il compte dans la caisse : la patiente paie bien au guichet. Le
+      // cahier jaune suit ce qui est dû au personnel, il ne retire rien.
+      r.check('et compté dans la caisse', vu.calculees.includes('X2'), true);
       r.check('aucune erreur JS', errors.length, 0);
       if (errors.length) console.log('   ', errors.slice(0, 3));
       await ctx.close();

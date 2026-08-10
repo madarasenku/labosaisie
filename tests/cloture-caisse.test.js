@@ -86,10 +86,11 @@ const FICHES = [
     resultats: {}, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
 ];
 
-// Recette attendue = payés, NON verrouillés, HORS cahier jaune :
-// 3000+5000+2000+4000+6000 + 20000 (BPN externe). Le BPN interne (10 000)
-// en sort : il revient au personnel.
-const RECETTE = 40000;
+// ✅ v13.91 — Recette = tous les payés NON verrouillés, bilans prénatals
+// internes COMPRIS : la patiente paie bien au guichet. Le cahier jaune suit
+// ce qui est dû au personnel, il ne retire rien de la caisse.
+// 3000+5000+2000+4000+6000 + 20000 (BPN externe) + 10000 (BPN interne).
+const RECETTE = 50000;
 
 (async () => {
   const srv = await serve();
@@ -108,21 +109,24 @@ const RECETTE = 40000;
     const c = await page.evaluate(j => calculerCloture(j), AUJ);
 
     r.check('recette du jour', c.total, RECETTE);
-    r.check('dossiers encaissés', c.dossiers, 6);
+    r.check('dossiers encaissés', c.dossiers, 7);
     // Le point qui compte : les 40 000 verrouillés ne gonflent pas la recette.
     // On vérifie l'absence de la fiche elle-même, pas une inégalité sur le
     // total : une comparaison « < 40000 » devient fausse dès que la recette
     // atteint ce montant par ailleurs, et le contrôle se met à mentir.
     r.check('le verrouillé est hors recette',
             c.detail.some(d => d.dossier === 'D5'), false);
-    r.check('mais il est compté à part', c.totalVerrouille, 40000);
-    r.check('et dénombré', c.verrouilles, 1);
+    // D5 (40 000) et D10 (un BPN interne, 10 000, lui aussi verrouillé) :
+    // le verrouillage exclut de la recette, quelle que soit la nature du
+    // dossier. C'est la seule règle d'exclusion qui reste.
+    r.check('mais il est compté à part', c.totalVerrouille, 50000);
+    r.check('et dénombré', c.verrouilles, 2);
     r.check('non encaissé signalé', c.totalImpaye, 7000);
     r.check('monnaie due signalée', c.totalMonnaieDue, 1500);
     r.check('régularisation isolée', c.totalRegularise, 6000);
 
     r.section('Responsabilité par agent');
-    r.check('nadia', c.parAgent.nadia && c.parAgent.nadia.total, 28000);
+    r.check('nadia', c.parAgent.nadia && c.parAgent.nadia.total, 38000);
     r.check('YERIGUE', c.parAgent.YERIGUE && c.parAgent.YERIGUE.total, 6000);
     // La régularisation est portée par qui l'a faite, pas par le caissier
     // du jour : c'est admin qui doit en répondre.
@@ -134,22 +138,23 @@ const RECETTE = 40000;
     if (errors.length) console.log('   ', errors.slice(0, 3));
 
     r.section('Détail nominatif et forfait prénatal');
-    r.check('une ligne par encaissement', c.detail.length, 6);
+    r.check('une ligne par encaissement', c.detail.length, 7);
     const bpn = c.detail.find(d => d.dossier === 'D9');
     r.check('le patient est nommé', bpn && bpn.nom, 'DIABATE AWA');
     r.check('son âge y est', bpn && bpn.age, '31');
     r.check('son prescripteur aussi', bpn && bpn.prescripteur, 'EXTERNE');
     r.check('la somme payée aussi', bpn && bpn.montant, 20000);
 
-    // Le BPN INTERNE sort de la recette : il revient au personnel.
-    r.check('le BPN interne est hors recette',
-            c.detail.some(d => d.dossier === 'D8'), false);
-        // 10 000 (interne visible) + 10 000 (interne verrouillé) : le
-    // verrouillage ne détourne pas l'argent de sa destination.
-    r.check('mais compté au cahier jaune', c.totalCahierJaune, 20000);
-    r.check('le BPN interne verrouillé y est aussi', c.cahierJaune, 2);
-    r.check('et pas compté deux fois en verrouillé', c.verrouilles, 1);
-    r.check('le total verrouillé ne retient que le vrai', c.totalVerrouille, 40000);
+    // ✅ v13.91 — Le BPN interne est DANS la recette : l'en sortir le faisait
+    // aussi disparaître de « À encaisser », et la patiente ne pouvait plus
+    // payer. Le cahier jaune suit ce qui est dû au personnel, il ne retire
+    // rien de la caisse.
+    r.check('le BPN interne est dans la recette',
+            c.detail.some(d => d.dossier === 'D8'), true);
+    // Il reste signalé au cahier jaune, à titre informatif : c'est ce qui
+    // permet à l'admin de rapprocher les deux registres.
+    r.check('et signalé au cahier jaune', c.cahierJaune, 2);
+    r.check('son montant y est rappelé', c.totalCahierJaune, 20000);
     // Le point demandé : un forfait prénatal s'annonce « BPN », pas par les
     // cinq catégories qu'il coche mécaniquement.
     r.check('le forfait prénatal s\'affiche BPN', bpn && bpn.examens, 'BPN');
@@ -168,12 +173,10 @@ const RECETTE = 40000;
     // \s couvre l'espace insécable étroite (U+202F) que fr-FR utilise comme
     // séparateur de milliers : chercher une espace ordinaire échouait alors
     // que le document était parfaitement juste.
-    r.check('la recette y figure', /40\s?000\s?FCFA/.test(doc), true);
+    r.check('la recette y figure', /50\s?000\s?FCFA/.test(doc), true);
     r.check('titre de clôture', /CL[ÔO]TURE DE CAISSE/.test(doc), true);
     r.check('les deux signatures sont prévues',
             /Le caissier/.test(doc) && /Le responsable/.test(doc), true);
-    // Le montant verrouillé doit apparaître, mais expliqué comme hors recette.
-    r.check('le verrouillé est expliqué', /40\s?000\s?FCFA/.test(doc), true);
     r.check('la régularisation est signalée', /r[ée]gularisation/i.test(doc), true);
     r.check('l\'auteur de l\'édition est nommé', /admin1/.test(doc), true);
     r.check('le détail nominatif est imprimé', /D[ée]tail des encaissements/.test(doc), true);
@@ -184,8 +187,7 @@ const RECETTE = 40000;
     // pour l'admin, mais ne figurent plus sur la pièce signée.
     r.check('aucune rubrique hors recette imprimée', /[Hh]ors recette/.test(doc), false);
     r.check('ni mention du cahier jaune', /cahier jaune/i.test(doc), false);
-    r.check('et le BPN interne n\'est pas dans le détail',
-            !/SANKARA AWA/.test(doc), true);
+    r.check('et le BPN interne figure au détail', /SANKARA AWA/.test(doc), true);
     r.check('et « BPN » plutôt que les cinq analyses',
             /BPN/.test(doc) && !/Bact[ée]riologie/.test(doc), true);
     r.check('aucune erreur JS', errors.length, 0);

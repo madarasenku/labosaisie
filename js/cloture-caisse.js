@@ -46,22 +46,15 @@ function calculerCloture(jour) {
   // On le sort donc de la recette, mais on le compte à part : de l'argent
   // qui disparaît sans ligne d'explication, c'est exactement le problème
   // qu'on cherche à ne plus reproduire.
-  // ✅ v13.86 — Un bilan prénatal INTERNE est encaissé mais son produit
-  // revient au personnel (5 000 sage-femme, 5 000 laboratoire) : il est
-  // porté au cahier jaune et sort de la recette, exactement comme un
-  // dossier verrouillé. L'argent ne reste pas dans le tiroir du labo.
-  const versCahierJaune = r => typeof estBPN === 'function' && estBPN(r)
-                            && (r.patient?.medecin || '') !== 'EXTERNE';
-
-  // Le cahier jaune PRIME sur le verrouillage : un bilan prénatal interne y
-  // est porté même si la fiche est masquée, parce que l'argent est dû à la
-  // sage-femme que la fiche soit visible ou non. Les classer en
-  // « verrouillés » ferait mentir la clôture sur la destination de la somme.
-  // Les deux rubriques sont hors recette, l'ordre ne change donc pas le
-  // total — seulement ce que le document annonce.
-  const cahierJaune = duJour.filter(r => versCahierJaune(r));
-  const verrouilles = duJour.filter(r => !!r.restrictedBy && !versCahierJaune(r));
-  const visibles    = duJour.filter(r => !r.restrictedBy && !versCahierJaune(r));
+  // ✅ v13.91 — Un bilan prénatal interne compte dans la recette comme
+  // n'importe quel dossier : la patiente paie bien 10 000 FCFA au guichet.
+  // Le cahier jaune suit ce qui est DÛ AU PERSONNEL, il ne retire rien de
+  // la caisse. Les avoir sortis de la recette (v13.86) les faisait aussi
+  // disparaître de « À encaisser », donc plus personne ne pouvait encaisser.
+  const cahierJaune = duJour.filter(r => typeof estCahierJaune === 'function'
+                                      && estCahierJaune(r));
+  const verrouilles = duJour.filter(r => !!r.restrictedBy);
+  const visibles    = duJour.filter(r => !r.restrictedBy);
 
   const payes    = visibles.filter(r => r.patient?.paiement_status === 'paye');
   const impayes  = visibles.filter(r => r.patient?.paiement_status !== 'paye');
@@ -130,6 +123,8 @@ function calculerCloture(jour) {
     totalImpaye: somme(impayes),
     verrouilles: verrouilles.length,
     totalVerrouille: somme(verrouilles),
+    // Informatif : ces dossiers SONT dans la recette, mais leur produit est
+    // dû au personnel. L'admin doit pouvoir rapprocher les deux registres.
     cahierJaune: cahierJaune.length,
     totalCahierJaune: somme(cahierJaune.filter(r => r.patient?.paiement_status === 'paye')),
     monnaieDue: monnaieDues.map(x => ({ dossier: x.r.patient?.dossier || '—',
@@ -179,7 +174,7 @@ function renderCloture() {
     + (isAdmin() && c.cahierJaune
         ? '<div style="margin-top:6px;color:#92400e">📒 ' + c.cahierJaune
           + ' BPN interne(s), ' + _fcfa(c.totalCahierJaune)
-          + ' — portés au cahier jaune, hors recette</div>'
+          + ' — comptés dans la recette, et reportés au cahier jaune</div>'
         : '')
     + (isAdmin() && c.verrouilles
         ? '<div style="margin-top:6px;color:#92400e">🔒 ' + c.verrouilles
