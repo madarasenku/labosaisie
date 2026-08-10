@@ -893,19 +893,35 @@ async function bulkSetStatut(statut) {
     message: 'Marquer ' + ids.length + ' fiche(s) comme « ' + (labels[statut] || statut) + ' » ?',
     confirmText: 'Confirmer', cancelText: 'Annuler'
   })) return;
+  // ✅ v13.81 — Un seul aller-retour pour tout le lot. L'ancienne boucle
+  // envoyait DEUX appels par fiche (celui-ci, puis un second déclenché par
+  // setStatut), attendus l'un après l'autre : 483 fiches faisaient 966
+  // requêtes séquentielles et 483 réaffichages complets de l'historique.
   showLoading('Mise à jour du statut…');
-  let ok = 0, err = 0;
-  for (const id of ids) {
-    try {
-      await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: id, p_statut: statut });
-      setStatut(id, statut); // mise à jour locale immédiate
-      ok++;
-    } catch (e) { err++; }
+  try {
+    const { data, error } = await _sb.rpc('set_statut_lot',
+      { p_token: TK(), p_ids: ids, p_statut: statut });
+    hideLoading();
+    if (error || !data || data.erreur) {
+      toast('Échec : ' + (error?.message || data?.erreur || 'réponse inattendue'), 'err');
+      return;
+    }
+    // Le cache local ne suit que ce que le serveur a réellement accepté :
+    // un agent ne peut changer que ses propres fiches, et afficher un
+    // changement que la base a refusé serait pire que ne rien afficher.
+    if (data.refusees > 0) await refreshDB(true);
+    else ids.forEach(id => setStatutLocal(id, statut));
+
+    clearBulkSelection();
+    if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+    renderHistory();
+    toast(data.modifiees + ' fiche(s) mises à jour'
+      + (data.refusees ? ' · ' + data.refusees + ' refusée(s)' : ''),
+      data.refusees ? 'err' : 'ok');
+  } catch (e) {
+    hideLoading();
+    toast('Échec : ' + (e.message || e), 'err');
   }
-  hideLoading();
-  clearBulkSelection();
-  renderHistory();
-  toast(ok + ' fiche(s) mises à jour' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
 async function bulkLock() {
@@ -1024,44 +1040,38 @@ async function bulkEncaisser() {
     cancelText: 'Annuler'
   })) return;
 
+  // ✅ v13.81 — Encaissement en un seul appel, dans une transaction. La
+  // boucle précédente envoyait un aller-retour par dossier : si le réseau
+  // lâchait au milieu, la caisse se retrouvait à moitié encaissée sans que
+  // personne ne sache où. Maintenant c'est tout ou rien.
   showLoading('Encaissement groupé…');
-  const p = getPaiements();
   let ok = 0, err = 0;
-  for (const id of eligible) {
-    try {
-      const r = (_dbCache || []).find(x => x.id === id);
-      const montant = Number(r?.montant) || 0;
-      const infos = {
-        montant_demande: montant,
-        montant_recu: montant,
-        monnaie: 0,
-        monnaie_rendue: 0,
-        monnaie_remise: true,
-        monnaie_remise_le: null,
-        monnaie_remise_par: null,
-        agent: _currentUser?.username || '?',
-        date: new Date().toISOString(),
-        encaissement_groupe: true
-      };
-      if (r) r.patient = { ...(r.patient || {}), paiement_status: 'paye', paiement_infos: infos };
-      p[id] = 'paye';
-      if (_sb && TK() && r) {
-        const { error } = await _sb.rpc('update_dossier_patient', {
-          p_token: TK(), p_id: id, p_patient: r.patient
-        });
-        if (error) throw error;
-      }
-      ok++;
-    } catch (e) { err++; }
+  try {
+    const { data, error } = await _sb.rpc('encaisser_lot', { p_token: TK(), p_ids: eligible });
+    hideLoading();
+    if (error || !data || data.erreur) {
+      toast('Encaissement échoué : ' + (error?.message || data?.erreur || '?'), 'err');
+      return;
+    }
+    ok  = data.encaissees || 0;
+    // « ignorées » = déjà payées côté serveur. Ce n'est pas une erreur, mais
+    // il faut le dire : sinon l'écart entre le nombre annoncé et le nombre
+    // encaissé passe pour une perte.
+    err = data.ignorees || 0;
+    // Le serveur fait foi sur les montants encaissés : on recharge plutôt
+    // que de recopier localement un état qu'on croit correct.
+    await refreshDB(true);
+  } catch (e) {
+    hideLoading();
+    toast('Encaissement échoué : ' + (e.message || e), 'err');
+    return;
   }
-  localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
-  hideLoading();
   clearBulkSelection();
   updateBandeauPaiement();
   if (typeof renderCaisse === 'function') renderCaisse();
   renderHistory();
   toast('💰 ' + ok + ' dossier(s) encaissé(s) — ' + total.toLocaleString('fr-FR') + ' FCFA'
-    + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+    + (err ? ' · ' + err + ' déjà payé(s), ignoré(s)' : ''), 'ok');
 }
 
 // ✅ v13.42 — Annulation groupée de paiement

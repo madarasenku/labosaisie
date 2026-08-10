@@ -32,6 +32,7 @@ node tests/filtres.test.js
 | `navigation-autres-onglets.test.js` | Même navigation sur Statistiques, Caisse et Caisse personnelle |
 | `deploiement.test.js` | Versionnement des actifs (`?v=`), cohérence index/login/sw, précache complet |
 | `sauvegarde-examens.test.js` | Export complet (contenu, avertissement de confidentialité, réservé à l'admin), examens personnalisés partagés, alerte de sauvegarde ancienne, restauration (aller-retour, non-écrasement, découpage en lots, fichiers refusés, confirmation obligatoire) |
+| `actions-groupees.test.js` | Statut et encaissement groupés en un seul appel, respect des refus du serveur, échec réseau sans mensonge à l'écran, spectateur bloqué |
 | `securite.test.js` | Jeton exigé pour le compteur de dossiers (avec repli local), imprévisibilité du jeton de partage, restitution fidèle de l'audit serveur, audit réservé à l'admin |
 | `retour-arriere.test.js` | Instantanés nocturnes : liste des dates, analyse sans écriture, remise des fiches disparues, réparation d'une fiche isolée, confirmation obligatoire, réservé à l'admin |
 | `tarifs.test.js` | Grille tarifaire partagée : base prioritaire sur le catalogue, cache hors-ligne, écriture réservée à l'admin, estimation des dossiers |
@@ -78,6 +79,12 @@ interne — pas de dépendance à un serveur externe.
   confirmation (une saisie patient en cours serait perdue).
 - **v13.69** — le pré-cache ne doit contenir que des ressources same-origin ;
   plus aucune dépendance CDN ne peut le mettre en échec.
+- **v13.81** — une action groupée envoyait **deux** appels serveur par fiche
+  (l'appel direct, plus un second déclenché par la mise à jour locale), et
+  redessinait tout l'historique à chaque itération. Mesuré dans le journal
+  d'audit de production : 966 appels pour 483 fiches.
+  `actions-groupees.test.js` verrouille l'appel unique et, surtout, vérifie
+  que l'écran n'affiche jamais un changement que la base a refusé.
 - **v13.71** — le repli vers QRCode.js a été supprimé : il n'existe plus
   qu'une seule implémentation QR, donc plus de filet. `qr.test.js` vérifie
   que le générateur produit bien un PNG carré, de densité cohérente, et

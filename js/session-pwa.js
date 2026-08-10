@@ -321,22 +321,31 @@ function getStatut(id) {
   return getStatuts()[id] || 'attente';
 }
 
-// Écrit le statut : mise à jour optimiste du cache + localStorage + Supabase async
-function setStatut(id, statut) {
-  // 1. Mise à jour immédiate dans _dbCache (UI réactive sans attendre Supabase)
+/**
+ * ✅ v13.81 — Écriture LOCALE seule : cache + localStorage, aucun appel
+ * serveur, aucun réaffichage. Extraite de setStatut pour les actions
+ * groupées, qui persistent tout le lot en une fois : l'ancienne version
+ * envoyait un second appel par fiche (mesuré : 966 appels pour 483 fiches)
+ * et redessinait tout l'historique à chaque itération.
+ */
+function setStatutLocal(id, statut) {
   const r = (_dbCache || []).find(r => r.id === id);
   if (r) r.patient = {...(r.patient || {}), statut};
-  // 2. localStorage (rétrocompat + mode hors-ligne)
   const s = getStatuts(); s[id] = statut; localStorage.setItem(STATUTS_KEY, JSON.stringify(s));
-  // 3. Persistance en base (async, ne bloque pas l'UI)
+  if (statut === 'rendu' && r && typeof notifyResultatPret === 'function') notifyResultatPret(r);
+  return r;
+}
+
+// Écrit le statut d'UNE fiche : mise à jour optimiste + persistance async
+function setStatut(id, statut) {
+  const r = setStatutLocal(id, statut);
+  // Persistance en base (async, ne bloque pas l'UI)
   if (typeof _sb !== 'undefined' && _sb && TK()) {
     _sb.rpc('set_dossier_statut', {p_token: TK(), p_id: id, p_statut: statut})
       .then(({error}) => {
         if (error) console.warn('[LaboSaisie] set_statut:', error.message);
       });
   }
-  // ✅ v13.28 F10 — notification web quand un résultat passe à « rendu »
-  if (statut === 'rendu' && r && typeof notifyResultatPret === 'function') notifyResultatPret(r);
   if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
   renderHistory();
 }
