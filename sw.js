@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.83';
-const CACHE = 'cpmi-labo-v58';
+const APP_VERSION = '13.84';
+const CACHE = 'cpmi-labo-v59';
 const v = url => url + '?v=' + APP_VERSION;
 
 /* Pré-cacher les fichiers essentiels à l'installation.
@@ -60,6 +60,7 @@ const PRECACHE = [
   v('./js/impression.js'),
   v('./js/export-pdf.js'),
   v('./js/sauvegarde.js'),
+  v('./js/cloture-caisse.js'),
   v('./vendor/exceljs-4.4.0.min.js'),
   v('./vendor/chart-4.4.1.umd.js'),
   v('./vendor/supabase-2.39.7.umd.js'),

@@ -1269,7 +1269,15 @@ async function renderCaisse() {
   await refreshDB();
   updateVerrouilleeBtn(); // ✅ v13.32 — bouton admin fiches verrouillées
   // ✅ v13.33 — Brancher selon le rôle : agent → vue simplifiée, admin/caissier → caisse complète
-  if (!isAdmin() && !isCaissier() && !isSpectateur()) { renderUserCaisse(); return; }
+  if (!isAdmin() && !isCaissier() && !isSpectateur()) {
+    // La clôture est un document de caisse : elle n'a rien à faire dans la
+    // vue simplifiée d'un agent, qui ne tient pas le tiroir.
+    const carte = document.getElementById('cloture-card');
+    if (carte) carte.style.display = 'none';
+    renderUserCaisse(); return;
+  }
+  // ✅ v13.84 — Aperçu de la clôture du jour, recalculé à chaque ouverture.
+  if (typeof renderCloture === 'function') renderCloture();
   const db = getCalcDB(); // exclut les fiches verrouillées selon le choix admin
   const { from, to } = getCaisseRange();
   const rows = filterByDateRange(db, from, to);

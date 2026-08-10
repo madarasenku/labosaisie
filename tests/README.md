@@ -32,6 +32,7 @@ node tests/filtres.test.js
 | `navigation-autres-onglets.test.js` | Même navigation sur Statistiques, Caisse et Caisse personnelle |
 | `deploiement.test.js` | Versionnement des actifs (`?v=`), cohérence index/login/sw, précache complet |
 | `sauvegarde-examens.test.js` | Export complet (contenu, avertissement de confidentialité, réservé à l'admin), examens personnalisés partagés, alerte de sauvegarde ancienne, restauration (aller-retour, non-écrasement, découpage en lots, fichiers refusés, confirmation obligatoire) |
+| `cloture-caisse.test.js` | Recette du jour, responsabilité par agent, dossiers verrouillés hors recette, monnaie non rendue, régularisations isolées, document imprimé et signable, journée vide |
 | `droits-verrouillage-suppression.test.js` | Verrouillage réservé à l'admin (boutons masqués, appels bloqués), suppression ouverte à tous y compris au caissier, spectateur en lecture seule |
 | `actions-groupees.test.js` | Statut et encaissement groupés en un seul appel, respect des refus du serveur, échec réseau sans mensonge à l'écran, spectateur bloqué |
 | `securite.test.js` | Jeton exigé pour le compteur de dossiers (avec repli local), imprévisibilité du jeton de partage, restitution fidèle de l'audit serveur, audit réservé à l'admin |
@@ -91,7 +92,7 @@ interne — pas de dépendance à un serveur externe.
   que le générateur produit bien un PNG carré, de densité cohérente, et
   qu'il encaisse les cas limites (texte vide, texte de 5 000 caractères).
 
-## Trois pièges rencontrés en écrivant ces tests
+## Cinq pièges rencontrés en écrivant ces tests
 
 1. `labo_resultats.created_by` contient le **nom d'utilisateur** (texte), pas
    un identifiant numérique. Un jeu de données qui y met un `id` fait
@@ -99,7 +100,16 @@ interne — pas de dépendance à un serveur externe.
 2. Le sélecteur de mois du rapport PDF vit dans l'onglet **Comptes** et n'est
    peuplé qu'à son ouverture. Le tester sans passer par cet onglet fait
    retomber le rapport sur le mois courant sans aucune erreur.
-3. **Un test vert ne prouve rien tant qu'on ne l'a pas vu rouge.** Les
+3. `refreshDB` **écrase** `restrictedBy` avec le RPC dédié
+   `get_restriction_status`. Un jeu de données qui pose `restricted_by` sur
+   une fiche sans alimenter ce RPC voit sa fiche redevenir visible : le
+   contrôle « les dossiers verrouillés sont hors recette » ne teste alors
+   plus rien du tout.
+4. Le séparateur de milliers de `toLocaleString('fr-FR')` est une **espace
+   insécable étroite** (U+202F), pas une espace ordinaire. Chercher
+   `'20 000 FCFA'` échoue sur un document parfaitement juste ; utiliser
+   `/20\s?000/`, car `\s` couvre ce caractère.
+5. **Un test vert ne prouve rien tant qu'on ne l'a pas vu rouge.** Les
    contrôles « fichier de sauvegarde refusé » passaient au vert même après
    avoir supprimé toute la validation : le code partait ensuite en erreur de
    son côté, et le test ne regardait que l'absence d'écriture. Ils comptent
