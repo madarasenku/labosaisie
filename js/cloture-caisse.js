@@ -173,12 +173,15 @@ function renderCloture() {
     + '<th style="text-align:right">Encaissé</th></tr></thead><tbody>' + lignesAgent + '</tbody></table>'
     + alerte('Monnaie promise non rendue', c.monnaieDue.length, c.totalMonnaieDue, '#b45309')
     + alerte('Dossiers non encaissés', c.impayes.length, c.totalImpaye, '#b91c1c')
-    + (c.cahierJaune
+    // ✅ v13.89 — Ces deux lignes ne s'affichent QUE pour l'administrateur :
+    // pour le reste du personnel, ces dossiers n'existent pas. L'admin doit
+    // pouvoir expliquer un écart, les autres n'ont pas à en connaître.
+    + (isAdmin() && c.cahierJaune
         ? '<div style="margin-top:6px;color:#92400e">📒 ' + c.cahierJaune
           + ' BPN interne(s), ' + _fcfa(c.totalCahierJaune)
           + ' — portés au cahier jaune, hors recette</div>'
         : '')
-    + (c.verrouilles
+    + (isAdmin() && c.verrouilles
         ? '<div style="margin-top:6px;color:#92400e">🔒 ' + c.verrouilles
           + ' dossier(s) verrouillé(s), ' + _fcfa(c.totalVerrouille)
           + ' — hors recette, exclus des calculs de l\'application</div>'
@@ -287,21 +290,10 @@ function imprimerCloture() {
         + (c.totalImpaye ? '<div style="text-align:right;font-weight:800;margin-top:4px">Total : '
             + _fcfa(c.totalImpaye) + '</div>' : ''))
 
-    + (c.cahierJaune
-        ? bloc('Hors recette — cahier jaune',
-            '<div style="font-size:10pt">' + c.cahierJaune + ' bilan(s) prénatal(aux) interne(s), '
-            + _fcfa(c.totalCahierJaune) + '. Ces sommes sont encaissées mais reviennent au '
-            + 'personnel (5 000 FCFA à la sage-femme, 5 000 FCFA au laboratoire) : elles sont '
-            + 'portées au cahier jaune et ne font pas partie de la recette ci-dessus.</div>')
-        : '')
-
-    + (c.verrouilles
-        ? bloc('Hors recette — dossiers verrouillés',
-            '<div style="font-size:10pt">' + c.verrouilles + ' dossier(s), '
-            + _fcfa(c.totalVerrouille) + '. Ces dossiers sont exclus de tous les calculs '
-            + 'de l\'application ; ce montant ne fait donc pas partie de la recette '
-            + 'ci-dessus et n\'a pas à se trouver dans le tiroir.</div>')
-        : '')
+    // ✅ v13.89 — Les rubriques « hors recette » ne s'impriment plus : le
+    // laboratoire veut un document qui ne parle QUE de la recette. Les
+    // montants restent calculés et consultables à l'écran par l'admin,
+    // mais ils ne figurent plus sur la pièce signée.
 
     + '<div style="margin-top:26px;display:flex;gap:30px">'
     + ['Le caissier', 'Le responsable'].map(r =>

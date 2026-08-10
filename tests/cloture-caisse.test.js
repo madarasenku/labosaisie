@@ -174,12 +174,16 @@ const RECETTE = 40000;
             /Le caissier/.test(doc) && /Le responsable/.test(doc), true);
     // Le montant verrouillé doit apparaître, mais expliqué comme hors recette.
     r.check('le verrouillé est expliqué', /40\s?000\s?FCFA/.test(doc), true);
-    r.check('et présenté hors recette', /[Hh]ors recette/.test(doc), true);
     r.check('la régularisation est signalée', /r[ée]gularisation/i.test(doc), true);
     r.check('l\'auteur de l\'édition est nommé', /admin1/.test(doc), true);
     r.check('le détail nominatif est imprimé', /D[ée]tail des encaissements/.test(doc), true);
     r.check('avec le nom du patient', /DIABATE AWA/.test(doc), true);
-    r.check('le cahier jaune est expliqué', /cahier jaune/i.test(doc), true);
+    // ✅ v13.89 — Le document imprimé ne parle QUE de la recette : les
+    // rubriques « hors recette » en ont été retirées à la demande du
+    // laboratoire. Les montants restent calculés et visibles à l'écran
+    // pour l'admin, mais ne figurent plus sur la pièce signée.
+    r.check('aucune rubrique hors recette imprimée', /[Hh]ors recette/.test(doc), false);
+    r.check('ni mention du cahier jaune', /cahier jaune/i.test(doc), false);
     r.check('et le BPN interne n\'est pas dans le détail',
             !/SANKARA AWA/.test(doc), true);
     r.check('et « BPN » plutôt que les cinq analyses',

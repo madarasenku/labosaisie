@@ -74,18 +74,38 @@ function getDB() {
     if (isAdmin()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy);
     return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && r.restrictedBy === uid);
   }
+  // ✅ v13.89 — Un bilan prénatal interne n'existe plus pour personne SAUF
+  // pour l'administrateur : pour le reste du personnel, tout se passe comme
+  // si seuls les dossiers ordinaires existaient. L'admin, lui, doit tout
+  // voir — c'est lui qui répond du cahier jaune.
+  const cacheCahier = r => !isAdmin() && estCahierJaune(r);
+
   // Admin/Caissier/Spectateur : fiches actives (sans soft-delete ni hard-delete ni masquées)
-  if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
+  if (isAdmin() || isCaissier() || isSpectateur())
+    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && !cacheCahier(r));
   // Agent : ses fiches actives uniquement
   const uid = _currentUser?.username;
   if (!uid) return [];
-  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && r.createdBy === uid);
+  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy
+                              && !cacheCahier(r) && r.createdBy === uid);
+}
+
+/**
+ * ✅ v13.89 — Un bilan prénatal INTERNE est porté au cahier jaune : son
+ * produit revient au personnel, pas au laboratoire. Il ne doit donc jamais
+ * entrer dans la Caisse, les Statistiques, les Ristournes ni la clôture.
+ * Défini ici, à côté du verrouillage, pour qu'une seule ligne décide.
+ */
+function estCahierJaune(r) {
+  return !!(r && typeof estBPN === 'function' && estBPN(r)
+            && (r.patient?.medecin || '') !== 'EXTERNE');
 }
 
 // ✅ v13.32 — Fiches verrouillées toujours exclues des calculs (elles ont leur propre total
 // dans la section admin « Fiches verrouillées »).
+// ✅ v13.89 — Les bilans prénatals internes aussi : leur argent vit au cahier jaune.
 function isExcludedFromCalc(r) {
-  return !!(r && r.restrictedBy);
+  return !!(r && (r.restrictedBy || estCahierJaune(r)));
 }
 
 // ✅ v13.34 — Tableau de bord : synthèse du jour, affichée en haut de la Saisie
@@ -207,11 +227,14 @@ function openDossierFromAlerte(id) {
 
 function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
-  // Fiches verrouillées, soft-delete et hard-delete toujours exclues.
-  if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
+  // ✅ v13.89 — Trois exclusions, une seule règle : isExcludedFromCalc.
+  // Fiches supprimées, fiches verrouillées, et bilans prénatals internes
+  // (leur argent est au cahier jaune, pas dans le tiroir du laboratoire).
+  const vivante = r => !r.deletedAt && !r._hardDeleted && !isExcludedFromCalc(r);
+  if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(vivante);
   const uid = _currentUser?.username;
   if (!uid) return [];
-  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && r.createdBy === uid);
+  return _dbCache.filter(r => vivante(r) && r.createdBy === uid);
 }
 
 // Stub conservé pour compatibilité (anciens appels éventuels)

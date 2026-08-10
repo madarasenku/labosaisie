@@ -255,6 +255,51 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await ctx.close();
   }
 
+  // ── Ce qui va au cahier jaune n'existe pas pour le personnel (v13.89) ──
+  {
+    // Un BPN interne et un dossier ordinaire, le même jour.
+    const AUJ = new Date().toISOString().slice(0, 10);
+    const JEU = [
+      { id: 501, type: 'Hématologie', montant: 3000, created_at: AUJ + 'T08:00:00Z',
+        created_by: 'agent1', patient: { nom: 'PATIENT ORDINAIRE', dossier: 'X1', date: AUJ },
+        resultats: {}, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
+      { id: 502, type: 'Dossier', montant: 10000, created_at: AUJ + 'T09:00:00Z',
+        created_by: 'agent1', patient: { nom: 'PATIENTE BPN', dossier: 'X2', date: AUJ,
+                                         medecin: 'SFDE KOUAME' },
+        resultats: { _types: ['Hématologie'],
+                     _examens_coches: { 'Hématologie': ['Bilan prénatal complet (forfait)'] } },
+        prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
+    ];
+
+    for (const [role, username, visible] of [
+      ['agent', 'agent1', false], ['caissier', 'caisse1', false],
+      ['spectateur', 'obs', false], ['admin', 'admin1', true],
+    ]) {
+      const { ctx, page, errors } = await openApp({
+        role, username, userId: 3,
+        rpc: { get_tarifs: {}, get_examens_custom: [], get_resultats_light: JEU },
+      });
+      r.section('Profil ' + role);
+      const vu = await page.evaluate(() => ({
+        // getDB alimente l'Historique et la recherche globale.
+        affichees: (getDB() || []).map(x => x.patient?.dossier),
+        // getCalcDB alimente la Caisse, les Statistiques et les Ristournes.
+        calculees: (getCalcDB() || []).map(x => x.patient?.dossier),
+      }));
+      r.check('le dossier ordinaire reste visible', vu.affichees.includes('X1'), true);
+      // Pour le personnel, tout se passe comme si le BPN interne n'existait
+      // pas. L'admin, lui, doit tout voir : c'est lui qui répond du cahier.
+      r.check('BPN interne ' + (visible ? 'visible' : 'invisible') + ' à l\'écran',
+              vu.affichees.includes('X2'), visible);
+      // Son argent, en revanche, ne compte pour PERSONNE — pas même pour
+      // l'admin : il est au cahier jaune, pas dans le tiroir du laboratoire.
+      r.check('son argent hors des calculs', vu.calculees.includes('X2'), false);
+      r.check('aucune erreur JS', errors.length, 0);
+      if (errors.length) console.log('   ', errors.slice(0, 3));
+      await ctx.close();
+    }
+  }
+
   const s = r.summary();
   srv.close();
   process.exit(s.allPassed ? 0 : 1);
