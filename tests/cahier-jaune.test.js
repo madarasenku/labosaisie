@@ -219,6 +219,51 @@ const preparer = (page, extra) => page.evaluate(([cols, ecr, sup]) => {
     await ctx.close();
   }
 
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('Correction d\'une écriture existante');
+    await preparer(page, { modifier_ecriture_cahier: { ok: true },
+                           supprimer_ecriture_cahier: { ok: true } });
+    await page.evaluate(m => chargerCahierJaune(m), MOIS);
+    await page.waitForTimeout(800);
+
+    // Les lignes doivent être cliquables : sans cela il faut supprimer puis
+    // ressaisir, ce qui casse le lien avec le dossier et la numérotation.
+    r.check('les lignes sont cliquables', await page.evaluate(
+      () => [...document.querySelectorAll('#cahier-tableau div')]
+              .filter(d => /ouvrirSaisieCahier\([^)]*,\s*\d+\)/.test(d.getAttribute('onclick') || '')).length > 0), true);
+
+    const prerempli = await page.evaluate(async () => {
+      await ouvrirSaisieCahier('2026-06-03', 3);
+      return { montant: document.getElementById('cj-montant')?.value,
+               colonne: document.getElementById('cj-colonne')?.value,
+               expl: document.getElementById('cj-explication')?.value,
+               // Une écriture issue d'un dossier doit être signalée comme telle.
+               avertissement: /report[ée]e automatiquement/i.test(
+                 document.getElementById('cahier-modal')?.textContent || ''),
+               suppr: !!document.querySelector('#cahier-modal .btn-danger') };
+    });
+    r.check('le montant est prérempli', prerempli.montant, '10000');
+    r.check('la colonne aussi', prerempli.colonne, '1');
+    r.check('l\'explication aussi', /KOUAME AYA/.test(prerempli.expl), true);
+    r.check('un report automatique est signalé', prerempli.avertissement, true);
+    r.check('la suppression est proposée', prerempli.suppr, true);
+
+    const envoi = await page.evaluate(async () => {
+      document.getElementById('cj-montant').value = '12000';
+      await enregistrerEcritureCahier('2026-06-03', 3);
+      return window.__appels.filter(a => /modifier_ecriture_cahier|ajouter_ecriture_cahier/.test(a.nom));
+    });
+    r.check('c\'est une modification, pas un ajout', envoi.length && envoi[0].nom, 'modifier_ecriture_cahier');
+    r.check('sur la bonne écriture', envoi[0] && envoi[0].params.p_id, 3);
+    r.check('avec le nouveau montant', envoi[0] && envoi[0].params.p_montant, 12000);
+    r.check('aucune erreur JS', errors.length, 0);
+    if (errors.length) console.log('   ', errors.slice(0, 3));
+    await ctx.close();
+  }
+
   const s = r.summary();
   srv.close();
   process.exit(s.allPassed ? 0 : 1);

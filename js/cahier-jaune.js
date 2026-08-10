@@ -118,9 +118,15 @@ function renderCahierJaune() {
   const cellule = (j, c) => {
     const d = parJour[j] && parJour[j][c.id];
     if (!d || !d.lignes.length) return '<td style="text-align:right;color:#cbd5e1">·</td>';
+    // ✅ v13.88 — Chaque ligne est cliquable pour être corrigée. Un registre
+    // qu'on ne peut que remplir et vider oblige à supprimer puis ressaisir,
+    // ce qui casse le lien avec le dossier et la numérotation.
+    const modifiable = !isSpectateur();
     const corps = d.lignes.map(l => {
       const v = Number(l.montant) || 0;
-      return '<div style="white-space:nowrap;color:' + (v < 0 ? '#b91c1c' : '#0b2545') + '">'
+      return '<div style="white-space:nowrap;color:' + (v < 0 ? '#b91c1c' : '#0b2545')
+        + (modifiable ? ';cursor:pointer" title="Cliquer pour modifier"'
+                        + ' onclick="ouvrirSaisieCahier(\'' + j + '\',' + l.id + ')"' : '"') + '>'
         + '<span style="color:var(--text-muted);font-weight:400">' + numeros[l.id] + '.</span> '
         + '<span style="font-weight:400">' + esc(nomDeLigne(l)) + '</span> '
         + '<strong>' + _cjFcfa(v) + '</strong></div>';
@@ -187,11 +193,19 @@ function renderCahierJaune() {
     + 'Les bilans prénatals internes y sont reportés automatiquement.</div>';
 }
 
-/** Petite fenêtre de saisie pour une journée donnée. */
-async function ouvrirSaisieCahier(jour) {
+/**
+ * Fenêtre de saisie pour une journée. Avec un `idEcriture`, elle sert à
+ * corriger une ligne existante plutôt qu'à en créer une.
+ */
+async function ouvrirSaisieCahier(jour, idEcriture) {
   if (isSpectateur()) { toast('Lecture seule', 'err'); return; }
   const colonnes = (_cahierData?.colonnes || []).filter(c => !c.archivee);
   if (!colonnes.length) { toast('Aucune colonne disponible', 'err'); return; }
+
+  const existante = idEcriture
+    ? (_cahierData?.ecritures || []).find(e => e.id === idEcriture)
+    : null;
+  const auto = existante && existante.origine === 'bpn_interne';
 
   const old = document.getElementById('cahier-modal');
   if (old) old.remove();
@@ -199,28 +213,63 @@ async function ouvrirSaisieCahier(jour) {
   bd.id = 'cahier-modal';
   bd.className = 'modal-backdrop';
   bd.innerHTML =
-    '<div class="modal-box" style="max-width:420px">'
-    + '<div class="modal-title">Écriture du '
+    '<div class="modal-box" style="max-width:440px">'
+    + '<div class="modal-title">' + (existante ? 'Modifier l\'écriture du ' : 'Écriture du ')
     + new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR') + '</div>'
+    // Une écriture issue d'un dossier ne doit pas être corrigée à l'aveugle :
+    // le vrai correctif est souvent dans le dossier lui-même.
+    + (auto ? '<div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;'
+              + 'padding:8px 10px;font-size:12px;margin-bottom:10px">'
+              + 'Écriture reportée automatiquement depuis un bilan prénatal. La corriger ici '
+              + 'ne change pas le montant du dossier.</div>' : '')
     + '<label style="font-size:12px;font-weight:600">Colonne</label>'
     + '<select id="cj-colonne" style="width:100%;margin-bottom:10px">'
-    + colonnes.map(c => '<option value="' + c.id + '">' + esc(c.libelle) + '</option>').join('')
+    + colonnes.map(c => '<option value="' + c.id + '"'
+        + (existante && existante.colonne_id === c.id ? ' selected' : '')
+        + '>' + esc(c.libelle) + '</option>').join('')
     + '</select>'
     + '<label style="font-size:12px;font-weight:600">Montant (négatif pour une sortie)</label>'
-    + '<input type="number" id="cj-montant" style="width:100%;margin-bottom:10px" placeholder="10000 ou -5000">'
+    + '<input type="number" id="cj-montant" style="width:100%;margin-bottom:10px" placeholder="10000 ou -5000"'
+    + (existante ? ' value="' + Number(existante.montant) + '"' : '') + '>'
     + '<label style="font-size:12px;font-weight:600">Explication '
     + '<span style="font-weight:400;color:var(--text-muted)">(obligatoire pour une sortie)</span></label>'
-    + '<input type="text" id="cj-explication" style="width:100%;margin-bottom:6px" placeholder="MR NGUESSAN">'
+    + '<input type="text" id="cj-explication" style="width:100%;margin-bottom:6px" placeholder="MR NGUESSAN"'
+    + (existante && existante.explication ? ' value="' + esc(existante.explication) + '"' : '') + '>'
     + '<div id="cj-err" style="color:#b91c1c;font-size:12px;min-height:16px"></div>'
-    + '<div class="modal-actions" style="justify-content:flex-end">'
+    + '<div class="modal-actions" style="justify-content:space-between">'
+    + (existante
+        ? '<button class="btn btn-danger" onclick="supprimerEcritureCahier(' + existante.id + ')">🗑 Supprimer</button>'
+        : '<span></span>')
+    + '<span>'
     + '<button class="btn" onclick="document.getElementById(\'cahier-modal\').remove()">Annuler</button>'
-    + '<button class="btn btn-primary" onclick="enregistrerEcritureCahier(\'' + jour + '\')">Enregistrer</button>'
-    + '</div></div>';
+    + '<button class="btn btn-primary" style="margin-left:8px" onclick="enregistrerEcritureCahier(\''
+    + jour + '\'' + (existante ? ',' + existante.id : '') + ')">Enregistrer</button>'
+    + '</span></div></div>';
   document.body.appendChild(bd);
   setTimeout(() => document.getElementById('cj-montant')?.focus(), 50);
 }
 
-async function enregistrerEcritureCahier(jour) {
+async function supprimerEcritureCahier(id) {
+  const ok = await showConfirmModal({
+    icon: '🗑️',
+    title: 'Supprimer cette écriture ?',
+    message: 'Elle disparaîtra du cahier. Si elle vient d\'un bilan prénatal, '
+           + 'elle sera reportée à nouveau si le dossier est modifié.',
+    confirmText: 'Supprimer', confirmClass: 'btn-danger',
+  });
+  if (!ok) return;
+  try {
+    const { data, error } = await _sb.rpc('supprimer_ecriture_cahier', { p_token: TK(), p_id: id });
+    if (error || !data || data.erreur) {
+      toast('Refusé : ' + (error?.message || data?.erreur || '?'), 'err'); return;
+    }
+    document.getElementById('cahier-modal')?.remove();
+    toast('Écriture supprimée ✓', 'ok');
+    await chargerCahierJaune(_cahierMois);
+  } catch (e) { toast('Erreur : ' + (e.message || e), 'err'); }
+}
+
+async function enregistrerEcritureCahier(jour, idEcriture) {
   const err = document.getElementById('cj-err');
   const colonne = Number(document.getElementById('cj-colonne')?.value);
   const montant = Number(document.getElementById('cj-montant')?.value);
@@ -234,7 +283,12 @@ async function enregistrerEcritureCahier(jour) {
   }
 
   try {
-    const { data, error } = await _sb.rpc('ajouter_ecriture_cahier', {
+    const { data, error } = idEcriture
+      ? await _sb.rpc('modifier_ecriture_cahier', {
+          p_token: TK(), p_id: idEcriture, p_jour: jour, p_colonne_id: colonne,
+          p_montant: montant, p_explication: expl || null,
+        })
+      : await _sb.rpc('ajouter_ecriture_cahier', {
       p_token: TK(), p_jour: jour, p_colonne_id: colonne,
       p_montant: montant, p_explication: expl || null,
     });
@@ -243,7 +297,7 @@ async function enregistrerEcritureCahier(jour) {
       return;
     }
     document.getElementById('cahier-modal')?.remove();
-    toast('Écriture enregistrée ✓', 'ok');
+    toast(idEcriture ? 'Écriture modifiée ✓' : 'Écriture enregistrée ✓', 'ok');
     await chargerCahierJaune(_cahierMois);
   } catch (e) {
     if (err) err.textContent = 'Erreur : ' + (e.message || e);
