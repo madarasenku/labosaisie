@@ -205,6 +205,56 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await ctx.close();
   }
 
+  // ── Numéro libéré au bout de deux semaines (v13.83) ────────────────
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('Dossier verrouillé dont le numéro a été libéré');
+    // Le serveur retire `dossier` et conserve `ancien_dossier`. L'écran ne
+    // doit pas laisser croire à une fiche corrompue, et la recherche doit
+    // encore retrouver la fiche par son ancien numéro : un patient peut
+    // revenir des semaines plus tard avec son reçu.
+    await page.evaluate((fiches) => {
+      const modifiees = fiches.map(f => f.id === 101
+        ? { ...f, patient: (({ dossier, ...reste }) => ({ ...reste,
+              ancien_dossier: dossier }))(f.patient) }
+        : f);
+      _sb.rpc = async (nom) => {
+        if (nom === 'get_resultats_light') return { data: modifiees, error: null };
+        return { data: [], error: null };
+      };
+    }, rows());
+    await page.evaluate(() => refreshDB(true));
+    await page.waitForTimeout(900);
+    await page.evaluate(() => showView('historique'));
+    await page.waitForTimeout(900);
+    await page.evaluate(() => setHistPeriode('tout'));
+    await page.waitForTimeout(800);
+
+    const ligne = await page.evaluate(() => {
+      const tr = document.getElementById('row-101');
+      return tr ? tr.textContent : '';
+    });
+    r.check('la ligne reste affichée', ligne.length > 0, true);
+    r.check('l\'ancien numéro est montré', /D101/.test(ligne), true);
+    r.check('et signalé comme ancien', /ex\./.test(ligne), true);
+
+    // Recherche par l'ancien numéro.
+    await page.evaluate(() => {
+      const i = document.getElementById('search-input');
+      i.value = 'D101'; i.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForTimeout(900);
+    r.check('retrouvée par son ancien numéro', await page.evaluate(() => {
+      const b = document.getElementById('history-body');
+      return [...b.querySelectorAll('tr')].filter(tr => tr.querySelectorAll('td').length > 1).length;
+    }), 1);
+    r.check('aucune erreur JS', errors.length, 0);
+    if (errors.length) console.log('   ', errors.slice(0, 3));
+    await ctx.close();
+  }
+
   const s = r.summary();
   srv.close();
   process.exit(s.allPassed ? 0 : 1);

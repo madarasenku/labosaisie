@@ -214,7 +214,12 @@ async function renderHistory(forceRefresh) {
     if (fst && getStatut(r.id) !== fst) return false;       // ✅ v13.34 filtre statut
     if (fsv && (r.patient?.service || '').trim() !== fsv) return false; // ✅ v13.34 filtre service
     if (q) {
-      const txt = [r.patient?.nom, r.patient?.dossier, r.patient?.medecin, r.patient?.service, r.createdBy, getDisplayType(r)].filter(Boolean).join(' ').toLowerCase();
+      // ✅ v13.83 — `ancien_dossier` est inclus : le numéro d'un dossier
+      // verrouillé est libéré au bout de deux semaines, mais un patient peut
+      // revenir avec son vieux reçu. La recherche doit encore le retrouver.
+      const txt = [r.patient?.nom, r.patient?.dossier, r.patient?.ancien_dossier,
+                   r.patient?.medecin, r.patient?.service, r.createdBy,
+                   getDisplayType(r)].filter(Boolean).join(' ').toLowerCase();
       if (!txt.includes(q)) return false;
     }
     return true;
@@ -333,6 +338,16 @@ async function renderHistory(forceRefresh) {
       + 'onclick="toggleRestriction(' + r.id + ')">' + (locked ? '🔒' : '🔓') + '</button>';
   };
 
+  // ✅ v13.83 — Un dossier verrouillé rend son numéro au bout de deux
+  // semaines, pour qu'il puisse être réattribué. La fiche n'a donc plus de
+  // numéro : on affiche l'ancien plutôt qu'une case vide, sinon la ligne a
+  // l'air corrompue. Le numéro reste cherchable dans la barre de recherche.
+  const celluleNumDossier = (r, fmt) => r.patient.dossier
+    ? '<strong>' + fmt(r.patient.dossier) + '</strong>'
+    : '<span style="color:#92400e" title="Num\u00e9ro lib\u00e9r\u00e9, r\u00e9attribuable \u00e0 un nouveau patient">'
+      + '<strong>\u2014</strong> <span style="font-size:10.5px">(ex. '
+      + fmt(r.patient.ancien_dossier || '?') + ')</span></span>';
+
   const hl = q ? (s => highlight(s, q)) : esc;
 
   b.innerHTML = filtered.map(r => {
@@ -343,7 +358,7 @@ async function renderHistory(forceRefresh) {
       return '<tr style="background:#fffbeb;border-left:3px solid #fbbf24">'
         + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.3"></td>'
         + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
-        + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong></td>'
+        + '<td data-label="N° Dossier">' + celluleNumDossier(r, esc) + '</td>'
         + '<td data-label="Patient">' + esc(r.patient.nom)
             + '<div style="font-size:10px;color:#d97706;margin-top:2px">Verrouillé par <strong>' + esc(lockedBy) + '</strong></div>'
           + '</td>'
@@ -371,7 +386,7 @@ async function renderHistory(forceRefresh) {
         return '<tr style="opacity:.45;background:#f1f5f9;text-decoration:line-through">'
           + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.2"></td>'
           + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
-          + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong></td>'
+          + '<td data-label="N° Dossier">' + celluleNumDossier(r, esc) + '</td>'
           + '<td data-label="Patient">' + esc(r.patient.nom)
               + '<div style="font-size:10px;color:#64748b;margin-top:2px;text-decoration:none">Supprimé déf. le ' + hdDate + ' · par <strong>' + esc(hdBy) + '</strong></div>'
             + '</td>'
@@ -389,7 +404,7 @@ async function renderHistory(forceRefresh) {
       return '<tr style="opacity:.85;background:#fff5f5">'
         + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.3"></td>'
         + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
-        + '<td data-label="N° Dossier"><strong>' + esc(r.patient.dossier) + '</strong></td>'
+        + '<td data-label="N° Dossier">' + celluleNumDossier(r, esc) + '</td>'
         + '<td data-label="Patient">' + esc(r.patient.nom)
             + '<div style="font-size:10px;color:#dc2626;margin-top:2px">Supprimé le ' + deletedDate + ' par <strong>' + esc(deletedBy) + '</strong></div>'
           + '</td>'
@@ -421,7 +436,7 @@ async function renderHistory(forceRefresh) {
         + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
         + ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)"></td>'
       + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
-      + '<td data-label="N° Dossier"><strong>' + hl(r.patient.dossier) + '</strong>'
+      + '<td data-label="N° Dossier">' + celluleNumDossier(r, hl)
         + (r._pending ? ' <span title="En attente de synchronisation" style="font-size:10px;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">⏳ à synchroniser</span>' : '')
       + '</td>'
       + '<td data-label="Patient">' + hl(r.patient.nom)
