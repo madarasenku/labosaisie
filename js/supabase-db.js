@@ -7,7 +7,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 (function checkAuth() {
-  const SESSION_KEY_CHECK = 'labo_session_user';
+  const SESSION_KEY_CHECK = 'v2_labo_session_user';
   const raw = localStorage.getItem(SESSION_KEY_CHECK);
   if (!raw) { window.location.replace('login.html'); return; }
   try {
@@ -19,8 +19,13 @@
   } catch(e) { window.location.replace('login.html'); }
 })();
 
-const SUPABASE_URL = 'https://uvxxbihlagfncraokqlg.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_RPgz6piVcNONZOOcLmOCQw_5YPxZTd6';
+// ⚠️ SITE SECONDAIRE (labosaisie-v2) — base Supabase DISTINCTE de la
+// production. Rien de ce qui est saisi ici n'apparaît sur le site principal,
+// et inversement. Le bandeau orange en haut de l'écran le rappelle en
+// permanence : sans lui, un agent pressé saisirait une journée entière
+// dans la mauvaise base sans jamais s'en apercevoir.
+const SUPABASE_URL = 'https://ftwsxdivwoczsreiohok.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_de9EPaXmi3QSXMqSSoGuKg_kwWw9Yth';
 
 // ── URL publique de l'application (pour les QR codes de vérification) ──
 // Remplacez par votre propre URL si vous hébergez l'app (GitHub Pages, Netlify…)
@@ -386,7 +391,7 @@ async function refreshDBFull() {
 //   (cache) et est conservé tel quel à la synchro ; en cas de saisies
 //   simultanées sur plusieurs postes hors-ligne, vérifiez l'unicité.
 // ══════════════════════════════════════════════════════════════
-const SYNC_QUEUE_KEY = 'labo_sync_queue';
+const SYNC_QUEUE_KEY = 'v2_labo_sync_queue';
 let _syncing = false;
 
 function loadSyncQueue() {

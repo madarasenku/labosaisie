@@ -13,9 +13,9 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.92">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.93">
 <!-- ✅ v13.69 — bibliothèque hébergée localement (voir vendor/ et le commentaire d'index.html) -->
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.92"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.93"></script>
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -616,6 +616,28 @@ body {
 </head>
 <body>
 
+<!-- ⚠️ SITE SECONDAIRE — bandeau d'identification.
+     Volontairement écrit en dur dans le HTML, avant tout script : si le
+     JavaScript échoue ou si la base ne répond pas, le bandeau reste visible.
+     C'est précisément dans ces moments-là qu'on risque de confondre les
+     deux sites. -->
+<div id="bandeau-site-v2" role="status">
+  ⚠️ SITE SECONDAIRE — base de données distincte de la production.
+  <span>Les saisies faites ici ne remontent PAS sur le site principal.</span>
+</div>
+<style>
+  #bandeau-site-v2{
+    position:sticky; top:0; z-index:99999;
+    background:#c2410c; color:#fff;
+    font:600 13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;
+    text-align:center; padding:7px 12px; letter-spacing:.2px;
+    box-shadow:0 2px 6px rgba(0,0,0,.28);
+  }
+  #bandeau-site-v2 span{ display:block; font-weight:400; opacity:.92; font-size:12px; }
+  @media print{ #bandeau-site-v2{ display:none; } }
+</style>
+
+
 <!-- ══ PANNEAU GAUCHE — Marque ══ -->
 <div class="panel-brand">
 
@@ -744,9 +766,14 @@ body {
 
 <script>
 /* ── Config Supabase ── */
-const SUPABASE_URL = 'https://uvxxbihlagfncraokqlg.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_RPgz6piVcNONZOOcLmOCQw_5YPxZTd6';
-const SESSION_KEY  = 'labo_session_user';
+// ⚠️ SITE SECONDAIRE (labosaisie-v2) — base Supabase DISTINCTE de la
+// production. Rien de ce qui est saisi ici n'apparaît sur le site principal,
+// et inversement. Le bandeau orange en haut de l'écran le rappelle en
+// permanence : sans lui, un agent pressé saisirait une journée entière
+// dans la mauvaise base sans jamais s'en apercevoir.
+const SUPABASE_URL = 'https://ftwsxdivwoczsreiohok.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_de9EPaXmi3QSXMqSSoGuKg_kwWw9Yth';
+const SESSION_KEY  = 'v2_labo_session_user';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 
 /* ── Init Supabase ── */
@@ -757,6 +784,15 @@ function initSupabase() {
     _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     return true;
   } catch(e) { return false; }
+}
+
+
+/* ── Où envoyer quelqu'un après sa connexion ──
+   Un soignant du centre n'ouvre jamais l'application du laboratoire : elle
+   charge tout le registre en mémoire et lui serait de toute façon refusée
+   par le serveur. Il a sa propre page, volontairement minuscule. */
+function pageDAccueil(role) {
+  return role === 'prescripteur' ? 'soignant.html' : 'index.html';
 }
 
 /* ── Vérification session existante ── */
@@ -776,7 +812,9 @@ function hasValidSession() {
 /* ── Au chargement ── */
 document.addEventListener('DOMContentLoaded', () => {
   if (hasValidSession()) {
-    window.location.replace('index.html');
+    let r = null;
+    try { r = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}').role; } catch(e) {}
+    window.location.replace(pageDAccueil(r));
     return;
   }
   initSupabase();
@@ -860,7 +898,7 @@ async function doLogin() {
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
       btn.innerHTML = '<span class="btn-accent"></span>✅ Connexion réussie…';
-      window.location.replace('index.html');
+      window.location.replace(pageDAccueil(row.role));
 
     } else if (row && row.status === 'locked') {
       const mins = Math.max(1, Math.ceil((row.locked_seconds || 0) / 60));

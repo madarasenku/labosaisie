@@ -38,6 +38,7 @@ node tests/filtres.test.js
 | `actions-groupees.test.js` | Statut et encaissement groupés en un seul appel, respect des refus du serveur, échec réseau sans mensonge à l'écran, spectateur bloqué |
 | `securite.test.js` | Jeton exigé pour le compteur de dossiers (avec repli local), imprévisibilité du jeton de partage, restitution fidèle de l'audit serveur, audit réservé à l'admin |
 | `retour-arriere.test.js` | Instantanés nocturnes : liste des dates, analyse sans écriture, remise des fiches disparues, réparation d'une fiche isolée, confirmation obligatoire, réservé à l'admin |
+| `portail-soignant.test.js` | Portail du soignant : liste de ses seuls patients, aucun appel au registre du laboratoire, avertissement obligatoire sur un résultat non validé, absence de tout montant, refus du serveur respecté à l'écran, cloisonnement des rôles et redirection après connexion |
 | `tarifs.test.js` | Grille tarifaire partagée : base prioritaire sur le catalogue, cache hors-ligne, écriture réservée à l'admin, estimation des dossiers |
 | `ristournes-prescripteurs.test.js` | Flèches sur le sélecteur de mois des Ristournes (dont le passage d'année), recherche dans la liste des prescripteurs |
 

@@ -131,7 +131,10 @@ function rpcResponses(extra = {}) {
  * @param {object} opts { role, username, userId, rpc, port }
  */
 async function openApp(opts = {}) {
-  const { role = 'admin', username = 'admin1', userId = 1, rpc = {}, port = 8099 } = opts;
+  const { role = 'admin', username = 'admin1', userId = 1, rpc = {}, port = 8099,
+          // Le portail du soignant est une page distincte : on doit pouvoir
+          // l'ouvrir sans passer par l'application du laboratoire.
+          cible = '/index.html', sansSession = false, appels = null } = opts;
   const ctx = await chromium.launchPersistentContext(
     fs.mkdtempSync('/tmp/pw-labo-'), { headless: true, args: ['--no-sandbox'] });
   const page = await ctx.newPage();
@@ -141,17 +144,26 @@ async function openApp(opts = {}) {
   const responses = rpcResponses(rpc);
   await page.route('**/rest/v1/rpc/**', route => {
     const fn = route.request().url().split('/rpc/')[1].split('?')[0];
+    if (appels) appels.push(fn);
     route.fulfill({ status: 200, contentType: 'application/json',
                     body: JSON.stringify(fn in responses ? responses[fn] : []) });
   });
 
   const base = `http://127.0.0.1:${port}`;
   await page.goto(base + '/login.html');
-  await page.evaluate(s => localStorage.setItem('labo_session_user', s),
+  // Le site secondaire préfixe ses clés (« v2_… ») pour ne pas partager le
+  // localStorage du site principal, qui vit sur le même domaine. On pose les
+  // deux : le même helper sert alors aux deux dépôts sans divergence.
+  await page.evaluate(s => { localStorage.setItem('labo_session_user', s);
+                             localStorage.setItem('v2_labo_session_user', s); },
     JSON.stringify({ id:userId, username, role, token:'jeton-de-test',
                      expiresAt: Date.now() + 86400000 }));
-  await page.goto(base + '/index.html', { waitUntil: 'load' });
-  await page.waitForTimeout(2500);
+  if (sansSession) {
+    await page.evaluate(() => { localStorage.removeItem('labo_session_user');
+                                localStorage.removeItem('v2_labo_session_user'); });
+  }
+  await page.goto(base + cible, { waitUntil: 'load' });
+  await page.waitForTimeout(cible === '/index.html' ? 2500 : 900);
   return { ctx, page, errors };
 }
 

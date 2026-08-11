@@ -53,7 +53,7 @@ function showConfirmModal({ icon = '❓', title = 'Confirmer', message = '', con
 // AUTHENTIFICATION — comptes multi-utilisateurs
 // ============================================================
 
-const SESSION_KEY = 'labo_session_user';
+const SESSION_KEY = 'v2_labo_session_user';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // ✅ v2: 24 heures (recommandé système médical)
 
 // Utilisateur actuellement connecté : { id, username, role, expiresAt }
@@ -293,7 +293,7 @@ async function renderConnexions() {
       + '</tr>';
   }).join('');
   // Marquer comme vues → efface le badge
-  if (conns[0]?.ts) localStorage.setItem('labo_last_seen_conn', conns[0].ts);
+  if (conns[0]?.ts) localStorage.setItem('v2_labo_last_seen_conn', conns[0].ts);
   updateConnexionsBadge(0);
 }
 
@@ -324,7 +324,7 @@ async function checkNewConnexions(allowNotify) {
       (e.action === 'login' || e.action === 'logout')
       && (e.username || e.details?.user) !== _currentUser?.username);
     // Badge : événements depuis la dernière consultation de l'onglet Connexions
-    const lastSeen = localStorage.getItem('labo_last_seen_conn');
+    const lastSeen = localStorage.getItem('v2_labo_last_seen_conn');
     const n = lastSeen ? conns.filter(e => e.ts > lastSeen).length : conns.length;
     updateConnexionsBadge(n);
     // Notification en direct : nouveaux événements depuis le dernier passage

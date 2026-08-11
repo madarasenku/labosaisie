@@ -28,7 +28,7 @@ const lire = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
   console.log('    version courante :', version);
 
   r.section('Tous les actifs locaux sont versionnés');
-  for (const f of ['index.html', 'login.html']) {
+  for (const f of ['index.html', 'login.html', 'soignant.html']) {
     const html = lire(f);
     // Tout <script src> / <link rel=stylesheet> pointant vers js/ css/ vendor/
     const refs = [
@@ -66,7 +66,7 @@ const lire = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
   // laissé identique alors qu'APP_VERSION a bougé signifie que les anciens
   // caches ne seront pas purgés. On vérifie au moins qu'ils sont cohérents
   // dans le temps via le journal git — ici on se contente du format.
-  r.check('format du nom de cache', /^cpmi-labo-v\d+$/.test(cache || ''), true);
+  r.check('format du nom de cache', /^cpmi-labo-(V2-)?v\d+$/.test(cache || ''), true);
 
   const s = r.summary();
   process.exit(s.allPassed ? 0 : 1);

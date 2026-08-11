@@ -256,10 +256,10 @@ function buildRefObj(entry, profile) {
 
 // ──────────────────────────────────────────────────────────────────────
 // VALEURS DE RÉFÉRENCE PERSONNALISÉES (admin)
-// Stockées dans localStorage 'labosaisie_refs_v1'
+// Stockées dans localStorage 'v2_labosaisie_refs_v1'
 // Format : { paramId: { lo, hi, ref, unit } }
 // ──────────────────────────────────────────────────────────────────────
-const LABO_REFS_KEY = 'labosaisie_refs_v1';
+const LABO_REFS_KEY = 'v2_labosaisie_refs_v1';
 
 // Cache en mémoire pour éviter de parser localStorage à chaque frappe
 let _customRefsCache = null;

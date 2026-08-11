@@ -283,10 +283,10 @@ function toggleDarkMode() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
   document.getElementById('btn-dark-mode').textContent = isDark ? '🌙' : '☀️';
-  localStorage.setItem('labosaisie_theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('v2_labosaisie_theme', isDark ? 'light' : 'dark');
 }
 function initTheme() {
-  const saved = localStorage.getItem('labosaisie_theme') || 'light';
+  const saved = localStorage.getItem('v2_labosaisie_theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
   const btn = document.getElementById('btn-dark-mode');
   if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
@@ -311,7 +311,7 @@ function initTheme() {
 // end; $$;
 // grant execute on function public.set_dossier_statut(text,bigint,text) to anon;
 
-const STATUTS_KEY = 'labosaisie_statuts';
+const STATUTS_KEY = 'v2_labosaisie_statuts';
 function getStatuts() { try { return JSON.parse(localStorage.getItem(STATUTS_KEY)||'{}'); } catch { return {}; } }
 
 // Lit le statut depuis le cache DB (prioritaire) ou localStorage (fallback hors-ligne)
@@ -355,7 +355,7 @@ function setStatut(id, statut) {
 // Séparé du statut dossier (rendu/attente/urgent)
 // paiement_status : 'non_paye' | 'paye'
 // ════════════════════════════════════════════════════════
-const PAIEMENT_KEY = 'labosaisie_paiements_v1';
+const PAIEMENT_KEY = 'v2_labosaisie_paiements_v1';
 
 function getPaiements() {
   try { return JSON.parse(localStorage.getItem(PAIEMENT_KEY) || '{}'); } catch { return {}; }
@@ -1527,7 +1527,7 @@ function renderUserCaisse() {
 }
 
 // ── FEATURE 6 : ristournes mensuelles + export PDF/Excel ──────────
-const RISTOURNE_TAUX_KEY = 'ristourne_taux_override';
+const RISTOURNE_TAUX_KEY = 'v2_ristourne_taux_override';
 function getRistourneOverrides() { try { return JSON.parse(localStorage.getItem(RISTOURNE_TAUX_KEY) || '{}'); } catch (e) { return {}; } }
 function tauxFor(presc) {
   // ✅ v13.29 — priorité à la valeur en base (_prescripteurs déjà chargé depuis DB)

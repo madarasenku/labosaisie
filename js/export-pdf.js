@@ -673,8 +673,8 @@ async function buildPDF(r, analyses) {
 // ──────────────────────────────────────────────────────────────
 // TARIFICATION — Architecture claire :
 //
-//  localStorage 'tarifs_ref'  = prix de RÉFÉRENCE (gérés par admin dans Comptes)
-//  localStorage 'examens_custom' = examens ajoutés par l'admin
+//  localStorage 'v2_tarifs_ref'  = prix de RÉFÉRENCE (gérés par admin dans Comptes)
+//  localStorage 'v2_examens_custom' = examens ajoutés par l'admin
 //  px_{id} sur la fiche       = prix SESSION (modifiable par agent, réinitialisé
 //                               au Nouveau patient via rechargeFichePrix())
 //

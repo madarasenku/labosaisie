@@ -920,7 +920,7 @@ let _tarifsRefCache = null;
 function getTarifsRef() {
   if (_tarifsRefCache) return _tarifsRefCache;
   try {
-    const local = JSON.parse(localStorage.getItem('tarifs_ref') || 'null');
+    const local = JSON.parse(localStorage.getItem('v2_tarifs_ref') || 'null');
     if (local) { _tarifsRefCache = local; return local; }
   } catch (e) { /* cache illisible : on repart des prix du catalogue */ }
   return buildTarifsRefDefault();
@@ -936,14 +936,14 @@ async function chargerTarifsDepuisBase() {
     const grille = Object.keys(data).length ? { ...buildTarifsRefDefault(), ...data }
                                             : buildTarifsRefDefault();
     _tarifsRefCache = grille;
-    try { localStorage.setItem('tarifs_ref', JSON.stringify(grille)); } catch (e) {}
+    try { localStorage.setItem('v2_tarifs_ref', JSON.stringify(grille)); } catch (e) {}
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
 /** Enregistre la grille en base ; le cache local suit. */
 async function saveTarifsRef(t) {
   _tarifsRefCache = t;
-  try { localStorage.setItem('tarifs_ref', JSON.stringify(t)); } catch (e) {}
+  try { localStorage.setItem('v2_tarifs_ref', JSON.stringify(t)); } catch (e) {}
   if (typeof _sb === 'undefined' || !_sb) return;
   try {
     const { data, error } = await _sb.rpc('save_tarifs', { p_token: TK(), p_grille: t });
@@ -975,7 +975,7 @@ let _examensCustomCache = null;
 function getExamensCustom() {
   if (_examensCustomCache) return _examensCustomCache;
   try {
-    const local = JSON.parse(localStorage.getItem('examens_custom') || 'null');
+    const local = JSON.parse(localStorage.getItem('v2_examens_custom') || 'null');
     if (Array.isArray(local)) { _examensCustomCache = local; return local; }
   } catch (e) { /* cache illisible */ }
   return [];
@@ -988,14 +988,14 @@ async function chargerExamensCustomDepuisBase() {
     const { data, error } = await _sb.rpc('get_examens_custom', { p_token: TK() });
     if (error || !Array.isArray(data)) return;
     _examensCustomCache = data;
-    try { localStorage.setItem('examens_custom', JSON.stringify(data)); } catch (e) {}
+    try { localStorage.setItem('v2_examens_custom', JSON.stringify(data)); } catch (e) {}
     if (typeof rechargeFichePrix === 'function') rechargeFichePrix();
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
 async function saveExamensCustom(list) {
   _examensCustomCache = list;
-  try { localStorage.setItem('examens_custom', JSON.stringify(list)); } catch (e) {}
+  try { localStorage.setItem('v2_examens_custom', JSON.stringify(list)); } catch (e) {}
   if (typeof _sb === 'undefined' || !_sb) return;
   try {
     const { data, error } = await _sb.rpc('save_examens_custom', { p_token: TK(), p_liste: list });

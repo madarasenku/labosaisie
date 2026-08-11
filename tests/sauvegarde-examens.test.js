@@ -39,7 +39,8 @@ const EXAMENS_BASE = [
     r.check('présent dans le catalogue complet', await page.evaluate(
       () => getCatalogueComplet().some(e => e.id === 'custom_1')), true);
     r.check('mis en cache local', await page.evaluate(
-      () => JSON.parse(localStorage.getItem('examens_custom') || '[]').length), 1);
+      () => JSON.parse(localStorage.getItem('examens_custom')
+                    || localStorage.getItem('v2_examens_custom') || '[]').length), 1);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 3));
     await ctx.close();

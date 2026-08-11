@@ -682,7 +682,7 @@ function buildPrintSections(type, res, pat) {
 // ============================================================
 
 // ✅ v13.48 — Signatures dessinées à la main, enregistrées par nom
-const SIGNATURES_KEY = 'labo_signatures_v1';
+const SIGNATURES_KEY = 'v2_labo_signatures_v1';
 const SIGNATAIRES = ['YERIGUE', 'admin'];
 
 function getSignatures() {
