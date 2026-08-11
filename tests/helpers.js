@@ -136,7 +136,8 @@ async function openApp(opts = {}) {
           // l'ouvrir sans passer par l'application du laboratoire.
           cible = '/index.html', sansSession = false, appels = null } = opts;
   const ctx = await chromium.launchPersistentContext(
-    fs.mkdtempSync('/tmp/pw-labo-'), { headless: true, args: ['--no-sandbox'] });
+    fs.mkdtempSync('/tmp/pw-labo-'), { headless: true, args: ['--no-sandbox'],
+      executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
