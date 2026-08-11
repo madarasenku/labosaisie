@@ -264,6 +264,129 @@ const preparer = (page, extra) => page.evaluate(([cols, ecr, sup]) => {
     await ctx.close();
   }
 
+  // ── Partage décidé par l'administrateur (v13.92) ───────────────────
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('L\'admin ouvre le cahier');
+    await page.evaluate(() => {
+      window.__appels = [];
+      _sb.rpc = async (nom, params) => {
+        window.__appels.push({ nom, params });
+        if (nom === 'mon_acces_cahier') return { data: { autorise: true, admin: true,
+          config: { actif: false, roles: [], periode_debut: null, periode_fin: null,
+                    maj_par: 'admin', maj_le: new Date().toISOString() } }, error: null };
+        if (nom === 'definir_partage_cahier') return { data: { ok: true }, error: null };
+        return { data: [], error: null };
+      };
+    });
+    await page.evaluate(() => chargerAccesCahier());
+    await page.waitForTimeout(600);
+    r.check('le panneau de partage lui est visible', await page.evaluate(
+      () => document.getElementById('cahier-partage-card')?.style.display), '');
+
+    // Ouvrir sans désigner personne ne partage rien : mieux vaut le dire.
+    const vide = await page.evaluate(async () => {
+      document.getElementById('partage-actif').checked = true;
+      ['caissier','spectateur','agent'].forEach(x =>
+        document.getElementById('partage-role-' + x).checked = false);
+      let capté = ''; const vrai = window.toast; window.toast = m => { capté = m; };
+      await enregistrerPartageCahier();
+      window.toast = vrai;
+      return { capté, appels: window.__appels.filter(a => a.nom === 'definir_partage_cahier').length };
+    });
+    r.check('partage sans profil refusé', /au moins un profil/i.test(vide.capté), true);
+    r.check('et rien n\'est envoyé', vide.appels, 0);
+
+    const envoi = await page.evaluate(async () => {
+      document.getElementById('partage-role-spectateur').checked = true;
+      document.getElementById('partage-debut').value = '2026-08-04';
+      document.getElementById('partage-fin').value = '2026-08-05';
+      await enregistrerPartageCahier();
+      return window.__appels.filter(a => a.nom === 'definir_partage_cahier')[0];
+    });
+    r.check('le partage est envoyé', !!envoi, true);
+    r.check('avec le profil choisi', envoi && envoi.params.p_roles.join(','), 'spectateur');
+    r.check('et la période', envoi && envoi.params.p_debut + '→' + envoi.params.p_fin,
+            '2026-08-04→2026-08-05');
+    r.check('aucune erreur JS', errors.length, 0);
+    if (errors.length) console.log('   ', errors.slice(0, 3));
+    await ctx.close();
+  }
+
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'spectateur', username: 'obs', userId: 5,
+      rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('Un spectateur non autorisé ne voit pas l\'onglet');
+    await page.evaluate(() => {
+      _sb.rpc = async (nom) => {
+        if (nom === 'mon_acces_cahier') return { data: { autorise: false, admin: false }, error: null };
+        if (nom === 'get_cahier_jaune') return { data: { erreur: 'forbidden' }, error: null };
+        return { data: [], error: null };
+      };
+    });
+    await page.evaluate(() => chargerAccesCahier());
+    await page.waitForTimeout(500);
+    r.check('onglet masqué', await page.evaluate(
+      () => document.getElementById('btn-nav-cahier')?.style.display), 'none');
+    r.check('aucun panneau de partage', await page.evaluate(
+      () => document.getElementById('cahier-partage-card')?.style.display), 'none');
+    // Et s'il force l'ouverture, le serveur refuse et on le dit en clair.
+    await page.evaluate(() => chargerCahierJaune('2026-08'));
+    await page.waitForTimeout(600);
+    r.check('refus expliqué', await page.evaluate(
+      () => /ne vous est pas ouvert/.test(document.getElementById('cahier-tableau')?.textContent || '')), true);
+    r.check('aucune erreur JS', errors.length, 0);
+    await ctx.close();
+  }
+
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'spectateur', username: 'obs', userId: 5,
+      rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('Un spectateur autorisé lit, sans écrire');
+    await page.evaluate(([cols, ecr]) => {
+      _sb.rpc = async (nom, params) => {
+        if (nom === 'mon_acces_cahier') return { data: { autorise: true, admin: false,
+          periode_debut: '2026-06-01', periode_fin: '2026-06-05' }, error: null };
+        if (nom === 'get_cahier_jaune') {
+          if (params.p_mois !== '2026-06')
+            return { data: { mois: params.p_mois, colonnes: [], ecritures: [], hors_periode: true }, error: null };
+          return { data: { mois: params.p_mois, colonnes: cols, ecritures: ecr,
+                           lecture_seule: true }, error: null };
+        }
+        return { data: [], error: null };
+      };
+    }, [COLONNES, ECRITURES]);
+    await page.evaluate(() => chargerAccesCahier());
+    await page.waitForTimeout(400);
+    r.check('onglet visible', await page.evaluate(
+      () => document.getElementById('btn-nav-cahier')?.style.display), '');
+    await page.evaluate(() => chargerCahierJaune('2026-06'));
+    await page.waitForTimeout(700);
+    r.check('le cahier s\'affiche', await page.evaluate(
+      () => !!document.querySelector('#cahier-tableau table')), true);
+    // Lecture seule : ni bouton d'ajout ni ligne cliquable.
+    r.check('aucun bouton d\'ajout', await page.evaluate(
+      () => [...document.querySelectorAll('#cahier-tableau button')]
+              .filter(b => /ouvrirSaisieCahier/.test(b.getAttribute('onclick') || '')).length), 0);
+    r.check('aucune ligne cliquable', await page.evaluate(
+      () => [...document.querySelectorAll('#cahier-tableau div')]
+              .filter(d => /ouvrirSaisieCahier/.test(d.getAttribute('onclick') || '')).length), 0);
+    // Hors période : on le dit, plutôt que de montrer un mois vide.
+    await page.evaluate(() => chargerCahierJaune('2026-07'));
+    await page.waitForTimeout(600);
+    r.check('mois hors période expliqué', await page.evaluate(
+      () => /en dehors de la période/.test(document.getElementById('cahier-tableau')?.textContent || '')), true);
+    r.check('aucune erreur JS', errors.length, 0);
+    if (errors.length) console.log('   ', errors.slice(0, 3));
+    await ctx.close();
+  }
+
   const s = r.summary();
   srv.close();
   process.exit(s.allPassed ? 0 : 1);

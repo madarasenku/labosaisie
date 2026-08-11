@@ -24,6 +24,7 @@
 
 let _cahierMois = null;      // 'AAAA-MM'
 let _cahierData = null;      // dernière réponse du serveur
+let _cahierAcces = null;     // droits de l'utilisateur courant sur le cahier
 
 function _cjMoisCourant() {
   const d = new Date();
@@ -52,6 +53,71 @@ function _cjSemaines(mois) {
   return semaines;
 }
 
+/**
+ * ✅ v13.92 — Le cahier appartient à l'administrateur. Il peut l'ouvrir à
+ * d'autres profils, et borner ce qu'ils voient à une période : un spectateur
+ * n'a pas de raison de parcourir douze mois d'arriéré pour vérifier une
+ * semaine. Ces droits sont lus au démarrage pour savoir s'il faut seulement
+ * afficher l'onglet.
+ */
+async function chargerAccesCahier() {
+  if (typeof _sb === 'undefined' || !_sb || !TK()) return null;
+  try {
+    const { data, error } = await _sb.rpc('mon_acces_cahier', { p_token: TK() });
+    if (error || !data || data.erreur) return null;
+    _cahierAcces = data;
+  } catch (e) { return null; }
+
+  const btn = document.getElementById('btn-nav-cahier');
+  if (btn) btn.style.display = _cahierAcces.autorise ? '' : 'none';
+  const carte = document.getElementById('cahier-colonnes-card');
+  if (carte) carte.style.display = _cahierAcces.admin ? '' : 'none';
+  const partage = document.getElementById('cahier-partage-card');
+  if (partage) partage.style.display = _cahierAcces.admin ? '' : 'none';
+  if (_cahierAcces.admin) remplirFormulairePartage();
+  return _cahierAcces;
+}
+
+function remplirFormulairePartage() {
+  const c = _cahierAcces?.config;
+  if (!c) return;
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  const cocher = (id, v) => { const e = document.getElementById(id); if (e) e.checked = !!v; };
+  cocher('partage-actif', c.actif);
+  const roles = Array.isArray(c.roles) ? c.roles : [];
+  ['caissier', 'spectateur', 'agent'].forEach(r => cocher('partage-role-' + r, roles.includes(r)));
+  set('partage-debut', c.periode_debut);
+  set('partage-fin', c.periode_fin);
+  const info = document.getElementById('partage-info');
+  if (info) info.textContent = c.maj_par
+    ? 'Dernière modification par ' + c.maj_par + ' le '
+      + new Date(c.maj_le).toLocaleString('fr-FR')
+    : '';
+}
+
+async function enregistrerPartageCahier() {
+  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  const roles = ['caissier', 'spectateur', 'agent']
+    .filter(r => document.getElementById('partage-role-' + r)?.checked);
+  const actif = !!document.getElementById('partage-actif')?.checked;
+  const debut = document.getElementById('partage-debut')?.value || null;
+  const fin   = document.getElementById('partage-fin')?.value || null;
+  // Autoriser le partage sans désigner personne ne partage rien : mieux vaut
+  // le dire que de laisser croire que c'est ouvert.
+  if (actif && !roles.length) { toast('Choisissez au moins un profil', 'err'); return; }
+
+  try {
+    const { data, error } = await _sb.rpc('definir_partage_cahier', {
+      p_token: TK(), p_actif: actif, p_roles: roles, p_debut: debut, p_fin: fin,
+    });
+    if (error || !data || data.erreur) {
+      toast('Refusé : ' + (error?.message || data?.erreur || '?'), 'err'); return;
+    }
+    toast(actif ? 'Cahier partagé ✓' : 'Cahier redevenu privé ✓', 'ok');
+    await chargerAccesCahier();
+  } catch (e) { toast('Erreur : ' + (e.message || e), 'err'); }
+}
+
 async function chargerCahierJaune(mois) {
   _cahierMois = mois || _cahierMois || _cjMoisCourant();
   const sel = document.getElementById('cahier-mois');
@@ -65,8 +131,20 @@ async function chargerCahierJaune(mois) {
     hideLoading();
     if (error || !data || data.erreur) {
       const z = document.getElementById('cahier-tableau');
-      if (z) z.innerHTML = '<div style="color:#b91c1c">Cahier indisponible'
-        + (data?.erreur ? ' (' + data.erreur + ')' : '') + '</div>';
+      if (z) z.innerHTML = '<div style="color:#b91c1c">'
+        + (data?.erreur === 'forbidden'
+            ? 'Le cahier jaune ne vous est pas ouvert.'
+            : 'Cahier indisponible' + (data?.erreur ? ' (' + data.erreur + ')' : ''))
+        + '</div>';
+      return;
+    }
+    // Hors de la période autorisée, on le dit clairement plutôt que de
+    // laisser croire à un mois vide.
+    if (data.hors_periode) {
+      _cahierData = data;
+      const z = document.getElementById('cahier-tableau');
+      if (z) z.innerHTML = '<div style="color:#92400e">Ce mois est en dehors de la '
+        + 'période que l\'administrateur vous a ouverte.</div>';
       return;
     }
     _cahierData = data;
@@ -121,7 +199,7 @@ function renderCahierJaune() {
     // ✅ v13.88 — Chaque ligne est cliquable pour être corrigée. Un registre
     // qu'on ne peut que remplir et vider oblige à supprimer puis ressaisir,
     // ce qui casse le lien avec le dossier et la numérotation.
-    const modifiable = !isSpectateur();
+    const modifiable = !isSpectateur() && !_cahierData?.lecture_seule;
     const corps = d.lignes.map(l => {
       const v = Number(l.montant) || 0;
       return '<div style="white-space:nowrap;color:' + (v < 0 ? '#b91c1c' : '#0b2545')
@@ -160,7 +238,7 @@ function renderCahierJaune() {
         + colonnes.map(c => cellule(j, c)).join('')
         + '<td style="text-align:right;font-weight:700">' + (totalJour ? _cjFcfa(totalJour) : '·') + '</td>'
         + '<td style="text-align:center">'
-        + (isSpectateur() ? '' : '<button class="btn btn-outline" style="padding:2px 7px;font-size:11px"'
+        + (isSpectateur() || _cahierData?.lecture_seule ? '' : '<button class="btn btn-outline" style="padding:2px 7px;font-size:11px"'
             + ' onclick="ouvrirSaisieCahier(\'' + j + '\')" title="Ajouter une écriture">+</button>')
         + '</td></tr>';
     });
@@ -198,7 +276,7 @@ function renderCahierJaune() {
  * corriger une ligne existante plutôt qu'à en créer une.
  */
 async function ouvrirSaisieCahier(jour, idEcriture) {
-  if (isSpectateur()) { toast('Lecture seule', 'err'); return; }
+  if (isSpectateur() || _cahierData?.lecture_seule) { toast('Lecture seule', 'err'); return; }
   const colonnes = (_cahierData?.colonnes || []).filter(c => !c.archivee);
   if (!colonnes.length) { toast('Aucune colonne disponible', 'err'); return; }
 

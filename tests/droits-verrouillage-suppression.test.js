@@ -391,6 +391,49 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await ctx.close();
   }
 
+  // ── Réparer sa propre suppression, 24 h durant (v13.92) ───────────
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'agent', username: 'agent1', userId: 2,
+      rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('Restauration par celui qui a supprimé');
+    const cas = await page.evaluate(() => {
+      const ilYA = h => new Date(Date.now() - h * 3600 * 1000).toISOString();
+      return {
+        // Sa suppression, il y a une heure : réparable.
+        sienneRecente: peutRestaurer({ deletedAt: ilYA(1), deletedBy: 'agent1' }),
+        // Sa suppression, il y a deux jours : trop tard.
+        sienneAncienne: peutRestaurer({ deletedAt: ilYA(48), deletedBy: 'agent1' }),
+        // Celle d'un collègue : jamais, même récente. On répare sa propre
+        // bêtise, on ne défait pas le ménage des autres.
+        celleDunAutre: peutRestaurer({ deletedAt: ilYA(1), deletedBy: 'nadia' }),
+        // Juste avant la limite, elle tient encore.
+        justeAvantLaLimite: peutRestaurer({ deletedAt: ilYA(23), deletedBy: 'agent1' }),
+      };
+    });
+    r.check('sa suppression récente', cas.sienneRecente, true);
+    r.check('encore valable à 23 h', cas.justeAvantLaLimite, true);
+    r.check('mais plus à 48 h', cas.sienneAncienne, false);
+    r.check('jamais celle d\'un collègue', cas.celleDunAutre, false);
+    r.check('aucune erreur JS', errors.length, 0);
+    await ctx.close();
+  }
+
+  {
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('L\'administrateur n\'est borné ni par l\'auteur ni par le délai');
+    const cas = await page.evaluate(() => {
+      const ilYA = h => new Date(Date.now() - h * 3600 * 1000).toISOString();
+      return { ancienneDunAutre: peutRestaurer({ deletedAt: ilYA(500), deletedBy: 'nadia' }) };
+    });
+    r.check('il restaure tout', cas.ancienneDunAutre, true);
+    r.check('aucune erreur JS', errors.length, 0);
+    await ctx.close();
+  }
+
   const s = r.summary();
   srv.close();
   process.exit(s.allPassed ? 0 : 1);

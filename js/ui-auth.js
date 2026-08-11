@@ -210,13 +210,15 @@ function updateUserBadge() {
   updateMasqueesBtn();
   const usersNavBtn = document.getElementById('btn-nav-users');
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
-  // ✅ v13.86 — Le cahier jaune est un document de caisse : visible pour
-  // l'admin, le caissier et le spectateur, jamais pour un agent.
+  // ✅ v13.92 — Le cahier jaune n'appartient qu'à l'administrateur, qui peut
+  // l'ouvrir à d'autres profils. L'onglet est donc masqué par défaut, puis
+  // révélé par chargerAccesCahier() une fois les droits connus du serveur :
+  // c'est lui qui tranche, pas le rôle seul.
   const cahierNavBtn = document.getElementById('btn-nav-cahier');
-  if (cahierNavBtn) cahierNavBtn.style.display =
-    (isAdmin() || isCaissier() || isSpectateur()) ? '' : 'none';
+  if (cahierNavBtn) cahierNavBtn.style.display = isAdmin() ? '' : 'none';
   const cahierColBtn = document.getElementById('cahier-colonnes-card');
   if (cahierColBtn) cahierColBtn.style.display = isAdmin() ? '' : 'none';
+  if (typeof chargerAccesCahier === 'function') chargerAccesCahier();
   // ✅ v13.33 — tarifs-config-card et refs-config-card sont dans des sous-onglets,
   // leur visibilité est gérée par adminShowSub — rien à faire ici.
   if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); }

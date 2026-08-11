@@ -428,13 +428,19 @@ async function renderHistory(forceRefresh) {
         + '<td data-label="Saisi par">' + esc(r.createdBy || '—') + '</td>'
         + '<td data-label="Montant" style="font-weight:700;color:#94a3b8">' + (r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—') + '</td>'
         + '<td data-label="Statut">—</td>'
+        // ✅ v13.92 — Le bouton Restaurer apparaît aussi pour celui qui a
+        // supprimé, pendant 24 h. Passé ce délai, ou sur la suppression d'un
+        // collègue, il faut toujours l'administrateur.
         + '<td data-label="Actions">'
-          + (isAdmin()
+          + (peutRestaurer(r)
             ? '<button class="btn" style="padding:4px 9px;font-size:11px;background:#dcfce7;color:#166534;border:1px solid #86efac;margin-right:4px" '
                 + 'title="Restaurer ce dossier" onclick="restoreDossier(' + r.id + ')">↩️ Restaurer</button>'
-              + '<button class="btn btn-danger" style="padding:4px 9px;font-size:11px" '
+            : '')
+          + (isAdmin()
+            ? '<button class="btn btn-danger" style="padding:4px 9px;font-size:11px" '
                 + 'title="Supprimer définitivement (irréversible)" onclick="deleteRecord(' + r.id + ')">🗑 Supprimer</button>'
-            : '<span style="font-size:11px;color:#dc2626;font-style:italic">Contactez l\'admin pour restaurer</span>')
+            : (peutRestaurer(r) ? ''
+               : '<span style="font-size:11px;color:#dc2626;font-style:italic">Contactez l\'admin pour restaurer</span>'))
         + '</td></tr>';
     }
     const dossierMulti = '';
@@ -756,11 +762,27 @@ async function softDeleteDossier(id) {
   toast('Dossier déplacé dans la corbeille 🗑️', 'ok');
 }
 
+/** ✅ v13.92 — Chacun peut ressortir CE QU'IL A LUI-MÊME mis à la corbeille,
+ *  pendant 24 h. Depuis que la suppression est ouverte à tous, une erreur
+ *  obligeait à déranger l'administrateur ; une fenêtre courte suffit à
+ *  réparer sa propre bêtise sans permettre de défaire le ménage d'autrui. */
+function peutRestaurer(r) {
+  if (isAdmin()) return true;
+  if (!r || !r.deletedAt) return false;
+  if (r.deletedBy !== _currentUser?.username) return false;
+  return (Date.now() - new Date(r.deletedAt).getTime()) < 24 * 3600 * 1000;
+}
+
 async function restoreDossier(id) {
   if (blockIfSpectateur()) return;
-  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Dossier introuvable', 'err'); return; }
+  if (!peutRestaurer(record)) {
+    toast(record.deletedBy === _currentUser?.username
+      ? 'Passé 24 h, seul l\'administrateur peut restaurer'
+      : 'Vous ne pouvez restaurer que vos propres suppressions', 'err');
+    return;
+  }
 
   if (!await showConfirmModal({
     icon: '↩️',
@@ -772,7 +794,11 @@ async function restoreDossier(id) {
 
   const { data, error } = await _sb.rpc('restore_dossier', { p_token: TK(), p_id: id });
   if (error || data !== 'ok') {
-    toast('Erreur : ' + (error?.message || data || 'inconnue'), 'err');
+    // Le serveur reste juge : l'écran peut se tromper de quelques secondes
+    // sur le délai, lui non.
+    toast(data === 'delai_depasse'
+      ? 'Passé 24 h, seul l\'administrateur peut restaurer'
+      : 'Erreur : ' + (error?.message || data || 'inconnue'), 'err');
     return;
   }
   record.deletedAt = null;
