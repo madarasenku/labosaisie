@@ -232,6 +232,23 @@ l'onglet.
 
 ---
 
+## 🚫 LES DOSSIERS VERROUILLÉS NE SE TOUCHENT PAS
+
+Un dossier verrouillé l'est **volontairement**, par l'administrateur, qui est
+le seul à pouvoir le faire depuis la v13.82. Il sort de la recette du jour,
+de « À encaisser », du cahier jaune et de tout comptage — **c'est le
+comportement voulu, pas un bug**.
+
+Donc : ne pas les régulariser, ne pas les encaisser, ne pas les compter, et
+**ne pas les signaler comme une anomalie**. Un dossier sans statut de
+paiement qui est verrouillé n'est pas un oubli : c'est un dossier mis de
+côté.
+
+Madara a dû le redire plusieurs fois. Si un état des lieux fait apparaître
+des fiches verrouillées, la bonne réponse est de les écarter en silence.
+
+---
+
 ## ⚠️ AUTRES PIÈGES DÉCOUVERTS À LA DURE
 
 1. **`setval` n'est PAS transactionnel.** Un `setval` exécuté dans une
