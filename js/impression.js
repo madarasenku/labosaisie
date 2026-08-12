@@ -55,6 +55,7 @@ function confirmerSiExamensManquants(type, resultats) {
 async function printRecord(id) {
   let r = getDB().find(x => x.id === id);
   if (!r) { toast('Fiche introuvable', 'err'); return; }
+  if (typeof sortieAutorisee === 'function' && !sortieAutorisee(id)) return;
   await ensureFull(r); // ✅ v13.5 — détail complet avant impression
   // Pour un dossier unifié : créer une fiche composite avec toutes les analyses
   if (isDossierRecord(r)) {
@@ -458,9 +459,9 @@ function buildEmptyRows(type, res, cochesList) {
   if (!cochesList || !cochesList.length) return '';
   // Paramètres connus pour ce type avec leurs unités et valeurs normales
   const PARAMS_META = {};
-  if (typeof HEMA_PARAMS !== 'undefined') HEMA_PARAMS.forEach(p => { PARAMS_META[p.name] = {unit: p.unit||'', ref: p.ref||''}; });
-  if (typeof HEMA_FL !== 'undefined')     HEMA_FL.forEach(p => { PARAMS_META[p.name] = {unit: p.unit||'', ref: p.ref||''}; });
-  if (typeof BIO_GLUCIDES !== 'undefined') [...(BIO_GLUCIDES||[]),...(BIO_REIN||[]),...(BIO_FOIE||[]),...(BIO_LIPIDES||[]),...(BIO_IONO||[]),...(BIO_FER||[]),...(BIO_HORM||[]),...(BIO_AUTRE||[])].forEach(p => { if(p) PARAMS_META[p.name] = {unit:p.unit||'', ref:p.ref||''}; });
+  if (typeof HEMA_PARAMS !== 'undefined') HEMA_PARAMS.forEach(p => { PARAMS_META[p.name] = {unit: getUnit(p.id, p.unit), ref: p.ref||''}; });
+  if (typeof HEMA_FL !== 'undefined')     HEMA_FL.forEach(p => { PARAMS_META[p.name] = {unit: getUnit(p.id, p.unit), ref: p.ref||''}; });
+  if (typeof BIO_GLUCIDES !== 'undefined') [...(BIO_GLUCIDES||[]),...(BIO_REIN||[]),...(BIO_FOIE||[]),...(BIO_LIPIDES||[]),...(BIO_IONO||[]),...(BIO_FER||[]),...(BIO_HORM||[]),...(BIO_AUTRE||[])].forEach(p => { if(p) PARAMS_META[p.name] = {unit:getUnit(p.id, p.unit), ref:p.ref||''}; });
 
   // Filtrer les examens cochés qui n'ont pas de résultat saisi
   const paramsTypes = {

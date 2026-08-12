@@ -10,6 +10,7 @@ async function exportPDF(id) {
   try {
     const record = getDB().find(x => x.id === id);
     if (!record) { toast('Fiche introuvable', 'err'); return; }
+  if (typeof sortieAutorisee === 'function' && !sortieAutorisee(id)) return;
     await ensureFull(record); // ✅ v13.5 — détail complet avant export PDF
 
     if (isDossierRecord(record)) {
@@ -32,6 +33,7 @@ async function exportPDF(id) {
 async function exportRecord(id) {
   const record = getDB().find(x => x.id === id);
   if (!record) { toast('Fiche introuvable', 'err'); return; }
+  if (typeof sortieAutorisee === 'function' && !sortieAutorisee(id)) return;
   if (!ensureExcelJSReady()) return;
 
   const wb = new ExcelJS.Workbook();

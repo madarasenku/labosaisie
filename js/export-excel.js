@@ -704,7 +704,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       seroVals.forEach(t=>{
         const v=res[t.name];
         const interp = v.resultat==='Positif'?'Positif' : v.resultat==='Négatif'?'Négatif' : v.resultat||'';
-        pRow(t.name, v.resultat||v.valeur||'', t.unit||'', '', interp);
+        pRow(t.name, v.resultat||v.valeur||'', getUnit('sero_'+t.id, t.unit||''), '', interp);
       });
       row++;
     }

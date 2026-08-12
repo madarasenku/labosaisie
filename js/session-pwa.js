@@ -391,6 +391,22 @@ function isDossierPaye(id) {
   return getPaiementStatus(id) === 'paye';
 }
 
+// ✅ v13.94 — Un résultat non payé ne sort pas du laboratoire.
+// La v13.35 empêchait déjà de SAISIR un résultat non encaissé ; rien
+// n'empêchait de l'imprimer ou de l'exporter. Le garde est ici, en un seul
+// endroit, et non recopié dans chaque bouton : c'est la seule façon de ne
+// pas en oublier un au prochain point d'entrée.
+// L'administrateur reste libre — c'est lui qui accorde les gratuités et qui
+// doit pouvoir sortir un duplicata en cas de litige.
+function sortieAutorisee(id) {
+  if (typeof isAdmin === 'function' && isAdmin()) return true;
+  if (typeof isDossierPaye !== 'function') return true;   // module absent : on ne bloque pas
+  if (isDossierPaye(id)) return true;
+  toast('🔒 Dossier non encaissé — impression et export bloqués', 'err');
+  return false;
+}
+
+
 // Met à jour le bandeau rouge en vue saisie selon le dossier en cours
 function updateBandeauPaiement() {
   const bandeau = document.getElementById('bandeau-paiement');

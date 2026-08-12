@@ -103,7 +103,13 @@ const CATALOGUE_EXAMENS = [
 // ✅ v12.4 — Paramètres attendus par examen coché (affichage "à compléter" sur la fiche)
 // Retourne [{key, name, unit, ref}] ; key = clé réelle dans l'objet resultats.
 function examExpectedRows(examId) {
-  const K = (arr) => arr.map(p => ({ key:p.name, name:p.name, unit:p.unit||'', ref:p.ref||p.refM||'' }));
+  // ✅ v13.94 — `getUnit` et non `p.unit` : une unité corrigée depuis
+  // Administration s'affichait à l'écran mais pas sur la feuille imprimée,
+  // le PDF ni l'Excel, qui lisaient tous le catalogue d'origine. Le patient
+  // repartait donc avec l'ancienne unité. On expose aussi `id`, pour que les
+  // consommateurs puissent redemander l'unité eux-mêmes si besoin.
+  const K = (arr) => arr.map(p => ({ key:p.name, name:p.name, id:p.id,
+                                     unit:getUnit(p.id, p.unit), ref:p.ref||p.refM||'' }));
   const M = {
     ex_nfs:   () => K([...HEMA_PARAMS.filter(p=>!['vs','ret'].includes(p.id)), ...HEMA_FL]),
     ex_vs:    () => K(HEMA_PARAMS.filter(p=>p.id==='vs')),
