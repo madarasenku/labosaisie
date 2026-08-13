@@ -410,6 +410,25 @@ function applyExamLocks() {
     const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
     document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
       .forEach(el => setFieldLocked(el, !bacOn || enSaisieNonPaye, enSaisieNonPaye && bacOn));
+
+    // ✅ v13.97 — FILET DE SÉCURITÉ « paiement » sur TOUS les onglets.
+    // La table examFieldIds ci-dessus est tenue à la main : un examen (ou un
+    // examen personnalisé) dont les champs n'y figurent pas resterait
+    // remplissable sur un dossier NON payé — précisément le trou signalé.
+    // Le paiement étant décidé au niveau du DOSSIER (isDossierPaye), la règle
+    // est simple : dossier non payé ⇒ AUCUN champ de résultat n'est
+    // saisissable, quel que soit l'onglet. On verrouille donc en bloc les six
+    // panneaux, sans effacer (keepValue) pour ne perdre aucune valeur déjà à
+    // l'écran. Ce filet est complet « par construction » : il sélectionne par
+    // conteneur, pas par liste d'identifiants, donc aucun onglet ne peut lui
+    // échapper. Sur un dossier payé, il ne s'exécute pas : la logique
+    // « coché ⇒ éditable / non coché ⇒ verrou » ci-dessus fait foi.
+    if (enSaisieNonPaye) {
+      document.querySelectorAll(
+        '#panel-hema, #panel-bio, #panel-bacterio, #panel-sero, #panel-parasito, #panel-gs')
+        .forEach(panel => panel.querySelectorAll('input, select, textarea')
+          .forEach(el => { if (!el.disabled) setFieldLocked(el, true, true); }));
+    }
   } finally { _applyingLocks = false; }
 }
 
