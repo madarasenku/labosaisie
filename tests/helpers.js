@@ -135,9 +135,16 @@ async function openApp(opts = {}) {
           // Le portail du soignant est une page distincte : on doit pouvoir
           // l'ouvrir sans passer par l'application du laboratoire.
           cible = '/index.html', sansSession = false, appels = null } = opts;
+  // Le sandbox Cowork fournit Chromium à un emplacement figé ; la CI GitHub
+  // (et les postes de dev) laissent Playwright installer le sien à son
+  // emplacement par défaut. On n'impose donc executablePath QUE si ce binaire
+  // précis existe — sinon Playwright choisit le sien. Sans ce garde-fou, la CI
+  // échouait « All jobs failed » car le chemin du sandbox n'existe pas chez elle.
+  const SANDBOX_CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+  const launchOpts = { headless: true, args: ['--no-sandbox'] };
+  if (fs.existsSync(SANDBOX_CHROME)) launchOpts.executablePath = SANDBOX_CHROME;
   const ctx = await chromium.launchPersistentContext(
-    fs.mkdtempSync('/tmp/pw-labo-'), { headless: true, args: ['--no-sandbox'],
-      executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+    fs.mkdtempSync('/tmp/pw-labo-'), launchOpts);
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
