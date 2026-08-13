@@ -24,6 +24,8 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:4500, section:'sec-widal' },
   { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2000, section:'sec-sero' },
   { id:'ex_hbs',   label:'Ag HBs (Hépatite B)',              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
+  { id:'ex_hbsac', label:'Ac anti-HBs',                      groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
+  { id:'ex_hbcac', label:'Ac anti-HBc totaux',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
   { id:'ex_hcv',   label:'Ac anti-VHC (Hépatite C)',         groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
   { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
   { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
@@ -214,19 +216,10 @@ function widalReport(res) {
 // tout examen non listé laisse ses champs éditables, jamais de verrou erroné).
 function examFieldIds(examId) {
   const V = ids => ids.map(i => 'v_' + i);
-  // ✅ v13.99 — Sérologie : les identifiants suivent EXACTEMENT le gabarit de
-  // buildSero, qui diffère selon le type du test (source : SERO_TESTS) :
-  //   qualitatif  → sélecteur  sr_<id>          + commentaire so_<id>
-  //   quantitatif → sélecteur  sr_<id>_r , valeur sv_<id> + commentaire so_<id>
-  // On DÉRIVE de SERO_TESTS pour ne pas retomber dans la divergence d'avant
-  // (l'ancienne version ne verrouillait aucun champ sérologique réel).
-  const S = ids => ids.flatMap(i => {
-    const t = (typeof SERO_TESTS !== 'undefined') ? SERO_TESTS.find(s => s.id === i) : null;
-    const f = ['so_' + i];                             // commentaire (toujours)
-    if (t && t.type === 'quant') f.push('sr_' + i + '_r', 'sv_' + i);
-    else                         f.push('sr_' + i);    // qualitatif (défaut)
-    return f;
-  });
+  // ✅ v13.102 — Sérologie : identifiants UNIFORMES (le mode qual/quant se
+  // choisit à la saisie, plus de suffixe _r). Chaque test possède : résultat
+  // qualitatif sr_<id>, valeur sv_<id>, commentaire so_<id>, mode smode_<id>.
+  const S = ids => ids.flatMap(i => ['so_' + i, 'sr_' + i, 'sv_' + i, 'smode_' + i]);
   const M = {
     // ── Hématologie ───────────────────────────────────────────
     ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret'] // ✅ v13.99 « ret »
@@ -305,6 +298,8 @@ function examFieldIds(examId) {
     // ── Sérologie ─────────────────────────────────────────────
     ex_vih:   () => S(['vih1']),
     ex_hbs:   () => S(['hbsag','hbcac','hbsac']),
+    ex_hbsac: () => S(['hbsac']),   // ✅ v13.102 — Ac anti-HBs facturable seul
+    ex_hbcac: () => S(['hbcac']),   // ✅ v13.102 — Ac anti-HBc totaux facturable seul
     ex_hcv:   () => S(['hcv']),
     ex_tpha:  () => S(['syphil']),
     ex_toxo:  () => S(['toxo','toxoig']),
@@ -403,26 +398,34 @@ function applyExamLocks() {
     // mais pas le figer tant que l'encaissement n'est pas fait.
     const checked = {};
     cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
+
+    // ✅ v13.102 — Verrouillage par champ en mode OU : un champ est éditable dès
+    // qu'AU MOINS UN examen qui le possède est coché. Indispensable depuis que
+    // des champs sont partagés (ex. Ac anti-HBs appartient à « Ag HBs » ET à
+    // l'examen « Ac anti-HBs » vendu seul) : sans ça, l'ordre du catalogue
+    // déciderait à tort du verrou final (le dernier examen traité l'emportait).
+    // NE PAS toucher row_ex_* : ce sont les cases à cocher, pas des résultats.
+    const champProprioCoche = {};
     cat.forEach(ex => {
-      // ✅ v13.34 — NE PAS masquer row_ex_* : ce sont les CASES À COCHER
-      // de la fiche d'accueil, pas les lignes de résultats.
-      // On verrouille uniquement les CHAMPS de saisie des résultats
-      // (dans les panneaux) quand l'examen n'est pas coché.
+      const on = checked[ex.id];
       examFieldIds(ex.id).forEach(fid => {
-        const el = document.getElementById(fid);
-        if (!el) return;
-        setFieldLocked(el, !checked[ex.id]); // coché ⇒ éditable ; décoché ⇒ verrou + efface
+        if (!(fid in champProprioCoche)) champProprioCoche[fid] = false;
+        if (on) champProprioCoche[fid] = true;
       });
-      // Masquer/afficher la SECTION de résultats correspondante (sec-*)
-      if (ex.section) {
-        const sec = document.getElementById(ex.section);
-        if (sec) {
-          // Une section peut regrouper plusieurs examens : visible si AU MOINS un coché
-          const examsInSection = cat.filter(e => e.section === ex.section);
-          const anyChecked = examsInSection.some(e => checked[e.id]);
-          sec.style.display = anyChecked ? '' : 'none';
-        }
-      }
+    });
+    Object.keys(champProprioCoche).forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el) setFieldLocked(el, !champProprioCoche[fid]); // coché quelque part ⇒ éditable
+    });
+
+    // Sections de résultats (sec-*) : visibles si au moins un de leurs examens
+    // est coché.
+    cat.forEach(ex => {
+      if (!ex.section) return;
+      const sec = document.getElementById(ex.section);
+      if (!sec) return;
+      const anyChecked = cat.filter(e => e.section === ex.section).some(e => checked[e.id]);
+      sec.style.display = anyChecked ? '' : 'none';
     });
     // Bactério : verrou global tant qu'aucun examen bactério n'est coché.
     const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
