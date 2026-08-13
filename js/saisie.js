@@ -375,25 +375,24 @@ function applyExamLocks() {
   try {
     let cat;
     try { cat = getCatalogueComplet(); } catch(e) { return; }
-    // ✅ v13.36 — Verrou « paiement » : en édition des résultats d'un dossier
-    // NON payé, les champs des examens cochés restent verrouillés (on ne peut
-    // saisir un résultat qu'une fois l'examen encaissé). On verrouille sans
-    // effacer (keepValue) pour ne rien perdre à l'écran.
-    const enSaisieNonPaye = !!_editingRecordId
-      && typeof isDossierPaye === 'function' && !isDossierPaye(_editingRecordId);
+    // ✅ v13.98 — Règle unique de saisissabilité : COCHÉ ⇒ REMPLISSABLE.
+    // Un examen coché (donc facturé sur la fiche) est immédiatement
+    // saisissable ; un examen non coché a ses champs verrouillés et vidés.
+    // Le paiement ne bloque PLUS la saisie : il reste imposé au moment de
+    // l'ENREGISTREMENT (_saveRecordImpl renvoie à la caisse si le dossier
+    // n'est pas payé), ce qui est le bon moment — on peut saisir un résultat,
+    // mais pas le figer tant que l'encaissement n'est pas fait.
     const checked = {};
     cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
     cat.forEach(ex => {
       // ✅ v13.34 — NE PAS masquer row_ex_* : ce sont les CASES À COCHER
       // de la fiche d'accueil, pas les lignes de résultats.
       // On verrouille uniquement les CHAMPS de saisie des résultats
-      // (dans les panneaux) quand l'examen n'est pas coché OU non payé.
+      // (dans les panneaux) quand l'examen n'est pas coché.
       examFieldIds(ex.id).forEach(fid => {
         const el = document.getElementById(fid);
         if (!el) return;
-        if (!checked[ex.id]) setFieldLocked(el, true);              // non coché → verrou + efface
-        else if (enSaisieNonPaye) setFieldLocked(el, true, true);   // coché mais non payé → verrou sans effacer
-        else setFieldLocked(el, false);                             // coché + payé → éditable
+        setFieldLocked(el, !checked[ex.id]); // coché ⇒ éditable ; décoché ⇒ verrou + efface
       });
       // Masquer/afficher la SECTION de résultats correspondante (sec-*)
       if (ex.section) {
@@ -406,29 +405,10 @@ function applyExamLocks() {
         }
       }
     });
-    // Bactério : verrou global si aucun examen bactério coché OU dossier non payé
+    // Bactério : verrou global tant qu'aucun examen bactério n'est coché.
     const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
     document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
-      .forEach(el => setFieldLocked(el, !bacOn || enSaisieNonPaye, enSaisieNonPaye && bacOn));
-
-    // ✅ v13.97 — FILET DE SÉCURITÉ « paiement » sur TOUS les onglets.
-    // La table examFieldIds ci-dessus est tenue à la main : un examen (ou un
-    // examen personnalisé) dont les champs n'y figurent pas resterait
-    // remplissable sur un dossier NON payé — précisément le trou signalé.
-    // Le paiement étant décidé au niveau du DOSSIER (isDossierPaye), la règle
-    // est simple : dossier non payé ⇒ AUCUN champ de résultat n'est
-    // saisissable, quel que soit l'onglet. On verrouille donc en bloc les six
-    // panneaux, sans effacer (keepValue) pour ne perdre aucune valeur déjà à
-    // l'écran. Ce filet est complet « par construction » : il sélectionne par
-    // conteneur, pas par liste d'identifiants, donc aucun onglet ne peut lui
-    // échapper. Sur un dossier payé, il ne s'exécute pas : la logique
-    // « coché ⇒ éditable / non coché ⇒ verrou » ci-dessus fait foi.
-    if (enSaisieNonPaye) {
-      document.querySelectorAll(
-        '#panel-hema, #panel-bio, #panel-bacterio, #panel-sero, #panel-parasito, #panel-gs')
-        .forEach(panel => panel.querySelectorAll('input, select, textarea')
-          .forEach(el => { if (!el.disabled) setFieldLocked(el, true, true); }));
-    }
+      .forEach(el => setFieldLocked(el, !bacOn));
   } finally { _applyingLocks = false; }
 }
 
