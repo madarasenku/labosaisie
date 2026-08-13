@@ -8,8 +8,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mes patients">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.93">
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.93"></script>
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.94">
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.94"></script>
 <style>
   /* Page volontairement autonome : elle ne charge NI app.css NI les modules
      du laboratoire. Un soignant qui ouvre son portail sur un téléphone en
@@ -26,41 +26,60 @@
                 padding:7px 13px;font:inherit;font-size:13px;cursor:pointer}
   header button:hover{background:rgba(255,255,255,.24)}
   main{max-width:920px;margin:0 auto;padding:16px}
+
+  /* Barre de stats */
+  .stats-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .stat-pill{background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+             padding:9px 16px;display:flex;align-items:center;gap:8px;font-size:14px}
+  .stat-pill .num{font-size:22px;font-weight:700;line-height:1}
+  .stat-pill.cours .num{color:#d97706}
+  .stat-pill.rendu .num{color:#16a34a}
+  .stat-pill.total .num{color:#0b2545}
+
+  /* Barre de filtres */
   .barre{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
   .barre input,.barre select{padding:9px 12px;border:1px solid #cbd5e1;border-radius:9px;
                              font:inherit;background:#fff}
   .barre input[type=search]{flex:1;min-width:200px}
-  .fiche{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:13px 15px;
-         margin-bottom:9px;cursor:pointer;display:flex;gap:12px;align-items:center;
-         transition:border-color .12s,box-shadow .12s}
+
+  /* Carte patient */
+  .fiche{background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+         margin-bottom:9px;overflow:hidden;transition:border-color .12s,box-shadow .12s}
   .fiche:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(15,23,42,.07)}
+  .fiche-en-tete{padding:13px 15px;cursor:pointer;display:flex;
+                 gap:12px;align-items:center;border-left:4px solid transparent}
+  .fiche.cours .fiche-en-tete{border-left-color:#f59e0b}
+  .fiche.rendu .fiche-en-tete{border-left-color:#22c55e}
   .fiche .nom{font-weight:600}
   .fiche .meta{font-size:13px;color:#64748b}
   .fiche .droite{margin-left:auto;text-align:right;white-space:nowrap}
   .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
   .b-rendu{background:#dcfce7;color:#166534}
   .b-cours{background:#fef3c7;color:#92400e}
-  .vide{text-align:center;color:#64748b;padding:38px 12px}
+  .examens-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+  .exam-pill{background:#f1f5f9;border-radius:6px;padding:2px 8px;
+             font-size:12px;color:#475569}
+
+  /* Corps de la carte (résultats inline) */
+  .fiche-corps{display:none;padding:0 15px 14px 19px;border-top:1px solid #f1f5f9}
+  .fiche.ouvert .fiche-corps{display:block}
   .avert{background:#fef3c7;border:1px solid #fcd34d;color:#78350f;border-radius:10px;
-         padding:11px 14px;margin-bottom:14px;font-size:14px}
-  dialog{border:0;border-radius:14px;padding:0;max-width:640px;width:calc(100% - 24px);
-         box-shadow:0 20px 50px rgba(15,23,42,.28)}
-  dialog::backdrop{background:rgba(15,23,42,.5)}
-  .det-tete{padding:16px 18px;border-bottom:1px solid #e2e8f0;display:flex;
-            align-items:flex-start;gap:12px}
-  .det-tete h2{font-size:17px}
-  .det-corps{padding:16px 18px;max-height:60vh;overflow:auto}
-  .det-pied{padding:12px 18px;border-top:1px solid #e2e8f0;display:flex;gap:9px;justify-content:flex-end}
-  .det-pied button{padding:9px 15px;border-radius:9px;border:1px solid #cbd5e1;
-                   background:#fff;font:inherit;cursor:pointer}
-  .det-pied .principal{background:#0b2545;color:#fff;border-color:#0b2545}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #f1f5f9;font-size:14px}
-  th{color:#64748b;font-weight:600;font-size:13px}
-  td.valeur{font-weight:600;text-align:right;white-space:nowrap}
+         padding:10px 13px;margin:10px 0;font-size:13px}
+  .avert strong{display:block;margin-bottom:2px}
+  .recap-table{width:100%;border-collapse:collapse;margin-top:10px}
+  .recap-table th,.recap-table td{text-align:left;padding:7px 6px;
+         border-bottom:1px solid #f1f5f9;font-size:13px}
+  .recap-table th{color:#64748b;font-weight:600;font-size:12px}
+  .recap-table td.valeur{font-weight:700;text-align:right;white-space:nowrap;color:#0b2545}
+  .pas-encore{color:#94a3b8;font-size:13px;font-style:italic;margin-top:10px}
+  .fiche-corps-chargement{color:#94a3b8;font-size:13px;margin-top:10px}
+
+  .vide{text-align:center;color:#64748b;padding:38px 12px}
+
   @media print{
-    header,.barre,.det-pied,#bandeau-site-v2{display:none!important}
-    dialog{position:static;box-shadow:none;max-width:none}
+    header,.barre,.stats-bar,#bandeau-site-v2{display:none!important}
+    .fiche{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+    .fiche-corps{display:block!important}
   }
 </style>
 </head>
@@ -86,6 +105,9 @@
 </header>
 
 <main>
+  <!-- Barre de statistiques -->
+  <div class="stats-bar" id="stats-bar" style="display:none!important"></div>
+
   <div class="barre">
     <input type="search" id="recherche" placeholder="Rechercher un nom ou un n° de dossier…"
            autocomplete="off">
@@ -98,21 +120,6 @@
   <div id="liste"><div class="vide">Chargement…</div></div>
 </main>
 
-<dialog id="detail">
-  <div class="det-tete">
-    <div style="flex:1">
-      <h2 id="det-nom">—</h2>
-      <div class="meta" id="det-meta" style="font-size:13px;color:#64748b"></div>
-    </div>
-    <span class="badge" id="det-badge"></span>
-  </div>
-  <div class="det-corps" id="det-corps"></div>
-  <div class="det-pied">
-    <button type="button" onclick="window.print()">Imprimer</button>
-    <button type="button" class="principal" id="det-fermer">Fermer</button>
-  </div>
-</dialog>
-
 <script>
 /* Mêmes clés préfixées que le reste du site secondaire : le localStorage est
    partagé par tout le domaine (voir README). */
@@ -121,6 +128,8 @@ const SUPABASE_URL = 'https://ftwsxdivwoczsreiohok.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_de9EPaXmi3QSXMqSSoGuKg_kwWw9Yth';
 
 let _sb = null, _session = null, _fiches = [];
+/* Cache des détails déjà chargés : { [id]: data } */
+const _cache = {};
 
 function lireSession() {
   try {
@@ -143,15 +152,35 @@ function jourLisible(d) {
   return j && m && a ? `${j}/${m}/${a}` : d;
 }
 
+/* ── Barre de stats ─────────────────────────────────────────────────────── */
+function mettreAJourStats() {
+  const bar = document.getElementById('stats-bar');
+  if (!_fiches.length) { bar.style.display = 'none'; return; }
+  const cours = _fiches.filter(x => !x.rendu).length;
+  const rendu = _fiches.filter(x =>  x.rendu).length;
+  bar.innerHTML =
+    `<div class="stat-pill total"><span class="num">${_fiches.length}</span>patient${_fiches.length>1?'s':''} adressé${_fiches.length>1?'s':''}</div>` +
+    (cours ? `<div class="stat-pill cours"><span class="num">${cours}</span>en cours</div>` : '') +
+    (rendu ? `<div class="stat-pill rendu"><span class="num">${rendu}</span>rendu${rendu>1?'s':''}</div>` : '');
+  bar.style.removeProperty('display');
+}
+
+/* ── Liste ──────────────────────────────────────────────────────────────── */
 function dessinerListe() {
   const q = document.getElementById('recherche').value.trim().toLowerCase();
   const f = document.getElementById('filtre-statut').value;
-  const vus = _fiches.filter(x => {
+  let vus = _fiches.filter(x => {
     if (f === 'rendu' && !x.rendu) return false;
     if (f === 'cours' && x.rendu)  return false;
     if (!q) return true;
     return (x.nom || '').toLowerCase().includes(q)
         || (x.dossier || '').toLowerCase().includes(q);
+  });
+
+  /* En cours en premier, puis les rendus, chacun par date décroissante */
+  vus.sort((a, b) => {
+    if (a.rendu !== b.rendu) return a.rendu ? 1 : -1;
+    return (b.date_prelevement || '').localeCompare(a.date_prelevement || '');
   });
 
   const el = document.getElementById('liste');
@@ -163,75 +192,88 @@ function dessinerListe() {
     return;
   }
 
-  el.innerHTML = vus.map(x => `
-    <div class="fiche" data-id="${x.id}">
-      <div>
-        <div class="nom">${echapper(x.nom || 'Sans nom')}</div>
-        <div class="meta">N° ${echapper(x.dossier || '—')}
-          · ${echapper(x.age || '')} ${echapper(x.sexe || '')}
-          · ${echapper((x.examens || []).join(', '))}</div>
+  el.innerHTML = vus.map(x => {
+    const pillsHTML = (x.examens || []).map(e =>
+      `<span class="exam-pill">${echapper(e)}</span>`).join('');
+    return `
+    <div class="fiche ${x.rendu ? 'rendu' : 'cours'}" data-id="${x.id}">
+      <div class="fiche-en-tete">
+        <div style="flex:1;min-width:0">
+          <div class="nom">${echapper(x.nom || 'Sans nom')}</div>
+          <div class="meta">N° ${echapper(x.dossier || '—')}
+            · ${echapper(x.age || '')} ${echapper(x.sexe || '')}</div>
+          ${pillsHTML ? `<div class="examens-pills">${pillsHTML}</div>` : ''}
+        </div>
+        <div class="droite">
+          <span class="badge ${x.rendu ? 'b-rendu' : 'b-cours'}">${x.rendu ? 'Rendu' : 'En cours'}</span>
+          <div class="meta">${jourLisible(x.date_prelevement)}</div>
+        </div>
       </div>
-      <div class="droite">
-        <span class="badge ${x.rendu ? 'b-rendu' : 'b-cours'}">${x.rendu ? 'Rendu' : 'En cours'}</span>
-        <div class="meta">${jourLisible(x.date_prelevement)}</div>
-      </div>
-    </div>`).join('');
+      <div class="fiche-corps" id="corps-${x.id}"></div>
+    </div>`;
+  }).join('');
 
   el.querySelectorAll('.fiche').forEach(n =>
-    n.addEventListener('click', () => ouvrirFiche(Number(n.dataset.id))));
+    n.querySelector('.fiche-en-tete').addEventListener('click', () =>
+      basculerFiche(Number(n.dataset.id), n)));
 }
 
-async function ouvrirFiche(id) {
-  const d = document.getElementById('detail');
-  document.getElementById('det-corps').innerHTML = '<div class="vide">Chargement…</div>';
-  if (!d.open) d.showModal();
+/* ── Résultats inline ───────────────────────────────────────────────────── */
+async function basculerFiche(id, noeud) {
+  const estOuvert = noeud.classList.contains('ouvert');
+
+  /* Fermer toutes les autres */
+  document.querySelectorAll('.fiche.ouvert').forEach(f => f.classList.remove('ouvert'));
+
+  if (estOuvert) return; /* simple toggle : clic sur la même = ferme */
+
+  noeud.classList.add('ouvert');
+  const corps = document.getElementById(`corps-${id}`);
+
+  /* Si déjà en cache, afficher directement */
+  if (_cache[id]) { afficherDetail(corps, _cache[id]); return; }
+
+  corps.innerHTML = '<div class="fiche-corps-chargement">Chargement…</div>';
 
   const { data, error } = await _sb.rpc('get_prescription_full',
     { p_token: _session.token, p_id: id });
 
   if (error || !data || data.erreur) {
-    document.getElementById('det-nom').textContent = 'Résultat indisponible';
-    document.getElementById('det-meta').textContent = '';
-    document.getElementById('det-badge').textContent = '';
-    document.getElementById('det-corps').innerHTML =
-      '<div class="vide">Ce dossier ne vous est pas accessible.</div>';
+    corps.innerHTML = '<div class="pas-encore">Ce dossier ne vous est pas accessible.</div>';
     return;
   }
 
-  const p = data.patient || {};
-  document.getElementById('det-nom').textContent = p.nom || 'Sans nom';
-  document.getElementById('det-meta').textContent =
-    `N° ${p.dossier || '—'} · ${p.age || ''} ${p.sexe || ''} · ${jourLisible(p.date)}`;
-  const badge = document.getElementById('det-badge');
-  badge.textContent = data.valide ? 'Rendu' : 'En cours';
-  badge.className = 'badge ' + (data.valide ? 'b-rendu' : 'b-cours');
+  _cache[id] = data;
+  afficherDetail(corps, data);
+}
 
+function afficherDetail(corps, data) {
   const lignes = Object.entries(data.resultats || {});
   let html = '';
 
-  // Le laboratoire a choisi de montrer les valeurs dès la saisie, pour les
-  // urgences. Le prix de ce choix est cet avertissement : sans lui, un
-  // chiffre provisoire serait recopié dans un dossier comme définitif.
   if (!data.valide) {
-    html += '<div class="avert"><strong>Résultat non validé.</strong> '
-         +  'Ces valeurs sont en cours de vérification par le laboratoire et '
-         +  'peuvent encore changer. Attendez la mention « Rendu » avant de '
-         +  'fonder une décision dessus.</div>';
+    html += '<div class="avert">'
+         +  '<strong>⏳ En cours — résultat non validé</strong>'
+         +  'Ces valeurs sont provisoires et peuvent encore changer. '
+         +  'Attendez la mention <strong>Rendu</strong> avant de fonder une décision dessus.</div>';
   }
 
-  html += '<div class="meta" style="font-size:13px;color:#64748b">Examens demandés : '
-       +  echapper((data.types || [data.type]).join(', ')) + '</div>';
+  if (lignes.length) {
+    html += '<table class="recap-table">'
+         +  '<thead><tr><th>Analyse</th><th style="text-align:right">Résultat</th></tr></thead>'
+         +  '<tbody>'
+         +  lignes.map(([k, v]) =>
+              `<tr><td>${echapper(k)}</td><td class="valeur">${echapper(v)}</td></tr>`
+            ).join('')
+         +  '</tbody></table>';
+  } else {
+    html += '<div class="pas-encore">Prélèvement enregistré — aucune valeur saisie pour l\'instant.</div>';
+  }
 
-  html += lignes.length
-    ? '<table><thead><tr><th>Analyse</th><th style="text-align:right">Résultat</th></tr></thead><tbody>'
-      + lignes.map(([k, v]) =>
-          `<tr><td>${echapper(k)}</td><td class="valeur">${echapper(v)}</td></tr>`).join('')
-      + '</tbody></table>'
-    : '<div class="vide">Prélèvement enregistré, aucune valeur saisie pour l\'instant.</div>';
-
-  document.getElementById('det-corps').innerHTML = html;
+  corps.innerHTML = html;
 }
 
+/* ── Chargement initial ─────────────────────────────────────────────────── */
 async function charger() {
   const { data, error } = await _sb.rpc('get_mes_prescriptions', { p_token: _session.token });
   if (error) {
@@ -241,13 +283,12 @@ async function charger() {
     return;
   }
   _fiches = Array.isArray(data) ? data : [];
+  mettreAJourStats();
   dessinerListe();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   _session = lireSession();
-  // Ceinture et bretelles : le serveur refuse déjà tout à un non-soignant,
-  // mais autant ne pas afficher une page vide à un agent égaré.
   if (!_session) return versLogin();
   if (_session.role !== 'prescripteur') { window.location.replace('index.html'); return; }
 
@@ -256,8 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('recherche').addEventListener('input', dessinerListe);
   document.getElementById('filtre-statut').addEventListener('change', dessinerListe);
-  document.getElementById('det-fermer').addEventListener('click',
-    () => document.getElementById('detail').close());
   document.getElementById('btn-quitter').addEventListener('click', async () => {
     try { await _sb.rpc('logout_token', { p_token: _session.token }); } catch (e) {}
     localStorage.removeItem(SESSION_KEY);
