@@ -386,7 +386,7 @@ async function renderUsersList() {
   }
   b.innerHTML = data.map(u => {
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : '🔬 Agent';
+    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
     return `
