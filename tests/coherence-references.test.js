@@ -12,27 +12,19 @@
 // Il échoue si un identifiant de référence n'a de réplique nulle part, ou si
 // un antigène de Widal / un test sérologique quantitatif n'a pas sa ligne.
 const { serve, openApp, createReporter } = require('./helpers');
-const fs = require('fs');
-const path = require('path');
-
-// Extrait les ids de la liste SECTIONS de buildRefsEditor (js/ui-auth.js).
-function idsEditeurRefs() {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'ui-auth.js'), 'utf8');
-  const debut = src.indexOf('function buildRefsEditor');
-  const finSections = src.indexOf('function rowHTML', debut);
-  const bloc = src.slice(debut, finSections);
-  return [...bloc.matchAll(/id:'([a-z0-9_]+)'/g)].map(m => m[1]);
-}
 
 (async () => {
   const srv = await serve();
   const r = createReporter('COHÉRENCE DES VALEURS DE RÉFÉRENCE');
 
-  const refIds = idsEditeurRefs();
   const { ctx, page, errors } = await openApp({ role: 'admin',
     rpc: { get_tarifs: {}, get_examens_custom: [] } });
 
-  const res = await page.evaluate((refIds) => {
+  const res = await page.evaluate(() => {
+    // ✅ v13.101 — les lignes de l'éditeur sont DÉRIVÉES des listes canoniques :
+    // on lit donc les identifiants au runtime via refsSections().
+    const refIds = (typeof refsSections === 'function')
+      ? refsSections().flatMap(s => s.params.map(p => p.id)) : [];
     // Ensemble des clés de référence RÉELLES du site (celles que getRef(id)
     // peut effectivement piloter), reconstruit depuis les listes canoniques.
     const K = new Set();
@@ -58,7 +50,7 @@ function idsEditeurRefs() {
       .filter(t => t.type === 'quant').map(t => 'sero_' + t.id).filter(k => !refSet.has(k));
 
     return { orphelins, widalManquants, seroQuantManquants, nbRefs: refIds.length };
-  }, refIds);
+  });
 
   r.section('Chaque valeur de référence a une réplique sur le site');
   r.check('des paramètres de référence sont chargés', res.nbRefs > 50, true);
