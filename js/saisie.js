@@ -214,12 +214,27 @@ function widalReport(res) {
 // tout examen non listé laisse ses champs éditables, jamais de verrou erroné).
 function examFieldIds(examId) {
   const V = ids => ids.map(i => 'v_' + i);
-  const S = ids => ids.flatMap(i => ['sr_' + i + '_r', 'sv_' + i]);
+  // ✅ v13.99 — Sérologie : les identifiants suivent EXACTEMENT le gabarit de
+  // buildSero, qui diffère selon le type du test (source : SERO_TESTS) :
+  //   qualitatif  → sélecteur  sr_<id>          + commentaire so_<id>
+  //   quantitatif → sélecteur  sr_<id>_r , valeur sv_<id> + commentaire so_<id>
+  // On DÉRIVE de SERO_TESTS pour ne pas retomber dans la divergence d'avant
+  // (l'ancienne version ne verrouillait aucun champ sérologique réel).
+  const S = ids => ids.flatMap(i => {
+    const t = (typeof SERO_TESTS !== 'undefined') ? SERO_TESTS.find(s => s.id === i) : null;
+    const f = ['so_' + i];                             // commentaire (toujours)
+    if (t && t.type === 'quant') f.push('sr_' + i + '_r', 'sv_' + i);
+    else                         f.push('sr_' + i);    // qualitatif (défaut)
+    return f;
+  });
   const M = {
     // ── Hématologie ───────────────────────────────────────────
-    ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt']
+    ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret'] // ✅ v13.99 « ret »
                     .concat((typeof HEMA_FL!=='undefined'?HEMA_FL:[]).map(p=>p.id))),
-    ex_ephb:  () => V(['ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e'])
+    // ✅ v13.99 — les fractions portent leur id brut (ephb_a…), pas « v_ephb_a ».
+    ex_ephb:  () => ((typeof EPHB_FRACTIONS!=='undefined'
+                       ? EPHB_FRACTIONS.map(f=>f.id)
+                       : ['ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e']))
                     .concat(['ephb_profil','ephb_commentaire']),
     ex_vs:    () => ['v_vs'],
     ex_crp:   () => ['crp_valeur'],                          // CRP Sérologie (latex)
@@ -258,7 +273,7 @@ function examFieldIds(examId) {
     ex_lpa:   () => ['v_lpa'],
     ex_fer:   () => ['v_fer'],
     ex_ferr:  () => ['v_ferr'],
-    ex_ddim:  () => ['v_ddim'],
+    ex_ddim:  () => ['v_ddim','v_ddim2'],   // ✅ v13.99 — 2e champ D-dimères
     ex_tp:    () => ['v_tp'],
     ex_tca:   () => ['v_tca'],
     ex_fibr:  () => ['v_fibr'],
@@ -299,7 +314,11 @@ function examFieldIds(examId) {
     ex_tsh:   () => S(['tsh']),
     ex_ft4:   () => S(['ft4']),
     ex_psa:   () => S(['psa']),
-    ex_rai:   () => S(['rai']),
+    // ✅ v13.99 — RAI est un examen de GROUPE SANGUIN, pas une sérologie : il
+    // n'a pas de champ dédié (il partage sec-gs-standalone). L'ancien
+    // S(['rai']) pointait vers des champs sérologiques inexistants. Le filet
+    // par section verrouille sec-gs-standalone quand ni GS ni RAI ne sont cochés.
+    ex_rai:   () => [],
     // ── Groupe sanguin (panel GS) ──────────────────────────────
     ex_gs:    () => ['gs_abo','gs_rh','gs_obs'],
     // ── Groupe sanguin mini (sur Hémato) ──────────────────────
@@ -409,6 +428,25 @@ function applyExamLocks() {
     const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
     document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
       .forEach(el => setFieldLocked(el, !bacOn));
+
+    // ✅ v13.99 — FILET PAR SECTION. La table examFieldIds est tenue à la main ;
+    // pour qu'un examen absent (ou dont un champ a changé d'identifiant) ne
+    // laisse pas de champ ouvert, on verrouille EN BLOC toute section de
+    // résultats dont AUCUN examen n'est coché — quels que soient les
+    // identifiants des champs qu'elle contient. Une section qui a au moins un
+    // examen coché est laissée à la logique par-examen ci-dessus (granularité).
+    const sectionAUnCoche = {};
+    cat.forEach(ex => {
+      if (!ex.section) return;
+      if (!(ex.section in sectionAUnCoche)) sectionAUnCoche[ex.section] = false;
+      if (checked[ex.id]) sectionAUnCoche[ex.section] = true;
+    });
+    Object.keys(sectionAUnCoche).forEach(secId => {
+      if (sectionAUnCoche[secId]) return;               // au moins un coché → géré plus haut
+      const sec = document.getElementById(secId);
+      if (sec) sec.querySelectorAll('input, select, textarea')
+                  .forEach(el => setFieldLocked(el, true));
+    });
   } finally { _applyingLocks = false; }
 }
 
