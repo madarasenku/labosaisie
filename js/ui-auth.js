@@ -590,10 +590,16 @@ function buildRefsEditor() {
       label: '🔵 Sérodiagnostic de Widal — Seuils significatifs', id: 'widal',
       note: 'Le seuil est la valeur minimale de lo. Ex: lo=80 → 1/80 significatif.',
       params: [
+        // ✅ v13.100 — les 8 antigènes de WIDAL_ANTIGENES (avant : seuls 4 y
+        // figuraient, donc AH/BH/CO/CH n'avaient pas de seuil configurable).
         { id:'widal_to', name:'Salmonella typhi O (TO)',       unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
         { id:'widal_th', name:'Salmonella typhi H (TH)',       unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
         { id:'widal_ao', name:'Salmonella paratyphi A O (AO)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
+        { id:'widal_ah', name:'Salmonella paratyphi A H (AH)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
         { id:'widal_bo', name:'Salmonella paratyphi B O (BO)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
+        { id:'widal_bh', name:'Salmonella paratyphi B H (BH)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
+        { id:'widal_co', name:'Salmonella paratyphi C O (CO)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
+        { id:'widal_ch', name:'Salmonella paratyphi C H (CH)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
       ]
     },
     {
@@ -713,7 +719,9 @@ function buildRefsEditor() {
         { id:'sero_hbsac', name:'Ac anti-HBs',                 unit:'UI/L',   ref:'> 10 (protecteur)', lo:10,   hi:9999 },
         { id:'sero_toxo',  name:'Toxoplasmose IgG',            unit:'UI/mL',  ref:'> 8 (immunisé)',    lo:8,    hi:9999 },
         { id:'sero_rubig', name:'Rubéole IgG',                 unit:'UI/mL',  ref:'> 10 (immunisé)',   lo:10,   hi:9999 },
-        { id:'sero_crp',   name:'CRP (Protéine C-réactive)',   unit:'mg/L',   ref:'< 6',              lo:0,    hi:6    },
+        // ✅ v13.100 — « sero_crp » retiré : la CRP a des seuils codés en dur
+        // dans interpretCRP (aucun getRef), ce paramètre n'avait donc aucun
+        // effet ni réplique nulle part.
         { id:'sero_aso',   name:'ASLO (Antistreptolysines)',   unit:'UI/mL',  ref:'< 200',            lo:0,    hi:200  },
         { id:'sero_tsh',   name:'TSH',                         unit:'mUI/L',  ref:'0.4–4.0',          lo:0.4,  hi:4.0  },
         { id:'sero_ft4',   name:'T4 libre (FT4)',              unit:'pmol/L', ref:'12–22',            lo:12,   hi:22   },
@@ -755,9 +763,11 @@ function buildRefsEditor() {
       label: '🤰 Bilan prénatal — Sérologies', id: 'bpn_sero',
       note: 'Les tests qualitatifs sont affichés pour information. Seuls les quantitatifs ont des seuils.',
       params: [
-        { id:'bpnsero_hbsac', name:'Ac anti-HBs (protection)', unit:'UI/L',  ref:'> 10 UI/L', lo:10,  hi:9999 },
-        { id:'bpnsero_toxog', name:'Toxoplasmose IgG',          unit:'UI/mL', ref:'> 8',       lo:8,   hi:9999 },
-        { id:'bpnsero_rubg',  name:'Rubéole IgG',               unit:'UI/mL', ref:'> 10',      lo:10,  hi:9999 },
+        // ✅ v13.100 — identifiants alignés sur BPN_SERO (avant : préfixe
+        // « bpnsero_ » utilisé nulle part ailleurs → références sans effet).
+        { id:'bpn_hbsac', name:'Ac anti-HBs (protection)', unit:'UI/L',  ref:'> 10 UI/L', lo:10,  hi:9999 },
+        { id:'bpn_toxog', name:'Toxoplasmose IgG',          unit:'UI/mL', ref:'> 8',       lo:8,   hi:9999 },
+        { id:'bpn_rubg',  name:'Rubéole IgG',               unit:'UI/mL', ref:'> 10',      lo:10,  hi:9999 },
       ]
     },
   ];
