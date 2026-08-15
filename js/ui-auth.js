@@ -403,6 +403,27 @@ async function renderUsersList() {
   }).join('');
 }
 
+
+// ✅ v13.103 — Le menu proposait « Prescripteur » depuis la v13.96, mais
+// l'appel n'envoyait pas le soignant à rattacher : la création échouait donc
+// systématiquement, sans que rien à l'écran n'explique pourquoi.
+function majBlocPrescripteur() {
+  const role = document.getElementById('nu_role')?.value;
+  const bloc = document.getElementById('nu-presc-bloc');
+  const sel  = document.getElementById('nu_prescripteur');
+  if (!bloc || !sel) return;
+  const actif = role === 'prescripteur';
+  bloc.style.display = actif ? '' : 'none';
+  if (!actif) return;
+  const liste = (typeof _prescripteurs !== 'undefined' && Array.isArray(_prescripteurs))
+    ? _prescripteurs.filter(p => p.actif !== false) : [];
+  sel.innerHTML = '<option value="">— choisir —</option>' +
+    liste.map(p => `<option value="${p.id}">${escHTML(p.nom)}</option>`).join('');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('nu_role')?.addEventListener('change', majBlocPrescripteur);
+});
+
 async function createUserAccount() {
   const errEl = document.getElementById('nu-error');
   errEl.textContent = '';
@@ -420,11 +441,21 @@ async function createUserAccount() {
     return;
   }
 
+  let prescId = null;
+  if (role === 'prescripteur') {
+    prescId = parseInt(document.getElementById('nu_prescripteur')?.value || '', 10);
+    if (!prescId) {
+      errEl.textContent = 'Choisissez le soignant auquel rattacher ce compte.';
+      return;
+    }
+  }
+
   const { data, error } = await _sb.rpc('create_user_admin', {
     p_token: TK(),
     p_new_username: username,
     p_new_password: password,
     p_new_role: role,
+    p_prescripteur_id: prescId,
   });
   if (error) {
     console.error('Erreur create_user_admin:', error);

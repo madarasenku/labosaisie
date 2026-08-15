@@ -1,4 +1,4 @@
-# 📋 PASSATION — Projet LaboSaisie (v13.92)
+# 📋 PASSATION — Projet LaboSaisie (v13.103)
 
 > **Pour Madara** : dans une nouvelle tâche Cowork, colle ce document.
 > Tu n'as **rien à joindre** : tout est sur GitHub, le nouveau Claude clonera
@@ -7,37 +7,26 @@
 
 ---
 
-## 🔴 LA SEULE URGENCE
+## ✅ LE SITE SECONDAIRE EST ARRÊTÉ (15 août 2026)
 
-**Le second site en ligne parle à la base de PRODUCTION.**
+`labosaisie-v2` a servi de banc d'essai du 11 au 15 août. Tout ce qui en vaut
+la peine a été **réuni dans ce dépôt** en v13.103, l'identité du second site
+en moins (base distincte, bandeau orange, préfixes `v2_`). Sa publication
+GitHub Pages est **coupée** : le dépôt reste en archive, le site n'est plus
+en ligne, et le risque de saisir dans la mauvaise base a disparu avec lui.
 
-`https://madarasenku.github.io/labosaisie-v2/` a été publié à partir d'une
-copie conforme du site principal, *avant* qu'on lui donne sa propre base. Il
-pointe donc sur `uvxxbihlagfncraokqlg`, sans bandeau, sans rien qui distingue
-les deux. Quelqu'un qui ouvre ce lien saisit dans les vraies fiches patients
-en croyant être sur un bac à sable.
-
-Le correctif existe : il est **commité en local sur la branche `site-v2`**
-(commit `01cff20`, 15 fichiers) et n'a pas pu être poussé — le proxy Git de la
-session n'autorise l'écriture que sur `madarasenku/labosaisie`.
-
-**Deux façons de refermer ça, par ordre de préférence :**
-
-1. Rattacher `madarasenku/labosaisie-v2` **en écriture** aux sources de la
-   tâche Cowork, puis pousser :
-   `git push copie site-v2:main --force-with-lease`
-2. En attendant, couper la publication : dépôt `labosaisie-v2` → Settings →
-   Pages → Source → **None**. Le site disparaît, le risque avec.
-
-Un fichier `.patch` de ce commit a aussi été livré dans la conversation du
-11 août, applicable avec `git am` depuis n'importe quel poste équipé de git.
+⚠️ Deux sessions ont travaillé en parallèle sur les deux dépôts pendant
+quatre jours, et une publication forcée a failli effacer douze commits. **Ne
+plus faire travailler deux sessions sur le même projet en parallèle**, ou
+alors sur des branches séparées. Et ne jamais contourner un refus de git du
+type « stale info » : c'est exactement le garde-fou qui a servi ce jour-là.
 
 ---
 
 ## 🎯 ÉTAT DU SITE PRINCIPAL — à jour et déployé
 
-Version **v13.92**, commit `17d7021` sur `main`, poussée sur GitHub Pages.
-La suite de tests est verte : **479 contrôles sur 16 fichiers**.
+Version **v13.103**, poussée sur GitHub Pages.
+La suite de tests est verte : **576 contrôles sur 22 fichiers**.
 
 Rien d'autre n'est en attente côté production.
 
