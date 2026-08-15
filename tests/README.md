@@ -40,6 +40,7 @@ node tests/filtres.test.js
 | `retour-arriere.test.js` | Instantanés nocturnes : liste des dates, analyse sans écriture, remise des fiches disparues, réparation d'une fiche isolée, confirmation obligatoire, réservé à l'admin |
 | `portail-soignant.test.js` | Portail du soignant : liste de ses seuls patients, aucun appel au registre du laboratoire, avertissement obligatoire sur un résultat non validé, absence de tout montant, refus du serveur respecté à l'écran, cloisonnement des rôles et redirection après connexion |
 | `verrou-paiement-unites.test.js` | Un dossier non encaissé ne s'imprime ni ne s'exporte (PDF, Excel), l'administrateur gardant la main pour les duplicatas ; une unité corrigée depuis Administration se retrouve sur la feuille imprimée, le PDF et l'Excel et non plus seulement à l'écran |
+| `coffre-fort.test.js` | Coffre-fort : le cahier jaune et les dossiers verrouillés réclament un second code, un code refusé ou un blocage n'ouvre rien, annuler ne bascule pas la vue, et tant qu'aucun code n'est défini rien ne change. **La protection elle-même vit dans la base** (`coffre_ouvert`), pas ici |
 | `tarifs.test.js` | Grille tarifaire partagée : base prioritaire sur le catalogue, cache hors-ligne, écriture réservée à l'admin, estimation des dossiers |
 | `ristournes-prescripteurs.test.js` | Flèches sur le sélecteur de mois des Ristournes (dont le passage d'année), recherche dans la liste des prescripteurs |
 

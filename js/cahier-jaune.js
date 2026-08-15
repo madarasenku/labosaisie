@@ -124,6 +124,19 @@ async function chargerCahierJaune(mois) {
   if (sel) sel.value = _cahierMois;
   if (typeof _sb === 'undefined' || !_sb) return;
 
+  // ✅ v13.104 — Le coffre garde le cahier. Le serveur refuserait de toute
+  // façon ; on demande le code ici pour que l'administrateur sache pourquoi,
+  // au lieu de voir un cahier vide.
+  if (typeof assurerCoffre === 'function') {
+    const ok = await assurerCoffre('Le cahier jaune est protégé par le code du coffre.');
+    if (!ok) {
+      const z = document.getElementById('cahier-tableau');
+      if (z) z.innerHTML = '<div style="color:#64748b">🔐 Cahier fermé. '
+        + 'Rouvrez l\'onglet pour saisir le code.</div>';
+      return;
+    }
+  }
+
   try {
     showLoading('Chargement du cahier…');
     const { data, error } = await _sb.rpc('get_cahier_jaune',
@@ -134,6 +147,8 @@ async function chargerCahierJaune(mois) {
       if (z) z.innerHTML = '<div style="color:#b91c1c">'
         + (data?.erreur === 'forbidden'
             ? 'Le cahier jaune ne vous est pas ouvert.'
+            : data?.erreur === 'coffre_ferme'
+            ? '🔐 Coffre fermé — rouvrez l\'onglet pour saisir le code.'
             : 'Cahier indisponible' + (data?.erreur ? ' (' + data.erreur + ')' : ''))
         + '</div>';
       return;

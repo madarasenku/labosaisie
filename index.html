@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.103">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.104">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,21 +25,21 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.103"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.103"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.103"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.103"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.103"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.104"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.104"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.104"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.104"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.104"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.103"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.103">
+<script src="./js/qr-generator.js?v=13.104"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.104">
 </head>
 <body>
 
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.103"></script>
+<script src="./js/pwa-manifest.js?v=13.104"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -1509,6 +1509,43 @@
     <!-- ✅ v13.77 — Sauvegarde complète, téléchargée sur le poste de l'admin.
          Le dépôt GitHub étant public, aucun export n'y est jamais déposé. -->
     <div id="ac-sauvegarde" class="admin-sub-section">
+
+      <!-- ✅ v13.104 — LE COFFRE-FORT.
+           Un second secret, distinct du mot de passe : celui qui entrerait
+           avec le compte administrateur se heurte encore à ce code. -->
+      <div class="card" id="coffre-card">
+        <div class="section-title"><span>🔐 Coffre-fort</span></div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 10px">
+          Ce code — <strong>différent de votre mot de passe</strong> — est exigé pour ouvrir
+          le cahier jaune et pour révéler les dossiers verrouillés. L'accès se referme
+          tout seul au bout de 15 minutes. Il protège contre un poste laissé ouvert et
+          contre un mot de passe deviné ; il ne protège pas contre un accès direct à la
+          base, pour lequel il faut garder le compte Supabase.
+        </p>
+        <div id="coffre-etat" style="font-size:12.5px;margin-bottom:12px"></div>
+        <div id="coffre-actuel-bloc" style="display:none;margin-bottom:8px">
+          <label style="display:block;font-size:12.5px;margin-bottom:4px">Code actuel</label>
+          <input type="password" id="coffre-actuel" autocomplete="off" style="width:100%">
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:12.5px;margin-bottom:4px">Nouveau code (6 caractères minimum)</label>
+          <input type="password" id="coffre-nouveau" autocomplete="off" style="width:100%">
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:12.5px;margin-bottom:4px">Confirmer le nouveau code</label>
+          <input type="password" id="coffre-confirme" autocomplete="off" style="width:100%">
+        </div>
+        <div id="coffre-admin-err" style="color:var(--danger);font-size:12.5px;min-height:16px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn" onclick="enregistrerCodeCoffre()">Enregistrer le code</button>
+          <button class="btn btn-ghost" onclick="fermerCoffre()">Refermer le coffre maintenant</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--text-muted);margin:10px 0 0;line-height:1.5">
+          Notez ce code ailleurs qu'ici. Si vous l'oubliez, rien n'est perdu — les données
+          restent en base — mais il faudra une intervention technique pour le réinitialiser.
+        </p>
+      </div>
+
       <div class="card" id="sauvegarde-card">
         <div class="section-title"><span>💾 Sauvegarde de la base</span></div>
         <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
@@ -2015,16 +2052,16 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.103"></script>
-<script src="./js/donnees-analyses.js?v=13.103"></script>
-<script src="./js/navigation.js?v=13.103"></script>
-<script src="./js/supabase-db.js?v=13.103"></script>
-<script src="./js/historique.js?v=13.103"></script>
-<script src="./js/export-excel.js?v=13.103"></script>
-<script src="./js/prescripteurs.js?v=13.103"></script>
-<script src="./js/saisie.js?v=13.103"></script>
-<script src="./js/ui-auth.js?v=13.103"></script>
-<script src="./js/session-pwa.js?v=13.103"></script>
+<script src="./js/periode-nav.js?v=13.104"></script>
+<script src="./js/donnees-analyses.js?v=13.104"></script>
+<script src="./js/navigation.js?v=13.104"></script>
+<script src="./js/supabase-db.js?v=13.104"></script>
+<script src="./js/historique.js?v=13.104"></script>
+<script src="./js/export-excel.js?v=13.104"></script>
+<script src="./js/prescripteurs.js?v=13.104"></script>
+<script src="./js/saisie.js?v=13.104"></script>
+<script src="./js/ui-auth.js?v=13.104"></script>
+<script src="./js/session-pwa.js?v=13.104"></script>
 
 </div><!-- /#app-root -->
 
@@ -2106,12 +2143,13 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.103"></script>
-<script src="./js/impression.js?v=13.103"></script>
-<script src="./js/export-pdf.js?v=13.103"></script>
-<script src="./js/sauvegarde.js?v=13.103"></script>
-<script src="./js/cloture-caisse.js?v=13.103"></script>
-<script src="./js/cahier-jaune.js?v=13.103"></script>
+<script src="./js/stats.js?v=13.104"></script>
+<script src="./js/impression.js?v=13.104"></script>
+<script src="./js/export-pdf.js?v=13.104"></script>
+<script src="./js/sauvegarde.js?v=13.104"></script>
+<script src="./js/cloture-caisse.js?v=13.104"></script>
+<script src="./js/coffre.js?v=13.104"></script>
+<script src="./js/cahier-jaune.js?v=13.104"></script>
 
 <script>
 /* ── Navigation rapide dans les tables de résultats (v13.95) ──────────────
