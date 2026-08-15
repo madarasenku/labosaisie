@@ -240,6 +240,16 @@ des fiches verrouillées, la bonne réponse est de les écarter en silence.
 
 ## ⚠️ AUTRES PIÈGES DÉCOUVERTS À LA DURE
 
+0. **Supabase rejette tout UPDATE/DELETE sans WHERE — mais seulement par
+   l'API.** Le rôle `postgres` (appels directs, `execute_sql`, l'éditeur SQL)
+   n'a pas ce garde-fou ; les rôles `anon`/`authenticated` (le navigateur) si.
+   Piège maximal : une fonction SECURITY DEFINER avec un `update … set … ;`
+   sans WHERE répond **`ok`** depuis un test SQL et **`400 — UPDATE requires a
+   WHERE clause`** depuis l'application. Ne jamais valider une fonction
+   joignable par le client uniquement en SQL : la tester par le chemin réel,
+   ou relire chaque UPDATE/DELETE. (`definir_code_coffre`, v13.106.)
+
+
 1. **`setval` n'est PAS transactionnel.** Un `setval` exécuté dans une
    transaction annulée laisse quand même la séquence déplacée. La séquence des
    dossiers a sauté à 9 999 001 comme ça, et il a fallu la remettre à la main.
