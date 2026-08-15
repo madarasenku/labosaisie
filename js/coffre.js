@@ -79,7 +79,16 @@ async function enregistrerCodeCoffre() {
   const { data, error } = await _sb.rpc('definir_code_coffre',
     { p_token: TK(), p_code_actuel: actuel || null, p_nouveau_code: nouveau });
 
-  if (error) { if (err) err.textContent = 'Le serveur n\'a pas répondu.'; return; }
+  if (error) {
+    // ✅ v13.106 — On AFFICHE l'erreur du serveur au lieu de la remplacer par
+    // une phrase vague. « Le serveur n'a pas répondu » est faux quand il a
+    // répondu, et il a justement répondu pourquoi : masquer ce message coûte
+    // un aller-retour entier à chaque incident.
+    console.error('definir_code_coffre :', error);
+    if (err) err.textContent = 'Refusé par le serveur : '
+      + (error.message || error.hint || error.details || JSON.stringify(error));
+    return;
+  }
   if (data === 'code_actuel_incorrect') { if (err) err.textContent = 'Second mot de passe actuel incorrect.'; return; }
   if (data === 'code_trop_court')       { if (err) err.textContent = 'Trop court (8 caractères minimum).'; return; }
   if (data === 'identique_au_mot_de_passe') {
