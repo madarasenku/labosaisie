@@ -386,7 +386,7 @@ async function renderUsersList() {
   }
   b.innerHTML = data.map(u => {
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : '🔬 Agent';
+    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
     return `
@@ -539,6 +539,77 @@ async function initApp() {
 // ÉDITEUR DE VALEURS DE RÉFÉRENCE (admin)
 // ============================================================
 
+// ✅ v13.101 — Valeurs de référence DÉRIVÉES des listes canoniques : source
+// unique des identifiants et des noms. Un paramètre ne peut plus figurer ici
+// sans réplique ailleurs, ni porter un identifiant divergent. Les quelques
+// valeurs cliniques que les listes canoniques ne portent pas (seuils
+// sérologiques, formule leucocytaire exprimée en %) sont fournies par un petit
+// overlay, TOUJOURS keyé par l'identifiant canonique.
+function refsSections() {
+  const HEMAP  = typeof HEMA_PARAMS     !== 'undefined' ? HEMA_PARAMS     : [];
+  const HEMAFL = typeof HEMA_FL         !== 'undefined' ? HEMA_FL         : [];
+  const EPHB   = typeof EPHB_FRACTIONS  !== 'undefined' ? EPHB_FRACTIONS  : [];
+  const WIDAL  = typeof WIDAL_ANTIGENES !== 'undefined' ? WIDAL_ANTIGENES : [];
+  const SEROT  = typeof SERO_TESTS      !== 'undefined' ? SERO_TESTS      : [];
+  const B = {
+    glu:  typeof BIO_GLUCIDES!=='undefined'?BIO_GLUCIDES:[], rein: typeof BIO_REIN!=='undefined'?BIO_REIN:[],
+    foie: typeof BIO_FOIE!=='undefined'?BIO_FOIE:[],         lip:  typeof BIO_LIPIDES!=='undefined'?BIO_LIPIDES:[],
+    iono: typeof BIO_IONO!=='undefined'?BIO_IONO:[],         fer:  typeof BIO_FER!=='undefined'?BIO_FER:[],
+    coag: typeof BIO_COAG!=='undefined'?BIO_COAG:[],         card: typeof BIO_CARD!=='undefined'?BIO_CARD:[],
+    horm: typeof BIO_HORM!=='undefined'?BIO_HORM:[],         autre:typeof BIO_AUTRE!=='undefined'?BIO_AUTRE:[],
+  };
+  const BNFS = typeof BPN_NFS!=='undefined'?BPN_NFS:[];  const BFL  = typeof BPN_FL !=='undefined'?BPN_FL :[];
+  const BBIO = typeof BPN_BIO!=='undefined'?BPN_BIO:[];  const BSERO= typeof BPN_SERO!=='undefined'?BPN_SERO:[];
+
+  // Overlays : valeurs cliniques absentes des listes canoniques, keyées par id canonique.
+  const FL_PCT = { pnn:{unit:'%',ref:'50–70',lo:50,hi:70}, pne:{unit:'%',ref:'1–5',lo:1,hi:5},
+    pnb:{unit:'%',ref:'0–1',lo:0,hi:1}, lymp:{unit:'%',ref:'20–40',lo:20,hi:40}, mono:{unit:'%',ref:'2–10',lo:2,hi:10} };
+  const SERO_DEF = { hbsac:{ref:'> 10 (protecteur)',lo:10,hi:9999}, toxo:{ref:'> 8 (immunisé)',lo:8,hi:9999},
+    rubig:{ref:'> 10 (immunisé)',lo:10,hi:9999}, aso:{ref:'< 200',lo:0,hi:200}, tsh:{ref:'0.4–4.0',lo:0.4,hi:4.0},
+    ft4:{ref:'12–22',lo:12,hi:22}, psa:{ref:'< 4.0',lo:0,hi:4.0} };
+  const BPNSERO_DEF = { bpn_hbsac:{lo:10,hi:9999}, bpn_toxog:{lo:8,hi:9999}, bpn_rubg:{lo:10,hi:9999} };
+
+  const row = (x, ov) => { ov = ov || {}; return {
+    id:   ov.id   != null ? ov.id   : x.id,
+    name: ov.name != null ? ov.name : x.name,
+    unit: ov.unit != null ? ov.unit : (x.unit || ''),
+    ref:  ov.ref  != null ? ov.ref  : (x.ref != null ? x.ref : (x.lo!=null&&x.hi!=null ? (x.lo+'–'+x.hi) : '')),
+    lo:   ov.lo   != null ? ov.lo   : x.lo,
+    hi:   ov.hi   != null ? ov.hi   : x.hi,
+  }; };
+  const from = (list, map) => (list||[]).map(x => row(x, map ? map(x) : null));
+
+  return [
+    { label:'🩸 Hématologie — NFS', id:'nfs',
+      params: from(HEMAP, x => ({ ref: x.refM || x.refF || null,
+        hi: (x.hi!=null?x.hi:(x.hiF!=null?x.hiF:x.hiM)) })) },
+    { label:'🩸 Formule leucocytaire', id:'fl', note:'Valeurs usuelles en pourcentage.',
+      params: from(HEMAFL, x => FL_PCT[x.id]) },
+    { label:"🔬 Électrophorèse de l'hémoglobine", id:'ephb', params: from(EPHB) },
+    { label:'🔵 Sérodiagnostic de Widal — Seuils significatifs', id:'widal',
+      note:'Le seuil est la valeur minimale de lo. Ex: lo=80 → 1/80 significatif.',
+      params: from(WIDAL, x => ({ id:'widal_'+x.id, unit:'dilution', ref:'1/'+x.seuil, lo:x.seuil, hi:9999 })) },
+    { label:'🧪 Biochimie — Glucides', id:'bio_glu', params: from(B.glu) },
+    { label:'🧪 Biochimie — Fonction rénale', id:'bio_rein', params: from(B.rein) },
+    { label:'🧪 Biochimie — Fonction hépatique & Pancréas', id:'bio_foie', params: from(B.foie) },
+    { label:'🧪 Biochimie — Lipides', id:'bio_lip', params: from(B.lip) },
+    { label:'🧪 Biochimie — Ionogramme & Minéraux', id:'bio_iono', params: from(B.iono) },
+    { label:'🧪 Biochimie — Fer & Hémostase', id:'bio_fer', params: from(B.fer).concat(from(B.coag)) },
+    { label:'❤️ Marqueurs cardiaques', id:'bio_card', params: from(B.card) },
+    { label:'🧬 Hormones & Vitamines', id:'bio_horm', params: from(B.horm) },
+    { label:'🔬 Autres marqueurs', id:'bio_autre', params: from(B.autre) },
+    { label:'🧫 Sérologie — Tests quantitatifs (valeurs normales)', id:'sero',
+      note:'Les tests qualitatifs (Positif/Négatif) n\'ont pas de plage numérique.',
+      params: from(SEROT.filter(t => t.type==='quant'), x => Object.assign({ id:'sero_'+x.id }, SERO_DEF[x.id] || {})) },
+    { label:'🤰 Bilan prénatal — NFS', id:'bpn_nfs', params: from(BNFS) },
+    { label:'🤰 Bilan prénatal — Formule leucocytaire', id:'bpn_fl', params: from(BFL) },
+    { label:'🤰 Bilan prénatal — Biochimie', id:'bpn_bio', params: from(BBIO) },
+    { label:'🤰 Bilan prénatal — Sérologies', id:'bpn_sero',
+      note:'Seuls les tests quantitatifs ont des seuils.',
+      params: from(BSERO.filter(t => t.type==='quant'), x => (BPNSERO_DEF[x.id] || {})) },
+  ];
+}
+
 function buildRefsEditor() {
   const card = document.getElementById('ac-refs');  // ✅ v13.33 — le sous-onglet remplace l'ancienne carte cachée
   if (!card) return;
@@ -548,219 +619,7 @@ function buildRefsEditor() {
   const custom = getCustomRefs();
 
   // ── Définition exhaustive : 90 paramètres, toutes sections ──
-  const SECTIONS = [
-    {
-      label: '🩸 Hématologie — NFS', id: 'nfs',
-      params: [
-        { id:'gbc',  name:'Globules blancs (GB)',         unit:'10³/µL', ref:'4–10',      lo:4,    hi:10   },
-        { id:'gr',   name:'Globules rouges (GR)',         unit:'10⁶/µL', ref:'4.0–5.5',   lo:4.0,  hi:5.5  },
-        { id:'hb',   name:'Hémoglobine (Hb)',             unit:'g/dL',   ref:'12–17',     lo:12,   hi:17   },
-        { id:'ht',   name:'Hématocrite (Ht)',              unit:'%',      ref:'37–54',     lo:37,   hi:54   },
-        { id:'vgm',  name:'VGM (calculé)',                unit:'fL',     ref:'80–100',    lo:80,   hi:100  },
-        { id:'tcmh', name:'TCMH (calculé)',               unit:'pg',     ref:'27–32',     lo:27,   hi:32   },
-        { id:'ccmh', name:'CCMH (calculé)',               unit:'g/dL',   ref:'32–36',     lo:32,   hi:36   },
-        { id:'plt',  name:'Plaquettes',                   unit:'/µL', ref:'150–400',   lo:150,  hi:400  },
-        { id:'ret',  name:'Réticulocytes',                unit:'%',      ref:'0.5–1.5',   lo:0.5,  hi:1.5  },
-        { id:'vs',   name:'VS (1ère heure)',              unit:'mm/h',   ref:'< 20',      lo:0,    hi:20   },
-      ]
-    },
-    {
-      label: '🩸 Formule leucocytaire', id: 'fl',
-      params: [
-        { id:'pnn',  name:'PNN (Polynucléaires neutrophiles)', unit:'%', ref:'50–70', lo:50, hi:70 },
-        { id:'pne',  name:'PNE (Éosinophiles)',               unit:'%', ref:'1–5',   lo:1,  hi:5  },
-        { id:'pnb',  name:'PNB (Basophiles)',                 unit:'%', ref:'0–1',   lo:0,  hi:1  },
-        { id:'lymp', name:'Lymphocytes',                      unit:'%', ref:'20–40', lo:20, hi:40 },
-        { id:'mono', name:'Monocytes',                        unit:'%', ref:'2–10',  lo:2,  hi:10 },
-      ]
-    },
-    {
-      label: '🔬 Électrophorèse de l\'hémoglobine', id: 'ephb',
-      params: [
-        { id:'ephb_a',  name:'Hb A',  unit:'%', ref:'95–97',   lo:95,  hi:97  },
-        { id:'ephb_a2', name:'Hb A2', unit:'%', ref:'1.5–3.5', lo:1.5, hi:3.5 },
-        { id:'ephb_f',  name:'Hb F',  unit:'%', ref:'< 2',     lo:0,   hi:2   },
-        { id:'ephb_s',  name:'Hb S',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
-        { id:'ephb_c',  name:'Hb C',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
-        { id:'ephb_d',  name:'Hb D',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
-        { id:'ephb_e',  name:'Hb E',  unit:'%', ref:'0 (absent)', lo:0, hi:0  },
-      ]
-    },
-    {
-      label: '🔵 Sérodiagnostic de Widal — Seuils significatifs', id: 'widal',
-      note: 'Le seuil est la valeur minimale de lo. Ex: lo=80 → 1/80 significatif.',
-      params: [
-        { id:'widal_to', name:'Salmonella typhi O (TO)',       unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
-        { id:'widal_th', name:'Salmonella typhi H (TH)',       unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
-        { id:'widal_ao', name:'Salmonella paratyphi A O (AO)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
-        { id:'widal_bo', name:'Salmonella paratyphi B O (BO)', unit:'dilution', ref:'1/80',  lo:80, hi:9999 },
-      ]
-    },
-    {
-      label: '🧪 Biochimie — Glucides', id: 'bio_glu',
-      params: [
-        { id:'gly', name:'Glycémie à jeun', unit:'g/L', ref:'0.60–1.10', lo:0.60, hi:1.10 },
-        { id:'hba', name:'HbA1c',           unit:'%',   ref:'< 6.0',     lo:0,    hi:6.0  },
-      ]
-    },
-    {
-      label: '🧪 Biochimie — Fonction rénale', id: 'bio_rein',
-      params: [
-        { id:'crea', name:'Créatinine',                unit:'mg/L',          ref:'4–16',       lo:4,    hi:16   },
-        { id:'uree', name:'Urée',                      unit:'g/L',           ref:'0.15–0.45',  lo:0.15, hi:0.45 },
-        { id:'ua',   name:'Acide urique',              unit:'mg/L',          ref:'25–70',      lo:25,   hi:70   },
-        { id:'malb', name:'Microalbuminurie',          unit:'mg/24h',        ref:'30–300',     lo:30,   hi:300  },
-        { id:'dfg',  name:'Clairance créatinine (DFG)',unit:'mL/min/1.73m²',ref:'> 90',       lo:90,   hi:999  },
-      ]
-    },
-    {
-      label: '🧪 Biochimie — Fonction hépatique & Pancréas', id: 'bio_foie',
-      params: [
-        { id:'asat',  name:'ASAT (TGO)',               unit:'UI/L', ref:'< 40',    lo:0,   hi:40  },
-        { id:'alat',  name:'ALAT (TGP)',               unit:'UI/L', ref:'< 40',    lo:0,   hi:40  },
-        { id:'ggt',   name:'Gamma GT',                 unit:'UI/L', ref:'< 55',    lo:0,   hi:55  },
-        { id:'pal',   name:'Phosphatases alcalines',   unit:'UI/L', ref:'44–147',  lo:44,  hi:147 },
-        { id:'bili',  name:'Bilirubine totale',        unit:'mg/L', ref:'< 10',    lo:0,   hi:10  },
-        { id:'bilid', name:'Bilirubine directe',       unit:'mg/L', ref:'< 3',     lo:0,   hi:3   },
-        { id:'prot',  name:'Protéines totales',        unit:'g/L',  ref:'60–80',   lo:60,  hi:80  },
-        { id:'alb',   name:'Albumine',                 unit:'g/L',  ref:'35–50',   lo:35,  hi:50  },
-        { id:'ldh',   name:'LDH',                      unit:'UI/L', ref:'100–200', lo:100, hi:200 },
-        { id:'amy',   name:'Amylase',                  unit:'UI/L', ref:'10–90',   lo:10,  hi:90  },
-        { id:'lip',   name:'Lipase',                   unit:'UI/L', ref:'< 60',    lo:0,   hi:60  },
-      ]
-    },
-    {
-      label: '🧪 Biochimie — Lipides', id: 'bio_lip',
-      params: [
-        { id:'chol', name:'Cholestérol total',   unit:'g/L',   ref:'< 2.0',   lo:0,    hi:2.0  },
-        { id:'trig', name:'Triglycérides',       unit:'g/L',   ref:'< 1.7',   lo:0,    hi:1.7  },
-        { id:'hdl',  name:'HDL-cholestérol',     unit:'g/L',   ref:'> 0.50',  lo:0.50, hi:99   },
-        { id:'ldl',  name:'LDL-cholestérol',     unit:'g/L',   ref:'< 1.30',  lo:0,    hi:1.30 },
-        { id:'apoa', name:'Apolipoprotéine A1',  unit:'g/L',   ref:'1.1–2.1', lo:1.1,  hi:2.1  },
-        { id:'apob', name:'Apolipoprotéine B',   unit:'g/L',   ref:'0.5–1.3', lo:0.5,  hi:1.3  },
-        { id:'lpa',  name:'Lipoprotéine (a)',    unit:'mg/dL', ref:'< 30',    lo:0,    hi:30   },
-      ]
-    },
-    {
-      label: '🧪 Biochimie — Ionogramme & Minéraux', id: 'bio_iono',
-      params: [
-        { id:'na',   name:'Sodium (Na⁺)',          unit:'mmol/L', ref:'135–145',  lo:135,  hi:145  },
-        { id:'k',    name:'Potassium (K⁺)',         unit:'mmol/L', ref:'3.5–5.0',  lo:3.5,  hi:5.0  },
-        { id:'cl',   name:'Chlore (Cl⁻)',           unit:'mmol/L', ref:'98–107',   lo:98,   hi:107  },
-        { id:'ca',   name:'Calcium (Ca²⁺)',         unit:'mg/L',   ref:'88–104',   lo:88,   hi:104  },
-        { id:'phos', name:'Phosphore',              unit:'mg/L',   ref:'25–45',    lo:25,   hi:45   },
-        { id:'mg',   name:'Magnésium (Mg²⁺)',       unit:'mg/L',   ref:'17–24',    lo:17,   hi:24   },
-        { id:'bic',  name:'Bicarbonates (HCO₃⁻)',  unit:'mmol/L', ref:'22–28',    lo:22,   hi:28   },
-        { id:'zinc', name:'Zinc',                   unit:'µmol/L', ref:'11–22',    lo:11,   hi:22   },
-        { id:'cuiv', name:'Cuivre',                 unit:'µmol/L', ref:'11–22',    lo:11,   hi:22   },
-      ]
-    },
-    {
-      label: '🧪 Biochimie — Fer & Hémostase', id: 'bio_fer',
-      params: [
-        { id:'fer',  name:'Fer sérique',    unit:'µmol/L', ref:'10–30',  lo:10,  hi:30  },
-        { id:'ferr', name:'Ferritine',      unit:'µg/L',   ref:'20–300', lo:20,  hi:300 },
-        { id:'ddim', name:'D-Dimères',      unit:'µg/L',   ref:'< 500',  lo:0,   hi:500 },
-        { id:'tp',   name:'TP / INR',       unit:'%',      ref:'70–100', lo:70,  hi:100 },
-        { id:'tca',  name:'TCA',            unit:'s',      ref:'28–38',  lo:28,  hi:38  },
-        { id:'fibr', name:'Fibrinogène',    unit:'g/L',    ref:'2.0–4.0',lo:2.0, hi:4.0 },
-      ]
-    },
-    {
-      label: '❤️ Marqueurs cardiaques', id: 'bio_card',
-      params: [
-        { id:'trop', name:'Troponine I/T',      unit:'ng/L',  ref:'< 14',   lo:0,  hi:14  },
-        { id:'bnp',  name:'BNP / NT-proBNP',   unit:'pg/mL', ref:'< 125',  lo:0,  hi:125 },
-        { id:'ck',   name:'CK',                 unit:'UI/L',  ref:'< 170',  lo:0,  hi:170 },
-        { id:'ckmb', name:'CK-MB',              unit:'UI/L',  ref:'< 25',   lo:0,  hi:25  },
-        { id:'myog', name:'Myoglobine',         unit:'µg/L',  ref:'< 90',   lo:0,  hi:90  },
-      ]
-    },
-    {
-      label: '🧬 Hormones & Vitamines', id: 'bio_horm',
-      params: [
-        { id:'cort', name:'Cortisol (8h)',       unit:'nmol/L', ref:'170–550', lo:170, hi:550 },
-        { id:'acth', name:'ACTH',                unit:'pg/mL',  ref:'10–60',   lo:10,  hi:60  },
-        { id:'lh',   name:'LH',                  unit:'UI/L',   ref:'',        lo:0,   hi:999 },
-        { id:'fsh',  name:'FSH',                 unit:'UI/L',   ref:'',        lo:0,   hi:999 },
-        { id:'e2',   name:'Estradiol (E2)',       unit:'ng/mL',  ref:'3–15',    lo:3,   hi:15  },
-        { id:'prog', name:'Progestérone',         unit:'ng/mL',  ref:'',        lo:0,   hi:999 },
-        { id:'test', name:'Testostérone',         unit:'ng/mL',  ref:'',        lo:0,   hi:999 },
-        { id:'prl',  name:'Prolactine',           unit:'mUI/L',  ref:'< 500',   lo:0,   hi:500 },
-        { id:'amh',  name:'AMH',                  unit:'ng/mL',  ref:'1–7',     lo:1,   hi:7   },
-        { id:'vitd', name:'Vitamine D (25-OH)',   unit:'ng/mL',  ref:'30–100',  lo:30,  hi:100 },
-        { id:'b12',  name:'Vitamine B12',         unit:'pg/mL',  ref:'200–950', lo:200, hi:950 },
-        { id:'fol',  name:'Folates (B9)',         unit:'ng/mL',  ref:'5–20',    lo:5,   hi:20  },
-        { id:'pth',  name:'PTH (parathormone)',   unit:'ng/L',   ref:'15–65',   lo:15,  hi:65  },
-      ]
-    },
-    {
-      label: '🔬 Autres marqueurs', id: 'bio_autre',
-      params: [
-        { id:'pct',  name:'Procalcitonine (PCT)',    unit:'µg/L',   ref:'< 0.1',   lo:0,   hi:0.1 },
-        { id:'hcrp', name:'CRP ultra-sensible',      unit:'mg/L',   ref:'< 1.0',   lo:0,   hi:1.0 },
-        { id:'osm',  name:'Osmolarité',              unit:'mOsm/L', ref:'275–295', lo:275, hi:295 },
-        { id:'hcy',  name:'Homocystéine',            unit:'µmol/L', ref:'5–15',    lo:5,   hi:15  },
-        { id:'amm',  name:'Ammoniaque',              unit:'µmol/L', ref:'10–50',   lo:10,  hi:50  },
-        { id:'lact', name:'Acide lactique',          unit:'mmol/L', ref:'0.5–1.8', lo:0.5, hi:1.8 },
-        { id:'bhcg', name:'Beta-HCG',               unit:'UI/L',   ref:'< 5',     lo:0,   hi:5   },
-      ]
-    },
-    {
-      label: '🧫 Sérologie — Tests quantitatifs (valeurs normales)', id: 'sero',
-      note: 'Les tests qualitatifs (Positif/Négatif) n\'ont pas de plage numérique.',
-      params: [
-        { id:'sero_hbsac', name:'Ac anti-HBs',                 unit:'UI/L',   ref:'> 10 (protecteur)', lo:10,   hi:9999 },
-        { id:'sero_toxo',  name:'Toxoplasmose IgG',            unit:'UI/mL',  ref:'> 8 (immunisé)',    lo:8,    hi:9999 },
-        { id:'sero_rubig', name:'Rubéole IgG',                 unit:'UI/mL',  ref:'> 10 (immunisé)',   lo:10,   hi:9999 },
-        { id:'sero_crp',   name:'CRP (Protéine C-réactive)',   unit:'mg/L',   ref:'< 6',              lo:0,    hi:6    },
-        { id:'sero_aso',   name:'ASLO (Antistreptolysines)',   unit:'UI/mL',  ref:'< 200',            lo:0,    hi:200  },
-        { id:'sero_tsh',   name:'TSH',                         unit:'mUI/L',  ref:'0.4–4.0',          lo:0.4,  hi:4.0  },
-        { id:'sero_ft4',   name:'T4 libre (FT4)',              unit:'pmol/L', ref:'12–22',            lo:12,   hi:22   },
-        { id:'sero_psa',   name:'PSA total',                   unit:'ng/mL',  ref:'< 4.0',            lo:0,    hi:4.0  },
-      ]
-    },
-    {
-      label: '🤰 Bilan prénatal — NFS', id: 'bpn_nfs',
-      params: [
-        { id:'bpn_gb',   name:'Globules blancs (GB)',  unit:'/µL', ref:'6–16',     lo:6,    hi:16   },
-        { id:'bpn_gr',   name:'Globules rouges (GR)',  unit:'10⁶/µL', ref:'3.5–5.0',  lo:3.5,  hi:5.0  },
-        { id:'bpn_hb',   name:'Hémoglobine (Hb)',      unit:'g/dL',   ref:'≥ 11.0',   lo:11.0, hi:16.0 },
-        { id:'bpn_ht',   name:'Hématocrite (Ht)',       unit:'%',      ref:'≥ 33',     lo:33,   hi:47   },
-        { id:'bpn_vgm',  name:'VGM (calculé)',          unit:'fL',     ref:'80–100',   lo:80,   hi:100  },
-        { id:'bpn_tcmh', name:'TCMH (calculé)',         unit:'pg',     ref:'27–32',    lo:27,   hi:32   },
-        { id:'bpn_ccmh', name:'CCMH (calculé)',         unit:'g/dL',   ref:'32–36',    lo:32,   hi:36   },
-        { id:'bpn_plt',  name:'Plaquettes',             unit:'/µL', ref:'150–400',  lo:150,  hi:400  },
-      ]
-    },
-    {
-      label: '🤰 Bilan prénatal — Formule leucocytaire', id: 'bpn_fl',
-      params: [
-        { id:'bpn_pnn',  name:'PNN', unit:'%', ref:'50–70', lo:50, hi:70 },
-        { id:'bpn_pne',  name:'PNE', unit:'%', ref:'1–5',   lo:1,  hi:5  },
-        { id:'bpn_pnb',  name:'PNB', unit:'%', ref:'0–1',   lo:0,  hi:1  },
-        { id:'bpn_lymp', name:'Lymphocytes', unit:'%', ref:'20–40', lo:20, hi:40 },
-        { id:'bpn_mono', name:'Monocytes',   unit:'%', ref:'2–10',  lo:2,  hi:10 },
-      ]
-    },
-    {
-      label: '🤰 Bilan prénatal — Biochimie', id: 'bpn_bio',
-      params: [
-        { id:'bpn_gly',  name:'Glycémie',   unit:'g/L',    ref:'0.70–0.92', lo:0.70, hi:0.92 },
-        { id:'bpn_crea', name:'Créatinine', unit:'µmol/L', ref:'35–90',     lo:35,   hi:90   },
-        { id:'bpn_uree', name:'Urée',       unit:'mmol/L', ref:'2.0–6.5',   lo:2.0,  hi:6.5  },
-      ]
-    },
-    {
-      label: '🤰 Bilan prénatal — Sérologies', id: 'bpn_sero',
-      note: 'Les tests qualitatifs sont affichés pour information. Seuls les quantitatifs ont des seuils.',
-      params: [
-        { id:'bpnsero_hbsac', name:'Ac anti-HBs (protection)', unit:'UI/L',  ref:'> 10 UI/L', lo:10,  hi:9999 },
-        { id:'bpnsero_toxog', name:'Toxoplasmose IgG',          unit:'UI/mL', ref:'> 8',       lo:8,   hi:9999 },
-        { id:'bpnsero_rubg',  name:'Rubéole IgG',               unit:'UI/mL', ref:'> 10',      lo:10,  hi:9999 },
-      ]
-    },
-  ];
+  const SECTIONS = refsSections();
 
   function rowHTML(p, custom) {
     const cur    = custom[p.id] || {};

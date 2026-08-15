@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes patients — Laboratoire CPMI</title>
+<meta name="theme-color" content="#0b2545">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mes patients">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.103">
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.103"></script>
+<style>
+  /* Page volontairement autonome : elle ne charge NI app.css NI les modules
+     du laboratoire. Un soignant qui ouvre son portail sur un téléphone en
+     4G instable ne doit pas télécharger l'application de saisie complète —
+     et surtout, aucun code du registre ne doit pouvoir s'exécuter ici. */
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Poppins,system-ui,-apple-system,"Segoe UI",sans-serif;
+       background:#f1f5f9;color:#0f172a;font-size:15px;line-height:1.5}
+  header{background:#0b2545;color:#fff;padding:14px 18px;display:flex;
+         align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:50}
+  header h1{font-size:17px;font-weight:600;flex:1;min-width:180px}
+  header .qui{font-size:13px;opacity:.85}
+  header button{background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:8px;
+                padding:7px 13px;font:inherit;font-size:13px;cursor:pointer}
+  header button:hover{background:rgba(255,255,255,.24)}
+  main{max-width:920px;margin:0 auto;padding:16px}
+
+  /* Barre de stats */
+  .stats-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .stat-pill{background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+             padding:9px 16px;display:flex;align-items:center;gap:8px;font-size:14px}
+  .stat-pill .num{font-size:22px;font-weight:700;line-height:1}
+  .stat-pill.cours .num{color:#d97706}
+  .stat-pill.rendu .num{color:#16a34a}
+  .stat-pill.total .num{color:#0b2545}
+
+  /* Barre de filtres */
+  .barre{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .barre input,.barre select{padding:9px 12px;border:1px solid #cbd5e1;border-radius:9px;
+                             font:inherit;background:#fff}
+  .barre input[type=search]{flex:1;min-width:200px}
+
+  /* Carte patient */
+  .fiche{background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+         margin-bottom:9px;overflow:hidden;transition:border-color .12s,box-shadow .12s}
+  .fiche:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(15,23,42,.07)}
+  .fiche-en-tete{padding:13px 15px;cursor:pointer;display:flex;
+                 gap:12px;align-items:center;border-left:4px solid transparent}
+  .fiche.cours .fiche-en-tete{border-left-color:#f59e0b}
+  .fiche.rendu .fiche-en-tete{border-left-color:#22c55e}
+  .fiche .nom{font-weight:600}
+  .fiche .meta{font-size:13px;color:#64748b}
+  .fiche .droite{margin-left:auto;text-align:right;white-space:nowrap}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+  .b-rendu{background:#dcfce7;color:#166534}
+  .b-cours{background:#fef3c7;color:#92400e}
+  .examens-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+  .exam-pill{background:#f1f5f9;border-radius:6px;padding:2px 8px;
+             font-size:12px;color:#475569}
+
+  /* Corps de la carte (résultats inline) */
+  .fiche-corps{display:none;padding:0 15px 14px 19px;border-top:1px solid #f1f5f9}
+  .fiche.ouvert .fiche-corps{display:block}
+  .avert{background:#fef3c7;border:1px solid #fcd34d;color:#78350f;border-radius:10px;
+         padding:10px 13px;margin:10px 0;font-size:13px}
+  .avert strong{display:block;margin-bottom:2px}
+  .recap-table{width:100%;border-collapse:collapse;margin-top:10px}
+  .recap-table th,.recap-table td{text-align:left;padding:7px 6px;
+         border-bottom:1px solid #f1f5f9;font-size:13px}
+  .recap-table th{color:#64748b;font-weight:600;font-size:12px}
+  .recap-table td.valeur{font-weight:700;text-align:right;white-space:nowrap;color:#0b2545}
+  .pas-encore{color:#94a3b8;font-size:13px;font-style:italic;margin-top:10px}
+  .fiche-corps-chargement{color:#94a3b8;font-size:13px;margin-top:10px}
+
+  .vide{text-align:center;color:#64748b;padding:38px 12px}
+
+  @media print{
+    header,.barre,.stats-bar{display:none!important}
+    .fiche{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
+    .fiche-corps{display:block!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mes patients au laboratoire</h1>
+  <span class="qui" id="qui"></span>
+  <button type="button" id="btn-quitter">Se déconnecter</button>
+</header>
+
+<main>
+  <!-- Barre de statistiques -->
+  <div class="stats-bar" id="stats-bar" style="display:none!important"></div>
+
+  <div class="barre">
+    <input type="search" id="recherche" placeholder="Rechercher un nom ou un n° de dossier…"
+           autocomplete="off">
+    <select id="filtre-statut">
+      <option value="">Tous les statuts</option>
+      <option value="rendu">Résultats rendus</option>
+      <option value="cours">En cours</option>
+    </select>
+  </div>
+  <div id="liste"><div class="vide">Chargement…</div></div>
+</main>
+
+<script>
+/* Mêmes clés préfixées que le reste du site secondaire : le localStorage est
+   partagé par tout le domaine (voir README). */
+const SESSION_KEY = 'labo_session_user';
+const SUPABASE_URL = 'https://uvxxbihlagfncraokqlg.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_RPgz6piVcNONZOOcLmOCQw_5YPxZTd6';
+
+let _sb = null, _session = null, _fiches = [];
+/* Cache des détails déjà chargés : { [id]: data } */
+const _cache = {};
+
+function lireSession() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if (!s || !s.token || !s.expiresAt || Date.now() > s.expiresAt) return null;
+    return s;
+  } catch (e) { return null; }
+}
+
+function versLogin() { window.location.replace('login.html'); }
+
+function echapper(t) {
+  return String(t ?? '').replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function jourLisible(d) {
+  if (!d) return '';
+  const [a, m, j] = String(d).split('-');
+  return j && m && a ? `${j}/${m}/${a}` : d;
+}
+
+/* ── Barre de stats ─────────────────────────────────────────────────────── */
+function mettreAJourStats() {
+  const bar = document.getElementById('stats-bar');
+  if (!_fiches.length) { bar.style.display = 'none'; return; }
+  const cours = _fiches.filter(x => !x.rendu).length;
+  const rendu = _fiches.filter(x =>  x.rendu).length;
+  bar.innerHTML =
+    `<div class="stat-pill total"><span class="num">${_fiches.length}</span>patient${_fiches.length>1?'s':''} adressé${_fiches.length>1?'s':''}</div>` +
+    (cours ? `<div class="stat-pill cours"><span class="num">${cours}</span>en cours</div>` : '') +
+    (rendu ? `<div class="stat-pill rendu"><span class="num">${rendu}</span>rendu${rendu>1?'s':''}</div>` : '');
+  bar.style.removeProperty('display');
+}
+
+/* ── Liste ──────────────────────────────────────────────────────────────── */
+function dessinerListe() {
+  const q = document.getElementById('recherche').value.trim().toLowerCase();
+  const f = document.getElementById('filtre-statut').value;
+  let vus = _fiches.filter(x => {
+    if (f === 'rendu' && !x.rendu) return false;
+    if (f === 'cours' && x.rendu)  return false;
+    if (!q) return true;
+    return (x.nom || '').toLowerCase().includes(q)
+        || (x.dossier || '').toLowerCase().includes(q);
+  });
+
+  /* En cours en premier, puis les rendus, chacun par date décroissante */
+  vus.sort((a, b) => {
+    if (a.rendu !== b.rendu) return a.rendu ? 1 : -1;
+    return (b.date_prelevement || '').localeCompare(a.date_prelevement || '');
+  });
+
+  const el = document.getElementById('liste');
+  if (!vus.length) {
+    el.innerHTML = '<div class="vide">' +
+      (_fiches.length ? 'Aucun patient ne correspond à cette recherche.'
+                      : 'Aucun patient adressé au laboratoire pour le moment.') +
+      '</div>';
+    return;
+  }
+
+  el.innerHTML = vus.map(x => {
+    const pillsHTML = (x.examens || []).map(e =>
+      `<span class="exam-pill">${echapper(e)}</span>`).join('');
+    return `
+    <div class="fiche ${x.rendu ? 'rendu' : 'cours'}" data-id="${x.id}">
+      <div class="fiche-en-tete">
+        <div style="flex:1;min-width:0">
+          <div class="nom">${echapper(x.nom || 'Sans nom')}</div>
+          <div class="meta">N° ${echapper(x.dossier || '—')}
+            · ${echapper(x.age || '')} ${echapper(x.sexe || '')}</div>
+          ${pillsHTML ? `<div class="examens-pills">${pillsHTML}</div>` : ''}
+        </div>
+        <div class="droite">
+          <span class="badge ${x.rendu ? 'b-rendu' : 'b-cours'}">${x.rendu ? 'Rendu' : 'En cours'}</span>
+          <div class="meta">${jourLisible(x.date_prelevement)}</div>
+        </div>
+      </div>
+      <div class="fiche-corps" id="corps-${x.id}"></div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.fiche').forEach(n =>
+    n.querySelector('.fiche-en-tete').addEventListener('click', () =>
+      basculerFiche(Number(n.dataset.id), n)));
+}
+
+/* ── Résultats inline ───────────────────────────────────────────────────── */
+async function basculerFiche(id, noeud) {
+  const estOuvert = noeud.classList.contains('ouvert');
+
+  /* Fermer toutes les autres */
+  document.querySelectorAll('.fiche.ouvert').forEach(f => f.classList.remove('ouvert'));
+
+  if (estOuvert) return; /* simple toggle : clic sur la même = ferme */
+
+  noeud.classList.add('ouvert');
+  const corps = document.getElementById(`corps-${id}`);
+
+  /* Si déjà en cache, afficher directement */
+  if (_cache[id]) { afficherDetail(corps, _cache[id]); return; }
+
+  corps.innerHTML = '<div class="fiche-corps-chargement">Chargement…</div>';
+
+  const { data, error } = await _sb.rpc('get_prescription_full',
+    { p_token: _session.token, p_id: id });
+
+  if (error || !data || data.erreur) {
+    corps.innerHTML = '<div class="pas-encore">Ce dossier ne vous est pas accessible.</div>';
+    return;
+  }
+
+  _cache[id] = data;
+  afficherDetail(corps, data);
+}
+
+function afficherDetail(corps, data) {
+  const lignes = Object.entries(data.resultats || {});
+  let html = '';
+
+  if (!data.valide) {
+    html += '<div class="avert">'
+         +  '<strong>⏳ En cours — résultat non validé</strong>'
+         +  'Ces valeurs sont provisoires et peuvent encore changer. '
+         +  'Attendez la mention <strong>Rendu</strong> avant de fonder une décision dessus.</div>';
+  }
+
+  if (lignes.length) {
+    html += '<table class="recap-table">'
+         +  '<thead><tr><th>Analyse</th><th style="text-align:right">Résultat</th></tr></thead>'
+         +  '<tbody>'
+         +  lignes.map(([k, v]) =>
+              `<tr><td>${echapper(k)}</td><td class="valeur">${echapper(v)}</td></tr>`
+            ).join('')
+         +  '</tbody></table>';
+  } else {
+    html += '<div class="pas-encore">Prélèvement enregistré — aucune valeur saisie pour l\'instant.</div>';
+  }
+
+  corps.innerHTML = html;
+}
+
+/* ── Chargement initial ─────────────────────────────────────────────────── */
+async function charger() {
+  const { data, error } = await _sb.rpc('get_mes_prescriptions', { p_token: _session.token });
+  if (error) {
+    document.getElementById('liste').innerHTML =
+      '<div class="vide">Impossible de joindre le laboratoire.<br>' +
+      'Vérifiez votre connexion, puis réessayez.</div>';
+    return;
+  }
+  _fiches = Array.isArray(data) ? data : [];
+  mettreAJourStats();
+  dessinerListe();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  _session = lireSession();
+  if (!_session) return versLogin();
+  if (_session.role !== 'prescripteur') { window.location.replace('index.html'); return; }
+
+  document.getElementById('qui').textContent = _session.username || '';
+  _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  document.getElementById('recherche').addEventListener('input', dessinerListe);
+  document.getElementById('filtre-statut').addEventListener('change', dessinerListe);
+  document.getElementById('btn-quitter').addEventListener('click', async () => {
+    try { await _sb.rpc('logout_token', { p_token: _session.token }); } catch (e) {}
+    localStorage.removeItem(SESSION_KEY);
+    versLogin();
+  });
+
+  charger();
+});
+</script>
+</body>
+</html>

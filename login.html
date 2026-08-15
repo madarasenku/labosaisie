@@ -13,9 +13,9 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.94">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.103">
 <!-- ✅ v13.69 — bibliothèque hébergée localement (voir vendor/ et le commentaire d'index.html) -->
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.94"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.103"></script>
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -759,6 +759,15 @@ function initSupabase() {
   } catch(e) { return false; }
 }
 
+
+/* ── Où envoyer quelqu'un après sa connexion ──
+   Un soignant du centre n'ouvre jamais l'application du laboratoire : elle
+   charge tout le registre en mémoire et lui serait de toute façon refusée
+   par le serveur. Il a sa propre page, volontairement minuscule. */
+function pageDAccueil(role) {
+  return role === 'prescripteur' ? 'soignant.html' : 'index.html';
+}
+
 /* ── Vérification session existante ── */
 function hasValidSession() {
   const raw = localStorage.getItem(SESSION_KEY);
@@ -776,7 +785,9 @@ function hasValidSession() {
 /* ── Au chargement ── */
 document.addEventListener('DOMContentLoaded', () => {
   if (hasValidSession()) {
-    window.location.replace('index.html');
+    let r = null;
+    try { r = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}').role; } catch(e) {}
+    window.location.replace(pageDAccueil(r));
     return;
   }
   initSupabase();
@@ -860,7 +871,7 @@ async function doLogin() {
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
       btn.innerHTML = '<span class="btn-accent"></span>✅ Connexion réussie…';
-      window.location.replace('index.html');
+      window.location.replace(pageDAccueil(row.role));
 
     } else if (row && row.status === 'locked') {
       const mins = Math.max(1, Math.ceil((row.locked_seconds || 0) / 60));

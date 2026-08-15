@@ -957,10 +957,14 @@ function collectResults(type) {
     });
   } else if (type === 'Immuno-Sérologie') {
     SERO_TESTS.forEach(t => {
-      const selId = t.type === 'quant' ? 'sr_'+t.id+'_r' : 'sr_'+t.id;
+      // ✅ v13.102 — champs unifiés (sr_/sv_/so_) + mode qual/quant choisi à la
+      // saisie. La valeur chiffrée n'est conservée qu'en mode quantitatif.
+      const mode = document.getElementById('smode_'+t.id)?.value
+                   || (t.type === 'quant' ? 'quant' : 'qual');
       data[t.name] = {
-        resultat: document.getElementById(selId)?.value || '',
-        valeur:   document.getElementById('sv_'+t.id)?.value || '',
+        mode,
+        resultat: document.getElementById('sr_'+t.id)?.value || '',
+        valeur:   mode === 'quant' ? (document.getElementById('sv_'+t.id)?.value || '') : '',
         unite:    getUnit('sero_'+t.id, t.unit||''),
         obs:      document.getElementById('so_'+t.id)?.value || '',
       };
@@ -1165,7 +1169,10 @@ async function _saveRecordImpl(type) {
   if (!validatePatient(p)) return;
   // ✅ v13.35 — Bloquer la saisie si dossier non payé
   if (_editingRecordId && !isDossierPaye(_editingRecordId)) {
-    toast('🔒 Paiement requis avant la saisie des résultats', 'err');
+    // ✅ v13.103 — La saisie est libre depuis la v13.98 ; c'est l'ENREGISTREMENT
+    // qui exige le paiement. Le message d'avant parlait encore de la saisie et
+    // laissait croire à un blocage qui n'existe plus.
+    toast('🔒 Paiement requis avant d\'enregistrer ce dossier', 'err');
     showView('caisse');
     return;
   }
@@ -1884,8 +1891,12 @@ function loadResultsIntoForm(type, res) {
     SERO_TESTS.forEach(t => {
       const v = res[t.name];
       if (!v) return;
-      const selId = t.type === 'quant' ? 'sr_'+t.id+'_r' : 'sr_'+t.id;
-      setSel(selId, v.resultat);
+      // ✅ v13.102 — restaurer le mode qual/quant (dossiers anciens : déduit
+      // du type par défaut), puis les champs unifiés.
+      const mode = v.mode || (t.type === 'quant' ? 'quant' : 'qual');
+      setSel('smode_'+t.id, mode);
+      if (typeof toggleSeroMode === 'function') toggleSeroMode(t.id);
+      setSel('sr_'+t.id, v.resultat);
       setVal('sv_'+t.id, v.valeur);
       setVal('so_'+t.id, v.obs);
     });

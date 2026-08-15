@@ -288,6 +288,16 @@ async function buildAndPrint(r) {
     <style>
       .print-empty-row td { background: #fafafa !important; }
       .print-empty-row td:nth-child(2) { border-bottom: 1px dotted #9ca3af !important; min-width: 80px; }
+      @media print {
+        .print-val-hi { color: #b91c1c !important; font-weight: 700 !important; }
+        .print-val-lo { color: #1d4ed8 !important; font-weight: 700 !important; }
+        .print-val-hi::after { content: " ▲"; font-size: 9pt; }
+        .print-val-lo::after { content: " ▼"; font-size: 9pt; }
+      }
+      .print-val-hi { color: #b91c1c; font-weight: 700; }
+      .print-val-lo { color: #1d4ed8; font-weight: 700; }
+      .print-val-hi::after { content: " ▲"; font-size: 9pt; }
+      .print-val-lo::after { content: " ▼"; font-size: 9pt; }
     </style>
     <div class="print-header">
       <div class="print-header-bar"></div>
@@ -308,6 +318,7 @@ async function buildAndPrint(r) {
           <div class="print-center-addr">Grand-Bassam, Côte d'Ivoire · Tél : — · Email : —</div>
         </div>
         <div class="print-type-badge">${getDisplayType(r).toUpperCase()}</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-left:8px">__QR_PLACEHOLDER__</div>
       </div>
       <div class="print-header-bar bottom"></div>
     </div>
@@ -346,18 +357,14 @@ async function buildAndPrint(r) {
   ]);
 
   // ✅ v13.54 — QR agrandi (×2) dans l'angle SUPÉRIEUR GAUCHE du compte rendu
-  const qrBlock = `<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:8px">
-    ${qrUrl1 ? `<div style="text-align:center">
-      <img src="${qrUrl1}" width="176" height="176" style="display:block;border:2px solid #1e3a8a;border-radius:6px">
-      <div style="font-size:10px;color:#1e3a8a;font-weight:700;margin-top:4px">${shareToken ? 'Vérifier en ligne' : 'Info dossier'}</div>
-    </div>` : ''}
-    ${qrUrl2 ? `<div style="text-align:center">
-      <img src="${qrUrl2}" width="176" height="176" style="display:block;border:1px solid #9ca3af;border-radius:6px">
-      <div style="font-size:10px;color:#6b7280;margin-top:4px">Infos patient</div>
-    </div>` : ''}
-    <div style="font-size:8px;color:#6b7280;align-self:flex-end">Réf. ${refDoc}</div>
-  </div>`;
-  html = qrBlock + html;
+  // QR compacts (70px) intégrés dans l'en-tête — v13.95
+  const qrSmall = qrUrl1
+    ? `<img src="${qrUrl1}" width="70" height="70" style="display:block;border:1.5px solid #1e3a8a;border-radius:5px">
+       <div style="font-size:8px;color:#1e3a8a;font-weight:600;text-align:center">${shareToken ? 'Vérifier en ligne' : 'Dossier'}</div>`
+    : (qrUrl2
+      ? `<img src="${qrUrl2}" width="70" height="70" style="display:block;border:1px solid #9ca3af;border-radius:5px">`
+      : '');
+  html = html.replace('__QR_PLACEHOLDER__', qrSmall);
 
   // ── Sections selon le type ──────────────────────────────────
   html += buildPrintSections(r.type, res, r.patient);
@@ -504,6 +511,14 @@ function buildEmptyRows(type, res, cochesList) {
     </p>
   </div>`;
 }
+/* Applique une classe de couleur à une valeur selon son interprétation — v13.95 */
+function colorVal(valeur, interp) {
+  if (!valeur) return '';
+  if (interp === 'Élevé') return `<span class="print-val-hi">${escHTML(String(valeur))}</span>`;
+  if (interp === 'Bas')   return `<span class="print-val-lo">${escHTML(String(valeur))}</span>`;
+  return escHTML(String(valeur));
+}
+
 function buildPrintSections(type, res, pat) {
   const profile = profileFromPatient(pat || {}); // ✅ v13.17 — valeurs normales
   let html = '';
@@ -544,9 +559,9 @@ function buildPrintSections(type, res, pat) {
     [...HEMA_PARAMS, ...HEMA_FL].forEach(p => {
       const v = res[p.name];
       if (!v || !v.valeur) return;
-      nfsRows.push([p.name, v.valeur, v.unite||'/µL', refDisplayFor(p, profile) || '—', v.interp||'']); // ✅ v13.25
+      nfsRows.push([p.name, colorVal(v.valeur, v.interp), v.unite||'/µL', refDisplayFor(p, profile) || '—']); // v13.95 — couleur anomalie
     });
-    if (nfsRows.length) html += section('🩸 NFS — Numération Formule Sanguine', table(['Paramètre','Valeur','Unité','Valeurs normales'], nfsRows.map(r => r.slice(0,4))));
+    if (nfsRows.length) html += section('🩸 NFS — Numération Formule Sanguine', table(['Paramètre','Valeur','Unité','Valeurs normales'], nfsRows));
 
     // Électrophorèse Hb
     const ephbRows = [];

@@ -24,6 +24,8 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_widal', label:'Widal & Félix (SWF)',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:4500, section:'sec-widal' },
   { id:'ex_vih',   label:'Sérologie VIH 1 & 2',              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2000, section:'sec-sero' },
   { id:'ex_hbs',   label:'Ag HBs (Hépatite B)',              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
+  { id:'ex_hbsac', label:'Ac anti-HBs',                      groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
+  { id:'ex_hbcac', label:'Ac anti-HBc totaux',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
   { id:'ex_hcv',   label:'Ac anti-VHC (Hépatite C)',         groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
   { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
   { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
@@ -220,12 +222,18 @@ function widalReport(res) {
 // tout examen non listé laisse ses champs éditables, jamais de verrou erroné).
 function examFieldIds(examId) {
   const V = ids => ids.map(i => 'v_' + i);
-  const S = ids => ids.flatMap(i => ['sr_' + i + '_r', 'sv_' + i]);
+  // ✅ v13.102 — Sérologie : identifiants UNIFORMES (le mode qual/quant se
+  // choisit à la saisie, plus de suffixe _r). Chaque test possède : résultat
+  // qualitatif sr_<id>, valeur sv_<id>, commentaire so_<id>, mode smode_<id>.
+  const S = ids => ids.flatMap(i => ['so_' + i, 'sr_' + i, 'sv_' + i, 'smode_' + i]);
   const M = {
     // ── Hématologie ───────────────────────────────────────────
-    ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt']
+    ex_nfs:   () => V(['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret'] // ✅ v13.99 « ret »
                     .concat((typeof HEMA_FL!=='undefined'?HEMA_FL:[]).map(p=>p.id))),
-    ex_ephb:  () => V(['ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e'])
+    // ✅ v13.99 — les fractions portent leur id brut (ephb_a…), pas « v_ephb_a ».
+    ex_ephb:  () => ((typeof EPHB_FRACTIONS!=='undefined'
+                       ? EPHB_FRACTIONS.map(f=>f.id)
+                       : ['ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e']))
                     .concat(['ephb_profil','ephb_commentaire']),
     ex_vs:    () => ['v_vs'],
     ex_crp:   () => ['crp_valeur'],                          // CRP Sérologie (latex)
@@ -264,7 +272,7 @@ function examFieldIds(examId) {
     ex_lpa:   () => ['v_lpa'],
     ex_fer:   () => ['v_fer'],
     ex_ferr:  () => ['v_ferr'],
-    ex_ddim:  () => ['v_ddim'],
+    ex_ddim:  () => ['v_ddim','v_ddim2'],   // ✅ v13.99 — 2e champ D-dimères
     ex_tp:    () => ['v_tp'],
     ex_tca:   () => ['v_tca'],
     ex_fibr:  () => ['v_fibr'],
@@ -296,6 +304,8 @@ function examFieldIds(examId) {
     // ── Sérologie ─────────────────────────────────────────────
     ex_vih:   () => S(['vih1']),
     ex_hbs:   () => S(['hbsag','hbcac','hbsac']),
+    ex_hbsac: () => S(['hbsac']),   // ✅ v13.102 — Ac anti-HBs facturable seul
+    ex_hbcac: () => S(['hbcac']),   // ✅ v13.102 — Ac anti-HBc totaux facturable seul
     ex_hcv:   () => S(['hcv']),
     ex_tpha:  () => S(['syphil']),
     ex_toxo:  () => S(['toxo','toxoig']),
@@ -305,7 +315,11 @@ function examFieldIds(examId) {
     ex_tsh:   () => S(['tsh']),
     ex_ft4:   () => S(['ft4']),
     ex_psa:   () => S(['psa']),
-    ex_rai:   () => S(['rai']),
+    // ✅ v13.99 — RAI est un examen de GROUPE SANGUIN, pas une sérologie : il
+    // n'a pas de champ dédié (il partage sec-gs-standalone). L'ancien
+    // S(['rai']) pointait vers des champs sérologiques inexistants. Le filet
+    // par section verrouille sec-gs-standalone quand ni GS ni RAI ne sont cochés.
+    ex_rai:   () => [],
     // ── Groupe sanguin (panel GS) ──────────────────────────────
     ex_gs:    () => ['gs_abo','gs_rh','gs_obs'],
     // ── Groupe sanguin mini (sur Hémato) ──────────────────────
@@ -381,41 +395,67 @@ function applyExamLocks() {
   try {
     let cat;
     try { cat = getCatalogueComplet(); } catch(e) { return; }
-    // ✅ v13.36 — Verrou « paiement » : en édition des résultats d'un dossier
-    // NON payé, les champs des examens cochés restent verrouillés (on ne peut
-    // saisir un résultat qu'une fois l'examen encaissé). On verrouille sans
-    // effacer (keepValue) pour ne rien perdre à l'écran.
-    const enSaisieNonPaye = !!_editingRecordId
-      && typeof isDossierPaye === 'function' && !isDossierPaye(_editingRecordId);
+    // ✅ v13.98 — Règle unique de saisissabilité : COCHÉ ⇒ REMPLISSABLE.
+    // Un examen coché (donc facturé sur la fiche) est immédiatement
+    // saisissable ; un examen non coché a ses champs verrouillés et vidés.
+    // Le paiement ne bloque PLUS la saisie : il reste imposé au moment de
+    // l'ENREGISTREMENT (_saveRecordImpl renvoie à la caisse si le dossier
+    // n'est pas payé), ce qui est le bon moment — on peut saisir un résultat,
+    // mais pas le figer tant que l'encaissement n'est pas fait.
     const checked = {};
     cat.forEach(ex => { checked[ex.id] = !!document.getElementById(ex.id)?.checked; });
+
+    // ✅ v13.102 — Verrouillage par champ en mode OU : un champ est éditable dès
+    // qu'AU MOINS UN examen qui le possède est coché. Indispensable depuis que
+    // des champs sont partagés (ex. Ac anti-HBs appartient à « Ag HBs » ET à
+    // l'examen « Ac anti-HBs » vendu seul) : sans ça, l'ordre du catalogue
+    // déciderait à tort du verrou final (le dernier examen traité l'emportait).
+    // NE PAS toucher row_ex_* : ce sont les cases à cocher, pas des résultats.
+    const champProprioCoche = {};
     cat.forEach(ex => {
-      // ✅ v13.34 — NE PAS masquer row_ex_* : ce sont les CASES À COCHER
-      // de la fiche d'accueil, pas les lignes de résultats.
-      // On verrouille uniquement les CHAMPS de saisie des résultats
-      // (dans les panneaux) quand l'examen n'est pas coché OU non payé.
+      const on = checked[ex.id];
       examFieldIds(ex.id).forEach(fid => {
-        const el = document.getElementById(fid);
-        if (!el) return;
-        if (!checked[ex.id]) setFieldLocked(el, true);              // non coché → verrou + efface
-        else if (enSaisieNonPaye) setFieldLocked(el, true, true);   // coché mais non payé → verrou sans effacer
-        else setFieldLocked(el, false);                             // coché + payé → éditable
+        if (!(fid in champProprioCoche)) champProprioCoche[fid] = false;
+        if (on) champProprioCoche[fid] = true;
       });
-      // Masquer/afficher la SECTION de résultats correspondante (sec-*)
-      if (ex.section) {
-        const sec = document.getElementById(ex.section);
-        if (sec) {
-          // Une section peut regrouper plusieurs examens : visible si AU MOINS un coché
-          const examsInSection = cat.filter(e => e.section === ex.section);
-          const anyChecked = examsInSection.some(e => checked[e.id]);
-          sec.style.display = anyChecked ? '' : 'none';
-        }
-      }
     });
-    // Bactério : verrou global si aucun examen bactério coché OU dossier non payé
+    Object.keys(champProprioCoche).forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el) setFieldLocked(el, !champProprioCoche[fid]); // coché quelque part ⇒ éditable
+    });
+
+    // Sections de résultats (sec-*) : visibles si au moins un de leurs examens
+    // est coché.
+    cat.forEach(ex => {
+      if (!ex.section) return;
+      const sec = document.getElementById(ex.section);
+      if (!sec) return;
+      const anyChecked = cat.filter(e => e.section === ex.section).some(e => checked[e.id]);
+      sec.style.display = anyChecked ? '' : 'none';
+    });
+    // Bactério : verrou global tant qu'aucun examen bactério n'est coché.
     const bacOn = ['ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus'].some(id => checked[id]);
     document.querySelectorAll('#panel-bacterio input, #panel-bacterio select, #panel-bacterio textarea')
-      .forEach(el => setFieldLocked(el, !bacOn || enSaisieNonPaye, enSaisieNonPaye && bacOn));
+      .forEach(el => setFieldLocked(el, !bacOn));
+
+    // ✅ v13.99 — FILET PAR SECTION. La table examFieldIds est tenue à la main ;
+    // pour qu'un examen absent (ou dont un champ a changé d'identifiant) ne
+    // laisse pas de champ ouvert, on verrouille EN BLOC toute section de
+    // résultats dont AUCUN examen n'est coché — quels que soient les
+    // identifiants des champs qu'elle contient. Une section qui a au moins un
+    // examen coché est laissée à la logique par-examen ci-dessus (granularité).
+    const sectionAUnCoche = {};
+    cat.forEach(ex => {
+      if (!ex.section) return;
+      if (!(ex.section in sectionAUnCoche)) sectionAUnCoche[ex.section] = false;
+      if (checked[ex.id]) sectionAUnCoche[ex.section] = true;
+    });
+    Object.keys(sectionAUnCoche).forEach(secId => {
+      if (sectionAUnCoche[secId]) return;               // au moins un coché → géré plus haut
+      const sec = document.getElementById(secId);
+      if (sec) sec.querySelectorAll('input, select, textarea')
+                  .forEach(el => setFieldLocked(el, true));
+    });
   } finally { _applyingLocks = false; }
 }
 

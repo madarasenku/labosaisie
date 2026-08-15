@@ -34,7 +34,8 @@ const { serve, openApp, createReporter } = require('./helpers');
       () => prixExamen('ex_crp')), 3500);
 
     r.check('grille mise en cache local', await page.evaluate(
-      () => { const g = JSON.parse(localStorage.getItem('tarifs_ref') || '{}');
+      () => { const g = JSON.parse(localStorage.getItem('tarifs_ref')
+                             || localStorage.getItem('v2_tarifs_ref') || '{}');
               return g.ex_nfs; }), 4000);
 
     errors.length && console.log('   ', errors.slice(0, 3));

@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.94';
-const CACHE = 'cpmi-labo-v68';
+const APP_VERSION = '13.103';
+const CACHE = 'cpmi-labo-v78';
 const v = url => url + '?v=' + APP_VERSION;
 
 /* Pré-cacher les fichiers essentiels à l'installation.
@@ -41,6 +41,7 @@ const v = url => url + '?v=' + APP_VERSION;
 const PRECACHE = [
   './index.html',
   './login.html',
+  './soignant.html',
   v('./css/app.css'),
   // ✅ v13.70 — modules extraits de index.html. L'ORDRE n'a pas d'importance
   // ici (simple mise en cache) mais il est critique dans index.html.

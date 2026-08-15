@@ -1413,18 +1413,31 @@ function buildSero() {
     const cfgRef = getRef('sero_' + t.id, profile);
     const refText = cfgRef ? cfgRef.ref : (t.ref || '');
     const unitText = getUnit('sero_' + t.id, t.unit || '');
+    // ✅ v13.102 — Bascule QUALITATIF / QUANTITATIF à la saisie, pour TOUS les
+    // tests. Le type déclaré dans SERO_TESTS ne fait que fixer le mode par
+    // défaut ; l'agent peut basculer selon la méthode réellement employée
+    // (test rapide Positif/Négatif vs titrage chiffré). Les identifiants de
+    // champ sont désormais UNIFORMES quel que soit le mode : sr_<id> (résultat
+    // qualitatif), sv_<id> (valeur), so_<id> (commentaire), smode_<id> (mode).
+    const modeDefaut = t.type === 'quant' ? 'quant' : 'qual';
     tr.innerHTML = `
-      <td style="font-size:13px">${t.name}</td>
-      <td>${t.type === 'qual'
-        ? `<select id="sr_${t.id}" style="width:130px"><option value="">—</option><option>Positif</option><option>Négatif</option><option>Douteux</option></select>`
-        : `<select id="sr_${t.id}_r" style="width:130px"><option value="">—</option><option>Positif</option><option>Négatif</option></select>`}</td>
-      <td>${t.type === 'quant'
-        ? `<input type="number" id="sv_${t.id}" step="any" style="width:90px"
-             placeholder="valeur"
-             oninput="onSeroQuantInput('${t.id}')">
-           <span class="unit" id="sero_unit_${t.id}">${unitText}</span>
-           <span class="interp" id="sero_interp_${t.id}" style="margin-left:6px"></span>`
-        : '<span class="unit">—</span>'}</td>
+      <td style="font-size:13px">${t.name}
+        <select id="smode_${t.id}" onchange="toggleSeroMode('${t.id}')"
+                style="display:block;margin-top:3px;font-size:11px;width:122px"
+                aria-label="Type de résultat pour ${t.name}">
+          <option value="qual"${modeDefaut==='qual'?' selected':''}>Qualitatif</option>
+          <option value="quant"${modeDefaut==='quant'?' selected':''}>Quantitatif</option>
+        </select></td>
+      <td><select id="sr_${t.id}" style="width:130px"><option value="">—</option><option>Positif</option><option>Négatif</option><option>Douteux</option></select></td>
+      <td>
+        <span id="sqwrap_${t.id}">
+          <input type="number" id="sv_${t.id}" step="any" style="width:90px"
+                 placeholder="valeur" oninput="onSeroQuantInput('${t.id}')">
+          <span class="unit" id="sero_unit_${t.id}">${unitText}</span>
+          <span class="interp" id="sero_interp_${t.id}" style="margin-left:6px"></span>
+        </span>
+        <span id="sqdash_${t.id}" class="unit" style="display:none">—</span>
+      </td>
       <td>${refText
         ? `<span class="ref-range" id="sero_ref_${t.id}">${refText}</span>`
         : `<span class="ref-range">—</span>`}</td>
@@ -1432,9 +1445,30 @@ function buildSero() {
     `;
     b.appendChild(tr);
   });
+  // Appliquer le mode initial (affiche/masque la valeur numérique) après le rendu.
+  SERO_TESTS.forEach(t => { if (typeof toggleSeroMode === 'function') toggleSeroMode(t.id); });
   // ✅ v13.24 — SWF et CRP sont maintenant sur l'onglet Sérologie
   buildWidal();
   if (typeof interpretCRP === 'function') interpretCRP();
+}
+
+// ✅ v13.102 — Affiche la valeur numérique (mode quantitatif) ou seulement le
+// résultat Positif/Négatif (mode qualitatif). En qualitatif, la valeur chiffrée
+// est vidée pour ne jamais être enregistrée ni imprimée.
+function toggleSeroMode(id) {
+  const mode = document.getElementById('smode_' + id)?.value || 'qual';
+  const wrap = document.getElementById('sqwrap_' + id);
+  const dash = document.getElementById('sqdash_' + id);
+  if (!wrap || !dash) return;
+  const quant = mode === 'quant';
+  wrap.style.display = quant ? '' : 'none';
+  dash.style.display = quant ? 'none' : '';
+  if (!quant) {
+    const sv = document.getElementById('sv_' + id);
+    if (sv) sv.value = '';
+    const interp = document.getElementById('sero_interp_' + id);
+    if (interp) interp.textContent = '';
+  }
 }
 
 // Interprétation en temps réel pour les sérologies quantitatives
