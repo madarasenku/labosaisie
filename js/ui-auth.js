@@ -210,14 +210,17 @@ function updateUserBadge() {
   updateMasqueesBtn();
   const usersNavBtn = document.getElementById('btn-nav-users');
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
-  // ✅ v13.92 — Le cahier jaune n'appartient qu'à l'administrateur, qui peut
-  // l'ouvrir à d'autres profils. L'onglet est donc masqué par défaut, puis
-  // révélé par chargerAccesCahier() une fois les droits connus du serveur :
-  // c'est lui qui tranche, pas le rôle seul.
+  // ✅ v13.107 — L'onglet du cahier jaune et ses cartes de réglage restent
+  // masqués TANT QUE le serveur n'a pas confirmé l'accès. On ne les révèle
+  // plus « parce qu'on est admin » : depuis la seconde porte, un admin en
+  // session ordinaire ne doit voir aucun indice du cahier. Les afficher ici,
+  // même une fraction de seconde avant la réponse serveur, trahirait la
+  // porte — et un échec réseau les laisserait visibles pour de bon.
+  // C'est chargerAccesCahier() qui, et lui seul, les fait apparaître.
   const cahierNavBtn = document.getElementById('btn-nav-cahier');
-  if (cahierNavBtn) cahierNavBtn.style.display = isAdmin() ? '' : 'none';
+  if (cahierNavBtn) cahierNavBtn.style.display = 'none';
   const cahierColBtn = document.getElementById('cahier-colonnes-card');
-  if (cahierColBtn) cahierColBtn.style.display = isAdmin() ? '' : 'none';
+  if (cahierColBtn) cahierColBtn.style.display = 'none';
   if (typeof chargerAccesCahier === 'function') chargerAccesCahier();
   // ✅ v13.33 — tarifs-config-card et refs-config-card sont dans des sous-onglets,
   // leur visibilité est gérée par adminShowSub — rien à faire ici.

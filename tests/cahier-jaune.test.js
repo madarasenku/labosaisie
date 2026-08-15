@@ -266,6 +266,59 @@ const preparer = (page, extra) => page.evaluate(([cols, ecr, sup]) => {
 
   // ── Partage décidé par l'administrateur (v13.92) ───────────────────
   {
+    // ✅ v13.107 — Depuis la seconde porte : un admin en session ORDINAIRE
+    // (coffre fermé, mon_acces_cahier renvoie autorise:false) ne doit voir
+    // NI l'onglet NI les cartes de réglage. Avant, ui-auth révélait l'onglet
+    // « parce qu'on est admin » avant même la réponse du serveur.
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', username: 'chef', userId: 1,
+      rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('Un admin en session ordinaire ne voit aucun indice du cahier');
+    await page.evaluate(() => {
+      _sb.rpc = async (nom) => {
+        if (nom === 'mon_acces_cahier') return { data: { autorise: false, admin: false }, error: null };
+        return { data: [], error: null };
+      };
+    });
+    await page.evaluate(() => chargerAccesCahier());
+    await page.waitForTimeout(500);
+    r.check('onglet masqué pour l\'admin ordinaire', await page.evaluate(
+      () => document.getElementById('btn-nav-cahier')?.style.display), 'none');
+    r.check('aucune carte de partage', await page.evaluate(
+      () => document.getElementById('cahier-partage-card')?.style.display), 'none');
+    r.check('aucune carte de colonnes', await page.evaluate(
+      () => document.getElementById('cahier-colonnes-card')?.style.display), 'none');
+    r.check('aucune erreur JS', errors.length, 0);
+    await ctx.close();
+  }
+
+  {
+    // ✅ v13.107 — Le vrai risque : si le serveur ne répond pas, l'onglet ne
+    // doit PAS rester visible. C'est ce cas, et non le cas nominal, qui
+    // distingue la correction de l'ancien code (qui révélait l'onglet
+    // « parce qu'on est admin » avant toute réponse serveur).
+    const { ctx, page, errors } = await openApp({
+      role: 'admin', username: 'chef', userId: 1,
+      rpc: { get_tarifs: {}, get_examens_custom: [] },
+    });
+    r.section('Serveur muet — l\'onglet reste masqué, pas révélé par défaut');
+    await page.evaluate(() => {
+      // mon_acces_cahier échoue : chargerAccesCahier() ressort sans toucher
+      // l'onglet, qui doit donc garder l'état posé par updateUserBadge().
+      _sb.rpc = async (nom) => (nom === 'mon_acces_cahier')
+        ? { data: null, error: { message: 'réseau' } }
+        : { data: [], error: null };
+    });
+    await page.evaluate(() => updateUserBadge());
+    await page.waitForTimeout(400);
+    r.check('onglet masqué malgré l\'échec serveur', await page.evaluate(
+      () => document.getElementById('btn-nav-cahier')?.style.display), 'none');
+    r.check('aucune erreur JS', errors.length, 0);
+    await ctx.close();
+  }
+
+  {
     const { ctx, page, errors } = await openApp({
       role: 'admin', rpc: { get_tarifs: {}, get_examens_custom: [] },
     });

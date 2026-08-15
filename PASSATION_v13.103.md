@@ -1,4 +1,4 @@
-# 📋 PASSATION — Projet LaboSaisie (v13.103)
+# 📋 PASSATION — Projet LaboSaisie (v13.107)
 
 > **Pour Madara** : dans une nouvelle tâche Cowork, colle ce document.
 > Tu n'as **rien à joindre** : tout est sur GitHub, le nouveau Claude clonera
@@ -239,6 +239,17 @@ des fiches verrouillées, la bonne réponse est de les écarter en silence.
 ---
 
 ## ⚠️ AUTRES PIÈGES DÉCOUVERTS À LA DURE
+
+0-bis. **`labo_coffre` est un SINGLETON partagé (id=1). NE JAMAIS y écrire
+   pour tester.** Un test qui appelle `definir_code_coffre` — même avec un
+   compte jetable — écrase le second mot de passe RÉEL de l'administrateur,
+   puisqu'il n'existe qu'une ligne pour tout le monde. C'est déjà arrivé : le
+   15 août, une vérification a effacé le second mot de passe que l'admin
+   venait de poser. Aucune donnée perdue, mais le mot de passe a dû être
+   ressaisi. Pour éprouver le coffre, ne pas toucher la production : le
+   `mon_acces_cahier`/`coffre_ouvert` se teste sur un projet séparé, ou en
+   raisonnant, jamais en posant un code sur la base vivante.
+
 
 0. **Supabase rejette tout UPDATE/DELETE sans WHERE — mais seulement par
    l'API.** Le rôle `postgres` (appels directs, `execute_sql`, l'éditeur SQL)
