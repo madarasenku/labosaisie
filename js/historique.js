@@ -666,31 +666,18 @@ function updateMasqueesBtn() {
   const count = isAdmin()
     ? _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy).length
     : _dbCache.filter(r => !r.deletedAt && r.restrictedBy === uid).length;
-  // ✅ v13.104 — Le coffre crée un piège : une fois le code posé, le serveur
-  // n'envoie plus les fiches verrouillées, donc `count` tombe à zéro, donc ce
-  // bouton disparaît… et avec lui le seul endroit d'où l'on peut demander le
-  // code. La porte ne serait pas seulement fermée : elle serait invisible.
-  // On l'affiche donc pour l'administrateur dès que le coffre est fermé.
-  const coffreFerme = typeof _coffreEtat !== 'undefined' && _coffreEtat
-                      && _coffreEtat.configure && !_coffreEtat.ouvert && isAdmin();
-  if (badge) badge.textContent = coffreFerme && count === 0 ? '🔒' : count;
-  btn.style.display   = (count > 0 || coffreFerme) ? 'flex' : 'none';
+  // ✅ v13.105 — Aucun indice en session ordinaire. Le cadenas de la v13.104
+  // disait à qui regardait l'écran qu'il existait quelque chose derrière ;
+  // c'est précisément ce que la seconde porte évite.
+  if (badge) badge.textContent = count;
+  btn.style.display   = count > 0 ? 'flex' : 'none';
   btn.style.opacity   = _filterVerrouillees ? '1' : '0.75';
   btn.style.boxShadow = _filterVerrouillees ? '0 0 0 2px #d97706' : 'none';
 }
 // Alias conservé pour les appels existants dans la base de code
 function updateVerrouilleeBtn() { updateMasqueesBtn(); }
 
-async function toggleMasquees() {
-  // ✅ v13.104 — Révéler les dossiers verrouillés passe par le coffre. Le
-  // serveur ne les envoie même pas tant qu'il est fermé : sans le code,
-  // cette vue serait vide sans explication.
-  if (!_filterVerrouillees && typeof assurerCoffre === 'function') {
-    const ok = await assurerCoffre('Les dossiers verrouillés sont protégés par le code du coffre.');
-    if (!ok) return;
-    if (typeof refreshDB === 'function') await refreshDB();
-
-  }
+function toggleMasquees() {
   _filterVerrouillees = !_filterVerrouillees;
   if (_filterVerrouillees) { _filterCorbeille = false; updateCorbeilleBtn(); }
   // ✅ v13.90 — Vider la sélection en changeant de vue : depuis que les
