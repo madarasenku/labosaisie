@@ -303,14 +303,19 @@ async function renderStats() {
     </div>`;
 
   // ── KPI Financiers ────────────────────────────────────────────
-  const recettesTotal = db.reduce((s, r) => s + (r.montant || 0), 0);
-  const recettesMonth = db.filter(r => (r.patient?.date||r.savedAt||'').startsWith(thisMonth))
-    .reduce((s, r) => s + (r.montant || 0), 0);
+  // ✅ v13.108 — Le KPI est étiqueté « Recettes période » : il DOIT suivre la
+  // période choisie. Il était calculé sur le mois courant (thisMonth), si bien
+  // que « Aujourd'hui » ou « Cette semaine » affichaient toujours la somme du
+  // mois — d'où l'impression que le filtre ne changeait rien. On somme
+  // désormais dbPeriode, l'ensemble déjà filtré par la période, cohérent avec
+  // le compteur « Période sélectionnée » juste au-dessus.
+  const recettesTotal   = db.reduce((s, r) => s + (r.montant || 0), 0);
+  const recettesPeriode = dbPeriode.reduce((s, r) => s + (r.montant || 0), 0);
 
   // ✅ v13.33 — Animation compte-à-rebours KPI financiers
   const kpiRM = document.getElementById('kpi-recettes-month');
   const kpiRT = document.getElementById('kpi-recettes-total');
-  animateCount(kpiRM?.querySelector('.kpi-val'), recettesMonth, 700, true);
+  animateCount(kpiRM?.querySelector('.kpi-val'), recettesPeriode, 700, true);
   animateCount(kpiRT?.querySelector('.kpi-val'), recettesTotal, 800, true);
 
   // ── Recettes par type ──────────────────────────────────────────

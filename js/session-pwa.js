@@ -1235,20 +1235,24 @@ async function submitFirstLoginPassword() {
 }
 
 // ── FEATURE 5 : tableau de bord Caisse ────────────────────────────
-let _caissePeriode = 'jour';
+// ✅ v13.108 — Défaut aligné sur les autres vues (« ce mois ») : la période
+// est désormais commune à l'Historique, la Caisse et les Statistiques.
+let _caissePeriode = 'mois';
 let _caisseChart = null;
 // ✅ v13.73 — décalage temporel de la Caisse (voir js/periode-nav.js)
 let _caisseDecalage = 0;
 
 function setCaissePeriode(p, garderDecalage) {
-  if (!garderDecalage) _caisseDecalage = 0;
-  _caissePeriode = p;
-  ['jour','semaine','mois'].forEach(k => {
-    const b = document.getElementById('caisse-btn-' + k);
-    if (b) b.classList.toggle('active', k === p);
-  });
-  if (p !== 'custom') synchroniserChampsDate('caisse', p, _caisseDecalage);
-  majBandeauPeriode('caisse', _caissePeriode, _caisseDecalage);
+  // ✅ v13.108 — Période commune aux trois vues. Pour une plage libre, on lit
+  // les champs de dates de la Caisse et on les propage aux autres onglets.
+  if (p === 'custom') {
+    const from = document.getElementById('caisse-date-from')?.value || '';
+    const to   = document.getElementById('caisse-date-to')?.value   || '';
+    appliquerPeriodePartout('custom', 0, from, to);
+  } else {
+    const dec = garderDecalage ? _caisseDecalage : 0;
+    appliquerPeriodePartout(p, dec);
+  }
   renderCaisse();
 }
 
@@ -1279,7 +1283,10 @@ function getCaisseRange() {
       to:   document.getElementById('caisse-date-to')?.value || '',
     };
   }
-  return calcPlagePeriode(_caissePeriode || 'jour', _caisseDecalage);
+  // ✅ v13.108 — La Caisse peut désormais recevoir « tout » (période commune) :
+  // aucune borne de date, on montre l'ensemble.
+  if (_caissePeriode === 'tout') return { from: '', to: '' };
+  return calcPlagePeriode(_caissePeriode || 'mois', _caisseDecalage);
 }
 async function renderCaisse() {
   await refreshDB();

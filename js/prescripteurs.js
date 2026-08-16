@@ -209,16 +209,17 @@ let _statsPeriode = 'mois'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
 let _statsDecalage = 0;
 
 function setStatsPeriode(periode, garderDecalage) {
-  // Changer de granularité repart de la période en cours : « trois périodes
-  // en arrière » n'a pas le même sens en jours et en mois.
-  if (!garderDecalage) _statsDecalage = 0;
-  _statsPeriode = periode;
-  // Mettre en évidence le bouton actif
-  ['jour','semaine','mois','tout'].forEach(p => {
-    const btn = document.getElementById('stats-btn-' + p);
-    if (btn) btn.classList.toggle('active', p === periode);
-  });
-  majBandeauPeriode('stats', _statsPeriode, _statsDecalage);
+  // ✅ v13.108 — Période commune aux trois vues. La plage libre lit les
+  // champs de dates DES Statistiques (ceux sous les yeux de l'utilisateur),
+  // puis la propage identiquement à l'Historique et à la Caisse.
+  if (periode === 'custom') {
+    const from = document.getElementById('stats-date-from')?.value || '';
+    const to   = document.getElementById('stats-date-to')?.value   || '';
+    appliquerPeriodePartout('custom', 0, from, to);
+  } else {
+    const dec = garderDecalage ? _statsDecalage : 0;
+    appliquerPeriodePartout(periode, dec);
+  }
   renderStats();
 }
 

@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.107">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.108">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,21 +25,21 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.107"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.107"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.107"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.107"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.107"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.108"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.108"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.108"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.108"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.108"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.107"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.107">
+<script src="./js/qr-generator.js?v=13.108"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.108">
 </head>
 <body>
 
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.107"></script>
+<script src="./js/pwa-manifest.js?v=13.108"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -1822,9 +1822,11 @@
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">💰 Caisse — Sélection de période</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-outline active" id="caisse-btn-jour" onclick="setCaissePeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
+      <button class="btn btn-outline" id="caisse-btn-jour" onclick="setCaissePeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
       <button class="btn btn-outline" id="caisse-btn-semaine" onclick="setCaissePeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
-      <button class="btn btn-outline" id="caisse-btn-mois" onclick="setCaissePeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
+      <button class="btn btn-outline active" id="caisse-btn-mois" onclick="setCaissePeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
+      <!-- ✅ v13.108 — « Tout » ajouté pour que les commandes de période soient identiques aux autres vues. -->
+      <button class="btn btn-outline" id="caisse-btn-tout" onclick="setCaissePeriode('tout')" style="padding:6px 14px;font-size:12.5px">Tout</button>
       <!-- ✅ v13.73 — Navigation dans le temps (composant partagé js/periode-nav.js) -->
       <div id="caisse-nav-periode" style="display:flex;align-items:center;gap:6px;margin-left:4px">
         <button class="btn btn-outline" id="caisse-nav-precedent" onclick="decalerCaisse(-1)"
@@ -2061,16 +2063,16 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.107"></script>
-<script src="./js/donnees-analyses.js?v=13.107"></script>
-<script src="./js/navigation.js?v=13.107"></script>
-<script src="./js/supabase-db.js?v=13.107"></script>
-<script src="./js/historique.js?v=13.107"></script>
-<script src="./js/export-excel.js?v=13.107"></script>
-<script src="./js/prescripteurs.js?v=13.107"></script>
-<script src="./js/saisie.js?v=13.107"></script>
-<script src="./js/ui-auth.js?v=13.107"></script>
-<script src="./js/session-pwa.js?v=13.107"></script>
+<script src="./js/periode-nav.js?v=13.108"></script>
+<script src="./js/donnees-analyses.js?v=13.108"></script>
+<script src="./js/navigation.js?v=13.108"></script>
+<script src="./js/supabase-db.js?v=13.108"></script>
+<script src="./js/historique.js?v=13.108"></script>
+<script src="./js/export-excel.js?v=13.108"></script>
+<script src="./js/prescripteurs.js?v=13.108"></script>
+<script src="./js/saisie.js?v=13.108"></script>
+<script src="./js/ui-auth.js?v=13.108"></script>
+<script src="./js/session-pwa.js?v=13.108"></script>
 
 </div><!-- /#app-root -->
 
@@ -2152,13 +2154,13 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.107"></script>
-<script src="./js/impression.js?v=13.107"></script>
-<script src="./js/export-pdf.js?v=13.107"></script>
-<script src="./js/sauvegarde.js?v=13.107"></script>
-<script src="./js/cloture-caisse.js?v=13.107"></script>
-<script src="./js/coffre.js?v=13.107"></script>
-<script src="./js/cahier-jaune.js?v=13.107"></script>
+<script src="./js/stats.js?v=13.108"></script>
+<script src="./js/impression.js?v=13.108"></script>
+<script src="./js/export-pdf.js?v=13.108"></script>
+<script src="./js/sauvegarde.js?v=13.108"></script>
+<script src="./js/cloture-caisse.js?v=13.108"></script>
+<script src="./js/coffre.js?v=13.108"></script>
+<script src="./js/cahier-jaune.js?v=13.108"></script>
 
 <script>
 /* ── Navigation rapide dans les tables de résultats (v13.95) ──────────────

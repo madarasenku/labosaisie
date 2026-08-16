@@ -41,6 +41,7 @@ node tests/filtres.test.js
 | `portail-soignant.test.js` | Portail du soignant : liste de ses seuls patients, aucun appel au registre du laboratoire, avertissement obligatoire sur un résultat non validé, absence de tout montant, refus du serveur respecté à l'écran, cloisonnement des rôles et redirection après connexion |
 | `verrou-paiement-unites.test.js` | Un dossier non encaissé ne s'imprime ni ne s'exporte (PDF, Excel), l'administrateur gardant la main pour les duplicatas ; une unité corrigée depuis Administration se retrouve sur la feuille imprimée, le PDF et l'Excel et non plus seulement à l'écran |
 | `coffre-fort.test.js` | Deux mots de passe pour un seul identifiant : en session ordinaire aucun indice de la seconde porte (pas de bouton « fiches masquées », pas de boîte réclamant un code, un refus dit comme un refus et non une grille vide) ; en session élevée, dossiers verrouillés et cahier jaune visibles. **La protection vit dans la base** (`login_user` + `coffre_ouvert`), pas ici |
+| `periode-unifiee.test.js` | Période unique partagée par l'Historique, la Caisse et les Statistiques : changer la période dans une vue la fixe pour les trois (état, bouton actif, bornes de dates), décalage « mois précédent » et « tout » compris |
 | `tarifs.test.js` | Grille tarifaire partagée : base prioritaire sur le catalogue, cache hors-ligne, écriture réservée à l'admin, estimation des dossiers |
 | `ristournes-prescripteurs.test.js` | Flèches sur le sélecteur de mois des Ristournes (dont le passage d'année), recherche dans la liste des prescripteurs |
 

@@ -72,25 +72,18 @@ function allerAuMois() {
 }
 
 function setHistPeriode(periode, garderDecalage) {
-  // Changer de granularité repart de la période en cours, sauf si l'appel
-  // vient de la navigation elle-même (flèches, sélecteurs).
-  if (!garderDecalage) _histDecalage = 0;
-  _histPeriode = periode;
-  ['jour','semaine','mois','tout'].forEach(p => {
-    const btn = document.getElementById('hist-btn-' + p);
-    if (btn) btn.classList.toggle('active', p === periode);
-  });
-
-  if (periode !== 'custom') {
-    const { from, to } = getHistRange();
-    const fromEl = document.getElementById('filter-date-from');
-    const toEl   = document.getElementById('filter-date-to');
-    if (fromEl) fromEl.value = from || '';
-    if (toEl)   toEl.value   = (periode === 'tout') ? '' : (to || '');
+  // ✅ v13.108 — La période est désormais commune aux trois vues. Le cas
+  // « custom » relit les champs de dates de l'Historique (ce sont EUX qui
+  // déclenchent cet appel via leur onchange) : sans cette relecture, la
+  // période « custom » les effacerait en boucle.
+  if (periode === 'custom') {
+    const from = document.getElementById('filter-date-from')?.value || '';
+    const to   = document.getElementById('filter-date-to')?.value   || '';
+    appliquerPeriodePartout('custom', 0, from, to);
+  } else {
+    const dec = garderDecalage ? _histDecalage : 0;
+    appliquerPeriodePartout(periode, dec);
   }
-
-  majNavPeriode();
-
   // ✅ v13.68 — le cache contient toutes les fiches : filtrage client instantané,
   // plus aucun aller-retour serveur au changement de période.
   renderHistory();
@@ -103,15 +96,8 @@ function appliquerFiltreCustom() {
   const from = document.getElementById('filter-date-from')?.value || '';
   const to   = document.getElementById('filter-date-to')?.value   || '';
   if (!from && !to) { toast('Saisissez au moins une date', 'err'); return; }
-  _histPeriode = 'custom';
-  _histDecalage = 0;
-  // ✅ v13.68 — filtrage client sur le cache complet : instantané, et le
-  // fallback « filtre date serveur inactif » n'a plus lieu d'être.
-  ['jour','semaine','mois','tout'].forEach(p => {
-    const btn = document.getElementById('hist-btn-' + p);
-    if (btn) btn.classList.remove('active');
-  });
-  majNavPeriode();
+  // ✅ v13.108 — La plage libre vaut, elle aussi, pour les trois vues.
+  appliquerPeriodePartout('custom', 0, from, to);
   renderHistory();
 }
 

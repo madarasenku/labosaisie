@@ -213,3 +213,51 @@ function majLibelleSelecteursMois(idMois, idAnnee) {
   const lbl = document.getElementById(idMois + '-label');
   if (lbl && m >= 1 && m <= 12) lbl.textContent = MOIS_LONG[m - 1] + ' ' + a;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ✅ v13.108 — UNE SEULE PÉRIODE POUR HISTORIQUE, CAISSE ET STATISTIQUES.
+
+   Chaque onglet avait sa propre période : on demandait « cette semaine »
+   dans l'Historique et la Caisse restait sur « aujourd'hui ». On ne s'y
+   retrouvait plus. Désormais choisir une période dans un onglet la fixe
+   pour les trois.
+
+   On NE crée pas un nouvel état : on tient simplement les trois variables
+   existantes (`_histPeriode`, `_statsPeriode`, `_caissePeriode` et leurs
+   décalages) toujours identiques. Ainsi les dizaines d'endroits qui les
+   lisent déjà n'ont pas à changer.
+   ═══════════════════════════════════════════════════════════════ */
+function appliquerPeriodePartout(periode, decalage, cFrom, cTo) {
+  decalage = decalage || 0;
+
+  // 1. Recopier dans les trois états (ils existent tous au moment d'un clic).
+  if (typeof _histPeriode   !== 'undefined') { _histPeriode   = periode; _histDecalage   = decalage; }
+  if (typeof _statsPeriode  !== 'undefined') { _statsPeriode  = periode; _statsDecalage  = decalage; }
+  if (typeof _caissePeriode !== 'undefined') { _caissePeriode = periode; _caisseDecalage = decalage; }
+
+  // 2. Surligner le bon bouton dans les trois vues (« custom » → aucun).
+  ['hist','stats','caisse'].forEach(pre => {
+    ['jour','semaine','mois','tout'].forEach(k => {
+      const b = document.getElementById(pre + '-btn-' + k);
+      if (b) b.classList.toggle('active', periode === k);
+    });
+  });
+
+  // 3. Remplir les champs de dates des trois vues, à l'identique.
+  let vFrom, vTo;
+  if (periode === 'custom')      { vFrom = cFrom || ''; vTo = cTo || ''; }
+  else if (periode === 'tout')   { vFrom = '';          vTo = '';        }
+  else { const r = calcPlagePeriode(periode, decalage); vFrom = r.from || ''; vTo = r.to || ''; }
+  [['filter-date-from','filter-date-to'],
+   ['stats-date-from','stats-date-to'],
+   ['caisse-date-from','caisse-date-to']].forEach(([idF, idT]) => {
+    const ef = document.getElementById(idF), et = document.getElementById(idT);
+    if (ef) ef.value = vFrom;
+    if (et) et.value = vTo;
+  });
+
+  // 4. Rafraîchir les bandeaux de navigation des trois vues.
+  if (typeof majNavPeriode === 'function') majNavPeriode();   // Historique
+  majBandeauPeriode('stats',  periode, decalage);
+  majBandeauPeriode('caisse', periode, decalage);
+}
