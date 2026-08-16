@@ -64,6 +64,14 @@ function showView(v) {
   if (v === 'stats') renderStats();
   if (v === 'caisse') renderCaisse();
   if (v === 'cahier' && typeof chargerCahierJaune === 'function') chargerCahierJaune();
+
+  // ✅ v13.109 — Mémoriser l'onglet courant pour y revenir après un
+  // rechargement, au lieu de toujours retomber sur « Nouveau patient ».
+  // On ne retient QUE les vues de travail : ni les Comptes (réglages admin),
+  // ni surtout le Cahier jaune — le restaurer révélerait la seconde porte.
+  if (['saisie','historique','stats','caisse'].includes(v)) {
+    try { localStorage.setItem('labo_vue_courante', v); } catch (e) {}
+  }
 }
 
 /* ════════════════════════════════════════════════

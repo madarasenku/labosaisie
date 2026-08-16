@@ -231,8 +231,24 @@ function updateUserBadge() {
   if (saisieNavBtn) saisieNavBtn.style.display = (isCaissier() || isSpectateur()) ? 'none' : '';
   const exportAllBtn = document.querySelector('header .nav-btn[onclick="exportAllExcel()"]');
   if (exportAllBtn) exportAllBtn.style.display = (isCaissier() || isSpectateur()) ? 'none' : '';
-  // Afficher directement la caisse pour le caissier / spectateur après connexion
-  if (isCaissier() || isSpectateur()) setTimeout(() => showView('caisse'), 50);
+  // ✅ v13.109 — Au chargement, revenir sur le dernier onglet consulté plutôt
+  // que de retomber systématiquement sur « Nouveau patient ». Le défaut par
+  // rôle (caisse pour le caissier/spectateur, saisie pour l'admin/agent) ne
+  // s'applique qu'à défaut d'onglet mémorisé ou si le rôle n'y a pas droit.
+  setTimeout(() => restaurerDerniereVue(), 50);
+}
+
+function restaurerDerniereVue() {
+  // Les vues de travail auxquelles CE rôle a droit. Le cahier jaune et les
+  // Comptes en sont volontairement absents (voir showView).
+  const permises = (isCaissier() || isSpectateur())
+    ? ['historique','stats','caisse']
+    : ['saisie','historique','stats','caisse'];   // admin, agent
+  let v = null;
+  try { v = localStorage.getItem('labo_vue_courante'); } catch (e) {}
+  if (v && permises.includes(v)) { showView(v); return; }
+  // À défaut : le point de départ habituel de chaque rôle.
+  showView((isCaissier() || isSpectateur()) ? 'caisse' : 'saisie');
 }
 
 // ============================================================
