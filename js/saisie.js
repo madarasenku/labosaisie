@@ -874,7 +874,18 @@ async function enregistrerFicheIdentif() {
       // ✅ v13.37 — Garde-fou anti-doublon : un dossier ACTIF avec ce numéro
       // existe déjà (double-clic, ré-enregistrement…). On propose un nouveau
       // numéro plutôt que de créer un doublon.
-      const _dup = getDB().find(rr => rr.patient?.dossier === p.dossier && !rr.deletedAt && !rr._hardDeleted);
+      // ✅ v13.110 — Renforcement anti-doublon inter-postes/hors-ligne :
+      //   1) On RAFRAÎCHIT le cache depuis le serveur juste avant de contrôler,
+      //      pour fermer la fenêtre entre l'aperçu du numéro (ouverture de la
+      //      fiche) et l'enregistrement — c'est là que deux postes, ou un poste
+      //      au cache périmé / revenu en ligne, réattribuaient le même numéro.
+      //   2) On contrôle sur le cache COMPLET (retourné par refreshDB), et non
+      //      getDB() qui masque les fiches restreintes par d'autres profils :
+      //      une collision avec l'une d'elles passait inaperçue.
+      let _cacheComplet;
+      try { _cacheComplet = await refreshDB(true); }
+      catch (e) { _cacheComplet = (typeof getDB === 'function' ? getDB() : []); }
+      const _dup = (_cacheComplet || []).find(rr => rr.patient?.dossier === p.dossier && !rr.deletedAt && !rr._hardDeleted);
       if (_dup) {
         hideLoading();
         const _ok = await showConfirmModal({
