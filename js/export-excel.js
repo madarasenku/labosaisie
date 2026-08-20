@@ -291,26 +291,29 @@ function buildProfessionalSheet(wb, r, sheetName) {
   const dateF  = p.date ? p.date.split('-').reverse().join('/') : '—';
   const ageSexeF = [p.age ? p.age + ' ans' : '', p.sexe === 'M' ? 'Masculin' : p.sexe === 'F' ? 'Féminin' : p.sexe || ''].filter(Boolean).join(' · ');
 
-  // Palette
-  const BLU  = 'FF1E3A8A'; // bleu profond CPMI
-  const BLU2 = 'FF2563EB'; // bleu vif
-  const GLD  = 'FFCBA135'; // or
+  // ✅ v13.111 — RENDU NOIR & BLANC (économie d'encre, impression N&B).
+  //   Plus aucune couleur : surlignage GRIS uniquement sur les valeurs anormales.
+  //   La palette garde les mêmes noms — tout le rendu bascule sans toucher au
+  //   câblage des données.
+  const BLU  = 'FF111111'; // ex-bleu → encre noire (texte, filets, accents)
+  const BLU2 = 'FF333333';
+  const GLD  = 'FFDDDDDD'; // ex-or → gris clair (liserés / séparateurs)
   const WHT  = 'FFFFFFFF';
-  const PAT_LABEL = 'FFE8F0FE'; // fond étiquette patient
-  const PAT_VAL   = 'FFFAFCFF'; // fond valeur patient
-  const SEC_BG    = 'FFDBEAFE'; // fond titre de section
-  const SEC_FG    = 'FF1E3A8A';
-  const TH_BG     = 'FF1E3A8A';
-  const TH_FG     = 'FFFFFFFF';
+  const PAT_LABEL = 'FFEDEDED'; // fond étiquette patient (gris très clair)
+  const PAT_VAL   = 'FFFFFFFF'; // fond valeur patient (blanc)
+  const SEC_BG    = 'FFE0E0E0'; // fond titre de section (gris clair)
+  const SEC_FG    = 'FF111111';
+  const TH_BG     = 'FFE0E0E0'; // en-tête de tableau (gris clair)
+  const TH_FG     = 'FF111111'; // texte foncé (fond clair)
   const PAR_W     = 'FFFFFFFF'; // ligne paire
-  const PAR_A     = 'FFF5F8FF'; // ligne impaire légère
-  // ✅ v13.18 — couleurs anormales plus visibles
-  const HI_BG     = 'FFFDE8E8'; const HI_FG = 'FF991B1B'; // rouge
-  const LO_BG     = 'FFE8F0FE'; const LO_FG = 'FF1E40AF'; // bleu
-  const OK_BG     = 'FFE8F8EE'; const OK_FG = 'FF155724'; // vert
-  const MUTED     = 'FF6B7280';
-  const DARK      = 'FF111827';
-  const BRD       = 'FFD1D9E6';
+  const PAR_A     = 'FFFFFFFF'; // ligne impaire — plus de zébrage (économie d'encre)
+  // Surlignage anormal = GRIS marqué ; normal = blanc (pas de surlignage)
+  const HI_BG     = 'FFC9C9C9'; const HI_FG = 'FF111111'; // élevé / positif → gris
+  const LO_BG     = 'FFC9C9C9'; const LO_FG = 'FF111111'; // bas → gris
+  const OK_BG     = 'FFFFFFFF'; const OK_FG = 'FF111111'; // normal → blanc
+  const MUTED     = 'FF555555';
+  const DARK      = 'FF111111';
+  const BRD       = 'FFB0B0B0';
 
   function tB(col) { const b={style:'thin',color:{argb:col||BRD}}; return {top:b,bottom:b,left:b,right:b}; }
   function medB(col) { const b={style:'medium',color:{argb:col||BLU}}; return {top:b,bottom:b,left:b,right:b}; }
@@ -373,7 +376,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   mg(row,1,row,NC);
   const cCentre = ws.getCell(row,1);
   cCentre.value = 'CPMI DE GRAND-BASSAM  —  Centre de Protection Mère et Infantile';
-  sC(cCentre, {bg:BLU, fg:WHT, bold:true, size:13, ha:'center'});
+  sC(cCentre, {bg:SEC_BG, fg:DARK, bold:true, size:13, ha:'center'});
   row++;
 
   // Sous-titre + type analyse (2 colonnes)
@@ -387,11 +390,11 @@ function buildProfessionalSheet(wb, r, sheetName) {
   mg(row,1,row,4);
   const cSub = ws.getCell(row,1);
   cSub.value = subT;
-  sC(cSub, {bg:BLU, fg:'FFBFDBFE', size:9, italic:true});
+  sC(cSub, {bg:SEC_BG, fg:MUTED, size:9, italic:true});
   mg(row,5,row,NC);
   const cType = ws.getCell(row,5);
   cType.value = typeT;
-  sC(cType, {bg:BLU, fg:'FFFBBF24', bold:true, size:10, ha:'right'});
+  sC(cType, {bg:SEC_BG, fg:DARK, bold:true, size:10, ha:'right'});
   row++;
 
   // Liseré or bas
@@ -530,7 +533,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     rr.height = fitH([{text, c1:1, c2:NC}], 20); // ✅ v12.2 — observations multi-lignes
     mg(row,1,row,NC);
     const c = rr.getCell(1);
-    sC(c, {bg:bgColor||'FFFFFDE7', fg:'FF78350F', italic:true, size:9.5, border:true});
+    sC(c, {bg:bgColor||'FFEDEDED', fg:DARK, italic:true, size:9.5, border:true});
     c.value = text;
     row++;
   }
@@ -544,7 +547,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     let vBg=bg, vFg=DARK;
     if (val==='S'){vBg=OK_BG;vFg=OK_FG;}
     else if (val==='R'){vBg=HI_BG;vFg=HI_FG;}
-    else if (val==='I'){vBg='FFFFFBEB';vFg='FFB45309';}
+    else if (val==='I'){vBg='FFDDDDDD';vFg=DARK;}
     const rr = ws.getRow(row);
     rr.height = fitH([{text:nom, c1:1}, {text:label, c1:2, c2:NC}], 15); // ✅ v12.2
     sC(rr.getCell(1),{bg,fg:DARK,size:9.5,border:true}); rr.getCell(1).value=nom;
@@ -613,7 +616,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
         tblHdr('Antigène', 'Titre', 'Cinétique', 'Commentaire');
         _wid.rows.forEach(w => pRow(w.name, w.titre, w.cinetique || '—', '', w.interp || ''));
       }
-      if (_wid.concl) nRow(_wid.concl.replace(/^[^\w]+/, ''), _wid.concl.includes('ÉTAT') || _wid.concl.includes('DÉBUT') ? 'FFFFF1F1' : 'FFFFFDE7');
+      if (_wid.concl) nRow(_wid.concl.replace(/^[^\w]+/, ''), _wid.concl.includes('ÉTAT') || _wid.concl.includes('DÉBUT') ? 'FFC9C9C9' : 'FFEDEDED');
       row++;
     }
 
@@ -797,7 +800,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   // ✅ v12.4 — Composition BPN (traçabilité des examens inclus, forfait fixe)
   if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
     secHdr('Composition du bilan prénatal (forfait ' + (r.montant||20000).toLocaleString('fr-FR') + ' FCFA)');
-    res['_bpn_inclus'].forEach(lbl => nRow('☑  ' + lbl, 'FFF0FDFA'));
+    res['_bpn_inclus'].forEach(lbl => nRow('☑  ' + lbl, 'FFEDEDED'));
     row++;
   }
 
@@ -830,7 +833,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
   const cMontant = ws.getCell(row,4);
   if (r.montant) {
     cMontant.value = 'Montant : ' + r.montant.toLocaleString('fr-FR') + ' FCFA';
-    sC(cMontant, {fg:'FF15803D', bold:true, size:9, ha:'right'});
+    sC(cMontant, {fg:DARK, bold:true, size:9, ha:'right'});
   }
   row++; row++;
 

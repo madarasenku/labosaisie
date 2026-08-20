@@ -154,26 +154,26 @@ function generateSignatureSVG(name, width=160, height=45) {
     const cpx = (prev[0] + cur[0]) / 2;
     d += ` Q ${cpx.toFixed(1)} ${prev[1].toFixed(1)} ${cur[0].toFixed(1)} ${cur[1].toFixed(1)}`;
   }
-  paths.push(`<path d="${d}" fill="none" stroke="#1e3a8a" stroke-width="${1.2 + rng() * 0.8}" stroke-linecap="round"/>`);
+  paths.push(`<path d="${d}" fill="none" stroke="#111" stroke-width="${1.2 + rng() * 0.8}" stroke-linecap="round"/>`);
 
   // Boucle montante (début de prénom)
   const loopX = 12 + rng() * 20;
   const loopH = 15 + rng() * 12;
-  paths.push(`<path d="M ${loopX} ${cy+5} C ${loopX-4} ${cy-loopH} ${loopX+10} ${cy-loopH+4} ${loopX+6} ${cy+2}" fill="none" stroke="#1e3a8a" stroke-width="1.1" stroke-linecap="round"/>`);
+  paths.push(`<path d="M ${loopX} ${cy+5} C ${loopX-4} ${cy-loopH} ${loopX+10} ${cy-loopH+4} ${loopX+6} ${cy+2}" fill="none" stroke="#111" stroke-width="1.1" stroke-linecap="round"/>`);
 
   // Trait de soulignement partiel
   const ulStart = 8 + rng() * 10;
   const ulEnd = width - 8 - rng() * 15;
   const ulY = cy + 14 + rng() * 6;
-  paths.push(`<path d="M ${ulStart} ${ulY} Q ${(ulStart+ulEnd)/2} ${ulY + (rng()-0.5)*4} ${ulEnd} ${ulY - rng()*3}" fill="none" stroke="#1e3a8a" stroke-width="0.8" stroke-linecap="round"/>`);
+  paths.push(`<path d="M ${ulStart} ${ulY} Q ${(ulStart+ulEnd)/2} ${ulY + (rng()-0.5)*4} ${ulEnd} ${ulY - rng()*3}" fill="none" stroke="#111" stroke-width="0.8" stroke-linecap="round"/>`);
 
   // Point final (paraphe)
   const dotX = ulEnd + 3 + rng() * 5;
-  paths.push(`<circle cx="${dotX}" cy="${ulY - 1}" r="${0.8 + rng() * 0.6}" fill="#1e3a8a"/>`);
+  paths.push(`<circle cx="${dotX}" cy="${ulY - 1}" r="${0.8 + rng() * 0.6}" fill="#111"/>`);
 
   // Initiales lisibles en petite taille (optionnel — donne l'ancrage)
   const initials = name.split(/[\s._-]+/).map(w => w[0]||'').join('').substring(0,2).toUpperCase();
-  paths.push(`<text x="10" y="${cy+3}" font-family="Georgia,serif" font-style="italic" font-size="9" fill="#1e3a8a" opacity="0.35">${initials}</text>`);
+  paths.push(`<text x="10" y="${cy+3}" font-family="Georgia,serif" font-style="italic" font-size="9" fill="#111" opacity="0.35">${initials}</text>`);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${paths.join('')}</svg>`;
 }
@@ -212,7 +212,7 @@ function generateQRDataURL(text, size = 120) {
         canvas.width = px; canvas.height = px;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, px, px);
-        ctx.fillStyle = '#1e3a8a';
+        ctx.fillStyle = '#111';
         for (let r = 0; r < count; r++) {
           for (let c = 0; c < count; c++) {
             if (qr.isDark(r, c)) ctx.fillRect((c + margin) * cell, (r + margin) * cell, cell, cell);
@@ -289,13 +289,13 @@ async function buildAndPrint(r) {
       .print-empty-row td { background: #fafafa !important; }
       .print-empty-row td:nth-child(2) { border-bottom: 1px dotted #9ca3af !important; min-width: 80px; }
       @media print {
-        .print-val-hi { color: #b91c1c !important; font-weight: 700 !important; }
-        .print-val-lo { color: #1d4ed8 !important; font-weight: 700 !important; }
+        .print-val-hi { color: #111 !important; background: #c9c9c9 !important; font-weight: 700 !important; }
+        .print-val-lo { color: #111 !important; background: #c9c9c9 !important; font-weight: 700 !important; }
         .print-val-hi::after { content: " ▲"; font-size: 9pt; }
         .print-val-lo::after { content: " ▼"; font-size: 9pt; }
       }
-      .print-val-hi { color: #b91c1c; font-weight: 700; }
-      .print-val-lo { color: #1d4ed8; font-weight: 700; }
+      .print-val-hi { color: #111; background: #c9c9c9; font-weight: 700; }
+      .print-val-lo { color: #111; background: #c9c9c9; font-weight: 700; }
       .print-val-hi::after { content: " ▲"; font-size: 9pt; }
       .print-val-lo::after { content: " ▼"; font-size: 9pt; }
     </style>
@@ -304,7 +304,7 @@ async function buildAndPrint(r) {
       <div class="print-header-content">
         <div class="print-logo">
           <svg viewBox="0 0 64 64" width="34" height="34" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="32" cy="32" r="31" fill="#1e3a8a"/>
+            <circle cx="32" cy="32" r="31" fill="#111"/>
             <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>
             <circle cx="32" cy="14" r="3.4" fill="#fff"/>
             <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
@@ -359,8 +359,8 @@ async function buildAndPrint(r) {
   // ✅ v13.54 — QR agrandi (×2) dans l'angle SUPÉRIEUR GAUCHE du compte rendu
   // QR compacts (70px) intégrés dans l'en-tête — v13.95
   const qrSmall = qrUrl1
-    ? `<img src="${qrUrl1}" width="70" height="70" style="display:block;border:1.5px solid #1e3a8a;border-radius:5px">
-       <div style="font-size:8px;color:#1e3a8a;font-weight:600;text-align:center">${shareToken ? 'Vérifier en ligne' : 'Dossier'}</div>`
+    ? `<img src="${qrUrl1}" width="70" height="70" style="display:block;border:1.5px solid #111;border-radius:5px">
+       <div style="font-size:8px;color:#111;font-weight:600;text-align:center">${shareToken ? 'Vérifier en ligne' : 'Dossier'}</div>`
     : (qrUrl2
       ? `<img src="${qrUrl2}" width="70" height="70" style="display:block;border:1px solid #9ca3af;border-radius:5px">`
       : '');
@@ -392,7 +392,7 @@ async function buildAndPrint(r) {
     html += `<div class="print-section">
       <div class="print-section-title">Composition du bilan prénatal — forfait ${(r.montant||20000).toLocaleString('fr-FR')} FCFA</div>
       <table class="print-table"><tbody>
-      ${res['_bpn_inclus'].map(l => `<tr><td style="width:26px;text-align:center;color:#15803d">☑</td><td>${escHTML(l)}</td></tr>`).join('')}
+      ${res['_bpn_inclus'].map(l => `<tr><td style="width:26px;text-align:center;color:#111">☑</td><td>${escHTML(l)}</td></tr>`).join('')}
       </tbody></table></div>`;
   }
 
@@ -419,9 +419,9 @@ async function buildAndPrint(r) {
         <div class="print-sig-box" style="flex:2">
           <div class="print-sig-label">Commentaire du technicien</div>
           <div class="print-sig-zone" style="height:22mm;padding:4px 8px;line-height:1.8">
-            <div style="border-bottom:1px solid #c7d9f9;margin-bottom:4px"></div>
-            <div style="border-bottom:1px solid #c7d9f9;margin-bottom:4px"></div>
-            <div style="border-bottom:1px solid #c7d9f9"></div>
+            <div style="border-bottom:1px solid #b0b0b0;margin-bottom:4px"></div>
+            <div style="border-bottom:1px solid #b0b0b0;margin-bottom:4px"></div>
+            <div style="border-bottom:1px solid #b0b0b0"></div>
           </div>
         </div>
         <div class="print-sig-box" style="flex:1">
@@ -430,14 +430,14 @@ async function buildAndPrint(r) {
             ${(typeof _maSignature !== 'undefined' && _maSignature)
               ? `<img src="${_maSignature}" style="height:38px;max-width:150px;object-fit:contain;margin:0 auto">`
               : generateSignatureSVG(techName, 150, 38)}
-            <div style="font-size:7pt;color:#1e3a8a;font-weight:600;margin-top:2px;letter-spacing:.3px">${techName}</div>
+            <div style="font-size:7pt;color:#111;font-weight:600;margin-top:2px;letter-spacing:.3px">${techName}</div>
             <div style="font-size:6.5pt;color:#9ca3af">Technicien de laboratoire · CPMI Grand-Bassam</div>
           </div>
         </div>
         <div class="print-meta">
           Édité le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}<br>
           CPMI de Grand-Bassam<br>
-          <span style="font-size:6.5pt;font-weight:700;color:#1e3a8a">Réf. ${refDoc || record?.patient?.ref_doc || '—'}</span>
+          <span style="font-size:6.5pt;font-weight:700;color:#111">Réf. ${refDoc || record?.patient?.ref_doc || '—'}</span>
         </div>
       </div>
       <div class="print-confidential">
@@ -527,7 +527,7 @@ function buildPrintSections(type, res, pat) {
   if (type === 'Dossier' && res?._dossier && res._types) {
     res._types.forEach(t => {
       const typeRes = res[t] || {};
-      html += `<div class="print-composite-section" style="margin-top:20px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--cpmi-deep);border-bottom:2px solid var(--cpmi-deep);padding-bottom:4px;margin-bottom:8px">${t}</div>`;
+      html += `<div class="print-composite-section" style="margin-top:20px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#111;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px">${t}</div>`;
       html += buildPrintSections(t, typeRes, r.patient);
       html += '</div>';
     });
