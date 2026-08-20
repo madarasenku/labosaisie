@@ -1430,14 +1430,16 @@ select {
   #print-render { display: block !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12.5pt; color: #000; background: #fff; }
 
   /* ✅ v13.34 — En-tête : double liseré or/bleu + logo + badge type */
+  /* ✅ v13.111 — Impression NOIR & BLANC (économie d'encre) : plus de couleur,
+     surlignage gris uniquement sur les valeurs anormales. */
   .print-header-bar {
     height: 3px;
-    background: linear-gradient(to right, #1e3a8a 0%, #2563eb 60%, #cba135 100%);
+    background: #333;
     margin-bottom: 0;
   }
   .print-header-bar.bottom {
     height: 2px;
-    background: linear-gradient(to right, #cba135 0%, #1e3a8a 100%);
+    background: #333;
     margin-top: 0;
   }
   .print-header-content {
@@ -1460,7 +1462,7 @@ select {
   .print-center-addr { font-size: 9.5pt; color: #666; font-style: italic; margin-top: 2px; }
   .print-type-badge {
     margin-left: auto;
-    background: #1e3a8a; color: #fff;
+    background: #e0e0e0; color: #111;
     padding: 7px 16px; border-radius: 4px;
     font-size: 9pt; font-weight: 800; letter-spacing: .8px;
     white-space: nowrap; flex-shrink: 0;
@@ -1468,8 +1470,8 @@ select {
 
   /* ✅ v13.34 — Fiche patient : fond très léger, N° dossier en vedette */
   .print-patient-card {
-    background: #f8faff;
-    border: 1.5px solid #1e3a8a;
+    background: #fff;
+    border: 1.5px solid #333;
     border-radius: 4px;
     padding: 8px 12px;
     margin-bottom: 10px;
@@ -1477,15 +1479,15 @@ select {
   }
   .print-patient-label {
     font-size: 7pt; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .5px; color: #1e3a8a; margin-bottom: 5px;
-    border-bottom: 1px solid #c7d9f9; padding-bottom: 3px;
+    letter-spacing: .5px; color: #111; margin-bottom: 5px;
+    border-bottom: 1px solid #b0b0b0; padding-bottom: 3px;
   }
   .print-patient-table { width: 100%; border-collapse: collapse; font-size: 11.5pt; }
-  .print-patient-table td { padding: 5px 9px; vertical-align: top; border-right: 1px solid #d0dcf7; }
+  .print-patient-table td { padding: 5px 9px; vertical-align: top; border-right: 1px solid #b0b0b0; }
   .print-patient-table td:last-child { border-right: none; }
   .print-patient-table .lbl { font-size: 9.5pt; color: #444; font-weight: 600; }
   .print-patient-table .val { font-weight: 500; color: #000; }
-  .print-dossier { font-size: 17pt; font-weight: 900; color: #1e3a8a; letter-spacing: .3px; }
+  .print-dossier { font-size: 17pt; font-weight: 900; color: #111; letter-spacing: .3px; }
 
   /* Sections */
   .print-section { margin-bottom: 8px; break-inside: avoid; }
@@ -1494,23 +1496,23 @@ select {
   /* ✅ v13.34 — Tableaux résultats : en-têtes bleu CPMI, alternance douce */
   .print-table { width: 100%; border-collapse: collapse; font-size: 11.5pt; margin-bottom: 9px; }
   .print-table th {
-    background: #1e3a8a !important; color: #fff !important;
+    background: #e0e0e0 !important; color: #111 !important;
     font-weight: 700; padding: 6px 9px; text-align: left;
-    border: 1px solid #1e3a8a; font-size: 10.5pt; letter-spacing: .3px;
+    border: 1px solid #b0b0b0; font-size: 10.5pt; letter-spacing: .3px;
   }
-  .print-table td { padding: 7px 10px; border: 1px solid #d0dcf7; vertical-align: middle; color: #000; }
-  .print-table tr:nth-child(even) td { background: #f0f5ff; }
+  .print-table td { padding: 7px 10px; border: 1px solid #b0b0b0; vertical-align: middle; color: #000; }
+  .print-table tr:nth-child(even) td { background: #fff; }
   .print-table tr:nth-child(odd)  td { background: #fff; }
-  .print-table tr:hover td { background: #e8f0fe; }
+  .print-table tr:hover td { background: #f2f2f2; }
   /* Résultats anormaux : pas de fond coloré (économie d'encre) — texte en gras
      + un repère textuel ▲/▼ explicite pour rester lisible même en noir pur */
   /* ✅ v13.34 — Anomalies : fond coloré léger (économie encre modérée) + repère texte */
-  .print-hi   { color: #991b1b !important; background: #fde8e8 !important; font-weight: 800; }
+  .print-hi   { color: #111 !important; background: #c9c9c9 !important; font-weight: 800; }
   .print-hi::before   { content: '▲ '; }
-  .print-lo   { color: #1e40af !important; background: #dbeafe !important; font-weight: 800; }
+  .print-lo   { color: #111 !important; background: #c9c9c9 !important; font-weight: 800; }
   .print-lo::before   { content: '▼ '; }
-  .print-ok   { color: #155724 !important; background: #f0fff4 !important; font-weight: 400; }
-  .print-warn { color: #92400e !important; background: #fef9c3 !important; font-weight: 800; }
+  .print-ok   { color: #111 !important; background: #fff !important; font-weight: 400; }
+  .print-warn { color: #111 !important; background: #dddddd !important; font-weight: 800; }
   .print-warn::before { content: '⚠ '; }
 
   /* Notes et conclusions — fond blanc, bordure gauche noire en guise d'accent */
@@ -1525,19 +1527,19 @@ select {
   .print-footer { margin-top: 14px; }
   .print-footer-bar {
     height: 2px;
-    background: linear-gradient(to right, #1e3a8a, #cba135);
+    background: #333;
     margin-bottom: 8px;
   }
   .print-footer-content { display: flex; gap: 12px; align-items: flex-start; }
   .print-sig-box { flex: 1; }
   .print-sig-label {
-    font-size: 7.5pt; font-weight: 700; color: #fff;
-    background: #1e3a8a; padding: 3px 8px;
+    font-size: 7.5pt; font-weight: 700; color: #111;
+    background: #e0e0e0; padding: 3px 8px;
     margin-bottom: 3px; display: inline-block; letter-spacing: .3px;
   }
   .print-sig-zone {
-    border: 1px solid #1e3a8a; height: 18mm;
-    border-radius: 0; background: #f8faff;
+    border: 1px solid #333; height: 18mm;
+    border-radius: 0; background: #fff;
   }
   .print-meta {
     font-size: 7pt; color: #444; font-style: italic;
