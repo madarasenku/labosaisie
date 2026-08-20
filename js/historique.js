@@ -1294,6 +1294,13 @@ async function saveThenNext(type) {
 
 // ✅ v13.35 — Enregistrer tous les onglets cochés en séquence automatique
 async function saveAllTabs() {
+  // ✅ v13.112 — En édition d'un dossier (mode « remplir tout sur une page »),
+  // déléguer à l'enregistrement atomique : une boucle sur _saveRecordImpl
+  // remettrait _editingRecordId à null dès la 1ʳᵉ analyse et créerait des doublons.
+  if ((typeof _fillAllMode !== 'undefined' && _fillAllMode) ||
+      (typeof _editingRecordId !== 'undefined' && _editingRecordId)) {
+    return saveRecordAll();
+  }
   const tabsACochecher = TAB_ORDER.filter(tabId => {
     const cat = getCatalogueComplet().filter(ex => ex.tab === tabId);
     return cat.some(ex => document.getElementById(ex.id)?.checked);

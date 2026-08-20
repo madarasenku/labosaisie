@@ -1450,6 +1450,7 @@ function resetPanelAfterSave(tabKey) {
 // ============================================================
 
 let _editingRecordId = null;
+let _fillAllMode = false; // ✅ v13.112 — édition « remplir tout sur une page »
 let _editingType     = null; // type de l'analyse en cours d'édition
 let _editingFicheId  = null; // ✅ v13.29 — id du dossier en cours de modification fiche d'accueil
 let _selectedIds     = new Set(); // ✅ v13.30 — IDs sélectionnés pour actions en masse
@@ -1479,14 +1480,12 @@ async function editRecord(id, typeOverride) {
   }
   if (!record) { toast('Fiche introuvable', 'err'); return; }
 
-  // Pour un dossier multi-analyses : demander quel onglet modifier
+  // ✅ v13.112 — Dossier (une ou plusieurs analyses) : on remplit TOUT sur une
+  // seule page (toutes les sections cochées empilées) et l'enregistrement route
+  // chaque résultat vers sa bonne analyse. Fini le choix « quelle analyse ? »
+  // et l'onglet unique qui cachait CRP quand on éditait l'Hématologie.
   if (isDossierRecord(record) && !typeOverride) {
-    const types = getRecordTypes(record);
-    if (types.length > 1) {
-      showEditTypeModal(id, types);
-      return;
-    }
-    typeOverride = types[0] || 'Hématologie';
+    return fillAllResults(id);
   }
 
   const type      = typeOverride || record.type || 'Hématologie';
@@ -1577,6 +1576,173 @@ async function editRecord(id, typeOverride) {
   toast('Fiche chargée pour modification (' + type + ')', 'ok');
 }
 
+// ✅ v13.112 — Ouvrir une fiche à compléter avec TOUTES les analyses cochées
+// empilées sur une seule page. Un unique bouton d'enregistrement route chaque
+// résultat vers sa bonne analyse (voir saveRecordAll).
+async function fillAllResults(id) {
+  if (isCaissier() || isSpectateur()) { toast('Accès lecture seule — modification impossible', 'err'); return; }
+  let record = getDB().find(x => x.id === id);
+  if (!record) { await refreshDB(); record = getDB().find(x => x.id === id); }
+  if (!record) { toast('Fiche introuvable', 'err'); return; }
+  await ensureFull(record);
+
+  const types = getRecordTypes(record);
+  _editingRecordId   = id;
+  _editingType       = null;
+  _fillAllMode       = true;
+  _shareTokenCurrent = record.patient?.share_token || null;
+
+  showView('saisie');
+  await new Promise(r => setTimeout(r, 50));
+
+  // Patient
+  const p = record.patient || {};
+  const setVal = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val || ''; };
+  setVal('p_dossier', p.dossier); setVal('p_date', p.date); setVal('p_nom', p.nom);
+  setVal('p_age', p.age); setVal('p_sexe', p.sexe); setVal('p_medecin', p.medecin);
+  setVal('p_service', p.service); setVal('p_clinique', p.clinique);
+  if (p.sexe || p.age) updateAllRefs();
+  const prescEl = document.getElementById('p_prescripteur_id');
+  if (prescEl && record.prescripteur_id) prescEl.value = record.prescripteur_id;
+
+  document.getElementById('fiche-identification').style.display = 'none';
+  document.getElementById('zone-saisie').style.display = '';
+  document.body.classList.add('fill-all-mode');
+
+  // Construire tous les panneaux, puis charger les résultats de chaque analyse
+  TAB_ORDER.forEach(t => { try { ensurePanelBuilt(t); } catch (e) {} });
+  await new Promise(r => setTimeout(r, 100));
+  types.forEach(t => { const rr = getRecordResultats(record, t); if (rr) loadResultsIntoForm(t, rr); });
+  types.forEach(t => { try { ensureInterpFresh(t); } catch (e) {} });
+
+  // Montant gelé (comme en édition simple)
+  const montantOriginal = record.montant || 0;
+  const montantEl = document.getElementById('montant-preview');
+  if (montantEl) {
+    montantEl.dataset.montantGele = montantOriginal;
+    montantEl.textContent = montantOriginal.toLocaleString('fr-FR') + ' F';
+  }
+  window._updateMontantCurrent_orig = window.updateMontantCurrent;
+  window.updateMontantCurrent = function () {
+    if (_editingRecordId) return;
+    window._updateMontantCurrent_orig && window._updateMontantCurrent_orig();
+  };
+
+  // Restaurer les cases cochées de TOUTES les analyses + appliquer les verrous
+  _locksDisabled = false;
+  if (typeof restoreFicheFromRecord === 'function') restoreFicheFromRecord(record);
+  if (typeof applyExamLocks === 'function') applyExamLocks();
+
+  // Révéler les panneaux qui ont au moins un examen coché ; masquer les autres
+  TAB_ORDER.forEach(tid => {
+    const panel = document.getElementById('panel-' + tid);
+    if (!panel) return;
+    const anyChecked = getCatalogueComplet().filter(ex => ex.tab === tid)
+      .some(ex => document.getElementById(ex.id)?.checked);
+    panel.classList.toggle('active', anyChecked);
+  });
+
+  if (typeof markRequiredSections === 'function') markRequiredSections();
+
+  // Boutons : masquer les « Enregistrer » par onglet, montrer le bouton unique
+  document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = 'none');
+  const btnAll = document.getElementById('btn-save-all');
+  if (btnAll) { btnAll.style.display = 'inline-flex'; btnAll.innerHTML = '💾 Enregistrer les résultats'; }
+
+  // Bandeau
+  let banner = document.getElementById('edit-mode-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'edit-mode-banner';
+    banner.style.cssText = 'background:#fef3c7;border:1.5px solid #d97706;color:#92400e;padding:10px 16px;border-radius:var(--radius);margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px';
+    document.getElementById('rappel-patient')?.parentNode?.insertBefore(banner, document.getElementById('rappel-patient'));
+  }
+  banner.innerHTML = '✏️ Compléter les résultats — Dossier N°' + esc(p.dossier || '') + ' · ' + esc(p.nom || '')
+    + ' <span style="font-size:11px;font-weight:400;opacity:.7">(' + esc(types.join(', ')) + ')</span>'
+    + ' <button onclick="cancelEdit()" style="margin-left:auto;background:none;border:1px solid #92400e;color:#92400e;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Annuler</button>';
+  banner.style.display = 'flex';
+
+  const rappelNom = document.getElementById('rappel-nom');
+  const rappelDoss = document.getElementById('rappel-dossier');
+  if (rappelNom)  rappelNom.textContent  = (p.nom || '').toUpperCase();
+  if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('Fiche chargée — remplissez tous les examens puis « Enregistrer les résultats »', 'ok');
+}
+
+// ✅ v13.112 — Enregistrement atomique de TOUTES les analyses en un seul appel.
+// Route chaque résultat vers sa bonne analyse ; ne réinitialise pas
+// _editingRecordId en cours de route (contrairement à une boucle sur
+// _saveRecordImpl, qui créerait des doublons dès la 2ᵉ analyse).
+async function saveRecordAll() {
+  const p = getPatient();
+  if (!validatePatient(p)) return;
+  if (_editingRecordId && !isDossierPaye(_editingRecordId)) {
+    toast('🔒 Paiement requis avant d\'enregistrer ce dossier', 'err');
+    showView('caisse'); return;
+  }
+  showLoading('Enregistrement…');
+  try {
+    const existing = getDB().find(rr => rr.id === _editingRecordId);
+    if (!existing) { hideLoading(); toast('Fiche introuvable', 'err'); return; }
+
+    const TT = { hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
+                 sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin' };
+    const base = existing.resultats || {};
+    const newRes = { ...base };
+    newRes._types          = Array.isArray(base._types) ? [...base._types] : [];
+    newRes._examens_coches = { ...(base._examens_coches || {}) };
+    newRes._examens_prix   = { ...(base._examens_prix   || {}) };
+    newRes._montants       = { ...(base._montants       || {}) };
+    const montantParTab = JSON.parse(document.getElementById('montant-preview')?.dataset?.montantParTab || '{}');
+    let anyCritical = false;
+
+    TAB_ORDER.forEach(tid => {
+      const type = TT[tid];
+      if (!type) return;
+      const coches = getCatalogueComplet().filter(ex => ex.tab === tid && document.getElementById(ex.id)?.checked);
+      if (!coches.length) return;                  // analyse non demandée → on n'y touche pas
+      try { ensureInterpFresh(type); } catch (e) {}
+      const tr = collectResults(type);
+      try { if (checkValeursCritiques(tr).length) anyCritical = true; } catch (e) {}
+      newRes[type] = tr;
+      if (!newRes._types.includes(type)) newRes._types.push(type);
+      newRes._examens_coches[type] = coches.map(ex => ex.label);
+      const prix = {};
+      coches.forEach(ex => { const px = document.getElementById('px_' + ex.id); prix[ex.label] = px ? (parseInt(px.value || '0') || 0) : (ex.prix || 0); });
+      newRes._examens_prix[type] = prix;
+      if (newRes._montants[type] == null) newRes._montants[type] = montantParTab[tid] || 0;
+    });
+
+    newRes._facture_seule = false;                 // des résultats ont été saisis
+    if (anyCritical) p.has_critical = true;
+    // Montant gelé : on conserve le total facturé du dossier
+    const newMontant = existing.montant || Object.values(newRes._montants).reduce((s, m) => s + (Number(m) || 0), 0);
+
+    const saved = await updateRecordRemote(_editingRecordId, {
+      patient: p, type: 'Dossier', resultats: newRes, montant: newMontant,
+      prescripteur_id: (document.getElementById('p_prescripteur_id')?.value) || existing.prescripteur_id || null,
+    }, { onlyResultats: true });
+
+    if (saved) {
+      _editingRecordId = null; _editingType = null; _fillAllMode = false;
+      if (window._updateMontantCurrent_orig) { window.updateMontantCurrent = window._updateMontantCurrent_orig; window._updateMontantCurrent_orig = null; }
+      document.body.classList.remove('fill-all-mode');
+      document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
+      hideLoading();
+      toast('✅ Résultats enregistrés', 'ok');
+      await refreshDB(true);
+      showView('historique');
+    } else {
+      hideLoading();
+    }
+  } catch (e) {
+    hideLoading();
+    toast('Erreur : ' + (e.message || e), 'err');
+  }
+}
+
 // Modal de sélection du type à modifier pour les dossiers multi-analyses
 function showEditTypeModal(id, types) {
   let modal = document.getElementById('edit-type-modal');
@@ -1606,6 +1772,10 @@ function showEditTypeModal(id, types) {
 
 function cancelEdit() {
   _editingRecordId = null;
+  // ✅ v13.112 — sortir du mode « remplir tout sur une page »
+  _fillAllMode = false;
+  document.body.classList.remove('fill-all-mode');
+  document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
   // ✅ v13.34 — Restaurer updateMontantCurrent si gelé
   if (window._updateMontantCurrent_orig) {
     window.updateMontantCurrent = window._updateMontantCurrent_orig;

@@ -646,6 +646,12 @@ main {
 .panel { display: none; }
 .panel.active { display: block; animation: fade-in .3s ease; }
 
+/* ✅ v13.112 — Mode « remplir tout sur une page » : à l'ouverture d'une fiche
+   à compléter, toutes les analyses cochées s'affichent empilées (plusieurs
+   .panel.active à la fois). La barre d'onglets est masquée ; la visibilité
+   des boutons « Enregistrer » est gérée en JS (fillAllResults). */
+body.fill-all-mode .tabs { display: none; }
+
 /* ================================================================
    CARD — cartes de formulaire
    ================================================================ */

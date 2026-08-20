@@ -258,6 +258,10 @@ function ensurePanelBuilt(name) {
 }
 
 function switchTab(name) {
+  // ✅ v13.112 — En mode « remplir tout sur une page », les onglets sont masqués
+  // et toutes les analyses cochées sont empilées : on ignore tout changement
+  // d'onglet qui réduirait la vue à un seul panneau.
+  if (typeof _fillAllMode !== 'undefined' && _fillAllMode) return;
   // ✅ v13.34 — Bloquer l'onglet si aucun examen de ce type n'est payé/coché
   // UNIQUEMENT quand on est en mode saisie de résultats (zone-saisie visible
   // ET fiche-identification masquée) — pas quand on coche depuis la fiche d'accueil
