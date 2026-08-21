@@ -1212,13 +1212,15 @@ function showEditUnifie(id) {
   bd.id = 'edit-unifie-modal';
   bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px';
 
-  const typesChoix = types.length > 1
-    ? types.map(t => `<button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();editRecord(${id},'${t}')"
+  // ✅ v13.113 — UN SEUL bouton « Compléter les résultats » : ouvre TOUTES les
+  //   analyses cochées sur une seule page (editRecord sans type → fillAllResults).
+  //   Avant, un dossier multi-analyses affichait un bouton PAR analyse (avec type
+  //   forcé), ce qui rouvrait une seule analyse à la fois — d'où « tous les champs
+  //   ne viennent pas sur la même page ».
+  const _libAnalyses = (types.length ? types.join('  ·  ') : 'Analyse');
+  const typesChoix = `<button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();editRecord(${id})"
         style="width:100%;padding:11px 14px;text-align:left;margin-bottom:6px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
-        ✏️ Modifier les résultats — <strong>${esc(t)}</strong></button>`).join('')
-    : `<button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();editRecord(${id})"
-        style="width:100%;padding:11px 14px;text-align:left;margin-bottom:6px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
-        ✏️ Modifier les résultats — <strong>${esc(types[0] || 'Analyse')}</strong></button>`;
+        ✏️ Compléter / modifier les résultats — <strong>${esc(_libAnalyses)}</strong></button>`;
 
   bd.innerHTML = `
     <div style="background:var(--surface-2);border-radius:16px;padding:24px 26px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
