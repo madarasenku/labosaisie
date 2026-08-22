@@ -651,14 +651,60 @@ function demarrerSaisie() {
   document.getElementById('fiche-identification').style.display = 'none';
   document.getElementById('zone-saisie').style.display = '';
 
-  // Activer le bon onglet (construit le panneau si ce n'est pas déjà fait)
-  switchTab(tabCible);
-
-  // Marquer d'une étoile rouge les sections correspondant aux examens payés
-  // (doit venir APRÈS switchTab pour que les sections existent dans le DOM)
-  markRequiredSections();
+  // ✅ v13.114 — Nouvelle saisie « tout sur une page » : après la fiche patient,
+  // on empile UNIQUEMENT les analyses cochées, sans onglets, sur une seule page.
+  // (tabCible n'est plus utilisé pour n'afficher qu'un seul onglet.)
+  void tabCible;
+  enterFillAllFresh();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ✅ v13.114 — Vue « remplir tout sur une page » pour une NOUVELLE saisie
+// (juste après l'enregistrement des informations patient). Empile tous les
+// panneaux dont au moins un examen est coché, masque la barre d'onglets et
+// les sections non cochées, et n'affiche qu'un seul bouton d'enregistrement.
+// Réutilise la même mécanique que fillAllResults() (édition), mais sans dossier
+// existant : l'enregistrement passe par saveRecordAll() en mode création.
+function enterFillAllFresh() {
+  // Mode « tout sur une page » actif, mais PAS en édition (dossier neuf).
+  if (typeof _fillAllMode !== 'undefined') _fillAllMode = true;
+  if (typeof _editingRecordId !== 'undefined') _editingRecordId = null;
+  _locksDisabled = false;
+  document.body.classList.add('fill-all-mode');
+
+  // Construire tous les panneaux (les cartes doivent exister dans le DOM).
+  const order = (typeof TAB_ORDER !== 'undefined') ? TAB_ORDER
+              : ['hema','bio','bacterio','sero','parasito','gs','bpn'];
+  order.forEach(t => { try { if (typeof ensurePanelBuilt === 'function') ensurePanelBuilt(t); } catch (e) {} });
+
+  // Révéler les panneaux ayant au moins un examen coché ; masquer les autres.
+  order.forEach(tid => {
+    const panel = document.getElementById('panel-' + tid);
+    if (!panel) return;
+    const anyChecked = getCatalogueComplet().filter(ex => ex.tab === tid)
+      .some(ex => document.getElementById(ex.id)?.checked);
+    panel.classList.toggle('active', anyChecked);
+  });
+
+  // Verrous + sections : applyExamLocks masque les sections (sec-*) sans examen
+  // coché ; markRequiredSections ajoute l'étoile « requis ».
+  if (typeof applyExamLocks === 'function') applyExamLocks();
+  if (typeof markRequiredSections === 'function') markRequiredSections();
+
+  // Boutons : un seul « Enregistrer les résultats » (masquer ceux par onglet).
+  document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = 'none');
+  const bar = document.getElementById('save-all-bar');
+  if (bar) bar.style.display = 'block';               // toujours visible en « tout sur une page »
+  const btnAll = document.getElementById('btn-save-all');
+  if (btnAll) { btnAll.style.display = 'inline-flex'; btnAll.innerHTML = '💾 Enregistrer les résultats'; }
+  const hint = document.getElementById('save-all-hint');
+  if (hint) {
+    const labels = order
+      .filter(tid => getCatalogueComplet().some(ex => ex.tab === tid && document.getElementById(ex.id)?.checked))
+      .map(tid => (typeof TAB_TO_TYPE !== 'undefined' && TAB_TO_TYPE[tid]) || tid);
+    hint.textContent = labels.length + ' analyse' + (labels.length > 1 ? 's' : '') + ' à saisir : ' + labels.join(', ');
+  }
 }
 
 // Marque les sections/cartes correspondant aux examens cochés (payés)

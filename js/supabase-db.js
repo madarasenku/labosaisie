@@ -765,6 +765,11 @@ async function resetFicheIdentif() {
   _editingFicheId  = null; // ✅ v13.29
   _locksDisabled = false;
   _shareTokenCurrent = null; // Nouveau patient → nouveau token de partage
+  // ✅ v13.114 — Sortir du mode « tout sur une page » (nouvelle saisie) et
+  // restaurer l'affichage normal par onglets + les boutons par onglet.
+  if (typeof _fillAllMode !== 'undefined') _fillAllMode = false;
+  document.body.classList.remove('fill-all-mode');
+  document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
 
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
@@ -1678,6 +1683,9 @@ async function fillAllResults(id) {
 async function saveRecordAll() {
   const p = getPatient();
   if (!validatePatient(p)) return;
+  // ✅ v13.114 — Nouvelle saisie « tout sur une page » (aucun dossier existant) :
+  // création atomique d'un seul dossier avec TOUTES les analyses cochées.
+  if (!_editingRecordId) { return saveRecordAllFresh(); }
   if (_editingRecordId && !isDossierPaye(_editingRecordId)) {
     toast('🔒 Paiement requis avant d\'enregistrer ce dossier', 'err');
     showView('caisse'); return;
@@ -1734,6 +1742,93 @@ async function saveRecordAll() {
       toast('✅ Résultats enregistrés', 'ok');
       await refreshDB(true);
       showView('historique');
+    } else {
+      hideLoading();
+    }
+  } catch (e) {
+    hideLoading();
+    toast('Erreur : ' + (e.message || e), 'err');
+  }
+}
+
+// ✅ v13.114 — Enregistrement atomique d'une NOUVELLE saisie « tout sur une page ».
+// Crée UN seul dossier contenant toutes les analyses cochées + leurs résultats,
+// en un unique insert. Évite l'ancien parcours saveAllTabs → boucle de
+// _saveRecordImpl, qui régénérait le numéro de dossier entre chaque analyse et
+// pouvait éclater un même patient en plusieurs dossiers.
+async function saveRecordAllFresh() {
+  const p = getPatient();
+  if (!validatePatient(p)) return;
+
+  const TT = { hema:'Hématologie', bio:'Biochimie', bacterio:'Bactériologie',
+               sero:'Immuno-Sérologie', parasito:'Parasitologie', gs:'Groupe sanguin' };
+
+  // Vérifier qu'au moins un examen est coché.
+  const tabsCoches = TAB_ORDER.filter(tid => TT[tid] &&
+    getCatalogueComplet().some(ex => ex.tab === tid && document.getElementById(ex.id)?.checked));
+  if (!tabsCoches.length) { toast('⚠ Aucun examen coché', 'err'); return; }
+
+  showLoading('Enregistrement…');
+  try {
+    // Anti-doublon : fermer la fenêtre entre l'aperçu du numéro et l'écriture.
+    let cacheComplet;
+    try { cacheComplet = await refreshDB(true); }
+    catch (e) { cacheComplet = (typeof getDB === 'function' ? getDB() : []); }
+    const dup = (cacheComplet || []).find(rr =>
+      rr.patient?.dossier === p.dossier && !rr.deletedAt && !rr._hardDeleted);
+    if (dup) {
+      hideLoading();
+      const ok = await showConfirmModal({
+        icon: '⚠️', title: 'Numéro de dossier déjà utilisé',
+        message: 'Le dossier N° ' + esc(p.dossier || '') + ' existe déjà (' + esc(dup.patient?.nom || '') + '). Générer un nouveau numéro et enregistrer ? (Annuler pour vérifier d\'abord.)',
+        confirmText: 'Nouveau numéro + enregistrer', cancelText: 'Annuler'
+      });
+      if (!ok) return;
+      await regenDossier();
+      p.dossier = getPatient().dossier;
+      showLoading('Enregistrement…');
+    }
+
+    const montantParTab = JSON.parse(document.getElementById('montant-preview')?.dataset?.montantParTab || '{}');
+    const newRes = { _types: [], _montants: {}, _examens_coches: {}, _examens_prix: {}, _facture_seule: false };
+    let anyCritical = false;
+
+    TAB_ORDER.forEach(tid => {
+      const type = TT[tid];
+      if (!type) return;
+      const coches = getCatalogueComplet().filter(ex => ex.tab === tid && document.getElementById(ex.id)?.checked);
+      if (!coches.length) return;                    // analyse non demandée
+      try { ensureInterpFresh(type); } catch (e) {}
+      const tr = collectResults(type);
+      try { if (checkValeursCritiques(tr).length) anyCritical = true; } catch (e) {}
+      newRes[type] = tr;
+      newRes._types.push(type);
+      newRes._examens_coches[type] = coches.map(ex => ex.label);
+      const prix = {};
+      coches.forEach(ex => { const px = document.getElementById('px_' + ex.id); prix[ex.label] = px ? (parseInt(px.value || '0') || 0) : (ex.prix || 0); });
+      newRes._examens_prix[type] = prix;
+      newRes._montants[type] = montantParTab[tid] || Object.values(prix).reduce((s, v) => s + (Number(v) || 0), 0);
+    });
+
+    if (anyCritical) p.has_critical = true;
+    const montant = Object.values(newRes._montants).reduce((s, m) => s + (Number(m) || 0), 0);
+    const prescripteurId = document.getElementById('p_prescripteur_id')?.value || null;
+
+    const saved = await insertRecordRemote({
+      patient: p, type: 'Dossier', resultats: newRes, montant,
+      prescripteur_id: prescripteurId || null,
+    });
+
+    if (saved) {
+      _fillAllMode = false;
+      _editingRecordId = null; _editingType = null;
+      document.body.classList.remove('fill-all-mode');
+      document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
+      hideLoading();
+      toast('✅ Dossier N°' + (p.dossier || '') + ' enregistré — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
+      await refreshDB(true);
+      // Repartir sur une fiche patient vierge (retour à la fiche d'identification).
+      if (typeof resetFicheIdentif === 'function') await resetFicheIdentif();
     } else {
       hideLoading();
     }
