@@ -631,6 +631,11 @@ function updateBulkToolbar() {
     delBtn.innerHTML = _filterCorbeille ? '🗑 Supprimer définitivement' : '🗑 Supprimer';
   }
   const peutMasquer = !(typeof isSpectateur === 'function' && isSpectateur());
+  // ✅ v13.125 — Réception seule : boutons visibles hors spectateur et hors corbeille.
+  ['bulk-recept-on', 'bulk-recept-off'].forEach(idBtn => {
+    const b = document.getElementById(idBtn);
+    if (b) b.style.display = (peutMasquer && !_filterCorbeille) ? '' : 'none';
+  });
   ['bulk-lock-btn', 'bulk-unlock-btn'].forEach(idBtn => {
     const b = document.getElementById(idBtn);
     if (b) b.style.display = peutMasquer ? '' : 'none';
@@ -1148,6 +1153,36 @@ async function bulkDelete() {
 // ✅ v13.42 — Encaissement groupé : marque tous les dossiers sélectionnés
 //   comme payés au montant exact demandé (montant reçu = montant, pas de
 //   monnaie). Chaque dossier est persisté dans Supabase individuellement.
+// ✅ v13.125 — Marquer/retirer « réception seule » (exclusion de la saisie en
+// série) sur les dossiers sélectionnés.
+async function bulkReceptionSeule(value) {
+  if (blockIfSpectateur()) return;
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  showLoading(value ? 'Exclusion de la série…' : 'Réintégration…');
+  try {
+    const { data, error } = await _sb.rpc('set_reception_seule', { p_token: TK(), p_ids: ids, p_value: !!value });
+    hideLoading();
+    if (error || (data && data.erreur)) {
+      toast('Échec : ' + (error?.message || data?.erreur || 'inconnue'), 'err');
+      return;
+    }
+    const n = (data && data.modifies) || 0;
+    // Mise à jour optimiste du cache pour un effet immédiat côté grille.
+    ids.forEach(id => {
+      const r = _dbCache.find(x => x.id === id);
+      if (r) { r.resultats = r.resultats || {}; r.resultats._reception_seule = !!value; }
+    });
+    clearBulkSelection();
+    await refreshDB(true);
+    renderHistory();
+    toast((value ? '📥 ' : '↩ ') + n + ' dossier(s) ' + (value ? 'exclu(s) de la saisie en série' : 'remis en saisie en série'), 'ok');
+  } catch (e) {
+    hideLoading();
+    toast('Erreur : ' + (e.message || e), 'err');
+  }
+}
+
 async function bulkEncaisser() {
   if (blockIfSpectateur()) return;
   // ✅ v13.122 — Encaissement réservé à la caisse (admin/caissier), ou aux agents
