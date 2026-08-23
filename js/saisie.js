@@ -948,8 +948,11 @@ async function enregistrerFicheIdentif() {
         prescripteur_id,
         est_bpn: false,
       };
-      await updateRecordRemote(_editingFicheId, updatedRecord);
+      // ✅ v13.129 — Ne confirmer que si la mise à jour a réellement abouti
+      // (journée verrouillée → updateRecordRemote renvoie null et a prévenu).
+      const majOk = await updateRecordRemote(_editingFicheId, updatedRecord);
       hideLoading();
+      if (!majOk) { return; }
       toast('✅ Fiche d\'accueil mise à jour — N° ' + (p.dossier || ''), 'ok');
       _editingFicheId = null;
       // Nettoyer le bandeau et le bouton
@@ -998,8 +1001,12 @@ async function enregistrerFicheIdentif() {
         prescripteur_id,
         est_bpn: false,
       };
-      await insertRecordRemote(record);
+      // ✅ v13.129 — Vérifier que l'enregistrement a RÉELLEMENT réussi. Sur une
+      // journée verrouillée (ou toute erreur), insertRecordRemote renvoie null
+      // et a déjà affiché la raison ; on ne doit PAS annoncer « enregistré ».
+      const saved = await insertRecordRemote(record);
       hideLoading();
+      if (!saved) { return; }
       toast('Facture enregistrée ✓ — résultats à compléter plus tard', 'ok');
       await refreshDB(true);
       // ✅ v13.37 — Nouveau patient enregistré depuis la caisse → retour à la caisse
