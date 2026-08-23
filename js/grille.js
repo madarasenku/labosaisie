@@ -53,20 +53,27 @@ const GRILLE_EXAMS = {
     cols: [{ k: 'gly', lab: 'Glycémie (g/L)', dom: 'v_gly', kind: 'num' }],
   },
   crea: {
-    label: 'Créatinine', type: 'Biochimie', exId: 'ex_crea', coche: /Créat|Creat/i,
+    label: 'Créatinine (+ urée auto)', type: 'Biochimie', exId: 'ex_crea', coche: /Créat|Creat/i,
     filled: b => b['Créatinine'] && b['Créatinine'].valeur,
     cols: [{ k: 'crea', lab: 'Créatinine (mg/L)', dom: 'v_crea', kind: 'num' }],
+    // ✅ v13.123 — L'urée est déduite de la créatinine : urée (g/L) = créat / 44.4.
+    postSet: () => {
+      const c = parseFloat(document.getElementById('v_crea')?.value);
+      const el = document.getElementById('v_uree');
+      if (el && !isNaN(c)) {
+        el.value = (c / 44.4).toFixed(2);
+        try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        if (typeof onParamInputColored === 'function') { try { onParamInputColored('uree'); } catch (e) {} }
+      }
+    },
   },
-  uree: {
-    label: 'Urée', type: 'Biochimie', exId: 'ex_uree', coche: /Urée|Uree/i,
-    filled: b => b['Urée'] && b['Urée'].valeur,
-    cols: [{ k: 'uree', lab: 'Urée (g/L)', dom: 'v_uree', kind: 'num' }],
-  },
-  tsh: {
-    label: 'TSH', type: 'Immuno-Sérologie', exId: 'ex_tsh', coche: /TSH/i,
-    filled: s => s['TSH'] && (s['TSH'].valeur || s['TSH'].resultat),
-    before: () => { const m = document.getElementById('smode_tsh'); if (m) { m.value = 'quant'; try { m.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} } },
-    cols: [{ k: 'tsh', lab: 'TSH (mUI/L)', dom: 'sv_tsh', kind: 'num' }],
+  transa: {
+    label: 'Transaminases (ASAT / ALAT)', type: 'Biochimie', exId: 'ex_asat', coche: /ASAT|ALAT|Transaminase|TGO|TGP/i,
+    filled: b => (b['ASAT (TGO)'] && b['ASAT (TGO)'].valeur) || (b['ALAT (TGP)'] && b['ALAT (TGP)'].valeur),
+    cols: [
+      { k: 'asat', lab: 'ASAT (TGO)', dom: 'v_asat', kind: 'num' },
+      { k: 'alat', lab: 'ALAT (TGP)', dom: 'v_alat', kind: 'num' },
+    ],
   },
 };
 
@@ -236,6 +243,7 @@ function grilleBuildResults(cfg, dossId, sexe, age) {
     const el = document.getElementById(c.dom);
     if (el) { el.value = val; try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {} try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} }
   });
+  if (cfg.postSet) { try { cfg.postSet(); } catch (e) {} }
   if (cfg.type === 'Hématologie') { if (typeof calcConstantes === 'function') calcConstantes(); if (typeof calcFLAbsolues === 'function') calcFLAbsolues(); }
   if (typeof ensureInterpFresh === 'function') ensureInterpFresh(cfg.type);
   return collectResults(cfg.type);
