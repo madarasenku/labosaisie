@@ -1748,7 +1748,10 @@ async function saveRecordAll() {
       hideLoading();
       toast('✅ Résultats enregistrés', 'ok');
       await refreshDB(true);
-      showView('historique');
+      // ✅ v13.121 — Si ce dossier était ouvert dans la paillasse, le retirer et
+      // basculer vers le patient suivant encore ouvert ; sinon aller à l'historique.
+      const switched = (typeof benchAfterSave === 'function') ? benchAfterSave() : false;
+      if (!switched) showView('historique');
     } else {
       hideLoading();
     }

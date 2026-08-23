@@ -83,8 +83,12 @@ function benchApply(entry) {
   document.getElementById('zone-saisie').style.display = '';
 
   // Reconstruit les panneaux et masque les examens non cochés.
-  if (typeof _editingRecordId !== 'undefined') _editingRecordId = null; // Phase 1 : saisie neuve
+  if (typeof _editingRecordId !== 'undefined') _editingRecordId = null;
   if (typeof enterFillAllFresh === 'function') enterFillAllFresh();
+  // ✅ v13.121 — Dossier existant ouvert dans la paillasse : rétablir le mode
+  // édition APRÈS enterFillAllFresh (qui remet _editingRecordId à null), pour
+  // que l'enregistrement passe par la mise à jour du dossier, pas une création.
+  if (entry.recordId != null && typeof _editingRecordId !== 'undefined') _editingRecordId = entry.recordId;
 
   // Réinjecte les valeurs de résultats APRÈS reconstruction des panneaux.
   Object.keys(entry.values).forEach(fid => {
@@ -137,6 +141,33 @@ function benchGo(key) {
   if (!e) return;
   _benchActiveKey = key;
   benchApply(e);
+  benchRenderBar();
+  benchUpdateActiveStatus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Ouvrir un dossier existant (depuis l'historique) dans la paillasse ──
+// Charge la fiche dans le formulaire (fillAllResults) puis l'ajoute comme
+// onglet de la paillasse, en conservant les patients déjà ouverts.
+async function benchOpenRecord(id) {
+  if (!benchEnabled()) { if (typeof editRecord === 'function') return editRecord(id); return; }
+  // Déjà ouvert ? → simplement basculer dessus.
+  const deja = _bench.find(e => e.recordId === id);
+  if (deja) { if (typeof showView === 'function') showView('saisie'); benchGo(deja.key); return; }
+  // Mémoriser le patient actuellement affiché, puis charger le dossier demandé.
+  benchStoreActiveFromForm();
+  _benchActiveKey = null;
+  if (typeof fillAllResults === 'function') {
+    await fillAllResults(id);            // charge patient + résultats + vue empilée
+  } else if (typeof editRecord === 'function') {
+    await editRecord(id);
+  }
+  // Capturer l'état chargé comme onglet de paillasse (avec recordId).
+  const snap = benchSnapshot();
+  const key = _benchSeq++;
+  const nom = (document.getElementById('p_nom')?.value || 'Dossier').trim();
+  _bench.push({ key, recordId: id, label: nom, ...snap });
+  _benchActiveKey = key;
   benchRenderBar();
   benchUpdateActiveStatus();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -223,9 +254,9 @@ function benchRenderBar() {
     if (pret)       bg = actif ? 'background:#15803d;color:#fff' : 'background:#dcfce7;color:#15803d;border:1px solid #86efac';
     else if (actif) bg = 'background:var(--cpmi-deep);color:#fff';
     else            bg = 'background:var(--accent-light);color:var(--cpmi-deep);border:1px solid var(--border)';
-    const marque = pret ? '✓ ' : '';
+    const marque = (pret ? '✓ ' : '') + (e.recordId != null ? '✎ ' : '');
     return '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 11px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;' + bg + '" '
-      + 'onclick="benchGo(' + e.key + ')" title="' + (pret ? 'Prêt — ' : '') + 'Basculer vers ' + nom + '">'
+      + 'onclick="benchGo(' + e.key + ')" title="' + (pret ? 'Prêt — ' : '') + (e.recordId != null ? 'Dossier existant — ' : '') + 'Basculer vers ' + nom + '">'
       + marque + nom + (doss ? ' <span style="opacity:.7;font-weight:500">· ' + doss + '</span>' : '')
       + '<button onclick="event.stopPropagation();benchClose(' + e.key + ')" title="Fermer" '
       + 'style="border:none;background:' + (actif || pret ? 'rgba(255,255,255,.25)' : 'rgba(0,0,0,.06)') + ';color:inherit;'
