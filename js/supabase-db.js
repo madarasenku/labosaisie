@@ -557,10 +557,17 @@ async function insertRecordRemote(record) {
     return saved;
   } catch (e) {
     if (isNetworkError(e)) return enqueueInsert(record, est_bpn); // ✅ v13.4 — bascule en file
+    if (estJourVerrouille(e)) { toast('🔒 Journée verrouillée — enregistrement impossible', 'err'); return null; }
     console.error('Erreur insertion Supabase:', e);
     toast("Échec de l'enregistrement distant", 'err');
     return null;
   }
+}
+
+// ✅ v13.127 — Détecte l'erreur du garde-fou « journée verrouillée » (trigger DB).
+function estJourVerrouille(e) {
+  const m = (e && (e.message || e.error_description || e.details)) || (typeof e === 'string' ? e : '');
+  return /journee_verrouillee/i.test(String(m));
 }
 
 // Met à jour une fiche existante (édition depuis l'historique)
@@ -606,6 +613,7 @@ async function updateRecordRemote(id, record, opts = {}) {
     return updated;
   } catch (e) {
     if (isNetworkError(e)) return enqueueUpdate(id, record, est_bpn); // ✅ v13.4
+    if (estJourVerrouille(e)) { toast('🔒 Journée verrouillée — modification impossible', 'err'); return null; }
     console.error('Erreur mise à jour Supabase:', e);
     toast('Échec de la mise à jour', 'err');
     return null;

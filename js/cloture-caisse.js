@@ -32,6 +32,52 @@ function _jourLocal(d) {
 
 function _fcfa(n) { return (Number(n) || 0).toLocaleString('fr-FR') + ' FCFA'; }
 
+// ✅ v13.127 — Journées verrouillées (gel des sommes du jour).
+let _cloturesVerr = new Set();
+function jourVerrouille(jour) { return _cloturesVerr.has(jour); }
+async function chargerClotures() {
+  try {
+    if (typeof _sb === 'undefined' || !_sb || typeof TK !== 'function' || !TK()) return;
+    const { data, error } = await _sb.rpc('list_clotures', { p_token: TK() });
+    if (!error && Array.isArray(data)) _cloturesVerr = new Set(data.map(x => x.jour));
+  } catch (e) { /* réseau : garder l'état connu */ }
+}
+async function verrouillerJournee() {
+  const champ = document.getElementById('cloture-date');
+  const jour = (champ && champ.value) || _jourLocal();
+  if (typeof peutEncaisser === 'function' && !peutEncaisser()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
+  const c = calculerCloture(jour);
+  if (typeof showConfirmModal === 'function' && !await showConfirmModal({
+    icon: '🔒', title: 'Verrouiller la journée ?',
+    message: 'La journée du <strong>' + esc(jour) + '</strong> (' + _fcfa(c.total) + ') sera <strong>gelée</strong> : plus aucune modification (encaissements, résultats, suppressions) possible sur ces dossiers. Seul l\'administrateur pourra la rouvrir.',
+    confirmText: '🔒 Verrouiller', cancelText: 'Annuler'
+  })) return;
+  showLoading('Verrouillage…');
+  const { data, error } = await _sb.rpc('verrouiller_journee', { p_token: TK(), p_jour: jour });
+  hideLoading();
+  if (error || data !== 'ok') { toast('Échec : ' + (error?.message || data || '?'), 'err'); return; }
+  await chargerClotures();
+  toast('🔒 Journée du ' + jour + ' verrouillée', 'ok');
+  renderCloture();
+}
+async function deverrouillerJournee() {
+  if (typeof isAdmin === 'function' && !isAdmin()) { toast('Déverrouillage réservé à l\'administrateur', 'err'); return; }
+  const champ = document.getElementById('cloture-date');
+  const jour = (champ && champ.value) || _jourLocal();
+  if (typeof showConfirmModal === 'function' && !await showConfirmModal({
+    icon: '🔓', title: 'Déverrouiller la journée ?',
+    message: 'La journée du <strong>' + esc(jour) + '</strong> redeviendra modifiable.',
+    confirmText: 'Déverrouiller', cancelText: 'Annuler'
+  })) return;
+  showLoading('Déverrouillage…');
+  const { data, error } = await _sb.rpc('deverrouiller_journee', { p_token: TK(), p_jour: jour });
+  hideLoading();
+  if (error || data !== 'ok') { toast('Échec : ' + (error?.message || data || '?'), 'err'); return; }
+  await chargerClotures();
+  toast('🔓 Journée du ' + jour + ' déverrouillée', 'ok');
+  renderCloture();
+}
+
 /**
  * Calcule l'état de caisse d'une journée. Fonction pure : elle ne touche
  * ni au DOM ni au réseau, uniquement au cache déjà chargé. C'est ce qui
@@ -163,6 +209,23 @@ function renderCloture() {
     + c.dossiers + ' dossier(s) encaissé(s) le '
     + new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
         { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + '</div>'
+    // ✅ v13.127 — Verrouillage de la journée (gel des sommes).
+    + (function () {
+        const verr = jourVerrouille(jour);
+        const peut = (typeof peutEncaisser === 'function' && peutEncaisser());
+        let action = '';
+        if (verr) {
+          action = (typeof isAdmin === 'function' && isAdmin())
+            ? '<button class="btn btn-outline" style="font-size:12px;padding:4px 12px" onclick="deverrouillerJournee()">🔓 Déverrouiller</button>'
+            : '<span style="font-size:11.5px;color:#92400e">déverrouillage réservé à l\'administrateur</span>';
+        } else if (peut) {
+          action = '<button class="btn" style="font-size:12px;padding:4px 12px;background:#92400e;color:#fff" onclick="verrouillerJournee()">🔒 Verrouiller cette journée</button>';
+        }
+        return '<div style="margin:6px 0 12px;padding:8px 11px;border-radius:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
+          + (verr ? 'background:#fef3c7;border:1px solid #fbbf24' : 'background:#f0fdf4;border:1px solid #bbf7d0') + '">'
+          + '<span style="font-weight:700;font-size:12.5px;color:' + (verr ? '#92400e' : '#166534') + '">'
+          + (verr ? '🔒 Journée verrouillée — sommes gelées' : '🔓 Journée ouverte') + '</span>' + action + '</div>';
+      })()
     + '<table style="width:100%;font-size:12.5px;border-collapse:collapse">'
     + '<thead><tr><th style="text-align:left">Agent</th><th style="text-align:right">Dossiers</th>'
     + '<th style="text-align:right">Encaissé</th></tr></thead><tbody>' + lignesAgent + '</tbody></table>'

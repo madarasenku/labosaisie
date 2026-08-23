@@ -756,6 +756,7 @@ async function softDeleteDossier(id) {
 
   const { data, error } = await _sb.rpc('soft_delete_dossier', { p_token: TK(), p_id: id });
   if (error || data !== 'ok') {
+    if (typeof estJourVerrouille === 'function' && estJourVerrouille(error)) { toast('🔒 Journée verrouillée — suppression impossible', 'err'); return; }
     toast('Erreur : ' + (error?.message || data || 'inconnue'), 'err');
     return;
   }
@@ -1225,6 +1226,7 @@ async function bulkEncaisser() {
     const { data, error } = await _sb.rpc('encaisser_lot', { p_token: TK(), p_ids: eligible });
     hideLoading();
     if (error || !data || data.erreur) {
+      if (typeof estJourVerrouille === 'function' && estJourVerrouille(error)) { toast('🔒 Journée verrouillée — encaissement impossible', 'err'); return; }
       toast('Encaissement échoué : ' + (error?.message || data?.erreur || '?'), 'err');
       return;
     }

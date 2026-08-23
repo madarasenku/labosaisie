@@ -377,10 +377,19 @@ function setPaiementStatus(id, status, infos) {
   localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
   // Persister dans Supabase via p_patient update
   if (_sb && TK() && r) {
+    // ✅ v13.127 — Journée verrouillée : le serveur refuse ; on annule l'effet
+    // optimiste local et on prévient, au lieu de laisser croire à un paiement.
     Promise.resolve(_sb.rpc('update_dossier_patient', {
-      p_token: TK(), p_id: id,
-      p_patient: r.patient
-    })).catch(() => {});
+      p_token: TK(), p_id: id, p_patient: r.patient
+    })).then(res => {
+      if (res && res.error && typeof estJourVerrouille === 'function' && estJourVerrouille(res.error)) {
+        const prev = getPaiements(); delete prev[id]; localStorage.setItem(PAIEMENT_KEY, JSON.stringify(prev));
+        if (r) r.patient = { ...(r.patient || {}), paiement_status: 'non_paye' };
+        toast('🔒 Journée verrouillée — encaissement impossible', 'err');
+        if (typeof renderCaisse === 'function') renderCaisse();
+        if (typeof renderHistory === 'function') renderHistory();
+      }
+    }).catch(() => {});
   }
   updateBandeauPaiement();
   if (typeof renderCaisse === 'function') renderCaisse();

@@ -235,6 +235,8 @@ function updateUserBadge() {
   updateMasqueesBtn();
   // ✅ v13.122 — Savoir s'il existe un caissier (sinon un agent peut encaisser).
   if (typeof chargerEtatCaissier === 'function') chargerEtatCaissier();
+  // ✅ v13.127 — Charger la liste des journées verrouillées.
+  if (typeof chargerClotures === 'function') chargerClotures();
   const usersNavBtn = document.getElementById('btn-nav-users');
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
   // ✅ v13.107 — L'onglet du cahier jaune et ses cartes de réglage restent
