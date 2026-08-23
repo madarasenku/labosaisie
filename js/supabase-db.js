@@ -2013,8 +2013,13 @@ async function toggleRestriction(id) {
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Fiche introuvable', 'err'); return; }
 
-  // ✅ v13.82 — Verrouillage réservé à l'administrateur.
-  if (!isAdmin()) { toast('Le verrouillage est réservé à l\'administrateur', 'err'); return; }
+  // ✅ v13.116 — Un agent peut masquer/démasquer SES propres fiches ; l'admin,
+  // toutes. Un agent ne peut pas lever une restriction posée par l'admin.
+  const uid = _currentUser?.username;
+  if (!isAdmin()) {
+    if (record.createdBy !== uid) { toast('Vous ne pouvez masquer que vos propres fiches', 'err'); return; }
+    if (record.restrictedBy && record.restrictedBy !== uid) { toast('Fiche masquée par l\'administrateur', 'err'); return; }
+  }
 
   const isRestricted = !!record.restrictedBy;
   const confirmed = await showConfirmModal({

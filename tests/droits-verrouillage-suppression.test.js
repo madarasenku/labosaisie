@@ -64,39 +64,52 @@ const A_MOI = 101, A_UN_AUTRE = 104;
       role: 'agent', username: 'agent1', userId: 2,
       rpc: { get_tarifs: {}, get_examens_custom: [] },
     });
-    r.section('Verrouillage réservé à l\'administrateur');
+    r.section('Un agent masque SES fiches, pas celles des autres (v13.116)');
+    await preparer(page);
+    // Sa propre fiche (101, créée par agent1) → masquage autorisé, part au serveur.
+    await page.evaluate((id) => toggleRestriction(id), A_MOI);
+    await page.waitForTimeout(700);
+    r.check('sa propre fiche : masquage autorisé', await page.evaluate(
+      () => window.__appels.filter(a => a.nom === 'toggle_restriction').length), 1);
+
+    // La fiche d'un collègue (104, agent2) → refus, aucun appel serveur.
     await preparer(page);
     const msg = await page.evaluate(async (id) => {
       let capté = ''; const vrai = window.toast; window.toast = m => { capté = m; };
       await toggleRestriction(id);
       window.toast = vrai; return capté;
-    }, A_MOI);
-    r.check('refus signalé', /administrateur/i.test(msg), true);
-    // Même sur SA PROPRE fiche : c'était justement le cas autorisé avant.
-    r.check('aucun appel au serveur', await page.evaluate(
+    }, A_UN_AUTRE);
+    r.check('fiche d\'un autre : refus signalé', /propres fiches/i.test(msg), true);
+    r.check('fiche d\'un autre : aucun appel serveur', await page.evaluate(
       () => window.__appels.filter(a => a.nom === 'toggle_restriction').length), 0);
 
-    await page.evaluate(() => { _selectedIds = new Set([101, 102]); });
+    // Masquage groupé : agent1 possède 102 et 105 (non encore masquées) → 2 appels.
+    await preparer(page);
+    await page.evaluate(() => { _selectedIds = new Set([102, 105]); });
     await page.evaluate(() => bulkLock());
-    await page.evaluate(() => bulkUnlock());
     await page.waitForTimeout(700);
-    r.check('verrouillage groupé bloqué aussi', await page.evaluate(
-      () => window.__appels.filter(a => a.nom === 'toggle_restriction').length), 0);
+    r.check('masquage groupé de ses fiches : 2 appels', await page.evaluate(
+      () => window.__appels.filter(a => a.nom === 'toggle_restriction').length), 2);
+
+    // Masquage groupé incluant la fiche d'un autre (104) → seule la sienne (201) agit.
+    await preparer(page);
+    await page.evaluate(() => { _selectedIds = new Set([201, 104]); });
+    await page.evaluate(() => bulkLock());
+    await page.waitForTimeout(700);
+    r.check('groupe mixte : seule sa fiche est masquée', await page.evaluate(
+      () => window.__appels.filter(a => a.nom === 'toggle_restriction').length), 1);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 3));
     await ctx.close();
   }
 
-  // ── Les boutons disparaissent au lieu de dire non ──────────────────
+  // ── L'agent voit le cadenas sur SES fiches, et les boutons de groupe ──
   {
     const { ctx, page, errors } = await openApp({
       role: 'agent', username: 'agent1', userId: 2,
       rpc: { get_tarifs: {}, get_examens_custom: [] },
     });
-    r.section('Ce qui est interdit ne s\'affiche pas');
-    // Il faut ouvrir l'Historique ET élargir la période : sans cela le tableau
-    // est vide et un contrôle « aucun bouton interdit » passerait au vert
-    // simplement parce qu'il n'y a aucune ligne du tout.
+    r.section('L\'agent dispose du masquage sur ses propres fiches');
     await page.evaluate(() => showView('historique'));
     await page.waitForTimeout(1000);
     await page.evaluate(() => setHistPeriode('tout'));
@@ -110,18 +123,27 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     const vu = await page.evaluate(() => {
       _selectedIds = new Set([101]);
       updateBulkToolbar();
+      // cadenas présents uniquement sur les fiches de agent1
+      const cadenasIds = [...document.querySelectorAll('[id^="lock-btn-"]')]
+        .map(b => Number(b.id.replace('lock-btn-', '')));
       return {
-        cadenas: document.querySelectorAll('[id^="lock-btn-"]').length,
+        cadenas: cadenasIds.length,
+        cadenasSurAutrui: cadenasIds.some(id => {
+          const rec = _dbCache.find(x => x.id === id);
+          return rec && rec.createdBy !== 'agent1';
+        }),
         lot:     document.getElementById('bulk-lock-btn')?.style.display,
         lotDe:   document.getElementById('bulk-unlock-btn')?.style.display,
-        // La corbeille, elle, doit rester proposée à tout le monde.
+        suppr:   document.getElementById('bulk-delete-btn')?.style.display,
         poubelles: [...document.querySelectorAll('button')]
                      .filter(b => /softDeleteDossier/.test(b.getAttribute('onclick') || '')).length,
       };
     });
-    r.check('aucun cadenas sur les lignes', vu.cadenas, 0);
-    r.check('bouton de verrouillage groupé masqué', vu.lot, 'none');
-    r.check('bouton de déverrouillage groupé masqué', vu.lotDe, 'none');
+    r.check('des cadenas sont proposés sur ses fiches', vu.cadenas > 0, true);
+    r.check('aucun cadenas sur la fiche d\'un autre', vu.cadenasSurAutrui, false);
+    r.check('bouton de masquage groupé visible', vu.lot !== 'none', true);
+    r.check('bouton de démasquage groupé visible', vu.lotDe !== 'none', true);
+    r.check('suppression définitive groupée masquée (admin only)', vu.suppr, 'none');
     r.check('la corbeille reste proposée', vu.poubelles > 0, true);
     r.check('aucune erreur JS', errors.length, 0);
     await ctx.close();

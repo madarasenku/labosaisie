@@ -317,7 +317,14 @@ async function renderHistory(forceRefresh) {
   // 607 500 FCFA, étaient devenus invisibles exactement de cette façon.
   const lockBtn = (r) => {
     if (_filterVerrouillees || _filterCorbeille) return ''; // géré par les rows spéciaux
-    if (!isAdmin()) return '';
+    if (typeof isSpectateur === 'function' && isSpectateur()) return '';
+    // ✅ v13.116 — L'admin masque n'importe quelle fiche ; un agent peut masquer
+    // (et démasquer) SES propres fiches. Un agent ne voit pas le bouton sur la
+    // fiche d'un autre, ni sur une fiche masquée par l'administrateur.
+    const uid = _currentUser?.username;
+    const owner = r.createdBy === uid;
+    const lockedByAdminOther = !!r.restrictedBy && r.restrictedBy !== uid;
+    if (!isAdmin() && (!owner || lockedByAdminOther)) return '';
     const locked = !!r.restrictedBy;
     const style = locked
       ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
@@ -615,12 +622,13 @@ function updateBulkToolbar() {
   if (toolbar) toolbar.style.display = n > 0 ? 'flex' : 'none';
   if (countEl) countEl.textContent = n + ' fiche' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '');
   if (delBtn) delBtn.style.display = isAdmin() ? '' : 'none';
-  // ✅ v13.82 — Verrouillage réservé à l'administrateur : on masque les boutons
-  // plutôt que de laisser cliquer pour refuser ensuite. Un bouton qui dit
-  // toujours non est plus agaçant qu'un bouton absent.
+  // ✅ v13.116 — Masquer/démasquer en groupe est ouvert aux agents (sur leurs
+  // propres fiches ; le filtrage par propriétaire se fait dans bulkLock/bulkUnlock).
+  // La suppression définitive en masse reste réservée à l'administrateur.
+  const peutMasquer = !(typeof isSpectateur === 'function' && isSpectateur());
   ['bulk-lock-btn', 'bulk-unlock-btn'].forEach(idBtn => {
     const b = document.getElementById(idBtn);
-    if (b) b.style.display = isAdmin() ? '' : 'none';
+    if (b) b.style.display = peutMasquer ? '' : 'none';
   });
   // État de la case "tout sélectionner"
   if (selectAll) {
@@ -996,15 +1004,21 @@ async function bulkSetStatut(statut) {
 
 async function bulkLock() {
   if (blockIfSpectateur()) return;
-  // ✅ v13.82 — Verrouillage réservé à l'administrateur.
-  if (!isAdmin()) { toast('Le verrouillage est réservé à l\'administrateur', 'err'); return; }
+  const uid = _currentUser?.username;
   const ids = [..._selectedIds];
   if (!ids.length) return;
+  // ✅ v13.116 — Un agent ne masque QUE ses propres fiches ; l'admin masque tout.
+  let ignoreesAutrui = 0;
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
-    return r && !r.restrictedBy;
+    if (!r || r.restrictedBy) return false;
+    if (!isAdmin() && r.createdBy !== uid) { ignoreesAutrui++; return false; }
+    return true;
   });
-  if (!eligible.length) { toast('Aucune fiche éligible au verrouillage', 'err'); return; }
+  if (!eligible.length) {
+    toast(ignoreesAutrui ? 'Vous ne pouvez masquer que vos propres fiches' : 'Aucune fiche éligible au masquage', 'err');
+    return;
+  }
   if (!await showConfirmModal({
     icon: '🔒',
     title: 'Masquer ' + eligible.length + ' fiche(s) ?',
@@ -1024,20 +1038,28 @@ async function bulkLock() {
   hideLoading();
   clearBulkSelection();
   renderHistory();
-  toast(ok + ' fiche(s) verrouillée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+  toast(ok + ' fiche(s) masquée(s)'
+    + (ignoreesAutrui ? ' · ' + ignoreesAutrui + ' ignorée(s) (autre agent)' : '')
+    + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
 async function bulkUnlock() {
   if (blockIfSpectateur()) return;
-  // ✅ v13.82 — Déverrouillage réservé à l'administrateur, comme le verrouillage.
-  if (!isAdmin()) { toast('Le déverrouillage est réservé à l\'administrateur', 'err'); return; }
+  const uid = _currentUser?.username;
   const ids = [..._selectedIds];
   if (!ids.length) return;
+  // ✅ v13.116 — Un agent ne lève QUE ses propres restrictions ; l'admin lève tout.
+  let ignoreesAutrui = 0;
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
-    return r && r.restrictedBy;
+    if (!r || !r.restrictedBy) return false;
+    if (!isAdmin() && r.restrictedBy !== uid) { ignoreesAutrui++; return false; }
+    return true;
   });
-  if (!eligible.length) { toast('Aucune fiche verrouillée dans la sélection', 'err'); return; }
+  if (!eligible.length) {
+    toast(ignoreesAutrui ? 'Vous ne pouvez démasquer que vos propres fiches' : 'Aucune fiche masquée dans la sélection', 'err');
+    return;
+  }
   if (!await showConfirmModal({
     icon: '🔓',
     title: 'Lever la restriction ?',
@@ -1057,7 +1079,9 @@ async function bulkUnlock() {
   hideLoading();
   clearBulkSelection();
   renderHistory();
-  toast(ok + ' fiche(s) déverrouillée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+  toast(ok + ' fiche(s) démasquée(s)'
+    + (ignoreesAutrui ? ' · ' + ignoreesAutrui + ' ignorée(s) (autre agent)' : '')
+    + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
 async function bulkDelete() {
