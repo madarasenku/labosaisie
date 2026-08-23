@@ -1292,7 +1292,8 @@ async function renderCaisse() {
   await refreshDB();
   updateVerrouilleeBtn(); // ✅ v13.32 — bouton admin fiches verrouillées
   // ✅ v13.33 — Brancher selon le rôle : agent → vue simplifiée, admin/caissier → caisse complète
-  if (!isAdmin() && !isCaissier() && !isSpectateur()) {
+  // ✅ v13.122 — Sauf si l'agent fait la caisse (aucun caissier) → caisse complète.
+  if (!isAdmin() && !isCaissier() && !isSpectateur() && !(typeof peutEncaisser === 'function' && peutEncaisser())) {
     // La clôture est un document de caisse : elle n'a rien à faire dans la
     // vue simplifiée d'un agent, qui ne tient pas le tiroir.
     const carte = document.getElementById('cloture-card');

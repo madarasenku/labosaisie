@@ -106,6 +106,31 @@ function blockIfSpectateur() {
   return false;
 }
 
+// ✅ v13.122 — Encaissement : admin et caissier toujours ; un agent PEUT encaisser
+// UNIQUEMENT s'il n'existe aucun compte caissier (petit labo sans caisse dédiée).
+// window._noCaissier est renseigné par chargerEtatCaissier() après connexion.
+function peutEncaisser() {
+  if (isAdmin() || isCaissier()) return true;
+  if (isSpectateur()) return false;
+  return window._noCaissier === true;
+}
+// Un agent « fait la caisse » (pas de caissier) — utile pour l'aiguillage des vues.
+function agentFaitCaisse() {
+  return !isAdmin() && !isCaissier() && !isSpectateur() && window._noCaissier === true;
+}
+async function chargerEtatCaissier() {
+  try {
+    if (!_sb || typeof TK !== 'function' || !TK()) return;
+    const { data, error } = await _sb.rpc('caissier_exists', { p_token: TK() });
+    if (!error && typeof data === 'boolean') {
+      window._noCaissier = (data === false);
+      // Rafraîchir l'aiguillage des vues et la barre d'outils si déjà affichés.
+      try { if (typeof updateBandeauPaiement === 'function') updateBandeauPaiement(); } catch (e) {}
+      try { if (typeof updateBulkToolbar === 'function') updateBulkToolbar(); } catch (e) {}
+    }
+  } catch (e) { /* réseau : on laisse la valeur par défaut (caisse présente) */ }
+}
+
 // ✅ v13.33 — Secousse de la carte quand une erreur de connexion apparaît.
 // Implémenté par observation du conteneur d'erreur : aucune des (nombreuses)
 // branches de doLogin n'a besoin d'être modifiée.
@@ -208,6 +233,8 @@ function updateUserBadge() {
   }
   // ✅ v13.33 — btn-clear-history supprimé ; btn-masquees géré par updateMasqueesBtn()
   updateMasqueesBtn();
+  // ✅ v13.122 — Savoir s'il existe un caissier (sinon un agent peut encaisser).
+  if (typeof chargerEtatCaissier === 'function') chargerEtatCaissier();
   const usersNavBtn = document.getElementById('btn-nav-users');
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
   // ✅ v13.107 — L'onglet du cahier jaune et ses cartes de réglage restent

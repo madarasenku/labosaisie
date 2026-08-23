@@ -53,6 +53,16 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await page.waitForTimeout(700);
     r.check('son propre dossier aussi', await page.evaluate(
       () => window.__appels.filter(a => a.nom === 'soft_delete_dossier').length), 1);
+
+    // ✅ v13.122 — Suppression EN GROUPE par un agent = mise en corbeille.
+    await preparer(page);
+    await page.evaluate(() => { _filterCorbeille = false; _selectedIds = new Set([101, 104]); });
+    await page.evaluate(() => bulkDelete());
+    await page.waitForTimeout(800);
+    r.check('suppression groupée agent → 2 mises en corbeille', await page.evaluate(
+      () => window.__appels.filter(a => a.nom === 'soft_delete_dossier').length), 2);
+    r.check('aucune suppression définitive', await page.evaluate(
+      () => window.__appels.filter(a => a.nom === 'delete_resultat' || a.nom === 'hard_delete_dossier').length), 0);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 3));
     await ctx.close();
@@ -143,7 +153,7 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     r.check('aucun cadenas sur la fiche d\'un autre', vu.cadenasSurAutrui, false);
     r.check('bouton de masquage groupé visible', vu.lot !== 'none', true);
     r.check('bouton de démasquage groupé visible', vu.lotDe !== 'none', true);
-    r.check('suppression définitive groupée masquée (admin only)', vu.suppr, 'none');
+    r.check('suppression groupée (corbeille) proposée à l\'agent', vu.suppr !== 'none', true);
     r.check('la corbeille reste proposée', vu.poubelles > 0, true);
     r.check('aucune erreur JS', errors.length, 0);
     await ctx.close();

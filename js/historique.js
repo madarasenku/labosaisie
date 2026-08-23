@@ -621,10 +621,15 @@ function updateBulkToolbar() {
   const n = _selectedIds.size;
   if (toolbar) toolbar.style.display = n > 0 ? 'flex' : 'none';
   if (countEl) countEl.textContent = n + ' fiche' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '');
-  if (delBtn) delBtn.style.display = isAdmin() ? '' : 'none';
-  // ✅ v13.116 — Masquer/démasquer en groupe est ouvert aux agents (sur leurs
-  // propres fiches ; le filtrage par propriétaire se fait dans bulkLock/bulkUnlock).
-  // La suppression définitive en masse reste réservée à l'administrateur.
+  // ✅ v13.122 — Suppression en groupe ouverte à tous (hors spectateur), comme la
+  // suppression ligne par ligne : en vue normale c'est une mise en corbeille
+  // (réversible, tracée) ; la suppression DÉFINITIVE reste réservée à l'admin,
+  // et seulement depuis la corbeille.
+  if (delBtn) {
+    const spect = (typeof isSpectateur === 'function' && isSpectateur());
+    delBtn.style.display = (spect || (_filterCorbeille && !isAdmin())) ? 'none' : '';
+    delBtn.innerHTML = _filterCorbeille ? '🗑 Supprimer définitivement' : '🗑 Supprimer';
+  }
   const peutMasquer = !(typeof isSpectateur === 'function' && isSpectateur());
   ['bulk-lock-btn', 'bulk-unlock-btn'].forEach(idBtn => {
     const b = document.getElementById(idBtn);
@@ -1086,26 +1091,58 @@ async function bulkUnlock() {
 
 async function bulkDelete() {
   if (blockIfSpectateur()) return;
-  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
   const ids = [..._selectedIds];
   if (!ids.length) return;
+
+  // ✅ v13.122 — En vue CORBEILLE : suppression DÉFINITIVE (admin uniquement).
+  if (_filterCorbeille) {
+    if (!isAdmin()) { toast('Suppression définitive réservée à l\'administrateur', 'err'); return; }
+    if (!await showConfirmModal({
+      icon: '⚠️', title: 'Supprimer définitivement ?',
+      message: ids.length + ' fiche(s) seront supprimée(s) de façon irréversible.',
+      confirmText: 'Supprimer définitivement', cancelText: 'Annuler', confirmClass: 'btn-danger'
+    })) return;
+    showLoading('Suppression définitive…');
+    let ok = 0, err = 0;
+    for (const id of ids) { const s = await deleteRecordRemote(id); if (s) ok++; else err++; }
+    hideLoading(); clearBulkSelection(); await refreshDB(true); renderHistory();
+    toast(ok + ' fiche(s) supprimée(s) définitivement' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+    return;
+  }
+
+  // ── Vue normale : mise en CORBEILLE (réversible), ouverte à tous ──
+  const uid = _currentUser?.username;
   if (!await showConfirmModal({
-    icon: '⚠️',
-    title: 'Supprimer définitivement ?',
-    message: ids.length + ' fiche(s) seront supprimée(s) de façon irréversible.',
+    icon: '🗑️', title: 'Supprimer ' + ids.length + ' fiche(s) ?',
+    message: 'Elles seront placées dans la corbeille (l\'administrateur peut les restaurer). '
+      + 'Votre nom est enregistré dans le journal d\'audit.',
     confirmText: 'Supprimer', cancelText: 'Annuler', confirmClass: 'btn-danger'
   })) return;
-  showLoading('Suppression en cours…');
+  showLoading('Mise en corbeille…');
   let ok = 0, err = 0;
   for (const id of ids) {
-    const success = await deleteRecordRemote(id);
-    if (success) ok++; else err++;
+    try {
+      if (!navigator.onLine || String(id).startsWith('tmp_')) {
+        const rec = _dbCache.find(r => r.id === id);
+        if (rec) { rec.deletedAt = new Date().toISOString(); rec.deletedBy = uid; }
+        enqueueAction('soft_delete_dossier', id); ok++;
+        continue;
+      }
+      const { data, error } = await _sb.rpc('soft_delete_dossier', { p_token: TK(), p_id: id });
+      if (!error && data === 'ok') {
+        const rec = _dbCache.find(r => r.id === id);
+        if (rec) { rec.deletedAt = new Date().toISOString(); rec.deletedBy = uid; }
+        ok++;
+      } else err++;
+    } catch (e) { err++; }
   }
   hideLoading();
   clearBulkSelection();
   await refreshDB(true);
+  if (typeof updateCorbeilleBtn === 'function') updateCorbeilleBtn();
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
   renderHistory();
-  toast(ok + ' fiche(s) supprimée(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+  toast(ok + ' fiche(s) mise(s) en corbeille' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
 }
 
 // ✅ v13.42 — Encaissement groupé : marque tous les dossiers sélectionnés
@@ -1113,6 +1150,11 @@ async function bulkDelete() {
 //   monnaie). Chaque dossier est persisté dans Supabase individuellement.
 async function bulkEncaisser() {
   if (blockIfSpectateur()) return;
+  // ✅ v13.122 — Encaissement réservé à la caisse (admin/caissier), ou aux agents
+  // s'il n'existe aucun caissier.
+  if (typeof peutEncaisser === 'function' && !peutEncaisser()) {
+    toast('Encaissement réservé à la caisse', 'err'); return;
+  }
   const ids = [..._selectedIds];
   if (!ids.length) return;
 

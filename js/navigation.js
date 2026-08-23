@@ -19,8 +19,11 @@ function showView(v) {
 
   // ✅ v13.33 — Déterminer quel conteneur caisse afficher
   // Admin et Caissier → caisse complète ; Agent → vue personnelle simplifiée
-  const caisseAdminVisible  = (v === 'caisse' && (isAdmin() || isCaissier()));
-  const caisseUserVisible   = (v === 'caisse' && !isAdmin() && !isCaissier());
+  // ✅ v13.122 — S'il n'y a pas de caissier, l'agent obtient la caisse COMPLÈTE
+  // (il tient la caisse lui-même) via peutEncaisser().
+  const caisseComplet = isAdmin() || isCaissier() || (typeof peutEncaisser === 'function' && peutEncaisser());
+  const caisseAdminVisible  = (v === 'caisse' && caisseComplet);
+  const caisseUserVisible   = (v === 'caisse' && !caisseComplet);
 
   const allViews = [
     { id: 'view-saisie',       show: v === 'saisie' },
