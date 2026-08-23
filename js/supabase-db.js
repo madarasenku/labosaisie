@@ -1832,8 +1832,10 @@ async function saveRecordAllFresh() {
       hideLoading();
       toast('✅ Dossier N°' + (p.dossier || '') + ' enregistré — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
       await refreshDB(true);
-      // Repartir sur une fiche patient vierge (retour à la fiche d'identification).
-      if (typeof resetFicheIdentif === 'function') await resetFicheIdentif();
+      // ✅ v13.117 — Paillasse : retirer ce patient et basculer vers le suivant
+      // s'il en reste un ouvert ; sinon repartir sur une fiche vierge.
+      const switched = (typeof benchAfterSave === 'function') ? benchAfterSave() : false;
+      if (!switched && typeof resetFicheIdentif === 'function') await resetFicheIdentif();
     } else {
       hideLoading();
     }
