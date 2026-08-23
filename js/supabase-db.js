@@ -772,6 +772,8 @@ async function resetFicheIdentif() {
   document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
   // Ré-afficher les lignes masquées par hideUncheckedExamRows() (fill-all).
   document.querySelectorAll('#zone-saisie tr, #zone-saisie .abg-row').forEach(row => { row.style.display = ''; });
+  // ✅ v13.117 — Cacher le bouton « Enregistrer + Imprimer » hors vue empilée.
+  { const pb = document.getElementById('btn-save-print'); if (pb) pb.style.display = 'none'; }
 
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
@@ -1832,6 +1834,12 @@ async function saveRecordAllFresh() {
       hideLoading();
       toast('✅ Dossier N°' + (p.dossier || '') + ' enregistré — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
       await refreshDB(true);
+      // ✅ v13.117 — « Enregistrer + Imprimer » : imprimer le dossier tout juste créé.
+      if (window._benchPrintAfterSave && saved && saved.id != null) {
+        window._benchPrintAfterSave = false;
+        try { if (typeof printRecord === 'function') await printRecord(saved.id); } catch (e) {}
+      }
+      window._benchPrintAfterSave = false;
       // ✅ v13.117 — Paillasse : retirer ce patient et basculer vers le suivant
       // s'il en reste un ouvert ; sinon repartir sur une fiche vierge.
       const switched = (typeof benchAfterSave === 'function') ? benchAfterSave() : false;
@@ -1880,6 +1888,7 @@ function cancelEdit() {
   document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
   // ✅ v13.114 — Ré-afficher les lignes masquées par hideUncheckedExamRows().
   document.querySelectorAll('#zone-saisie tr, #zone-saisie .abg-row').forEach(row => { row.style.display = ''; });
+  { const pb = document.getElementById('btn-save-print'); if (pb) pb.style.display = 'none'; }
   // ✅ v13.34 — Restaurer updateMontantCurrent si gelé
   if (window._updateMontantCurrent_orig) {
     window.updateMontantCurrent = window._updateMontantCurrent_orig;

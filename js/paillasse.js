@@ -126,6 +126,7 @@ function benchCommitOnDemarrer() {
   _bench.push({ key, label: label || ('Patient ' + key), ...snap });
   _benchActiveKey = key;
   benchRenderBar();
+  benchUpdateActiveStatus();
 }
 
 // ── Basculer vers un autre patient ouvert ───────────────────
@@ -137,6 +138,7 @@ function benchGo(key) {
   _benchActiveKey = key;
   benchApply(e);
   benchRenderBar();
+  benchUpdateActiveStatus();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -214,15 +216,132 @@ function benchRenderBar() {
     const actif = e.key === _benchActiveKey;
     const nom = esc((e.label || 'Patient').trim() || 'Patient');
     const doss = esc(e.ident?.p_dossier || '');
-    return '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 11px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;'
-      + (actif ? 'background:var(--cpmi-deep);color:#fff' : 'background:var(--accent-light);color:var(--cpmi-deep);border:1px solid var(--border)') + '" '
-      + 'onclick="benchGo(' + e.key + ')" title="Basculer vers ' + nom + '">'
-      + nom + (doss ? ' <span style="opacity:.7;font-weight:500">· ' + doss + '</span>' : '')
+    // Complétude : ✓ vert quand tous les résultats attendus sont remplis.
+    const comp = actif ? _completionActive() : _completionSnapshot(e);
+    const pret = comp.complete;
+    let bg;
+    if (pret)       bg = actif ? 'background:#15803d;color:#fff' : 'background:#dcfce7;color:#15803d;border:1px solid #86efac';
+    else if (actif) bg = 'background:var(--cpmi-deep);color:#fff';
+    else            bg = 'background:var(--accent-light);color:var(--cpmi-deep);border:1px solid var(--border)';
+    const marque = pret ? '✓ ' : '';
+    return '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 11px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;' + bg + '" '
+      + 'onclick="benchGo(' + e.key + ')" title="' + (pret ? 'Prêt — ' : '') + 'Basculer vers ' + nom + '">'
+      + marque + nom + (doss ? ' <span style="opacity:.7;font-weight:500">· ' + doss + '</span>' : '')
       + '<button onclick="event.stopPropagation();benchClose(' + e.key + ')" title="Fermer" '
-      + 'style="border:none;background:' + (actif ? 'rgba(255,255,255,.2)' : 'rgba(0,0,0,.06)') + ';color:inherit;'
+      + 'style="border:none;background:' + (actif || pret ? 'rgba(255,255,255,.25)' : 'rgba(0,0,0,.06)') + ';color:inherit;'
       + 'width:18px;height:18px;border-radius:99px;cursor:pointer;font-size:12px;line-height:1;display:inline-flex;align-items:center;justify-content:center">✕</button>'
       + '</span>';
   }).join('');
+}
+
+// ============================================================
+//  COMPLÉTUDE — « tout est rempli, prêt à enregistrer et imprimer »
+// ============================================================
+
+// Champs NON requis pour juger qu'un examen est « complet » :
+// observations, commentaires, modes, valeurs secondaires ou auto-calculées.
+const _OPT_RX = /(_obs$|obs$|comment|profil|_cin_)/i;
+const _OPT_IDS = new Set([
+  'ge_tdr','ge_espece','ge_para','ge_densite','ge_stade',
+  'para_tdr','para_espece','para_densite','para_stade','para_type',
+  'para_coloration','para_indice','para_parasitemie',
+  'gs_obs',
+  'v_vgm','v_tcmh','v_ccmh','v_ret','ret',   // indices auto-calculés / réticulocytes
+  'v_ldl','v_dfg',                           // valeurs calculées
+]);
+function _champOptionnel(id) { return _OPT_RX.test(id) || _OPT_IDS.has(id); }
+
+// Complétude d'un examen à partir d'un lecteur de valeur getVal(id)->string.
+function _examCompletion(ex, getVal) {
+  let fids; try { fids = examFieldIds(ex.id); } catch (e) { fids = []; }
+  if (!fids.length) return { req: 0, ok: 0 };            // bactério, RAI… : non mesurable ici
+  const rempli = id => { const v = getVal(id); return v != null && String(v).trim() !== ''; };
+  // Sérologie : chaque test est satisfait par sr_ (qualitatif) OU sv_ (quantitatif).
+  const seroTests = [...new Set(fids.filter(f => f.startsWith('sr_')).map(f => f.slice(3)))];
+  if (seroTests.length) {
+    let req = 0, ok = 0;
+    seroTests.forEach(id => { req++; if (rempli('sr_' + id) || rempli('sv_' + id)) ok++; });
+    return { req, ok };
+  }
+  const req = fids.filter(f => !_champOptionnel(f));
+  let ok = 0; req.forEach(f => { if (rempli(f)) ok++; });
+  return { req: req.length, ok };
+}
+
+// Complétude globale à partir d'un « patient coché ? » et d'un lecteur de valeur.
+function _completion(getChecked, getVal) {
+  let req = 0, ok = 0, examsTotal = 0, examsDone = 0;
+  try {
+    getCatalogueComplet().forEach(ex => {
+      if (!getChecked(ex.id)) return;
+      const c = _examCompletion(ex, getVal);
+      req += c.req; ok += c.ok;
+      if (c.req > 0) { examsTotal++; if (c.ok >= c.req) examsDone++; }
+    });
+  } catch (e) {}
+  return { req, ok, complete: req > 0 && ok >= req, examsTotal, examsDone };
+}
+
+// Complétude du patient ACTIF (lecture directe du formulaire).
+function _completionActive() {
+  return _completion(
+    id => document.getElementById(id)?.checked,
+    id => { const el = document.getElementById(id); return el ? el.value : null; }
+  );
+}
+// Complétude d'un patient mémorisé (depuis son instantané).
+function _completionSnapshot(e) {
+  return _completion(
+    id => !!(e.coches[id] && e.coches[id].c),
+    id => (e.values ? e.values[id] : null)
+  );
+}
+
+// Bannière « prêt » + bouton « Enregistrer + Imprimer » sous les résultats.
+function benchRenderReadyBanner(comp) {
+  const bar  = document.getElementById('save-all-bar');
+  const hint = document.getElementById('save-all-hint');
+  if (!bar || !hint) return;
+  let printBtn = document.getElementById('btn-save-print');
+  if (!printBtn) {
+    printBtn = document.createElement('button');
+    printBtn.id = 'btn-save-print';
+    printBtn.className = 'btn';
+    printBtn.style.cssText = 'padding:10px 20px;font-size:14px;gap:8px;margin-right:8px;background:#15803d;color:#fff;display:none';
+    printBtn.innerHTML = '🖨️ Enregistrer + Imprimer';
+    printBtn.onclick = benchSaveAndPrint;
+    const saveBtn = document.getElementById('btn-save-all');
+    if (saveBtn && saveBtn.parentNode) saveBtn.parentNode.insertBefore(printBtn, saveBtn);
+  }
+  if (comp && comp.complete) {
+    hint.innerHTML = '✅ <strong>Tout est rempli</strong> — prêt à enregistrer et imprimer';
+    hint.style.color = '#15803d';
+    hint.style.fontWeight = '700';
+    printBtn.style.display = 'inline-flex';
+  } else {
+    const ex = comp && comp.examsTotal
+      ? ' · ' + comp.examsDone + '/' + comp.examsTotal + ' examen' + (comp.examsTotal > 1 ? 's' : '') + ' complet' + (comp.examsDone > 1 ? 's' : '')
+      : '';
+    hint.textContent = '🖊️ ' + (comp ? comp.ok : 0) + '/' + (comp ? comp.req : 0) + ' résultats remplis' + ex;
+    hint.style.color = '';
+    hint.style.fontWeight = '';
+    printBtn.style.display = 'none';
+  }
+}
+
+// Recalcule le statut du patient actif (pastilles + bannière). Appelé à la
+// frappe et à chaque bascule.
+function benchUpdateActiveStatus() {
+  if (!document.body.classList.contains('fill-all-mode')) return;
+  const comp = _completionActive();
+  benchRenderReadyBanner(comp);
+  benchRenderBar();
+}
+
+// Enregistrer PUIS imprimer le dossier qui vient d'être créé.
+function benchSaveAndPrint() {
+  window._benchPrintAfterSave = true;
+  if (typeof saveAllTabs === 'function') saveAllTabs();
 }
 
 // Réinitialiser complètement la paillasse (changement d'utilisateur, etc.)
@@ -231,3 +350,17 @@ function benchReset() {
   _benchActiveKey = null;
   benchRenderBar();
 }
+
+// Mise à jour du statut « prêt » à chaque saisie dans la zone de résultats.
+document.addEventListener('input', function (ev) {
+  const t = ev.target;
+  if (!t || !t.closest || !t.closest('#zone-saisie')) return;
+  clearTimeout(window._benchStatusT);
+  window._benchStatusT = setTimeout(benchUpdateActiveStatus, 120);
+}, true);
+document.addEventListener('change', function (ev) {
+  const t = ev.target;
+  if (!t || !t.closest || !t.closest('#zone-saisie')) return;
+  clearTimeout(window._benchStatusT);
+  window._benchStatusT = setTimeout(benchUpdateActiveStatus, 120);
+}, true);
