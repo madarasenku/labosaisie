@@ -59,6 +59,14 @@ let _filterCorbeille = false;
 // de la vue normale pour tout le monde, y compris leur propriétaire).
 let _filterVerrouillees = false;
 
+// ✅ v13.128 — Jour d'un dossier verrouillé ? (pour la vue spectateur)
+function _jourDeDossier(r) {
+  return (r.patient && r.patient.date) || String(r.savedAt || r.created_at || r.createdAt || '').slice(0, 10);
+}
+function _jourDossierVerrouille(r) {
+  return (typeof jourVerrouille === 'function') && jourVerrouille(_jourDeDossier(r));
+}
+
 function getDB() {
   // ✅ v13.33 — Corbeille : admin voit soft+hard deleted, agent voit ses soft-delete
   if (_filterCorbeille) {
@@ -79,8 +87,11 @@ function getDB() {
   // caissier ne pouvait plus encaisser la patiente. Un dossier qu'on ne voit
   // pas est un dossier qu'on ne peut pas traiter.
   //
-  // Admin/Caissier/Spectateur : fiches actives (sans soft-delete ni hard-delete ni masquées)
-  if (isAdmin() || isCaissier() || isSpectateur())
+  // ✅ v13.128 — Le SPECTATEUR ne voit QUE les journées verrouillées.
+  if (isSpectateur())
+    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && _jourDossierVerrouille(r));
+  // Admin/Caissier : fiches actives (sans soft-delete ni hard-delete ni masquées)
+  if (isAdmin() || isCaissier())
     return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
   // Agent : ses fiches actives uniquement
   const uid = _currentUser?.username;
@@ -232,7 +243,9 @@ function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
   // Une seule règle décide de l'exclusion : isExcludedFromCalc.
   const vivante = r => !r.deletedAt && !r._hardDeleted && !isExcludedFromCalc(r);
-  if (isAdmin() || isCaissier() || isSpectateur()) return _dbCache.filter(vivante);
+  // ✅ v13.128 — Le spectateur ne calcule que sur les journées verrouillées.
+  if (isSpectateur()) return _dbCache.filter(r => vivante(r) && _jourDossierVerrouille(r));
+  if (isAdmin() || isCaissier()) return _dbCache.filter(vivante);
   const uid = _currentUser?.username;
   if (!uid) return [];
   return _dbCache.filter(r => vivante(r) && r.createdBy === uid);
@@ -333,6 +346,10 @@ async function refreshDB(force) {
       });
     }
   } catch (e) { /* RPC absent — on garde la valeur courante */ }
+
+  // ✅ v13.128 — Rafraîchir la liste des journées verrouillées (le spectateur
+  // ne voit que celles-ci ; les autres profils en ont besoin pour l'affichage).
+  try { if (typeof chargerClotures === 'function') await chargerClotures(); } catch (e) {}
 
   return _dbCache;
 }

@@ -221,10 +221,12 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await page.waitForTimeout(1000);
     await page.evaluate(() => setHistPeriode('tout'));
     await page.waitForTimeout(800);
-    r.check('des lignes sont bien affichées', await page.evaluate(() => {
+    // ✅ v13.128 — Le spectateur ne voit QUE les journées verrouillées ; ici
+    // aucune n'est verrouillée → aucune ligne. (Lecture seule inchangée.)
+    r.check('spectateur : aucune ligne (aucun jour verrouillé)', await page.evaluate(() => {
       const b = document.getElementById('history-body');
       return b ? [...b.querySelectorAll('tr')].filter(tr => tr.querySelectorAll('td').length > 1).length : 0;
-    }) > 0, true);
+    }), 0);
     await page.evaluate((id) => softDeleteDossier(id), A_MOI);
     await page.evaluate((id) => toggleRestriction(id), A_MOI);
     await page.waitForTimeout(800);
@@ -318,16 +320,15 @@ const A_MOI = 101, A_UN_AUTRE = 104;
         // getCalcDB alimente la Caisse, les Statistiques et les Ristournes.
         calculees: (getCalcDB() || []).map(x => x.patient?.dossier),
       }));
-      r.check('le dossier ordinaire reste visible', vu.affichees.includes('X1'), true);
-      // ✅ v13.91 — Le BPN interne est visible de TOUS. L'avoir masqué le
-      // sortait de « À encaisser » : le caissier ne pouvait plus prendre les
-      // 10 000 FCFA, et le dossier serait resté impayé pour toujours sans
-      // apparaître dans aucune liste d'impayés. Un dossier qu'on ne voit pas
-      // est un dossier qu'on ne peut pas traiter.
-      r.check('BPN interne visible à l\'écran', vu.affichees.includes('X2'), true);
-      // Et il compte dans la caisse : la patiente paie bien au guichet. Le
-      // cahier jaune suit ce qui est dû au personnel, il ne retire rien.
-      r.check('et compté dans la caisse', vu.calculees.includes('X2'), true);
+      if (role === 'spectateur') {
+        // ✅ v13.128 — Le spectateur ne voit QUE les journées verrouillées.
+        // Aucune journée n'est verrouillée ici → il ne voit rien.
+        r.check('spectateur ne voit rien (aucun jour verrouillé)', vu.affichees.length, 0);
+      } else {
+        r.check('le dossier ordinaire reste visible', vu.affichees.includes('X1'), true);
+        r.check('BPN interne visible à l\'écran', vu.affichees.includes('X2'), true);
+        r.check('et compté dans la caisse', vu.calculees.includes('X2'), true);
+      }
       r.check('aucune erreur JS', errors.length, 0);
       if (errors.length) console.log('   ', errors.slice(0, 3));
       await ctx.close();

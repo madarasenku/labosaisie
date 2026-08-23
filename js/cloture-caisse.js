@@ -60,6 +60,26 @@ async function verrouillerJournee() {
   toast('🔒 Journée du ' + jour + ' verrouillée', 'ok');
   renderCloture();
 }
+// ✅ v13.128 — Verrouiller toutes les journées jusqu'à la date choisie (incluse).
+async function verrouillerJusqua() {
+  const champ = document.getElementById('cloture-date');
+  const jour = (champ && champ.value) || _jourLocal();
+  if (typeof peutEncaisser === 'function' && !peutEncaisser()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
+  if (typeof showConfirmModal === 'function' && !await showConfirmModal({
+    icon: '🔒', title: 'Tout verrouiller jusqu\'à cette date ?',
+    message: 'Toutes les journées <strong>jusqu\'au ' + esc(jour) + ' inclus</strong> seront gelées : plus aucune modification possible sur ces dossiers.<br>'
+      + '<em>Si tu inclus aujourd\'hui, l\'enregistrement de nouveaux patients du jour sera aussi bloqué.</em>',
+    confirmText: '🔒 Tout verrouiller', cancelText: 'Annuler'
+  })) return;
+  showLoading('Verrouillage en cours…');
+  const { data, error } = await _sb.rpc('verrouiller_jusqua', { p_token: TK(), p_jour: jour });
+  hideLoading();
+  if (error || !data || data.erreur) { toast('Échec : ' + (error?.message || data?.erreur || '?'), 'err'); return; }
+  await chargerClotures();
+  toast('🔒 ' + (data.verrouillees || 0) + ' journée(s) verrouillée(s) jusqu\'au ' + jour, 'ok');
+  renderCloture();
+}
+
 async function deverrouillerJournee() {
   if (typeof isAdmin === 'function' && !isAdmin()) { toast('Déverrouillage réservé à l\'administrateur', 'err'); return; }
   const champ = document.getElementById('cloture-date');
@@ -220,6 +240,10 @@ function renderCloture() {
             : '<span style="font-size:11.5px;color:#92400e">déverrouillage réservé à l\'administrateur</span>';
         } else if (peut) {
           action = '<button class="btn" style="font-size:12px;padding:4px 12px;background:#92400e;color:#fff" onclick="verrouillerJournee()">🔒 Verrouiller cette journée</button>';
+        }
+        // Verrouillage en masse jusqu'à la date choisie (visible pour ceux qui encaissent).
+        if (peut) {
+          action += '<button class="btn btn-outline" style="font-size:12px;padding:4px 12px" onclick="verrouillerJusqua()">🔒 Tout verrouiller jusqu\'à cette date</button>';
         }
         return '<div style="margin:6px 0 12px;padding:8px 11px;border-radius:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
           + (verr ? 'background:#fef3c7;border:1px solid #fbbf24' : 'background:#f0fdf4;border:1px solid #bbf7d0') + '">'
