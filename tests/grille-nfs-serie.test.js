@@ -60,7 +60,7 @@ const DOSSIERS = [
     await page.waitForTimeout(300);
 
     r.section('Ouverture de la grille');
-    await page.evaluate(() => window.ouvrirGrilleNFS());
+    await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrilleNFS(); });
     await page.waitForTimeout(300);
     const g = await page.evaluate(() => ({
       visible: document.getElementById('grille-serie').style.display !== 'none',

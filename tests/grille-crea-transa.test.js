@@ -40,7 +40,7 @@ const DOSS = [
     await page.waitForTimeout(300);
 
     r.section('Sélecteur : TSH et Urée retirés');
-    const opts = await page.evaluate(() => { window.ouvrirGrille('crea'); return [...document.getElementById('grille-exam-sel').options].map(o => o.value); });
+    const opts = await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('crea'); return [...document.getElementById('grille-exam-sel').options].map(o => o.value); });
     r.check('pas de TSH', opts.includes('tsh'), false);
     r.check('pas d\'Urée seule', opts.includes('uree'), false);
     r.check('créatinine présente', opts.includes('crea'), true);

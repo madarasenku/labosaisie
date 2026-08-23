@@ -43,7 +43,7 @@ const dossGs = {
     await page.waitForTimeout(300);
 
     r.section('Hépatite B (Ag HBs + Ac HBc + Ac anti-HBs)');
-    await page.evaluate(() => window.ouvrirGrille('hbs'));
+    await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('hbs'); });
     await page.waitForTimeout(300);
     r.check('dossier HBs listé', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 1);
     await page.evaluate(() => {

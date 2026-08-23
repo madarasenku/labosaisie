@@ -131,13 +131,25 @@ const GRILLE_EXAMS = {
 const _TYPE_TO_TAB = { 'Hématologie': 'hema', 'Biochimie': 'bio', 'Immuno-Sérologie': 'sero', 'Parasitologie': 'parasito', 'Groupe sanguin': 'gs' };
 
 let _grilleKey = 'nfs';
+let _grilleDate = null;                 // date filtrée (YYYY-MM-DD) ; '' = toutes
+let _grilleInclureReception = false;    // inclure les dossiers « réception seule »
+
+// Date d'un dossier : date de la fiche patient, sinon date d'enregistrement.
+function _dateDossier(r) {
+  return (r.patient && r.patient.date) || String(r.savedAt || r.created_at || r.createdAt || '').slice(0, 10);
+}
 
 // Dossiers où l'examen `key` est demandé mais pas encore rempli.
+// Filtré par date (défaut : le jour choisi) et hors « réception seule ».
 function grillePending(key) {
   const cfg = GRILLE_EXAMS[key]; if (!cfg) return [];
   let db; try { db = getDB(); } catch (e) { db = []; }
   return db.filter(r => {
     if (!isDossierRecord(r) || r.deletedAt || r._hardDeleted) return false;
+    // ✅ v13.125 — « réception seule » : exclu de la série sauf demande explicite.
+    if (!_grilleInclureReception && r.resultats && r.resultats._reception_seule) return false;
+    // ✅ v13.125 — Filtre par date (vide = toutes les dates).
+    if (_grilleDate && _dateDossier(r) !== _grilleDate) return false;
     const coches = r.resultats?._examens_coches?.[cfg.type] || [];
     if (!coches.some(l => cfg.coche.test(l))) return false;
     const res = r.resultats?.[cfg.type] || {};
@@ -151,6 +163,10 @@ function grillePendingNFS() { return grillePending('nfs'); }
 function ouvrirGrille(key) {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
   if (key && GRILLE_EXAMS[key]) _grilleKey = key;
+  // ✅ v13.125 — Par défaut, on n'affiche que les patients DU JOUR (moins d'encombrement).
+  if (_grilleDate === null) {
+    try { _grilleDate = new Date().toISOString().slice(0, 10); } catch (e) { _grilleDate = ''; }
+  }
   const cont = document.getElementById('grille-serie');
   if (!cont) return;
   ['fiche-identification', 'zone-saisie', 'paillasse-bar'].forEach(id => {
@@ -187,6 +203,10 @@ function fermerGrille() {
   if (typeof benchRenderBar === 'function') benchRenderBar();
 }
 
+// ✅ v13.125 — Filtres de la grille (date + « réception seule »).
+function grilleSetDate(v) { _grilleDate = v || ''; grilleRender(); }
+function grilleToggleReception(on) { _grilleInclureReception = !!on; grilleRender(); }
+
 function grilleRender() {
   const cfg = GRILLE_EXAMS[_grilleKey];
   const cont = document.getElementById('grille-serie');
@@ -198,17 +218,30 @@ function grilleRender() {
     + Object.keys(GRILLE_EXAMS).map(k => '<option value="' + k + '"' + (k === _grilleKey ? ' selected' : '') + '>' + esc(GRILLE_EXAMS[k].label) + '</option>').join('')
     + '</select>';
 
-  const entete = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">'
+  // ✅ v13.125 — Contrôles de filtrage : date (défaut aujourd'hui) + « réception seule ».
+  const filtres = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted)">'
+    + '<label style="display:flex;align-items:center;gap:5px">📅 Date '
+    + '<input type="date" id="grille-date" value="' + esc(_grilleDate || '') + '" onchange="grilleSetDate(this.value)" '
+    + 'style="padding:5px 8px;border:1px solid var(--border);border-radius:8px;font-size:12.5px"></label>'
+    + (_grilleDate ? '<button class="btn btn-outline" style="font-size:11.5px;padding:3px 8px" onclick="grilleSetDate(\'\')">Toutes les dates</button>' : '')
+    + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Afficher aussi les patients enregistrés en « réception seule »">'
+    + '<input type="checkbox" id="grille-reception"' + (_grilleInclureReception ? ' checked' : '') + ' onchange="grilleToggleReception(this.checked)" style="width:15px;height:15px"> réception seule</label>'
+    + '</div>';
+
+  const entete = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px">'
     + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     + '<span style="font-size:15px;font-weight:800;color:var(--cpmi-deep)">📋 Saisie en série</span>' + selecteur
     + '<span style="font-size:13px;color:var(--text-muted)">' + pend.length + ' en attente</span></div>'
     + '<div style="display:flex;gap:8px"><button class="btn btn-outline" style="font-size:13px" onclick="fermerGrille()">← Retour</button>'
-    + '<button id="grille-save" class="btn btn-primary" style="font-size:14px;padding:9px 20px" onclick="grilleSaveAll()">💾 Enregistrer le lot</button></div></div>';
+    + '<button id="grille-save" class="btn btn-primary" style="font-size:14px;padding:9px 20px" onclick="grilleSaveAll()">💾 Enregistrer le lot</button></div></div>'
+    + '<div style="margin-bottom:12px">' + filtres + '</div>';
 
   if (!pend.length) {
+    const scope = _grilleDate ? ('du ' + esc(_grilleDate)) : '(toutes dates)';
     cont.innerHTML = entete
       + '<div style="padding:24px;text-align:center;color:var(--text-muted);background:rgba(255,255,255,.7);border:1px dashed var(--border);border-radius:var(--radius)">'
-      + 'Aucun dossier « ' + esc(cfg.label) + ' » en attente. Tous les résultats de ce paramètre sont déjà saisis.</div>';
+      + 'Aucun dossier « ' + esc(cfg.label) + ' » en attente ' + scope + '.<br>'
+      + '<span style="font-size:12px">Change la date, choisis « Toutes les dates », ou coche « réception seule » si besoin.</span></div>';
     return;
   }
 

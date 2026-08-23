@@ -908,12 +908,16 @@ async function enregistrerFicheIdentif() {
       _examens_prix[t] = prixParTab[tab];
     });
 
+    // ✅ v13.125 — « Réception seule » : le dossier est enregistré mais exclu de
+    // la grille de saisie en série (jusqu'à ce qu'on l'y remette).
+    const receptionSeule = !!document.getElementById('chk-reception-seule')?.checked;
     const resultats = {
       _types: Object.keys(_montants),
       _montants,
       _examens_coches,
       _examens_prix,
       _facture_seule: true, // marqueur : résultats non encore saisis
+      _reception_seule: receptionSeule,
     };
 
     const prescripteur_id = document.getElementById('p_prescripteur_id')?.value || null;
@@ -930,6 +934,7 @@ async function enregistrerFicheIdentif() {
         _examens_coches: resultats._examens_coches,
         _examens_prix:   resultats._examens_prix,
         _facture_seule:  !(existing?.resultats) || existing.resultats._facture_seule,
+        _reception_seule: receptionSeule, // ✅ v13.125 — reflète la case au moment de la mise à jour
       };
       const updatedRecord = {
         // ✅ v13.36 — TOUJOURS 'Dossier' : un dossier multi-analyses doit

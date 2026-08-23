@@ -807,6 +807,8 @@ async function resetFicheIdentif() {
     const chk = document.getElementById(ex.id);
     if (chk) chk.checked = false;
   });
+  // ✅ v13.125 — Réinitialiser la case « réception seule » pour le patient suivant.
+  { const rs = document.getElementById('chk-reception-seule'); if (rs) rs.checked = false; }
   calcFicheTotal();
   // Revenir à la fiche d'identification si on est en zone saisie
   const zoneSaisie = document.getElementById('zone-saisie');

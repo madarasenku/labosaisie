@@ -44,7 +44,7 @@ const DOSSIERS = [mkDoss(801, 'CRP UN'), mkDoss(802, 'CRP DEUX')];
     await page.waitForTimeout(300);
 
     r.section('Ouvrir la grille sur CRP');
-    await page.evaluate(() => window.ouvrirGrille('crp'));
+    await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('crp'); });
     await page.waitForTimeout(300);
     const g = await page.evaluate(() => ({
       lignes: document.querySelectorAll('#grille-serie tr[data-doss]').length,
