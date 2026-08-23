@@ -691,6 +691,11 @@ function enterFillAllFresh() {
   // coché ; markRequiredSections ajoute l'étoile « requis ».
   if (typeof applyExamLocks === 'function') applyExamLocks();
   if (typeof markRequiredSections === 'function') markRequiredSections();
+  // ✅ v13.114 — Masquer aussi les LIGNES des examens non cochés à l'intérieur
+  // d'une carte partagée (ex. HbA1c dans « Biochimie sanguine », réticulocytes
+  // dans la NFS…) : on ne veut voir QUE les examens cochés, pas les lignes
+  // verrouillées des autres.
+  hideUncheckedExamRows();
 
   // Boutons : un seul « Enregistrer les résultats » (masquer ceux par onglet).
   document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = 'none');
@@ -705,6 +710,36 @@ function enterFillAllFresh() {
       .map(tid => (typeof TAB_TO_TYPE !== 'undefined' && TAB_TO_TYPE[tid]) || tid);
     hint.textContent = labels.length + ' analyse' + (labels.length > 1 ? 's' : '') + ' à saisir : ' + labels.join(', ');
   }
+}
+
+// ✅ v13.114 — Masque, dans la vue « tout sur une page », les lignes de résultat
+// qui n'appartiennent qu'à des examens NON cochés. Le masquage par section
+// (applyExamLocks) ne suffit pas quand plusieurs examens partagent une carte :
+// ex. « Biochimie sanguine » contient glycémie + HbA1c ; si seule la glycémie
+// est cochée, la ligne HbA1c restait visible mais verrouillée. On raisonne par
+// LIGNE : une ligne reste visible dès qu'au moins un des examens qui la possèdent
+// est coché. À n'appeler que dans les vues empilées (fill-all).
+function hideUncheckedExamRows() {
+  let cat;
+  try { cat = getCatalogueComplet(); } catch (e) { return; }
+  // Pour chaque champ : est-il possédé par au moins un examen coché ?
+  const ownedByChecked = {};
+  cat.forEach(ex => {
+    const on = !!document.getElementById(ex.id)?.checked;
+    let fids; try { fids = examFieldIds(ex.id); } catch (e) { fids = []; }
+    fids.forEach(fid => { ownedByChecked[fid] = (ownedByChecked[fid] || false) || on; });
+  });
+  // Agréger au niveau de la LIGNE conteneur (tr / .abg-row) : on garde la ligne
+  // si au moins un de ses champs catalogués est possédé par un examen coché.
+  const rowKeep = new Map();
+  Object.keys(ownedByChecked).forEach(fid => {
+    const el = document.getElementById(fid);
+    if (!el) return;
+    const row = el.closest('tr, .abg-row');
+    if (!row) return;
+    rowKeep.set(row, (rowKeep.get(row) || false) || ownedByChecked[fid]);
+  });
+  rowKeep.forEach((keep, row) => { row.style.display = keep ? '' : 'none'; });
 }
 
 // Marque les sections/cartes correspondant aux examens cochés (payés)

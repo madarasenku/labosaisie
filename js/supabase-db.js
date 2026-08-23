@@ -770,6 +770,8 @@ async function resetFicheIdentif() {
   if (typeof _fillAllMode !== 'undefined') _fillAllMode = false;
   document.body.classList.remove('fill-all-mode');
   document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
+  // Ré-afficher les lignes masquées par hideUncheckedExamRows() (fill-all).
+  document.querySelectorAll('#zone-saisie tr, #zone-saisie .abg-row').forEach(row => { row.style.display = ''; });
 
   const banner = document.getElementById('edit-mode-banner');
   if (banner) banner.style.display = 'none';
@@ -1648,6 +1650,9 @@ async function fillAllResults(id) {
   });
 
   if (typeof markRequiredSections === 'function') markRequiredSections();
+  // ✅ v13.114 — Masquer aussi les lignes des examens non cochés dans les cartes
+  // partagées (cohérent avec la nouvelle saisie « tout sur une page »).
+  if (typeof hideUncheckedExamRows === 'function') hideUncheckedExamRows();
 
   // Boutons : masquer les « Enregistrer » par onglet, montrer le bouton unique
   document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = 'none');
@@ -1871,6 +1876,8 @@ function cancelEdit() {
   _fillAllMode = false;
   document.body.classList.remove('fill-all-mode');
   document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
+  // ✅ v13.114 — Ré-afficher les lignes masquées par hideUncheckedExamRows().
+  document.querySelectorAll('#zone-saisie tr, #zone-saisie .abg-row').forEach(row => { row.style.display = ''; });
   // ✅ v13.34 — Restaurer updateMontantCurrent si gelé
   if (window._updateMontantCurrent_orig) {
     window.updateMontantCurrent = window._updateMontantCurrent_orig;

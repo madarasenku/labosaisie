@@ -67,6 +67,14 @@ const { serve, openApp, createReporter, setField } = require('./helpers');
         btnAllVisible: vis(btnAll),
         // un panneau non coché (biochimie) ne doit pas être affiché
         bioVisible: vis(document.getElementById('panel-bio')),
+        // ✅ v13.114 — les lignes des examens NON cochés partageant une carte
+        // (ex. VS dans la carte NFS) doivent être MASQUÉES, pas juste verrouillées.
+        vsRowHidden: (() => { const el = document.getElementById('v_vs');
+          const row = el && el.closest('tr, .abg-row'); return row ? !vis(row) : true; })(),
+        // aucun champ VERROUILLÉ ne doit rester visible dans les panneaux empilés
+        champsVerrouillesVisibles: [...document.querySelectorAll('.panel.active')]
+          .flatMap(p => [...p.querySelectorAll('input:not([type=checkbox]):disabled, select:disabled, textarea:disabled')])
+          .filter(e => !!(e && e.offsetParent !== null)).length,
       };
     });
 
@@ -80,6 +88,8 @@ const { serve, openApp, createReporter, setField } = require('./helpers');
     r.check('section NFS visible',                        état.nfsVisible, true);
     r.check('section CRP visible',                        état.crpVisible, true);
     r.check('bouton unique « Enregistrer » visible',     état.btnAllVisible, true);
+    r.check('ligne VS (non cochée) MASQUÉE',             état.vsRowHidden, true);
+    r.check('aucun champ verrouillé visible',            état.champsVerrouillesVisibles, 0);
 
     r.section('Enregistrement atomique (un seul insert)');
     await page.evaluate(() => window.saveAllTabs());
