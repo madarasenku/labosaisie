@@ -17,6 +17,8 @@ const _CRP_OPTS = [
   ['', '—'], ['neg', 'Négatif (< 6)'], ['6', '6'], ['12', '12'], ['24', '24'],
   ['48', '48'], ['96', '96'], ['192', '192'], ['384', '≥ 384'],
 ];
+// Options qualitatives des sérologies (identiques au formulaire).
+const _SERO_OPTS = [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif'], ['Douteux', 'Douteux']];
 
 // Registre des examens saisissables en série.
 //  type    : analyse de stockage (clé dans resultats)
@@ -73,6 +75,55 @@ const GRILLE_EXAMS = {
     cols: [
       { k: 'asat', lab: 'ASAT (TGO)', dom: 'v_asat', kind: 'num' },
       { k: 'alat', lab: 'ALAT (TGP)', dom: 'v_alat', kind: 'num' },
+    ],
+  },
+
+  // ── Paramètres du bilan prénatal (sérologies + groupe) ──────
+  // (L'hémogramme, la glycémie et la créatinine du BPN se saisissent via les
+  //  entrées NFS / Glycémie / Créatinine ci-dessus.)
+  vih: {
+    label: 'BPN · Sérologie VIH', type: 'Immuno-Sérologie', exId: 'ex_vih', coche: /VIH/i,
+    filled: s => s['VIH 1 & 2'] && s['VIH 1 & 2'].resultat,
+    cols: [{ k: 'vih1', lab: 'VIH 1 & 2', dom: 'sr_vih1', kind: 'sel', opts: _SERO_OPTS }],
+  },
+  hbs: {
+    label: 'BPN · Hépatite B (Ag HBs)', type: 'Immuno-Sérologie', exId: 'ex_hbs', coche: /HBs|Hépatite B/i,
+    filled: s => s['Ag HBs'] && s['Ag HBs'].resultat,
+    cols: [
+      { k: 'hbsag', lab: 'Ag HBs', dom: 'sr_hbsag', kind: 'sel', opts: _SERO_OPTS },
+      { k: 'hbcac', lab: 'Ac anti-HBc', dom: 'sr_hbcac', kind: 'sel', opts: _SERO_OPTS },
+      { k: 'hbsac', lab: 'Ac anti-HBs (UI/L)', dom: 'sv_hbsac', kind: 'num' },
+    ],
+  },
+  hcv: {
+    label: 'BPN · Hépatite C (VHC)', type: 'Immuno-Sérologie', exId: 'ex_hcv', coche: /VHC|HCV|Hépatite C/i,
+    filled: s => s['Ac anti-VHC'] && s['Ac anti-VHC'].resultat,
+    cols: [{ k: 'hcv', lab: 'Ac anti-VHC', dom: 'sr_hcv', kind: 'sel', opts: _SERO_OPTS }],
+  },
+  tpha: {
+    label: 'BPN · Syphilis (TPHA/VDRL)', type: 'Immuno-Sérologie', exId: 'ex_tpha', coche: /TPHA|VDRL|Syphilis/i,
+    filled: s => s['TPHA / VDRL (Syphilis)'] && s['TPHA / VDRL (Syphilis)'].resultat,
+    cols: [{ k: 'syphil', lab: 'TPHA / VDRL', dom: 'sr_syphil', kind: 'sel', opts: _SERO_OPTS }],
+  },
+  toxo: {
+    label: 'BPN · Toxoplasmose IgG/IgM', type: 'Immuno-Sérologie', exId: 'ex_toxo', coche: /Toxo/i,
+    filled: s => (s['Toxoplasmose IgG'] && s['Toxoplasmose IgG'].valeur) || (s['Toxoplasmose IgM'] && s['Toxoplasmose IgM'].resultat),
+    cols: [
+      { k: 'toxo', lab: 'Toxo IgG (UI/mL)', dom: 'sv_toxo', kind: 'num' },
+      { k: 'toxoig', lab: 'Toxo IgM', dom: 'sr_toxoig', kind: 'sel', opts: _SERO_OPTS },
+    ],
+  },
+  rube: {
+    label: 'BPN · Rubéole IgG', type: 'Immuno-Sérologie', exId: 'ex_rube', coche: /Rubéole|Rube/i,
+    filled: s => s['Rubéole IgG'] && s['Rubéole IgG'].valeur,
+    cols: [{ k: 'rubig', lab: 'Rubéole IgG (UI/mL)', dom: 'sv_rubig', kind: 'num' }],
+  },
+  gs: {
+    label: 'BPN · Groupe sanguin (ABO/Rh)', type: 'Groupe sanguin', exId: 'ex_gs', coche: /Groupe|ABO|Rh/i,
+    filled: g => g['Groupe ABO'],
+    cols: [
+      { k: 'abo', lab: 'ABO', dom: 'gs_abo', kind: 'sel', opts: [['', '—'], ['A', 'A'], ['B', 'B'], ['AB', 'AB'], ['O', 'O']] },
+      { k: 'rh', lab: 'Rhésus', dom: 'gs_rh', kind: 'sel', opts: [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif']] },
     ],
   },
 };
@@ -236,6 +287,14 @@ function grilleBuildResults(cfg, dossId, sexe, age) {
   // Vider les champs de cet examen avant de réinjecter la ligne.
   cfg.cols.forEach(c => setV(c.dom, ''));
   if (cfg.before) { try { cfg.before(); } catch (e) {} }
+  // ✅ v13.124 — Sérologie : régler le mode (qual/quant) selon le type de champ.
+  // sv_<id> = valeur chiffrée (quantitatif), sr_<id> = résultat Positif/Négatif.
+  cfg.cols.forEach(c => {
+    let tid = null;
+    if (c.dom && c.dom.indexOf('sv_') === 0) tid = c.dom.slice(3);
+    else if (c.dom && c.dom.indexOf('sr_') === 0) tid = c.dom.slice(3);
+    if (tid) { const m = document.getElementById('smode_' + tid); if (m) { m.value = (c.dom.indexOf('sv_') === 0) ? 'quant' : 'qual'; try { m.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} } }
+  });
   cfg.cols.forEach(c => {
     const src = document.getElementById('g_' + dossId + '_' + c.k);
     const val = src ? String(src.value).trim() : '';
