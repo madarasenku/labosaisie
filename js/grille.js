@@ -152,6 +152,10 @@ function grillePending(key) {
     if (_grilleDate && _dateDossier(r) !== _grilleDate) return false;
     const coches = r.resultats?._examens_coches?.[cfg.type] || [];
     if (!coches.some(l => cfg.coche.test(l))) return false;
+    // ✅ v13.130 — Marqueur de saisie conservé par le chargement allégé (clé « _ »).
+    // Le cache léger ne contient PAS les sous-résultats par analyse ; sans ce
+    // drapeau, un examen déjà saisi réapparaîtrait indéfiniment dans la grille.
+    if (r.resultats && r.resultats._saisi_serie && r.resultats._saisi_serie[key]) return false;
     const res = r.resultats?.[cfg.type] || {};
     return !cfg.filled(res);          // pas encore rempli
   });
@@ -373,6 +377,9 @@ async function grilleSaveAll() {
         const newRes = { ...base, [type]: res };
         newRes._types = base._types ? [...new Set([...base._types, type])] : [type];
         newRes._facture_seule = false;
+        // ✅ v13.130 — Marquer CE paramètre de série comme saisi (clé « _ » conservée
+        // par le chargement allégé) pour qu'il sorte de la grille après enregistrement.
+        newRes._saisi_serie = Object.assign({}, base._saisi_serie, { [_grilleKey]: true });
         const saved = await updateRecordRemote(record.id, {
           patient: record.patient, type: 'Dossier', resultats: newRes,
           montant: record.montant || 0, prescripteur_id: record.prescripteur_id || null,
