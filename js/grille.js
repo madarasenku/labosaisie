@@ -166,6 +166,11 @@ function grillePendingNFS() { return grillePending('nfs'); }
 // Ouvre la grille sur un examen donné.
 function ouvrirGrille(key) {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
+  // ✅ v13.132 — La grille partage le formulaire #zone-saisie avec la paillasse.
+  // On fige d'abord l'état du patient actif de la paillasse (identité + coches +
+  // valeurs saisies) pour qu'une saisie en cours non enregistrée ne soit pas
+  // perdue quand la grille manipule ensuite ce même formulaire.
+  if (typeof benchStoreActiveFromForm === 'function') { try { benchStoreActiveFromForm(); } catch (e) {} }
   if (key && GRILLE_EXAMS[key]) _grilleKey = key;
   // ✅ v13.125 — Par défaut, on n'affiche que les patients DU JOUR (moins d'encombrement).
   if (_grilleDate === null) {
@@ -400,6 +405,11 @@ async function grilleSaveAll() {
       if (!record) { err++; continue; }
       try {
         await ensureFull(record);
+        // ✅ v13.132 — Sécurité anti-perte : si le détail complet n'a pas pu être
+        // chargé (hors-ligne / erreur réseau), record.resultats ne contient que les
+        // clés « _… ». Enregistrer maintenant écraserait les AUTRES types d'analyse
+        // déjà saisis (update_resultat remplace tout le JSON). On saute la ligne.
+        if (record._light) { err++; continue; }
         const res = grilleBuildResults(cfg, dossId, record.patient?.sexe, record.patient?.age);
         const type = cfg.type;
         const base = record.resultats || {};
@@ -425,6 +435,15 @@ async function grilleSaveAll() {
     try {
       Object.keys(backup.ident || {}).forEach(id => { const el = document.getElementById(id); if (el) el.value = backup.ident[id]; });
       getCatalogueComplet().forEach(ex => { const c = document.getElementById(ex.id); const s = backup.coches[ex.id]; if (c && s) c.checked = !!s.c; });
+      // ✅ v13.132 — Réinjecter AUSSI les valeurs de résultats du patient actif de la
+      // paillasse (l'ancien code ne restaurait que l'identité et les coches, donc une
+      // saisie paillasse en cours non enregistrée était perdue après un lot série).
+      Object.keys(backup.values || {}).forEach(fid => {
+        const el = document.getElementById(fid);
+        if (el && el.type !== 'checkbox' && el.type !== 'radio') el.value = backup.values[fid];
+      });
+      ['Hématologie', 'Biochimie', 'Immuno-Sérologie', 'Groupe sanguin', 'Parasitologie']
+        .forEach(t => { try { if (typeof ensureInterpFresh === 'function') ensureInterpFresh(t); } catch (e) {} });
       if (typeof calcFicheTotal === 'function') calcFicheTotal();
     } catch (e) {}
   }
