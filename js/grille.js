@@ -135,6 +135,7 @@ let _grilleDate = null;                 // date filtrée (YYYY-MM-DD) ; '' = tou
 let _grilleInclureReception = false;    // inclure les dossiers « réception seule »
 let _grilleInclureSaisis = false;       // ✅ v13.133 — inclure les paramètres déjà saisis (correction)
 let _grilleDernierLot = [];             // ✅ v13.133 — ids du dernier lot enregistré (pour impression)
+let _grilleSelForce = {};               // ✅ v13.134 — override manuel de la coche « terminé » par dossier
 
 // Date d'un dossier : date de la fiche patient, sinon date d'enregistrement.
 function _dateDossier(r) {
@@ -226,6 +227,7 @@ function grilleRender() {
   const cont = document.getElementById('grille-serie');
   if (!cont || !cfg) return;
   const pend = grillePending(_grilleKey);
+  _grilleSelForce = {};   // ✅ v13.134 — nouvelle liste : on repart d'une sélection propre
 
   const selecteur = '<select id="grille-exam-sel" onchange="grilleChangeExam(this.value)" '
     + 'style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--cpmi-deep)">'
@@ -248,13 +250,15 @@ function grilleRender() {
   const entete = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px">'
     + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
     + '<span style="font-size:15px;font-weight:800;color:var(--cpmi-deep)">📋 Saisie en série</span>' + selecteur
-    + '<span style="font-size:13px;color:var(--text-muted)">' + pend.length + ' en attente</span></div>'
+    + '<span style="font-size:13px;color:var(--text-muted)">' + pend.length + ' en attente · <span id="grille-selcount" style="font-weight:700;color:var(--cpmi-deep)">0</span> coché(s)</span></div>'
     + '<div style="display:flex;gap:8px"><button class="btn btn-outline" style="font-size:13px" onclick="fermerGrille()">← Retour</button>'
     // ✅ v13.133 — Imprimer les comptes rendus du dernier lot enregistré.
     + (_grilleDernierLot.length
         ? '<button class="btn btn-outline" style="font-size:13px;padding:9px 16px" onclick="grilleImprimerLot()" title="Imprimer les comptes rendus des patients du dernier lot enregistré">🖨️ Imprimer le lot (' + _grilleDernierLot.length + ')</button>'
         : '')
-    + '<button id="grille-save" class="btn btn-primary" style="font-size:14px;padding:9px 20px" onclick="grilleSaveAll()">💾 Enregistrer le lot</button></div></div>'
+    // ✅ v13.134 — Enregistrer + imprimer les patients cochés (terminés).
+    + '<button id="grille-saveprint" class="btn btn-outline" style="font-size:13px;padding:9px 14px;border-color:#15803d;color:#15803d" onclick="grilleSaveAndPrint()" title="Enregistrer les patients cochés puis imprimer leurs comptes rendus">💾🖨️ Enreg. + Imprimer</button>'
+    + '<button id="grille-save" class="btn btn-primary" style="font-size:14px;padding:9px 20px" onclick="grilleSaveAll()">💾 Enregistrer les cochés</button></div></div>'
     + '<div style="margin-bottom:12px">' + filtres + '</div>';
 
   if (!pend.length) {
@@ -266,7 +270,8 @@ function grilleRender() {
     return;
   }
 
-  const head = '<th style="position:sticky;left:0;background:var(--cpmi-deep);color:#fff;text-align:left;padding:8px 10px;min-width:170px;z-index:2">Patient</th>'
+  const head = '<th style="position:sticky;left:0;background:var(--cpmi-deep);color:#fff;text-align:left;padding:8px 10px;min-width:170px;z-index:2">'
+    + '<input type="checkbox" id="grille-selall" onchange="grilleSelAll(this.checked)" title="Tout cocher / décocher" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;cursor:pointer">Patient</th>'
     + cfg.cols.map(c => '<th style="background:var(--cpmi-deep);color:#fff;padding:8px 6px;min-width:70px;font-size:11.5px">' + esc(c.lab) + '</th>').join('');
 
   const cellHtml = (dossId, c) => {
@@ -287,6 +292,9 @@ function grilleRender() {
     const sexe = esc(r.patient?.sexe || '');
     return '<tr id="grow_' + r.id + '" data-doss="' + r.id + '">'
       + '<td style="position:sticky;left:0;background:#fff;padding:6px 10px;font-weight:600;font-size:12.5px;border-right:1px solid var(--border)">'
+      // ✅ v13.134 — Coche « terminé » : auto quand la ligne est complète, décochable à la main.
+      + '<input type="checkbox" id="gsel_' + r.id + '" onclick="event.stopPropagation()" onchange="grilleSelToggle(' + r.id + ')" '
+      + 'title="Terminé — inclure dans l\'enregistrement / l\'impression" style="width:16px;height:16px;vertical-align:middle;margin-right:7px;cursor:pointer">'
       + '<span id="gtick_' + r.id + '" style="color:#15803d;font-weight:800;margin-right:4px;visibility:hidden">✓</span>'
       + nom + '<div style="font-size:10.5px;color:var(--text-muted);font-weight:500">N° ' + doss + (sexe ? ' · ' + sexe : '') + '</div></td>'
       + cfg.cols.map(c => cellHtml(r.id, c)).join('') + '</tr>';
@@ -300,6 +308,7 @@ function grilleRender() {
     + '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)"><table style="border-collapse:collapse;width:100%;font-size:12.5px"><thead><tr>'
     + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   grilleUpdateHint();
+  grilleUpdateSelCount();
 }
 
 function _grilleCols() { return (GRILLE_EXAMS[_grilleKey] || {}).cols || []; }
@@ -316,9 +325,40 @@ function grilleRowHasAny(dossId) {
   });
 }
 function grilleCellChange(dossId) {
+  const complete = grilleRowComplete(dossId);
   const tick = document.getElementById('gtick_' + dossId);
-  if (tick) tick.style.visibility = grilleRowComplete(dossId) ? 'visible' : 'hidden';
+  if (tick) tick.style.visibility = complete ? 'visible' : 'hidden';
+  // ✅ v13.134 — Coche « terminé » automatique quand la ligne est complète,
+  // sauf si l'utilisateur l'a déjà cochée/décochée à la main (override).
+  const sel = document.getElementById('gsel_' + dossId);
+  if (sel && _grilleSelForce[dossId] === undefined) sel.checked = complete;
+  grilleUpdateSelCount();
   grilleUpdateHint();
+}
+
+// ✅ v13.134 — Sélection « terminé » : override manuel + tout cocher + comptage.
+function grilleSelToggle(dossId) {
+  const sel = document.getElementById('gsel_' + dossId);
+  _grilleSelForce[dossId] = !!(sel && sel.checked);
+  grilleUpdateSelCount();
+}
+function grilleSelAll(on) {
+  [...document.querySelectorAll('#grille-serie input[id^="gsel_"]')].forEach(cb => {
+    cb.checked = !!on;
+    _grilleSelForce[cb.id.slice(5)] = !!on;
+  });
+  grilleUpdateSelCount();
+}
+function grilleSelectedIds() {
+  return [...document.querySelectorAll('#grille-serie input[id^="gsel_"]')]
+    .filter(cb => cb.checked).map(cb => cb.id.slice(5));
+}
+function grilleUpdateSelCount() {
+  const boxes = [...document.querySelectorAll('#grille-serie input[id^="gsel_"]')];
+  const n = boxes.filter(cb => cb.checked).length;
+  const cnt = document.getElementById('grille-selcount'); if (cnt) cnt.textContent = n;
+  const all = document.getElementById('grille-selall');
+  if (all) { all.checked = boxes.length > 0 && n === boxes.length; all.indeterminate = n > 0 && n < boxes.length; }
 }
 function grilleUpdateHint() {
   const hint = document.getElementById('grille-hint');
@@ -394,9 +434,10 @@ function grilleBuildResults(cfg, dossId, sexe, age) {
 async function grilleSaveAll() {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
   const cfg = GRILLE_EXAMS[_grilleKey]; if (!cfg) return;
-  const rows = [...document.querySelectorAll('#grille-serie tr[data-doss]')]
-    .map(tr => tr.dataset.doss).filter(id => grilleRowHasAny(id));
-  if (!rows.length) { toast('Aucune ligne remplie', 'err'); return; }
+  // ✅ v13.134 — On n'enregistre QUE les patients cochés (« terminés »). La coche
+  // s'auto-active quand la ligne est complète ; l'utilisateur peut en décocher.
+  const rows = grilleSelectedIds().filter(id => grilleRowHasAny(id));
+  if (!rows.length) { toast('Coche au moins un patient terminé', 'err'); return; }
   const incompletes = rows.filter(id => !grilleRowComplete(id)).length;
   if (incompletes && typeof showConfirmModal === 'function') {
     const ok = await showConfirmModal({
@@ -467,6 +508,17 @@ async function grilleSaveAll() {
   _grilleDernierLot = savedIds.slice();
   toast('✅ ' + ok + ' ' + cfg.label + ' enregistrée' + (ok > 1 ? 's' : '') + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
   grilleRender();
+  // ✅ v13.134 — Enchaîner l'impression si demandé (bouton « Enreg. + Imprimer »).
+  if (window._grilleImprimerApresSave) {
+    window._grilleImprimerApresSave = false;
+    if (_grilleDernierLot.length) { try { await grilleImprimerLot(); } catch (e) {} }
+  }
+}
+
+// ✅ v13.134 — Enregistrer les patients cochés PUIS imprimer leurs comptes rendus.
+async function grilleSaveAndPrint() {
+  window._grilleImprimerApresSave = true;
+  await grilleSaveAll();
 }
 
 // ✅ v13.133 — Imprime les comptes rendus complets de tous les patients du
