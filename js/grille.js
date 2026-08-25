@@ -313,6 +313,35 @@ function grilleUpdateHint() {
     + ' · ' + amorces + ' commencée' + (amorces > 1 ? 's' : '') + ' sur ' + rows.length;
 }
 
+// ── Fusion non destructive d'un sous-objet d'analyse ────────────────
+// ✅ v13.131 — CORRECTIF « les autres paramètres disparaissent ».
+// Plusieurs paramètres de la grille partagent le MÊME type d'analyse
+// (ex. CRP, VIH, Ag HBs, VHC, TPHA… = 'Immuno-Sérologie' ; glycémie,
+// créatinine, transaminases = 'Biochimie'). Or grilleBuildResults rejoue
+// la ligne dans un formulaire vierge où SEUL l'examen courant est coché :
+// collectResults(type) renvoie alors TOUS les analytes du type, mais tous
+// VIDES sauf celui qu'on saisit. Remplacer le sous-objet entier
+// (newRes[type] = res) écrasait donc les analytes déjà enregistrés du même
+// type. On fusionne désormais : on ne recopie que les valeurs NON VIDES du
+// nouveau relevé par-dessus l'existant.
+function _grilleValVide(v) {
+  if (v == null) return true;
+  if (typeof v === 'string') return v.trim() === '';
+  if (typeof v === 'object') {
+    return !['valeur', 'resultat', 'titre', 'pct'].some(f => v[f] != null && String(v[f]).trim() !== '');
+  }
+  return false;
+}
+function _grilleFusionType(baseType, res) {
+  const out = Object.assign({}, baseType || {});
+  Object.keys(res || {}).forEach(k => {
+    if (!_grilleValVide(res[k])) out[k] = res[k];     // valeur saisie → écrase / ajoute
+    else if (!(k in out)) out[k] = res[k];            // analyte absent → conserve la coquille vide
+    // sinon (res vide ET base présent) → on GARDE l'existant.
+  });
+  return out;
+}
+
 // ── Rejoue une ligne dans le vrai formulaire et renvoie le JSON du type ──
 function grilleBuildResults(cfg, dossId, sexe, age) {
   const tab = _TYPE_TO_TAB[cfg.type] || 'hema';
@@ -374,7 +403,9 @@ async function grilleSaveAll() {
         const res = grilleBuildResults(cfg, dossId, record.patient?.sexe, record.patient?.age);
         const type = cfg.type;
         const base = record.resultats || {};
-        const newRes = { ...base, [type]: res };
+        // ✅ v13.131 — fusion non destructive (voir _grilleFusionType) : on
+        // préserve les autres analytes du même type déjà enregistrés.
+        const newRes = { ...base, [type]: _grilleFusionType(base[type], res) };
         newRes._types = base._types ? [...new Set([...base._types, type])] : [type];
         newRes._facture_seule = false;
         // ✅ v13.130 — Marquer CE paramètre de série comme saisi (clé « _ » conservée
