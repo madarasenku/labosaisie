@@ -133,6 +133,8 @@ const _TYPE_TO_TAB = { 'Hématologie': 'hema', 'Biochimie': 'bio', 'Immuno-Séro
 let _grilleKey = 'nfs';
 let _grilleDate = null;                 // date filtrée (YYYY-MM-DD) ; '' = toutes
 let _grilleInclureReception = false;    // inclure les dossiers « réception seule »
+let _grilleInclureSaisis = false;       // ✅ v13.133 — inclure les paramètres déjà saisis (correction)
+let _grilleDernierLot = [];             // ✅ v13.133 — ids du dernier lot enregistré (pour impression)
 
 // Date d'un dossier : date de la fiche patient, sinon date d'enregistrement.
 function _dateDossier(r) {
@@ -155,7 +157,8 @@ function grillePending(key) {
     // ✅ v13.130 — Marqueur de saisie conservé par le chargement allégé (clé « _ »).
     // Le cache léger ne contient PAS les sous-résultats par analyse ; sans ce
     // drapeau, un examen déjà saisi réapparaîtrait indéfiniment dans la grille.
-    if (r.resultats && r.resultats._saisi_serie && r.resultats._saisi_serie[key]) return false;
+    // ✅ v13.133 — sauf si on demande explicitement d'inclure les déjà saisis (correction).
+    if (!_grilleInclureSaisis && r.resultats && r.resultats._saisi_serie && r.resultats._saisi_serie[key]) return false;
     const res = r.resultats?.[cfg.type] || {};
     return !cfg.filled(res);          // pas encore rempli
   });
@@ -215,6 +218,8 @@ function fermerGrille() {
 // ✅ v13.125 — Filtres de la grille (date + « réception seule »).
 function grilleSetDate(v) { _grilleDate = v || ''; grilleRender(); }
 function grilleToggleReception(on) { _grilleInclureReception = !!on; grilleRender(); }
+// ✅ v13.133 — inclure/exclure les paramètres déjà saisis (pour correction).
+function grilleToggleSaisis(on) { _grilleInclureSaisis = !!on; grilleRender(); }
 
 function grilleRender() {
   const cfg = GRILLE_EXAMS[_grilleKey];
@@ -235,6 +240,9 @@ function grilleRender() {
     + (_grilleDate ? '<button class="btn btn-outline" style="font-size:11.5px;padding:3px 8px" onclick="grilleSetDate(\'\')">Toutes les dates</button>' : '')
     + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Afficher aussi les patients enregistrés en « réception seule »">'
     + '<input type="checkbox" id="grille-reception"' + (_grilleInclureReception ? ' checked' : '') + ' onchange="grilleToggleReception(this.checked)" style="width:15px;height:15px"> réception seule</label>'
+    // ✅ v13.133 — inclure les paramètres déjà saisis pour les corriger.
+    + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Afficher aussi les paramètres déjà saisis en série (pour corriger une valeur)">'
+    + '<input type="checkbox" id="grille-saisis"' + (_grilleInclureSaisis ? ' checked' : '') + ' onchange="grilleToggleSaisis(this.checked)" style="width:15px;height:15px"> déjà saisis</label>'
     + '</div>';
 
   const entete = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px">'
@@ -242,6 +250,10 @@ function grilleRender() {
     + '<span style="font-size:15px;font-weight:800;color:var(--cpmi-deep)">📋 Saisie en série</span>' + selecteur
     + '<span style="font-size:13px;color:var(--text-muted)">' + pend.length + ' en attente</span></div>'
     + '<div style="display:flex;gap:8px"><button class="btn btn-outline" style="font-size:13px" onclick="fermerGrille()">← Retour</button>'
+    // ✅ v13.133 — Imprimer les comptes rendus du dernier lot enregistré.
+    + (_grilleDernierLot.length
+        ? '<button class="btn btn-outline" style="font-size:13px;padding:9px 16px" onclick="grilleImprimerLot()" title="Imprimer les comptes rendus des patients du dernier lot enregistré">🖨️ Imprimer le lot (' + _grilleDernierLot.length + ')</button>'
+        : '')
     + '<button id="grille-save" class="btn btn-primary" style="font-size:14px;padding:9px 20px" onclick="grilleSaveAll()">💾 Enregistrer le lot</button></div></div>'
     + '<div style="margin-bottom:12px">' + filtres + '</div>';
 
@@ -398,6 +410,7 @@ async function grilleSaveAll() {
   const backup = (typeof benchSnapshot === 'function') ? benchSnapshot() : null;
   showLoading('Enregistrement du lot…');
   let ok = 0, err = 0;
+  const savedIds = [];   // ✅ v13.133 — dossiers enregistrés (pour l'impression du lot)
   const btn = document.getElementById('grille-save'); if (btn) btn.disabled = true;
   try {
     for (const dossId of rows) {
@@ -425,7 +438,7 @@ async function grilleSaveAll() {
           patient: record.patient, type: 'Dossier', resultats: newRes,
           montant: record.montant || 0, prescripteur_id: record.prescripteur_id || null,
         }, { onlyResultats: true });
-        if (saved) ok++; else err++;
+        if (saved) { ok++; savedIds.push(record.id); } else err++;
       } catch (e) { err++; }
     }
   } finally { if (btn) btn.disabled = false; }
@@ -450,6 +463,30 @@ async function grilleSaveAll() {
 
   hideLoading();
   await refreshDB(true);
+  // ✅ v13.133 — mémoriser le lot pour proposer l'impression des comptes rendus.
+  _grilleDernierLot = savedIds.slice();
   toast('✅ ' + ok + ' ' + cfg.label + ' enregistrée' + (ok > 1 ? 's' : '') + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
   grilleRender();
+}
+
+// ✅ v13.133 — Imprime les comptes rendus complets de tous les patients du
+// dernier lot enregistré (une fiche par page). Charge le détail complet de
+// chaque dossier avant impression.
+async function grilleImprimerLot() {
+  if (!_grilleDernierLot.length) { toast('Aucun lot récent à imprimer', 'err'); return; }
+  if (typeof printLot !== 'function') { toast('Impression indisponible', 'err'); return; }
+  showLoading('Préparation de l\'impression…');
+  try {
+    const db = getDB();
+    const records = [];
+    for (const id of _grilleDernierLot) {
+      const rec = db.find(x => String(x.id) === String(id));
+      if (!rec) continue;
+      try { await ensureFull(rec); } catch (e) {}
+      records.push(rec);
+    }
+    hideLoading();
+    if (!records.length) { toast('Dossiers introuvables', 'err'); return; }
+    await printLot(records);
+  } catch (e) { hideLoading(); toast('Erreur d\'impression', 'err'); }
 }

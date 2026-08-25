@@ -278,7 +278,9 @@ async function addQrAndSignatures(wb) {
   }
 }
 
-async function buildAndPrint(r) {
+// ✅ v13.133 — construit le HTML d'UN compte rendu et le RENVOIE (sans imprimer),
+// pour pouvoir soit imprimer une seule fiche (buildAndPrint), soit un lot (printLot).
+async function buildRecordPrintHTML(r) {
   // Construire le HTML de rendu d'impression
   const p = r.patient;
   const res = r.resultats || {};
@@ -447,7 +449,11 @@ async function buildAndPrint(r) {
       </div>
     </div>`;
 
-  // Injecter et imprimer
+  return html;
+}
+
+// Injecte le HTML dans le conteneur d'impression puis lance l'impression.
+function _injectAndPrint(html) {
   let printDiv = document.getElementById('print-render');
   if (!printDiv) {
     printDiv = document.createElement('div');
@@ -456,6 +462,24 @@ async function buildAndPrint(r) {
   }
   printDiv.innerHTML = html;
   window.print();
+}
+
+// Imprime UN dossier (compat : ancien point d'entrée).
+async function buildAndPrint(r) {
+  const html = await buildRecordPrintHTML(r);
+  _injectAndPrint(html);
+}
+
+// ✅ v13.133 — Imprime PLUSIEURS dossiers d'affilée, un par page (saut de page
+// entre chaque). Utilisé par « Imprimer le lot » de la saisie en série.
+async function printLot(records) {
+  const parts = [];
+  for (const r of (records || [])) {
+    try { if (r) parts.push(await buildRecordPrintHTML(r)); } catch (e) {}
+  }
+  if (!parts.length) return;
+  const html = parts.join('<div style="break-after:page;page-break-after:always"></div>');
+  _injectAndPrint(html);
 }
 
 
