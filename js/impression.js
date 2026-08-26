@@ -52,6 +52,26 @@ function confirmerSiExamensManquants(type, resultats) {
   return confirm(msg);
 }
 
+// ✅ v13.136 — Prépare un dossier pour l'impression : un dossier multi-analyses
+// est transformé en fiche composite (_dossier:true) que buildPrintSections sait
+// dérouler par type ; un dossier mono-analyse est réduit au rendu standard du
+// type. Utilisé par printRecord ET printLot (impression du lot) pour un rendu
+// identique. Renvoie null si le dossier est vide.
+function prepareRecordForPrint(r) {
+  if (!r || !isDossierRecord(r)) return r;
+  const types = getRecordTypes(r);
+  if (types.length === 0) return null;
+  if (types.length === 1) {
+    return { ...r, type: types[0], resultats: getRecordResultats(r, types[0]) };
+  }
+  const composite = { _types: types, _dossier: true };
+  // Conserver les métadonnées d'examens (lignes « à compléter », forfait BPN…).
+  ['_examens_coches', '_examens_prix', '_montants', '_bpn_inclus', '_reception_seule']
+    .forEach(k => { if (r.resultats && r.resultats[k] != null) composite[k] = r.resultats[k]; });
+  types.forEach(t => { composite[t] = getRecordResultats(r, t); });
+  return { ...r, type: 'Dossier', resultats: composite };
+}
+
 async function printRecord(id) {
   let r = getDB().find(x => x.id === id);
   if (!r) { toast('Fiche introuvable', 'err'); return; }
@@ -65,11 +85,8 @@ async function printRecord(id) {
       // Une seule analyse : utiliser le rendu standard avec les bons resultats
       r = { ...r, type: types[0], resultats: getRecordResultats(r, types[0]) };
     } else {
-      // Plusieurs analyses : construire un faux record agrégé pour l'impression
-      // buildAndPrint va appeler buildPrintSections pour chaque type
-      const compositeResultats = { _types: types, _dossier: true };
-      types.forEach(t => { compositeResultats[t] = getRecordResultats(r, t); });
-      buildAndPrint({ ...r, type: 'Dossier', resultats: compositeResultats });
+      // Plusieurs analyses : fiche composite (buildPrintSections déroule par type).
+      buildAndPrint(prepareRecordForPrint(r));
       return;
     }
   }
@@ -475,7 +492,11 @@ async function buildAndPrint(r) {
 async function printLot(records) {
   const parts = [];
   for (const r of (records || [])) {
-    try { if (r) parts.push(await buildRecordPrintHTML(r)); } catch (e) {}
+    // ✅ v13.136 — Même préparation que l'impression unitaire : un dossier
+    // multi-analyses doit devenir une fiche composite, sinon ses résultats ne
+    // s'affichent pas (buildPrintSections n'entre dans le rendu par type que
+    // pour un composite _dossier:true).
+    try { const pr = prepareRecordForPrint(r); if (pr) parts.push(await buildRecordPrintHTML(pr)); } catch (e) {}
   }
   if (!parts.length) return;
   const html = parts.join('<div style="break-after:page;page-break-after:always"></div>');
@@ -552,7 +573,7 @@ function buildPrintSections(type, res, pat) {
     res._types.forEach(t => {
       const typeRes = res[t] || {};
       html += `<div class="print-composite-section" style="margin-top:20px"><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#111;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:8px">${t}</div>`;
-      html += buildPrintSections(t, typeRes, r.patient);
+      html += buildPrintSections(t, typeRes, pat);
       html += '</div>';
     });
     return html;
