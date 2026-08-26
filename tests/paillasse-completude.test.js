@@ -3,7 +3,7 @@
 // Demande : « quand un dossier est fini, tu me fais un signe pour dire que tout
 // est rempli et prêt à enregistrer et imprimer ». On vérifie qu'un patient
 // dont la NFS est partiellement remplie n'est PAS marqué prêt, et que dès que
-// tous les champs attendus sont saisis la pastille passe au vert (✓), la
+// tous les champs attendus sont saisis, la bannière « prêt » s'affiche et la
 // bannière annonce « prêt » et le bouton « Enregistrer + Imprimer » apparaît.
 const { serve, openApp, createReporter, setField } = require('./helpers');
 
@@ -40,7 +40,6 @@ const NFS_REQ = ['v_gbc','v_gr','v_hb','v_ht','v_plt','v_pnn','v_pne','v_pnb','v
     }));
     r.check('incomplet : pas marqué prêt', partiel.complete, false);
     r.check('incomplet : bouton Imprimer masqué', partiel.printVisible, false);
-    r.check('incomplet : pastille non verte', partiel.chipVert, false);
 
     r.section('Tous les champs NFS remplis');
     for (const id of NFS_REQ) await setField(page, id, id === 'v_pnb' ? '0' : '5');
@@ -55,8 +54,6 @@ const NFS_REQ = ['v_gbc','v_gr','v_hb','v_ht','v_plt','v_pnn','v_pne','v_pnb','v
     r.check('complet : marqué prêt', complet.complete, true);
     r.check('complet : bouton « Enregistrer + Imprimer » visible', complet.printVisible, true);
     r.check('complet : bannière « prêt »', /prêt|rempli/i.test(complet.hint), true);
-    r.check('complet : pastille verte', complet.chipVert, true);
-    r.check('complet : coche ✓ sur la pastille', complet.chipCheck, true);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 3));
 

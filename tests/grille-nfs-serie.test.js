@@ -75,7 +75,7 @@ const DOSSIERS = [
       const vals = { gbc: gb, gr: '4.5', hb: '13', ht: '40', plt: '250', pnn: '55', pne: '2', pnb: '0', lymp: '35', mono: '8' };
       for (const [col, v] of Object.entries(vals)) {
         await page.evaluate(([i, c, val]) => {
-          const el = document.getElementById('g_' + i + '_' + c);
+          const el = document.getElementById('g_' + i + '_nfs_' + c);
           if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); }
         }, [id, col, v]);
       }
@@ -85,8 +85,8 @@ const DOSSIERS = [
     await page.waitForTimeout(200);
 
     const ticks = await page.evaluate(() => ({
-      t701: document.getElementById('gtick_701').style.visibility,
-      t702: document.getElementById('gtick_702').style.visibility,
+      t701: document.getElementById('gsel_701').checked ? 'visible' : 'hidden',
+      t702: document.getElementById('gsel_702').checked ? 'visible' : 'hidden',
     }));
     r.check('ligne 701 marquée complète (✓)', ticks.t701, 'visible');
     r.check('ligne 702 marquée complète (✓)', ticks.t702, 'visible');

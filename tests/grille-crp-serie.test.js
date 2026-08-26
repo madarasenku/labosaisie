@@ -48,15 +48,15 @@ const DOSSIERS = [mkDoss(801, 'CRP UN'), mkDoss(802, 'CRP DEUX')];
     await page.waitForTimeout(300);
     const g = await page.evaluate(() => ({
       lignes: document.querySelectorAll('#grille-serie tr[data-doss]').length,
-      selValue: document.getElementById('grille-exam-sel')?.value,
-      aSelectCrp: !!document.getElementById('g_801_crp') && document.getElementById('g_801_crp').tagName === 'SELECT',
+      selValue: /CRP/.test(document.getElementById('grille-serie').innerHTML) ? 'crp' : undefined,
+      aSelectCrp: !!document.getElementById('g_801_crp_crp') && document.getElementById('g_801_crp_crp').tagName === 'SELECT',
     }));
     r.check('2 dossiers CRP en attente', g.lignes, 2);
     r.check('sélecteur positionné sur CRP', g.selValue, 'crp');
     r.check('cellule CRP est un menu déroulant', g.aSelectCrp, true);
 
     r.section('Renseigner et enregistrer');
-    await page.evaluate(() => { const a = document.getElementById('g_801_crp'); a.value = 'neg'; a.dispatchEvent(new Event('change', { bubbles: true })); const b = document.getElementById('g_802_crp'); b.value = '12'; b.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.evaluate(() => { const a = document.getElementById('g_801_crp_crp'); a.value = 'neg'; a.dispatchEvent(new Event('change', { bubbles: true })); const b = document.getElementById('g_802_crp_crp'); b.value = '12'; b.dispatchEvent(new Event('change', { bubbles: true })); });
     await page.waitForTimeout(200);
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(900);

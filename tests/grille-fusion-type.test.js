@@ -65,7 +65,7 @@ const doss = {
     await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('vih'); });
     await page.waitForTimeout(300);
     r.check('dossier VIH listé', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 1);
-    await page.evaluate(() => { const el = document.getElementById('g_930_vih1'); el.value = 'Négatif'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.evaluate(() => { const el = document.getElementById('g_930_vih_vih1'); el.value = 'Négatif'; el.dispatchEvent(new Event('change', { bubbles: true })); });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(700);
     r.check('VIH enregistré', await page.evaluate(() => { const x = window.__store.find(z => z.id === 930); return x.resultats['Immuno-Sérologie'] && x.resultats['Immuno-Sérologie']['VIH 1 & 2'] && x.resultats['Immuno-Sérologie']['VIH 1 & 2'].resultat; }), 'Négatif');
@@ -75,7 +75,7 @@ const doss = {
     await page.evaluate(() => window.grilleChangeExam('crp'));
     await page.waitForTimeout(300);
     r.check('dossier CRP listé', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 1);
-    await page.evaluate(() => { const el = document.getElementById('g_930_crp'); el.value = 'neg'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.evaluate(() => { const el = document.getElementById('g_930_crp_crp'); el.value = 'neg'; el.dispatchEvent(new Event('change', { bubbles: true })); });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(700);
 

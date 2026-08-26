@@ -19,7 +19,21 @@ let _benchActiveKey = null;  // clé du patient actuellement affiché
 let _benchSeq = 1;           // compteur de clés locales
 
 // La paillasse est réservée aux profils qui saisissent réellement.
+// ✅ v13.140 — PAILLASSE DÉSACTIVÉE (décision validée).
+// La paillasse et la grille « saisie en série » partageaient le MÊME formulaire
+// caché (#zone-saisie). Ce couplage est la cause de fond des pertes de valeurs
+// et des contaminations entre patients. La grille unifiée (une ligne par
+// patient, tous ses examens) remplit le même besoin avec UNE seule écriture
+// atomique par patient, sans état partagé.
+// Les fonctions sont conservées (points d'appel existants) mais neutralisées :
+// benchRenderBar ne rend plus aucune pastille, et l'ouverture d'un dossier
+// depuis l'historique passe directement par l'éditeur « tout sur une page ».
+// La bannière de complétude (benchRenderReadyBanner) reste active : elle sert
+// à la saisie simple, pas à la paillasse.
+const PAILLASSE_ACTIVE = false;
+
 function benchEnabled() {
+  if (!PAILLASSE_ACTIVE) return false;
   if (typeof isSpectateur === 'function' && isSpectateur()) return false;
   if (typeof isCaissier === 'function' && isCaissier()) return false;
   return true;
@@ -150,7 +164,12 @@ function benchGo(key) {
 // Charge la fiche dans le formulaire (fillAllResults) puis l'ajoute comme
 // onglet de la paillasse, en conservant les patients déjà ouverts.
 async function benchOpenRecord(id) {
-  if (!benchEnabled()) { if (typeof editRecord === 'function') return editRecord(id); return; }
+  if (!benchEnabled()) {
+    // Paillasse désactivée : ouvrir directement la fiche complète pour édition.
+    if (typeof fillAllResults === 'function') return fillAllResults(id);
+    if (typeof editRecord === 'function') return editRecord(id);
+    return;
+  }
   // Déjà ouvert ? → simplement basculer dessus.
   const deja = _bench.find(e => e.recordId === id);
   if (deja) { if (typeof showView === 'function') showView('saisie'); benchGo(deja.key); return; }

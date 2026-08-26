@@ -44,7 +44,7 @@ const dossCrp = (id) => ({
     r.check('2 patients listés', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 2);
     r.check('aucun coché au départ', await page.evaluate(() => grilleSelectedIds().length), 0);
     // Remplir 960 complètement (une seule colonne CRP) → auto-coché.
-    await page.evaluate(() => { const el = document.getElementById('g_960_crp'); el.value = 'neg'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.evaluate(() => { const el = document.getElementById('g_960_crp_crp'); el.value = 'neg'; el.dispatchEvent(new Event('change', { bubbles: true })); });
     r.check('960 auto-coché', await page.evaluate(() => document.getElementById('gsel_960').checked), true);
     r.check('compteur = 1', await page.evaluate(() => document.getElementById('grille-selcount').textContent), '1');
     r.check('961 non coché', await page.evaluate(() => document.getElementById('gsel_961').checked), false);
@@ -52,7 +52,7 @@ const dossCrp = (id) => ({
     r.section('Décochage manuel respecté');
     await page.evaluate(() => { const cb = document.getElementById('gsel_960'); cb.checked = false; cb.dispatchEvent(new Event('change', { bubbles: true })); });
     // Re-déclencher un changement de cellule : ne doit PAS re-cocher (override manuel).
-    await page.evaluate(() => { const el = document.getElementById('g_960_crp'); el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.evaluate(() => { const el = document.getElementById('g_960_crp_crp'); el.dispatchEvent(new Event('change', { bubbles: true })); });
     r.check('960 reste décoché', await page.evaluate(() => document.getElementById('gsel_960').checked), false);
     // Enregistrer sans sélection → rien envoyé.
     await page.evaluate(() => { window.__u = []; });
@@ -71,7 +71,7 @@ const dossCrp = (id) => ({
     await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('crp'); });
     await page.waitForTimeout(300);
     // 960 sort de la liste (déjà saisi) ; il reste 961.
-    await page.evaluate(() => { const el = document.getElementById('g_961_crp'); el.value = '12'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.evaluate(() => { const el = document.getElementById('g_961_crp_crp'); el.value = '12'; el.dispatchEvent(new Event('change', { bubbles: true })); });
     await page.evaluate(() => { const all = document.getElementById('grille-selall'); all.checked = true; all.dispatchEvent(new Event('change', { bubbles: true })); });
     r.check('961 coché via « tout »', await page.evaluate(() => document.getElementById('gsel_961').checked), true);
 

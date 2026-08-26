@@ -81,9 +81,9 @@ const { serve, openApp, createReporter } = require('./helpers');
       const set = (id, v) => { const el = document.getElementById(id); if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
       [...document.querySelectorAll('#grille-serie tr[data-doss]')].forEach((tr, n) => {
         const d = tr.dataset.doss;
-        set('g_'+d+'_gbc', String(6+n)); set('g_'+d+'_gr','4.5'); set('g_'+d+'_hb','13'); set('g_'+d+'_ht','40');
-        set('g_'+d+'_plt','250'); set('g_'+d+'_pnn','55'); set('g_'+d+'_pne','2'); set('g_'+d+'_pnb','1');
-        set('g_'+d+'_lymp','35'); set('g_'+d+'_mono','7');
+        set('g_'+d+'_nfs_gbc', String(6+n)); set('g_'+d+'_nfs_gr','4.5'); set('g_'+d+'_nfs_hb','13'); set('g_'+d+'_nfs_ht','40');
+        set('g_'+d+'_nfs_plt','250'); set('g_'+d+'_nfs_pnn','55'); set('g_'+d+'_nfs_pne','2'); set('g_'+d+'_nfs_pnb','1');
+        set('g_'+d+'_nfs_lymp','35'); set('g_'+d+'_nfs_mono','7');
       });
     });
     await page.waitForTimeout(200);

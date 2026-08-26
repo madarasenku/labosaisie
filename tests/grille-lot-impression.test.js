@@ -49,7 +49,7 @@ const dossNfs = (id) => ({
     r.check('2 dossiers en attente', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 2);
     await page.evaluate(() => {
       const set = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
-      [950, 951].forEach(dd => ['gbc','gr','hb','ht','plt','pnn','pne','pnb','lymp','mono'].forEach((k,i) => set('g_'+dd+'_'+k, String(7+i))));
+      [950, 951].forEach(dd => ['gbc','gr','hb','ht','plt','pnn','pne','pnb','lymp','mono'].forEach((k,i) => set('g_'+dd+'_nfs_'+k, String(7+i))));
     });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(900);

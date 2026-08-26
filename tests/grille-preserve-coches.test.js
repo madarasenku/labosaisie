@@ -55,7 +55,7 @@ const doss = {
     await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('nfs'); });
     await page.waitForTimeout(300);
     r.check('patient listé pour NFS', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 1);
-    await page.evaluate(() => { const set = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }; ['gbc','gr','hb','ht','plt','pnn','pne','pnb','lymp','mono'].forEach((k,i) => set('g_990_'+k, String(7+i))); });
+    await page.evaluate(() => { const set = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }; ['gbc','gr','hb','ht','plt','pnn','pne','pnb','lymp','mono'].forEach((k,i) => set('g_990_nfs_'+k, String(7+i))); });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);
 
@@ -73,7 +73,7 @@ const doss = {
     await page.evaluate(() => window.grilleChangeExam('crp'));
     await page.waitForTimeout(300);
     r.check('patient listé pour CRP', await page.evaluate(() => grillePending('crp').length), 1);
-    await page.evaluate(() => { const el = document.getElementById('g_990_crp'); el.value = 'neg'; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.evaluate(() => { const el = document.getElementById('g_990_crp_crp'); el.value = 'neg'; el.dispatchEvent(new Event('change', { bubbles: true })); });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);
     const fin = await page.evaluate(() => { const x = window.__store.find(z => z.id === 990); return { crp: x.resultats['Immuno-Sérologie'] && x.resultats['Immuno-Sérologie']['CRP - Valeur'], hb: !!(x.resultats['Hématologie'] && x.resultats['Hématologie']['Globules blancs (GB)']), coches: Object.keys(x.resultats._examens_coches || {}).length }; });

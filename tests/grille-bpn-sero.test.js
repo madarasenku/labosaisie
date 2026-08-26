@@ -45,12 +45,14 @@ const dossGs = {
     r.section('Hépatite B (Ag HBs + Ac HBc + Ac anti-HBs)');
     await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('hbs'); });
     await page.waitForTimeout(300);
-    r.check('dossier HBs listé', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 1);
+    // Grille unifiée : tous les patients sont listés ; on vérifie ceux qui
+    // attendent CET examen via grillePending (compat).
+    r.check('dossier HBs en attente', await page.evaluate(() => grillePending('hbs').length), 1);
     await page.evaluate(() => {
       const set = (id, v, ev) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event(ev, { bubbles: true })); };
-      set('g_920_hbsag', 'Positif', 'change');
-      set('g_920_hbcac', 'Négatif', 'change');
-      set('g_920_hbsac', '12.5', 'input');
+      set('g_920_hbs_hbsag', 'Positif', 'change');
+      set('g_920_hbs_hbcac', 'Négatif', 'change');
+      set('g_920_hbs_hbsac', '12.5', 'input');
     });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);
@@ -65,10 +67,10 @@ const dossGs = {
     r.section('Groupe sanguin ABO / Rhésus');
     await page.evaluate(() => window.grilleChangeExam('gs'));
     await page.waitForTimeout(300);
-    r.check('dossier groupe listé', await page.evaluate(() => document.querySelectorAll('#grille-serie tr[data-doss]').length), 1);
+    r.check('dossier groupe en attente', await page.evaluate(() => grillePending('gs').length), 1);
     await page.evaluate(() => {
       const set = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); };
-      set('g_921_abo', 'O'); set('g_921_rh', 'Positif');
+      set('g_921_gs_abo', 'O'); set('g_921_gs_rh', 'Positif');
     });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);

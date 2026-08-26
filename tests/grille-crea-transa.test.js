@@ -40,7 +40,7 @@ const DOSS = [
     await page.waitForTimeout(300);
 
     r.section('Sélecteur : TSH et Urée retirés');
-    const opts = await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('crea'); return [...document.getElementById('grille-exam-sel').options].map(o => o.value); });
+    const opts = await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('crea'); const h = document.getElementById('grille-serie').innerHTML; return Object.keys(GRILLE_EXAMS).filter(k => h.indexOf(GRILLE_EXAMS[k].label) >= 0); });
     r.check('pas de TSH', opts.includes('tsh'), false);
     r.check('pas d\'Urée seule', opts.includes('uree'), false);
     r.check('créatinine présente', opts.includes('crea'), true);
@@ -48,7 +48,7 @@ const DOSS = [
 
     r.section('Créatinine → urée = créat / 44.4');
     await page.waitForTimeout(200);
-    await page.evaluate(() => { const el = document.getElementById('g_910_crea'); el.value = '9.2'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.evaluate(() => { const el = document.getElementById('g_910_crea_crea'); el.value = '9.2'; el.dispatchEvent(new Event('input', { bubbles: true })); });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);
     const creaRes = await page.evaluate(() => {
@@ -63,8 +63,8 @@ const DOSS = [
     await page.evaluate(() => window.grilleChangeExam('transa'));
     await page.waitForTimeout(300);
     await page.evaluate(() => {
-      const a = document.getElementById('g_911_asat'); a.value = '35'; a.dispatchEvent(new Event('input', { bubbles: true }));
-      const b = document.getElementById('g_911_alat'); b.value = '28'; b.dispatchEvent(new Event('input', { bubbles: true }));
+      const a = document.getElementById('g_911_transa_asat'); a.value = '35'; a.dispatchEvent(new Event('input', { bubbles: true }));
+      const b = document.getElementById('g_911_transa_alat'); b.value = '28'; b.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);
