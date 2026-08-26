@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.137';
-const CACHE = 'cpmi-labo-v111';
+const APP_VERSION = '13.138';
+const CACHE = 'cpmi-labo-v112';
 const v = url => url + '?v=' + APP_VERSION;
 
 /* Pré-cacher les fichiers essentiels à l'installation.
@@ -121,6 +121,22 @@ self.addEventListener('fetch', e => {
         }
         return res;
       })
-      .catch(() => caches.match(e.request, { ignoreSearch: true }))
+      /* ✅ v13.138 — CORRECTIF « HTML neuf + JS périmé ».
+         L'ancien repli utilisait ignoreSearch:true : une requête
+         js/grille.js?v=13.138 pouvait être servie par un js/grille.js?v=13.114
+         resté en cache. Sur une connexion instable, l'app tournait donc avec
+         un index.html à jour et des modules d'une version antérieure —
+         symptômes : rien ne s'enregistre, impression vide, examens qui
+         disparaissent. On exige désormais une correspondance EXACTE pour tout
+         actif versionné ; le repli « toutes versions » ne sert plus qu'aux
+         ressources sans ?v= (pages HTML). */
+      .catch(async () => {
+        const exact = await caches.match(e.request);
+        if (exact) return exact;
+        let versionne = false;
+        try { versionne = new URL(e.request.url).searchParams.has('v'); } catch (err) {}
+        if (versionne) return Response.error();
+        return (await caches.match(e.request, { ignoreSearch: true })) || Response.error();
+      })
   );
 });
