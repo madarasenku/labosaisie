@@ -127,15 +127,22 @@ function escHTML(s) {
 // ============================================================
 function generateRefUnique() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans 0/O/1/I pour lisibilité
+  // ✅ v13.137 — 6 caractères (32^6 ≈ 1,07 milliard de combinaisons) au lieu de 4
+  // (≈ 1 million) : la probabilité de collision devient négligeable.
   let code = '';
-  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return 'CPM-' + code + '-' + new Date().getFullYear();
 }
 
 function getOrCreateRef(record) {
   // Réutiliser la ref existante si déjà générée
   if (record?.patient?.ref_doc) return record.patient.ref_doc;
-  const ref = generateRefUnique();
+  // ✅ v13.137 — Garantie anti-collision : on régénère tant que la référence
+  // existe déjà sur un autre dossier connu (le cache).
+  const used = new Set();
+  try { getDB().forEach(r => { const rd = r?.patient?.ref_doc; if (rd) used.add(rd); }); } catch (e) {}
+  let ref, tries = 0;
+  do { ref = generateRefUnique(); tries++; } while (used.has(ref) && tries < 25);
   // Stocker dans le record en mémoire (persisté au prochain save)
   if (record?.patient) record.patient.ref_doc = ref;
   return ref;

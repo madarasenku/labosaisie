@@ -531,14 +531,22 @@ async function grilleImprimerLot() {
   try {
     const db = getDB();
     const records = [];
+    let nonCharges = 0;
     for (const id of _grilleDernierLot) {
       const rec = db.find(x => String(x.id) === String(id));
       if (!rec) continue;
       try { await ensureFull(rec); } catch (e) {}
+      // ✅ v13.137 — Si le détail complet n'a pas pu être chargé (hors-ligne /
+      // réseau), la fiche sortirait quasi vide : on l'écarte et on prévient.
+      if (rec._light) { nonCharges++; continue; }
       records.push(rec);
     }
     hideLoading();
-    if (!records.length) { toast('Dossiers introuvables', 'err'); return; }
+    if (!records.length) {
+      toast(nonCharges ? 'Impression impossible hors-ligne — reconnecte-toi et réessaie' : 'Dossiers introuvables', 'err');
+      return;
+    }
+    if (nonCharges) toast('⚠️ ' + nonCharges + ' fiche(s) non chargée(s) ignorée(s) (hors-ligne)', 'err');
     await printLot(records);
   } catch (e) { hideLoading(); toast('Erreur d\'impression', 'err'); }
 }
