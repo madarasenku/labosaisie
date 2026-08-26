@@ -495,6 +495,26 @@ function restoreFicheFromRecord(record) {
   return true;
 }
 
+// ✅ v13.135 — RÉCUPÉRATION des dossiers sans « _examens_coches » (ancien format
+// OU dossier corrompu par une saisie en série d'une version antérieure qui avait
+// écrasé les métadonnées). On coche les examens dont AU MOINS un champ contient
+// déjà une valeur (résultats chargés dans le formulaire), pour que leurs panneaux
+// réapparaissent et que le total se recalcule. Le reste est déverrouillé par
+// l'appelant afin que l'utilisateur puisse re-cocher / compléter puis ré-enregistrer
+// (ce qui reconstruit « _examens_coches » et répare définitivement le dossier).
+function reconstruireCochesDepuisForm() {
+  let n = 0;
+  try {
+    getCatalogueComplet().forEach(ex => {
+      let fids; try { fids = examFieldIds(ex.id); } catch (e) { fids = []; }
+      if (!fids.length) return;
+      const rempli = fids.some(fid => { const el = document.getElementById(fid); return el && String(el.value).trim() !== ''; });
+      if (rempli) { const c = document.getElementById(ex.id); if (c && !c.checked) { c.checked = true; n++; } }
+    });
+  } catch (e) {}
+  return n;
+}
+
 function getPendingCheckedExams(record, type) {
   const res0 = record.resultats || {};
   // Cas composite : dossier multi-analyses agrégé (impression) → tous les types

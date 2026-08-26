@@ -1666,13 +1666,26 @@ async function fillAllResults(id) {
 
   // Restaurer les cases cochées de TOUTES les analyses + appliquer les verrous
   _locksDisabled = false;
-  if (typeof restoreFicheFromRecord === 'function') restoreFicheFromRecord(record);
+  const _cochesRestaurees = (typeof restoreFicheFromRecord === 'function')
+    ? restoreFicheFromRecord(record) : false;
+  // ✅ v13.135 — Dossier sans info d'examens cochés (ancien format ou corrompu par
+  // une saisie série d'une version antérieure) : mode RÉCUPÉRATION. On déverrouille
+  // tout, on reconstruit les cases depuis les résultats déjà présents, et on révèle
+  // TOUS les panneaux pour que l'utilisateur puisse compléter/corriger puis
+  // ré-enregistrer (ce qui reconstruit « _examens_coches »).
+  const _modeRecuperation = !_cochesRestaurees;
+  if (_modeRecuperation) {
+    _locksDisabled = true;
+    if (typeof reconstruireCochesDepuisForm === 'function') reconstruireCochesDepuisForm();
+  }
   if (typeof applyExamLocks === 'function') applyExamLocks();
 
-  // Révéler les panneaux qui ont au moins un examen coché ; masquer les autres
+  // Révéler les panneaux : par défaut ceux qui ont au moins un examen coché ;
+  // en mode récupération, TOUS (pour permettre de ré-ajouter un examen perdu).
   TAB_ORDER.forEach(tid => {
     const panel = document.getElementById('panel-' + tid);
     if (!panel) return;
+    if (_modeRecuperation) { panel.classList.add('active'); return; }
     const anyChecked = getCatalogueComplet().filter(ex => ex.tab === tid)
       .some(ex => document.getElementById(ex.id)?.checked);
     panel.classList.toggle('active', anyChecked);
@@ -1681,7 +1694,9 @@ async function fillAllResults(id) {
   if (typeof markRequiredSections === 'function') markRequiredSections();
   // ✅ v13.114 — Masquer aussi les lignes des examens non cochés dans les cartes
   // partagées (cohérent avec la nouvelle saisie « tout sur une page »).
-  if (typeof hideUncheckedExamRows === 'function') hideUncheckedExamRows();
+  // ✅ v13.135 — En mode récupération, on laisse TOUTES les lignes visibles pour
+  // que l'utilisateur puisse ré-ajouter un examen dont l'info avait été perdue.
+  if (!_modeRecuperation && typeof hideUncheckedExamRows === 'function') hideUncheckedExamRows();
 
   // Boutons : masquer les « Enregistrer » par onglet, montrer le bouton unique
   document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = 'none');
@@ -2218,6 +2233,20 @@ function loadResultsIntoForm(type, res) {
       setVal('sv_'+t.id, v.valeur);
       setVal('so_'+t.id, v.obs);
     });
+    // ✅ v13.135 — CRP, Widal et Groupe/Rh sont stockés SOUS « Immuno-Sérologie »
+    // par collectResults (onglet Sérologie) mais n'étaient PAS rechargés ici : une
+    // fiche CRP rouverte pour édition revenait vide. On les restaure désormais.
+    setSel('crp_valeur', res['CRP - Valeur']);
+    if (res['CRP - Valeur'] && typeof interpretCRP === 'function') interpretCRP();
+    if (typeof WIDAL_ANTIGENES !== 'undefined') {
+      WIDAL_ANTIGENES.forEach(ag => {
+        const w = res['Widal - ' + ag.name];
+        if (w) { setSel('widal_' + ag.id, w.titre); setSel('widal_cin_' + ag.id, w.cinetique); }
+      });
+      if (Object.keys(res).some(k => k.startsWith('Widal')) && typeof interpretWidal === 'function') interpretWidal();
+    }
+    setSel('gs_abo_hema', res['Groupe ABO']);
+    setSel('gs_rh_hema',  res['Rhésus']);
   }
   else if (type === 'Groupe sanguin') {
     setSel('gs_abo', res['Groupe ABO']);
