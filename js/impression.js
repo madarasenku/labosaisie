@@ -305,6 +305,15 @@ async function addQrAndSignatures(wb) {
 // ✅ v13.133 — construit le HTML d'UN compte rendu et le RENVOIE (sans imprimer),
 // pour pouvoir soit imprimer une seule fiche (buildAndPrint), soit un lot (printLot).
 async function buildRecordPrintHTML(r) {
+  // ✅ v13.139 — Rendu conforme au modèle validé (js/compte-rendu.js).
+  // L'ancien rendu reste en repli si le module n'est pas chargé.
+  if (typeof crBuildHTML === 'function') {
+    try { return await crBuildHTML(r); } catch (e) { console.error('compte-rendu:', e); }
+  }
+  return buildRecordPrintHTMLLegacy(r);
+}
+
+async function buildRecordPrintHTMLLegacy(r) {
   // Construire le HTML de rendu d'impression
   const p = r.patient;
   const res = r.resultats || {};

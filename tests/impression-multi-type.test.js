@@ -49,8 +49,9 @@ const doss = {
     await page.waitForTimeout(1200);
     const p1 = await page.evaluate(() => window.__printed || '');
     r.check('impression produite (pas de crash)', p1.length > 0, true);
-    r.check('section Hématologie présente', /Hématologie/.test(p1), true);
-    r.check('section Immuno-Sérologie présente', /Immuno-Sérologie/.test(p1), true);
+    // ✅ v13.139 — Le compte rendu titre par EXAMEN (modèle validé), plus par type.
+    r.check('section NFS présente', /NFS — Numération Formule Sanguine/.test(p1), true);
+    r.check('section CRP présente', /CRP — Protéine C-réactive/.test(p1), true);
     r.check('valeur GB rendue', /7\.2/.test(p1), true);
 
     // Impression en lot (printLot doit aussi produire le composite).
@@ -58,8 +59,8 @@ const doss = {
     await page.evaluate(() => { window.__printed = null; const rec = getDB().find(x => x.id === 1001); return printLot([rec]); });
     await page.waitForTimeout(1200);
     const p2 = await page.evaluate(() => window.__printed || '');
-    r.check('lot : Hématologie présente', /Hématologie/.test(p2), true);
-    r.check('lot : Immuno-Sérologie présente', /Immuno-Sérologie/.test(p2), true);
+    r.check('lot : NFS présente', /NFS — Numération Formule Sanguine/.test(p2), true);
+    r.check('lot : en-tête CPMI', /CPMI DE GRAND-BASSAM/.test(p2), true);
     r.check('lot : CRP présente', /CRP/.test(p2), true);
 
     r.check('aucune erreur JS', errors.length, 0);
