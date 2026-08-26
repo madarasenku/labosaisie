@@ -1321,14 +1321,12 @@ function showEditUnifie(id) {
   //   forcé), ce qui rouvrait une seule analyse à la fois — d'où « tous les champs
   //   ne viennent pas sur la même page ».
   const _libAnalyses = (types.length ? types.join('  ·  ') : 'Analyse');
-  // ✅ v13.121 — Modifier/compléter ouvre la fiche dans la PAILLASSE : on peut
-  //   ainsi garder plusieurs dossiers ouverts (nouveaux et à corriger) et
-  //   basculer de l'un à l'autre. benchOpenRecord retombe sur editRecord si la
-  //   paillasse n'est pas disponible pour ce profil.
-  const _openFn = (typeof benchOpenRecord === 'function') ? `benchOpenRecord(${id})` : `editRecord(${id})`;
+  // ✅ v13.141 — Ouvre directement la fiche complète (toutes les analyses sur
+  //   une page). La paillasse a été supprimée.
+  const _openFn = (typeof fillAllResults === 'function') ? `fillAllResults(${id})` : `editRecord(${id})`;
   const typesChoix = `<button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();${_openFn}"
         style="width:100%;padding:11px 14px;text-align:left;margin-bottom:6px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
-        🧫 Compléter / modifier dans la paillasse — <strong>${esc(_libAnalyses)}</strong></button>`;
+        🧫 Compléter / modifier — <strong>${esc(_libAnalyses)}</strong></button>`;
 
   bd.innerHTML = `
     <div style="background:var(--surface-2);border-radius:16px;padding:24px 26px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25)">

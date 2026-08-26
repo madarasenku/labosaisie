@@ -677,9 +677,6 @@ function demarrerSaisie() {
   void tabCible;
   enterFillAllFresh();
 
-  // ✅ v13.117 — Enregistrer ce patient dans la paillasse (multi-dossiers ouverts).
-  if (typeof benchCommitOnDemarrer === 'function') benchCommitOnDemarrer();
-
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

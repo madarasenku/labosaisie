@@ -1735,9 +1735,31 @@ async function saveRecordAll() {
   // ✅ v13.114 — Nouvelle saisie « tout sur une page » (aucun dossier existant) :
   // création atomique d'un seul dossier avec TOUTES les analyses cochées.
   if (!_editingRecordId) { return saveRecordAllFresh(); }
+  // ✅ v13.141 — CORRECTIF « les valeurs s'évaporent ».
+  // Le statut de paiement était lu depuis un cache local (localStorage), donc
+  // PROPRE À CHAQUE POSTE : la caisse encaissait sur son ordinateur, le poste de
+  // saisie continuait de voir « non payé », refusait l'enregistrement et
+  // basculait vers la caisse — les résultats tapés étaient perdus.
+  // Désormais : on revérifie auprès du SERVEUR avant de bloquer, et surtout on
+  // ne quitte JAMAIS la vue de saisie (les valeurs restent à l'écran).
   if (_editingRecordId && !isDossierPaye(_editingRecordId)) {
-    toast('🔒 Paiement requis avant d\'enregistrer ce dossier', 'err');
-    showView('caisse'); return;
+    try { await refreshDB(true); } catch (e) {}
+  }
+  if (_editingRecordId && !isDossierPaye(_editingRecordId)) {
+    let allerCaisse = false;
+    if (typeof showConfirmModal === 'function') {
+      allerCaisse = await showConfirmModal({
+        icon: '🔒', title: 'Paiement requis',
+        message: 'Ce dossier n\'est pas encore encaissé, l\'enregistrement est donc refusé.'
+          + '<br><br><strong>Vos résultats saisis sont conservés à l\'écran.</strong> '
+          + 'Encaissez le dossier, puis revenez ici et cliquez de nouveau sur « Enregistrer ».',
+        confirmText: 'Aller à la caisse', cancelText: 'Rester sur la saisie'
+      });
+    } else {
+      toast('🔒 Paiement requis — vos saisies sont conservées', 'err');
+    }
+    if (allerCaisse) showView('caisse');
+    return;
   }
   showLoading('Enregistrement…');
   try {
@@ -1790,10 +1812,8 @@ async function saveRecordAll() {
       hideLoading();
       toast('✅ Résultats enregistrés', 'ok');
       await refreshDB(true);
-      // ✅ v13.121 — Si ce dossier était ouvert dans la paillasse, le retirer et
-      // basculer vers le patient suivant encore ouvert ; sinon aller à l'historique.
-      const switched = (typeof benchAfterSave === 'function') ? benchAfterSave() : false;
-      if (!switched) showView('historique');
+      // ✅ v13.141 — Paillasse supprimée : on revient simplement à l'historique.
+      showView('historique');
     } else {
       hideLoading();
     }
@@ -1880,15 +1900,13 @@ async function saveRecordAllFresh() {
       toast('✅ Dossier N°' + (p.dossier || '') + ' enregistré — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
       await refreshDB(true);
       // ✅ v13.117 — « Enregistrer + Imprimer » : imprimer le dossier tout juste créé.
-      if (window._benchPrintAfterSave && saved && saved.id != null) {
-        window._benchPrintAfterSave = false;
+      if (window._printAfterSave && saved && saved.id != null) {
+        window._printAfterSave = false;
         try { if (typeof printRecord === 'function') await printRecord(saved.id); } catch (e) {}
       }
-      window._benchPrintAfterSave = false;
-      // ✅ v13.117 — Paillasse : retirer ce patient et basculer vers le suivant
-      // s'il en reste un ouvert ; sinon repartir sur une fiche vierge.
-      const switched = (typeof benchAfterSave === 'function') ? benchAfterSave() : false;
-      if (!switched && typeof resetFicheIdentif === 'function') await resetFicheIdentif();
+      window._printAfterSave = false;
+      // ✅ v13.141 — Paillasse supprimée : on repart sur une fiche vierge.
+      if (typeof resetFicheIdentif === 'function') await resetFicheIdentif();
     } else {
       hideLoading();
     }

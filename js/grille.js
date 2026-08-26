@@ -1,5 +1,5 @@
 // ============================================================
-//  GRILLE PAILLASSE PAR EXAMEN — saisie en série (v13.120)
+//  GRILLE DE SAISIE EN SÉRIE (v13.140)
 //
 //  Une ligne par patient, une colonne par paramètre, pour l'examen
 //  choisi dans le sélecteur. On ne liste QUE les dossiers dont ce
@@ -263,7 +263,7 @@ function ouvrirGrille(key) {
   }
   const cont = document.getElementById('grille-serie');
   if (!cont) return;
-  ['fiche-identification', 'zone-saisie', 'paillasse-bar'].forEach(id => {
+  ['fiche-identification', 'zone-saisie'].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
   cont.style.display = '';

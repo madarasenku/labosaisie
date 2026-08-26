@@ -388,8 +388,19 @@ function setPaiementStatus(id, status, infos) {
         toast('🔒 Journée verrouillée — encaissement impossible', 'err');
         if (typeof renderCaisse === 'function') renderCaisse();
         if (typeof renderHistory === 'function') renderHistory();
+        return;
       }
-    }).catch(() => {});
+      // ✅ v13.141 — Toute AUTRE erreur était avalée : le paiement restait
+      // « payé » dans le cache local de CE poste mais absent du serveur. Les
+      // autres postes voyaient « non payé » et refusaient d'enregistrer les
+      // résultats (valeurs perdues). On prévient désormais explicitement.
+      if (res && res.error) {
+        const prev = getPaiements(); delete prev[id]; localStorage.setItem(PAIEMENT_KEY, JSON.stringify(prev));
+        if (r) r.patient = { ...(r.patient || {}), paiement_status: 'non_paye' };
+        toast('⚠️ Encaissement non enregistré sur le serveur — refaites-le', 'err');
+        if (typeof renderCaisse === 'function') renderCaisse();
+      }
+    }).catch(() => { toast('⚠️ Encaissement non confirmé par le serveur — vérifiez la connexion', 'err'); });
   }
   updateBandeauPaiement();
   if (typeof renderCaisse === 'function') renderCaisse();

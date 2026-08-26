@@ -10,7 +10,7 @@ const { serve, openApp, createReporter, setField } = require('./helpers');
 const NFS_REQ = ['v_gbc','v_gr','v_hb','v_ht','v_plt','v_pnn','v_pne','v_pnb','v_lymp','v_mono'];
 
 (async () => {
-  const r = createReporter('PAILLASSE — SIGNAL « PRÊT »');
+  const r = createReporter('COMPLÉTUDE — SIGNAL « PRÊT »');
   const srv = await serve(8110);
   let ctx;
   try {
@@ -36,7 +36,6 @@ const NFS_REQ = ['v_gbc','v_gr','v_hb','v_ht','v_plt','v_pnn','v_pne','v_pnb','v
     const partiel = await page.evaluate(() => ({
       complete: _completionActive().complete,
       printVisible: (() => { const b = document.getElementById('btn-save-print'); return !!(b && b.style.display !== 'none'); })(),
-      chipVert: /15803d|dcfce7/.test(document.getElementById('paillasse-chips').innerHTML),
     }));
     r.check('incomplet : pas marqué prêt', partiel.complete, false);
     r.check('incomplet : bouton Imprimer masqué', partiel.printVisible, false);
@@ -48,8 +47,6 @@ const NFS_REQ = ['v_gbc','v_gr','v_hb','v_ht','v_plt','v_pnn','v_pne','v_pnb','v
       complete: _completionActive().complete,
       printVisible: (() => { const b = document.getElementById('btn-save-print'); return !!(b && b.style.display !== 'none'); })(),
       hint: document.getElementById('save-all-hint').textContent + document.getElementById('save-all-hint').innerHTML,
-      chipVert: /15803d|dcfce7/.test(document.getElementById('paillasse-chips').innerHTML),
-      chipCheck: document.getElementById('paillasse-chips').textContent.includes('✓'),
     }));
     r.check('complet : marqué prêt', complet.complete, true);
     r.check('complet : bouton « Enregistrer + Imprimer » visible', complet.printVisible, true);
