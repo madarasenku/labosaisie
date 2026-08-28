@@ -134,17 +134,35 @@ function crBlocWidal(res) {
 function crBlocVHB(res) {
   const g = n => res[n] || {};
   const ag = g('Ag HBs'), hbs = g('Ac anti-HBs'), hbc = g('Ac anti-HBc total');
-  const vAg = crV(ag.resultat), vHbs = crV(hbs.valeur) || crV(hbs.resultat), vHbc = crV(hbc.resultat);
+  // ✅ v13.145 — Ag HBs et Ac anti-HBc peuvent être rendus en QUALITATIF ou en
+  // QUANTITATIF (sélecteur qual/quant). L'ancienne version ne lisait que
+  // « resultat » : un Ag HBs saisi en quantitatif disparaissait du compte rendu.
+  const vAg  = crV(ag.resultat)  || crV(ag.valeur);
+  const vHbs = crV(hbs.valeur)   || crV(hbs.resultat);
+  const vHbc = crV(hbc.resultat) || crV(hbc.valeur);
   if (!vAg && !vHbs && !vHbc) return '';
+  const unite = (o, v) => (crV(o.valeur) && v === crV(o.valeur)) ? ' ' + (o.unite || 'UI/L') : '';
   const rows = [];
-  if (vAg)  rows.push({ nom: 'Ag HBs (antigène de surface)', val: vAg, ref: 'Négatif', ano: /positif/i.test(vAg) });
-  if (vHbs) rows.push({ nom: 'Ac anti-HBs (immunité)', val: vHbs + (crV(hbs.valeur) ? ' UI/L' : ''), ref: '≥ 10 = immunisé',
+  if (vAg)  rows.push({ nom: 'Ag HBs (antigène de surface)', val: vAg + unite(ag, vAg), ref: 'Négatif',
+                        ano: /positif/i.test(vAg) || (crV(ag.valeur) !== '' && parseFloat(ag.valeur) > 1) });
+  if (vHbs) rows.push({ nom: 'Ac anti-HBs (immunité)', val: vHbs + unite(hbs, vHbs), ref: '≥ 10 = immunisé',
                         ano: crV(hbs.valeur) !== '' && parseFloat(hbs.valeur) < 10 });
-  if (vHbc) rows.push({ nom: 'Ac anti-HBc total (contact viral)', val: vHbc, ref: 'Négatif', ano: /positif/i.test(vHbc) });
-  if (/positif/i.test(vAg)) {
+  if (vHbc) rows.push({ nom: 'Ac anti-HBc total (contact viral)', val: vHbc + unite(hbc, vHbc), ref: 'Négatif',
+                        ano: /positif/i.test(vHbc) || (crV(hbc.valeur) !== '' && parseFloat(hbc.valeur) > 1) });
+  // ✅ v13.145 — L'interprétation tient compte de l'Ac anti-HBc : un sujet
+  // anti-HBc positif a RENCONTRÉ le virus (infection ancienne guérie), ce qui
+  // n'est pas la même chose qu'une immunité vaccinale.
+  const agPos  = /positif/i.test(vAg) || (crV(ag.valeur) !== '' && parseFloat(ag.valeur) > 1);
+  const hbcPos = /positif/i.test(vHbc) || (crV(hbc.valeur) !== '' && parseFloat(hbc.valeur) > 1);
+  const hbsProt = crV(hbs.valeur) !== '' && parseFloat(hbs.valeur) >= 10;
+  if (agPos) {
     rows.push({ interpretation: 'Interprétation : Infection par le virus de l\'hépatite B (aiguë ou chronique) — avis spécialisé recommandé.' });
-  } else if (crV(hbs.valeur) && parseFloat(hbs.valeur) >= 10) {
-    rows.push({ interpretation: 'Interprétation : Sujet immunisé contre l\'hépatite B.' });
+  } else if (hbcPos && hbsProt) {
+    rows.push({ interpretation: 'Interprétation : Infection ancienne guérie — sujet protégé (contact viral avec anticorps protecteurs).' });
+  } else if (hbcPos) {
+    rows.push({ interpretation: 'Interprétation : Contact antérieur avec le virus de l\'hépatite B sans anticorps protecteurs — avis spécialisé recommandé.' });
+  } else if (hbsProt) {
+    rows.push({ interpretation: 'Interprétation : Sujet immunisé contre l\'hépatite B (immunité vaccinale).' });
   }
   return crTable('Bilan Hépatite B (VHB)', rows, { unite: false });
 }

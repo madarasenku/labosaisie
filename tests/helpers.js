@@ -1,3 +1,12 @@
+// ⚠ FORME DES RÉPONSES RPC (vérifiée sur le serveur — à respecter dans TOUT mock).
+// Un mock qui se trompe de forme valide un contrat que la production ne respecte
+// pas : c'est ainsi qu'un bug bloquant (ensureFull vidait les dossiers) est passé
+// à travers 47 suites vertes.
+//   get_resultat_full     → SETOF  → TABLEAU de lignes      [{ ...ligne }]
+//   get_resultats_light   → TABLE  → TABLEAU de lignes      [{ ...ligne }]
+//   insert_resultat       → jsonb  → OBJET                  { ...ligne }
+//   update_resultat       → labo_resultats (non SETOF) → OBJET { ...ligne }
+//   update_dossier_patient→ text   → chaîne
 // ════════════════════════════════════════════════════════════════════
 //  Socle commun des tests LaboSaisie
 //

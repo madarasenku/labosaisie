@@ -154,10 +154,10 @@ const NORM = {
   // ✅ v13.143 — Idem : bornes en mmol/L alors que la saisie est en g/L
   // (liste canonique BIO_REIN : 0.15–0.45 g/L).
   uree: { _all: { ref:'0.15–0.45', lo:0.15, hi:0.45 } },
-  ua: {
-    ADULTE: { M:'210–420', F:'150–360', loM:210, hiM:420, loF:150, hiF:360 },
-    _default: { ref:'150–420', lo:150, hi:420 },
-  },
+  // ✅ v13.145 — Bornes en µmol/L alors que la saisie et l'impression sont en
+  // mg/L (liste canonique BIO_REIN : 25–70 mg/L). Tout acide urique était
+  // signalé anormal et la référence imprimée était fausse.
+  ua: { _all: { ref:'25–70', lo:25, hi:70 } },
   asat: { _all: { ref:'< 40', lo:0, hi:40 } },
   alat: {
     ADULTE: { M:'< 45', F:'< 35', lo:0, hiM:45, hiF:35 },
@@ -530,10 +530,14 @@ const SERO_TESTS = [
   { id:'hbsac', name:'Ac anti-HBs',           type:'quant', unit:'UI/L' },
   { id:'hcv',   name:'Ac anti-VHC',           type:'qual' },
   { id:'syphil',name:'TPHA / VDRL (Syphilis)',type:'qual' },
-  { id:'toxo',  name:'Toxoplasmose IgG',      type:'quant', unit:'UI/mL' },
+  // ✅ v13.145 — Ces sérologies sont majoritairement rendues en QUALITATIF au
+  // laboratoire (et toujours en qualitatif dans le bilan prénatal). Le mode
+  // quantitatif reste disponible au cas par cas via le sélecteur qual/quant :
+  // seul le défaut change, l'unité est conservée pour ce cas.
+  { id:'toxo',  name:'Toxoplasmose IgG',      type:'qual', unit:'UI/mL' },
   { id:'toxoig',name:'Toxoplasmose IgM',      type:'qual' },
-  { id:'rubig', name:'Rubéole IgG',           type:'quant', unit:'UI/mL' },
-  { id:'aso',   name:'ASLO (Antistreptolysines)', type:'quant', unit:'UI/mL' },
+  { id:'rubig', name:'Rubéole IgG',           type:'qual', unit:'UI/mL' },
+  { id:'aso',   name:'ASLO (Antistreptolysines)', type:'qual', unit:'UI/mL' },
   { id:'latex', name:'Latex (Waaler-Rose)',    type:'qual' },
   { id:'tsh',   name:'TSH',                   type:'quant', unit:'mUI/L' },
   { id:'ft4',   name:'T4 libre (FT4)',        type:'quant', unit:'pmol/L' },
@@ -749,6 +753,9 @@ function collectBpnCompo() {
 // fiches déjà existantes (NFS, EPHB, Bio, GS, Sérologies, ECBU).
 // ✅ v13.28 — BPN forfaitaire : les 12 examens inclus passent à 0 F
 // (compris dans le forfait 20 000). Décocher BPN restaure les tarifs.
+// Sérologies incluses dans le bilan prénatal (toujours qualitatives).
+const BPN_SERO_IDS = ['vih1', 'hbsag', 'syphil', 'toxo', 'toxoig', 'rubig'];
+
 function applyBpnSections() {
   const on = !!document.getElementById('ex_bpn')?.checked;
   const bpnExamIds = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_vih','ex_hbs','ex_tpha','ex_toxo','ex_rube','ex_ecbu'];
@@ -774,6 +781,25 @@ function applyBpnSections() {
     }
   });
   if (typeof applyExamLocks === 'function') applyExamLocks();
+  // ✅ v13.145 — Les sérologies du bilan prénatal sont TOUJOURS qualitatives.
+  // ⚠ APRÈS applyExamLocks : celui-ci déverrouille les champs de tout examen
+  // coché, y compris le sélecteur qual/quant — il annulerait ce verrou.
+  BPN_SERO_IDS.forEach(sid => {
+    const m = document.getElementById('smode_' + sid);
+    if (!m) return;
+    if (on) {
+      if (m.dataset.prevMode === undefined) m.dataset.prevMode = m.value;
+      m.value = 'qual';
+      m.disabled = true;
+      m.title = 'Bilan prénatal : sérologie rendue en qualitatif';
+    } else if (m.dataset.prevMode !== undefined) {
+      m.value = m.dataset.prevMode;
+      delete m.dataset.prevMode;
+      m.disabled = false;
+      m.title = '';
+    }
+    if (typeof toggleSeroMode === 'function') { try { toggleSeroMode(sid); } catch (e) {} }
+  });
 }
 
 

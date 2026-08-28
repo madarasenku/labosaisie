@@ -51,6 +51,32 @@ const doss = {
     await page.evaluate(() => refreshDB(true));
     await page.waitForTimeout(400);
 
+    r.section('Sérologies du BPN forcées en qualitatif');
+    const modes = await page.evaluate(() => {
+      showView('saisie');
+      if (typeof ensurePanelBuilt === 'function') ensurePanelBuilt('sero');
+      if (typeof buildFicheExamens === 'function') buildFicheExamens();
+      const cb = document.getElementById('ex_bpn');
+      const o = { _case_bpn: cb ? 'présente' : 'ABSENTE' };
+      if (cb) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+      if (typeof applyBpnSections === 'function') applyBpnSections();
+      BPN_SERO_IDS.forEach(id => { const m = document.getElementById('smode_' + id);
+        o[id] = m ? (m.value + (m.disabled ? '/verrouillé' : '/libre')) : 'absent'; });
+      return o;
+    });
+    r.check('case « Bilan prénatal » présente', modes._case_bpn, 'présente');
+    Object.keys(modes).filter(k => k !== '_case_bpn')
+      .forEach(id => r.check('BPN ' + id, modes[id], 'qual/verrouillé'));
+    const libere = await page.evaluate(() => {
+      const cb = document.getElementById('ex_bpn');
+      if (cb) { cb.checked = false; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+      
+      if (typeof applyBpnSections === 'function') applyBpnSections();
+      const m = document.getElementById('smode_toxo');
+      return m ? (m.disabled ? 'verrouillé' : 'libre') : 'absent';
+    });
+    r.check('mode redevient libre hors BPN', libere, 'libre');
+
     r.section('Reconnaissance du bilan prénatal');
     r.check('dossier reconnu comme BPN', await page.evaluate(() => estDossierBPN(getDB().find(x => x.id === 2001))), true);
 

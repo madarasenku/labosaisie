@@ -52,7 +52,7 @@ const FIXTURES = COMBOS.map((combo, i) => {
         if (n === 'get_resultats_light') return { data: window.__store.map(light), error: null };
         // ⚠ FORME RÉELLE : SETOF → tableau
         if (n === 'get_resultat_full') { const x = window.__store.find(z => z.id === p.p_id); return { data: x ? [{ resultats: x.resultats }] : [], error: null }; }
-        if (n === 'update_resultat') { const x = window.__store.find(z => z.id === p.p_id); if (x && p.p_resultats != null) x.resultats = p.p_resultats; window.__nUpd = (window.__nUpd || 0) + 1; return { data: [Object.assign({ created_at: 'x', created_by: 'a' }, x)], error: null }; }
+        if (n === 'update_resultat') { const x = window.__store.find(z => z.id === p.p_id); if (x && p.p_resultats != null) x.resultats = p.p_resultats; window.__nUpd = (window.__nUpd || 0) + 1; return { data: Object.assign({ created_at: 'x', created_by: 'a' }, x), error: null }; }
         return { data: [], error: null };
       };
     }, FIXTURES);

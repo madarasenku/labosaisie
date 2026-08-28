@@ -137,18 +137,50 @@ const GRILLE_EXAMS = {
     filled: s => s['TPHA / VDRL (Syphilis)'] && s['TPHA / VDRL (Syphilis)'].resultat,
     cols: [{ k: 'syphil', lab: 'TPHA / VDRL', dom: 'sr_syphil', kind: 'sel', opts: _SERO_OPTS }],
   },
+  // ✅ v13.145 — Toxo et Rubéole passent en QUALITATIF (sr_) : ce sont des
+  // sérologies du bilan prénatal, toujours rendues Positif / Négatif.
   toxo: {
-    label: 'BPN · Toxoplasmose IgG/IgM', type: 'Immuno-Sérologie', exId: 'ex_toxo', coche: /Toxo/i,
-    filled: s => (s['Toxoplasmose IgG'] && s['Toxoplasmose IgG'].valeur) || (s['Toxoplasmose IgM'] && s['Toxoplasmose IgM'].resultat),
+    label: 'Toxoplasmose IgG/IgM', type: 'Immuno-Sérologie', exId: 'ex_toxo', coche: /Toxo/i,
+    filled: s => (s['Toxoplasmose IgG'] && s['Toxoplasmose IgG'].resultat) || (s['Toxoplasmose IgM'] && s['Toxoplasmose IgM'].resultat),
     cols: [
-      { k: 'toxo', lab: 'Toxo IgG (UI/mL)', dom: 'sv_toxo', kind: 'num' },
+      { k: 'toxo', lab: 'Toxo IgG', dom: 'sr_toxo', kind: 'sel', opts: _SERO_OPTS },
       { k: 'toxoig', lab: 'Toxo IgM', dom: 'sr_toxoig', kind: 'sel', opts: _SERO_OPTS },
     ],
   },
   rube: {
-    label: 'BPN · Rubéole IgG', type: 'Immuno-Sérologie', exId: 'ex_rube', coche: /Rubéole|Rube/i,
-    filled: s => s['Rubéole IgG'] && s['Rubéole IgG'].valeur,
-    cols: [{ k: 'rubig', lab: 'Rubéole IgG (UI/mL)', dom: 'sv_rubig', kind: 'num' }],
+    label: 'Rubéole IgG', type: 'Immuno-Sérologie', exId: 'ex_rube', coche: /Rubéole|Rube/i,
+    filled: s => s['Rubéole IgG'] && s['Rubéole IgG'].resultat,
+    cols: [{ k: 'rubig', lab: 'Rubéole IgG', dom: 'sr_rubig', kind: 'sel', opts: _SERO_OPTS }],
+  },
+  // ✅ v13.145 — Examens de la liste du laboratoire qui manquaient à la grille.
+  aslo: {
+    label: 'ASLO', type: 'Immuno-Sérologie', exId: 'ex_aso', coche: /ASLO|Antistrepto/i,
+    filled: s => s['ASLO (Antistreptolysines)'] && s['ASLO (Antistreptolysines)'].resultat,
+    cols: [{ k: 'aso', lab: 'ASLO', dom: 'sr_aso', kind: 'sel', opts: _SERO_OPTS }],
+  },
+  lipides: {
+    label: 'Bilan lipidique (CT / HDL / TG)', type: 'Biochimie', exId: 'ex_chol',
+    coche: /Cholest|HDL|Triglyc|lipid/i,
+    filled: b => b['Cholestérol total'] && b['Cholestérol total'].valeur,
+    cols: [
+      { k: 'chol', lab: 'CT (g/L)', dom: 'v_chol', kind: 'num' },
+      { k: 'hdl',  lab: 'HDL (g/L)', dom: 'v_hdl', kind: 'num' },
+      { k: 'trig', lab: 'TG (g/L)', dom: 'v_trig', kind: 'num' },
+    ],
+  },
+  iono: {
+    label: 'Ionogramme (Na / K / Cl)', type: 'Biochimie', exId: 'ex_iono', coche: /Ionogramme|Na, K, Cl/i,
+    filled: b => b['Sodium (Na⁺)'] && b['Sodium (Na⁺)'].valeur,
+    cols: [
+      { k: 'na', lab: 'Na⁺', dom: 'v_na', kind: 'num' },
+      { k: 'k',  lab: 'K⁺',  dom: 'v_k',  kind: 'num' },
+      { k: 'cl', lab: 'Cl⁻', dom: 'v_cl', kind: 'num' },
+    ],
+  },
+  ua: {
+    label: 'Acide urique', type: 'Biochimie', exId: 'ex_ua', coche: /Acide urique/i,
+    filled: b => b['Acide urique'] && b['Acide urique'].valeur,
+    cols: [{ k: 'ua', lab: 'Acide urique (mg/L)', dom: 'v_ua', kind: 'num' }],
   },
   gs: {
     label: 'BPN · Groupe sanguin (ABO/Rh)', type: 'Groupe sanguin', exId: 'ex_gs', coche: /Groupe|ABO|Rh/i,
@@ -237,7 +269,7 @@ function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
 // ══════════════════════════════════════════════════════════════
 
 // Ordre d'affichage des examens dans la grille.
-const GRILLE_ORDRE = ['nfs','ge','gly','uree','crea','transa','crp','widal','vih','hbs','hcv','tpha','toxo','rube','gs'];
+const GRILLE_ORDRE = ['nfs','ge','gly','uree','crea','ua','transa','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
 
 // Examens de la grille réellement demandés pour ce dossier.
 function grilleExamsDuDossier(r) {
