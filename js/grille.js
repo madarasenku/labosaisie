@@ -19,6 +19,12 @@ const _CRP_OPTS = [
 ];
 // Options qualitatives des sérologies (identiques au formulaire).
 const _SERO_OPTS = [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif'], ['Douteux', 'Douteux']];
+// Positif / Négatif simple (goutte épaisse, TDR).
+const _PN_OPTS = [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif']];
+// Dilutions du Widal (identiques au formulaire).
+const _WIDAL_OPTS = [['', '—']].concat(
+  (typeof WIDAL_DILUTIONS !== 'undefined' ? WIDAL_DILUTIONS : ['Non réalisé', 'Négatif', '1/40', '1/80', '1/160', '1/320'])
+    .map(v => [v, v]));
 
 // Registre des examens saisissables en série.
 //  type    : analyse de stockage (clé dans resultats)
@@ -42,6 +48,32 @@ const GRILLE_EXAMS = {
       { k: 'pnb', lab: 'PNB %', dom: 'v_pnb', kind: 'num' },
       { k: 'lymp', lab: 'Lymph %', dom: 'v_lymp', kind: 'num' },
       { k: 'mono', lab: 'Mono %', dom: 'v_mono', kind: 'num' },
+    ],
+  },
+  // ✅ v13.143 — Repérés manquants par le banc d'essai : un patient n'ayant QUE
+  // la goutte épaisse, QUE le Widal ou QUE l'urée n'apparaissait pas en série.
+  ge: {
+    label: 'Goutte épaisse / TDR', type: 'Hématologie', exId: 'ex_ge', coche: /Goutte|TDR|Palud/i,
+    filled: h => h['GE - Résultat'],
+    cols: [
+      { k: 'geres', lab: 'Résultat GE', dom: 'ge_result', kind: 'sel', opts: _PN_OPTS },
+      { k: 'getdr', lab: 'TDR', dom: 'ge_tdr', kind: 'sel', opts: _PN_OPTS },
+    ],
+  },
+  uree: {
+    label: 'Urée', type: 'Biochimie', exId: 'ex_uree', coche: /^Urée$|Uree/i,
+    filled: b => b['Urée'] && b['Urée'].valeur,
+    cols: [{ k: 'uree', lab: 'Urée (g/L)', dom: 'v_uree', kind: 'num' }],
+  },
+  widal: {
+    label: 'Widal & Félix (SWF)', type: 'Immuno-Sérologie', exId: 'ex_widal', coche: /Widal|SWF/i,
+    filled: s => s['Widal - Salmonella typhi O (TO)'] && s['Widal - Salmonella typhi O (TO)'].titre
+                 && s['Widal - Salmonella typhi O (TO)'].titre !== 'Non réalisé',
+    cols: [
+      { k: 'wto', lab: 'TO', dom: 'widal_to', kind: 'sel', opts: _WIDAL_OPTS },
+      { k: 'wth', lab: 'TH', dom: 'widal_th', kind: 'sel', opts: _WIDAL_OPTS },
+      { k: 'wao', lab: 'AO', dom: 'widal_ao', kind: 'sel', opts: _WIDAL_OPTS },
+      { k: 'wah', lab: 'AH', dom: 'widal_ah', kind: 'sel', opts: _WIDAL_OPTS },
     ],
   },
   crp: {
@@ -205,7 +237,7 @@ function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
 // ══════════════════════════════════════════════════════════════
 
 // Ordre d'affichage des examens dans la grille.
-const GRILLE_ORDRE = ['nfs','gly','crea','transa','crp','vih','hbs','hcv','tpha','toxo','rube','gs'];
+const GRILLE_ORDRE = ['nfs','ge','gly','uree','crea','transa','crp','widal','vih','hbs','hcv','tpha','toxo','rube','gs'];
 
 // Examens de la grille réellement demandés pour ce dossier.
 function grilleExamsDuDossier(r) {

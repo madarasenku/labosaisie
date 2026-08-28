@@ -146,20 +146,14 @@ const NORM = {
     SENIOR: { M:'0.70–1.26', F:'0.70–1.26', lo:0.70, hi:1.26 },
   },
   hba:  { _all: { ref:'< 6.0', lo:0, hi:6.0 } },
-  crea: {
-    NN:     { M:'25–90',  F:'25–90',  lo:25,  hi:90  },
-    NOURR:  { M:'18–35',  F:'18–35',  lo:18,  hi:35  },
-    ENFANT: { M:'27–62',  F:'27–62',  lo:27,  hi:62  },
-    ADULTE: { M:'60–115', F:'45–90',  loM:60, hiM:115, loF:45, hiF:90 },
-    SENIOR: { M:'60–120', F:'45–100', loM:60, hiM:120, loF:45, hiF:100 },
-  },
-  uree: {
-    NN:     { M:'1.0–5.0', F:'1.0–5.0', lo:1.0, hi:5.0 },
-    NOURR:  { M:'1.8–6.4', F:'1.8–6.4', lo:1.8, hi:6.4 },
-    ENFANT: { M:'2.5–6.5', F:'2.5–6.5', lo:2.5, hi:6.5 },
-    ADULTE: { M:'2.5–7.5', F:'2.5–7.5', lo:2.5, hi:7.5 },
-    SENIOR: { M:'3.0–9.0', F:'3.0–9.0', lo:3.0, hi:9.0 },
-  },
+  // ✅ v13.143 — Ces bornes étaient exprimées en µmol/L alors que la saisie et
+  // l'impression sont en mg/L (liste canonique BIO_REIN : 4–16 mg/L). Toute
+  // créatinine était donc signalée anormale et la référence imprimée était
+  // fausse. On s'aligne sur la liste canonique.
+  crea: { _all: { ref:'4–16', lo:4, hi:16 } },
+  // ✅ v13.143 — Idem : bornes en mmol/L alors que la saisie est en g/L
+  // (liste canonique BIO_REIN : 0.15–0.45 g/L).
+  uree: { _all: { ref:'0.15–0.45', lo:0.15, hi:0.45 } },
   ua: {
     ADULTE: { M:'210–420', F:'150–360', loM:210, hiM:420, loF:150, hiF:360 },
     _default: { ref:'150–420', lo:150, hi:420 },
@@ -651,14 +645,18 @@ function onParamInputColored(id) {
     return;
   }
   // ✅ v13.26 — FL : interprétation sur la valeur absolue × 1000 (/µL)
-  const isFL = HEMA_FL && HEMA_FL.some(p => p.id === id);
+  const pFL = (typeof HEMA_FL !== 'undefined') ? HEMA_FL.find(p => p.id === id) : null;
   let val = parseFloat(valEl.value);
-  if (isFL) {
+  let lo = ref.lo, hi = ref.hi;
+  if (pFL) {
+    // ✅ v13.143 — On comparait la valeur ABSOLUE (/µL) aux bornes en POURCENTAGE
+    // (ex. PNN 2670 contre 50–70) : les cinq lignes de la formule étaient donc
+    // toujours signalées anormales. Absolu ⇄ bornes absolues, % ⇄ bornes %.
     const absEl = document.getElementById('abs_' + id);
     const absVal = absEl ? parseFloat(absEl.textContent) : NaN;
-    if (!isNaN(absVal)) val = absVal * 1000; // convertir en /µL pour comparer aux refs
+    if (!isNaN(absVal)) { val = absVal * 1000; lo = pFL.lo; hi = pFL.hi; }
   }
-  const interp = interprete(val, ref.lo, ref.hi);
+  const interp = interprete(val, lo, hi);
   valEl.classList.toggle('val-hi', interp === 'Élevé');
   valEl.classList.toggle('val-lo', interp === 'Bas');
   updateMontantCurrent();

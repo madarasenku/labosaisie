@@ -69,8 +69,16 @@ function crBlocNFS(res, profile) {
   });
   (typeof HEMA_FL !== 'undefined' ? HEMA_FL : []).forEach(p => {
     const v = res[p.name]; if (!v || crV(v.valeur) === '') return;
+    // ✅ v13.143 — L'anomalie est recalculée depuis la valeur ABSOLUE et les
+    // bornes absolues : les dossiers déjà enregistrés avec un « interp » erroné
+    // (comparaison absolu ⇄ pourcentage) s'impriment donc correctement.
+    let ano = crAno(v.interp);
+    const n = parseFloat(v.valeur);
+    if (!isNaN(n) && p.lo != null && p.hi != null && /µL/.test(v.unite || '/µL')) {
+      ano = (n < p.lo || n > p.hi);
+    }
     rows.push({ nom: p.name, val: v.valeur, unite: v.unite || '/µL',
-                ref: refDisplayFor(p, profile), ano: crAno(v.interp) });
+                ref: refDisplayFor(p, profile), ano });
   });
   return crTable('NFS — Numération Formule Sanguine', rows);
 }
