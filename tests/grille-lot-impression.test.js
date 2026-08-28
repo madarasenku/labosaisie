@@ -31,7 +31,7 @@ const dossNfs = (id) => ({
           const light = window.__store.map(x => { const res = {}; Object.keys(x.resultats || {}).forEach(k => { if (k[0] === '_') res[k] = x.resultats[k]; }); return Object.assign({}, x, { resultats: res }); });
           return { data: light, error: null };
         }
-        if (nom === 'get_resultat_full') { const x = window.__store.find(z => z.id === params.p_id); return { data: { resultats: x ? x.resultats : {} }, error: null }; }
+        if (nom === 'get_resultat_full') { const x = window.__store.find(z => z.id === params.p_id); return { data: [{ resultats: x ? x.resultats : {} }], error: null }; }
         if (nom === 'update_resultat') { const x = window.__store.find(z => z.id === params.p_id); if (x && params.p_resultats != null) x.resultats = params.p_resultats; return { data: { id: params.p_id }, error: null }; }
         if (nom === 'get_restriction_status') return { data: [], error: null };
         return { data: [], error: null };

@@ -31,7 +31,7 @@ const DOSSIERS = [mkDoss(801, 'CRP UN'), mkDoss(802, 'CRP DEUX')];
       window.showConfirmModal = async () => true;
       _sb.rpc = async (nom, params) => {
         if (nom === 'get_resultats_light') return { data: dossiers, error: null };
-        if (nom === 'get_resultat_full') { const d = dossiers.find(x => x.id === params.p_id); return { data: { resultats: d ? d.resultats : {} }, error: null }; }
+        if (nom === 'get_resultat_full') { const d = dossiers.find(x => x.id === params.p_id); return { data: [{ resultats: d ? d.resultats : {} }], error: null }; }
         if (nom === 'update_resultat') { window.__updates.push(params); return { data: { id: params.p_id, type: 'Dossier', patient: params.p_patient, resultats: params.p_resultats, montant: params.p_montant, created_at: '2026-08-20T10:00:00Z', created_by: 'admin1', prescripteur_id: 1, est_bpn: false, restricted_by: null }, error: null }; }
         if (nom === 'get_restriction_status') return { data: [], error: null };
         return { data: [], error: null };

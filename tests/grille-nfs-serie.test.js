@@ -41,7 +41,7 @@ const DOSSIERS = [
         if (nom === 'get_resultats_light') return { data: dossiers, error: null };
         if (nom === 'get_resultat_full') {
           const d = dossiers.find(x => x.id === params.p_id);
-          return { data: { resultats: d ? d.resultats : {} }, error: null };
+          return { data: [{ resultats: d ? d.resultats : {} }], error: null };
         }
         if (nom === 'update_resultat') {
           window.__updates.push(params);

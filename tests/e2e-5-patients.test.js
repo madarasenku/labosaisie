@@ -21,7 +21,7 @@ const { serve, openApp, createReporter } = require('./helpers');
       _sb.rpc = async (n, p) => {
         if (n === 'get_resultats_light') return { data: window.__store.map(light), error: null };
         if (n === 'get_resultats')       return { data: window.__store, error: null };
-        if (n === 'get_resultat_full') { const x = window.__store.find(z => z.id === p.p_id); return { data: { resultats: x ? x.resultats : {} }, error: null }; }
+        if (n === 'get_resultat_full') { const x = window.__store.find(z => z.id === p.p_id); return { data: [{ resultats: x ? x.resultats : {} }], error: null }; }
         if (n === 'insert_resultat') {
           const row = { id: ++window.__seq, type: p.p_type, patient: p.p_patient, resultats: p.p_resultats,
             montant: p.p_montant, created_at: '2026-08-26T09:00:00Z', created_by: 'admin1',

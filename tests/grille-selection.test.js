@@ -27,7 +27,7 @@ const dossCrp = (id) => ({
       window.__u = []; window.__confirm = true; window.showConfirmModal = async () => window.__confirm;
       _sb.rpc = async (nom, params) => {
         if (nom === 'get_resultats_light') return { data: d, error: null };
-        if (nom === 'get_resultat_full') { const x = d.find(z => z.id === params.p_id); return { data: { resultats: x ? x.resultats : {} }, error: null }; }
+        if (nom === 'get_resultat_full') { const x = d.find(z => z.id === params.p_id); return { data: [{ resultats: x ? x.resultats : {} }], error: null }; }
         if (nom === 'update_resultat') { window.__u.push(params); return { data: { id: params.p_id, type: 'Dossier', patient: params.p_patient, resultats: params.p_resultats }, error: null }; }
         if (nom === 'get_restriction_status') return { data: [], error: null };
         return { data: [], error: null };

@@ -31,7 +31,7 @@ const dossGs = {
       window.__u = []; window.showConfirmModal = async () => true;
       _sb.rpc = async (nom, params) => {
         if (nom === 'get_resultats_light') return { data: d, error: null };
-        if (nom === 'get_resultat_full') { const x = d.find(z => z.id === params.p_id); return { data: { resultats: x ? x.resultats : {} }, error: null }; }
+        if (nom === 'get_resultat_full') { const x = d.find(z => z.id === params.p_id); return { data: [{ resultats: x ? x.resultats : {} }], error: null }; }
         if (nom === 'update_resultat') { window.__u.push(params); return { data: { id: params.p_id, type: 'Dossier', patient: params.p_patient, resultats: params.p_resultats, montant: params.p_montant, created_at: 'x', created_by: 'a', prescripteur_id: 1, est_bpn: false, restricted_by: null }, error: null }; }
         if (nom === 'get_restriction_status') return { data: [], error: null };
         return { data: [], error: null };

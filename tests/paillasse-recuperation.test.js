@@ -32,7 +32,7 @@ const corrompu = {
     await page.evaluate((d) => {
       _sb.rpc = async (nom, params) => {
         if (nom === 'get_resultats_light') { const res = {}; Object.keys(d.resultats).forEach(k => { if (k[0] === '_') res[k] = d.resultats[k]; }); return { data: [Object.assign({}, d, { resultats: res })], error: null }; }
-        if (nom === 'get_resultat_full') return { data: { resultats: d.resultats }, error: null };
+        if (nom === 'get_resultat_full') return { data: [{ resultats: d.resultats }], error: null };
         if (nom === 'get_restriction_status') return { data: [], error: null };
         return { data: [], error: null };
       };

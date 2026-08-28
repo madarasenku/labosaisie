@@ -362,8 +362,8 @@ const A_MOI = 101, A_UN_AUTRE = 104;
       _sb.rpc = async (nom, params) => {
         window.__appels.push({ nom, params });
         if (nom === 'get_resultat_full')
-          return { data: { resultats: { _types: ['Hématologie','Biochimie'],
-                                        'Hématologie': { Hb: '12' } } }, error: null };
+          return { data: [{ resultats: { _types: ['Hématologie','Biochimie'],
+                                        'Hématologie': { Hb: '12' } } }], error: null };
         // Le RPC renvoie la LIGNE mise à jour, pas 'ok' : un simulacre
         // infidèle faisait recopier `undefined` dans le cache et
         // l'Historique cessait de s'afficher. C'est ce qui a fait ajouter

@@ -362,8 +362,16 @@ async function ensureFull(record) {
   if (!navigator.onLine) return record;
   try {
     const { data, error } = await _sb.rpc('get_resultat_full', { p_token: TK(), p_id: record.id });
-    if (error || !data) return record;
-    record.resultats = data.resultats || {};
+    // ✅ v13.142 — CORRECTIF MAJEUR. get_resultat_full est déclarée
+    // « RETURNS SETOF labo_resultats » : supabase renvoie donc un TABLEAU de
+    // lignes. L'ancien code lisait data.resultats sur ce tableau — toujours
+    // undefined — et écrasait record.resultats par {} tout en marquant la fiche
+    // « complète ». Conséquence : le dossier perdait _examens_coches et ses
+    // résultats EN MÉMOIRE. D'où « 0 patient enregistré · 1 erreur » en série,
+    // une saisie simple qui n'enregistrait rien, et des impressions vides.
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) return record;          // ne JAMAIS vider en cas d'échec
+    record.resultats = row.resultats || {};
     record._light = false;
     const idx = _dbCache.findIndex(r => r.id === record.id);
     if (idx >= 0) { _dbCache[idx].resultats = record.resultats; _dbCache[idx]._light = false; }

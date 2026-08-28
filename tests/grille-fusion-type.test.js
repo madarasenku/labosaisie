@@ -43,7 +43,7 @@ const doss = {
         }
         if (nom === 'get_resultat_full') {
           const x = window.__store.find(z => z.id === params.p_id);
-          return { data: { resultats: x ? x.resultats : {} }, error: null };
+          return { data: [{ resultats: x ? x.resultats : {} }], error: null };
         }
         if (nom === 'update_resultat') {
           const x = window.__store.find(z => z.id === params.p_id);
