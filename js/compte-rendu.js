@@ -201,6 +201,46 @@ function crBlocsBiochimie(res, profile) {
   return html;
 }
 
+// ── Un examen demandé a-t-il été réalisé ? ──────────────────
+// ✅ v13.144 — L'ancienne version ne testait que 6 examens : Rubéole, VIH,
+// Syphilis, Toxoplasmose, électrophorèse et toute la biochimie demandées mais
+// non saisies disparaissaient du compte rendu, au lieu d'être signalées.
+// Le modèle validé impose que CHAQUE examen demandé apparaisse.
+function crExamFait(label, R) {
+  const H = (R['Hématologie'] || {}), S = (R['Immuno-Sérologie'] || {}),
+        B = (R['Biochimie'] || {}), G = (R['Groupe sanguin'] || {});
+  const sero = n => { const v = S[n]; return !!(v && (crV(v.resultat) || crV(v.valeur))); };
+  const T = [
+    [/Bilan prénatal/i,           () => true],   // forfait : pas un examen mesurable
+    [/NFS/i,                      () => !!(H['Globules blancs (GB)'] && crV(H['Globules blancs (GB)'].valeur))],
+    [/Goutte|TDR|Palud/i,         () => crV(H['GE - Résultat']) !== '' || crV(H['GE - TDR']) !== ''],
+    [/Électrophorèse|Electrophor/i, () => ['Hb A','Hb A2','Hb F','Hb S','Hb C'].some(n => H[n] && crV(H[n].valeur))],
+    [/^VS |Vitesse de s/i,        () => !!(H['VS (1ère heure)'] && crV(H['VS (1ère heure)'].valeur))],
+    [/CRP/i,                      () => crV(S['CRP - Valeur']) !== ''],
+    [/Widal|SWF/i,                () => (typeof WIDAL_ANTIGENES !== 'undefined' ? WIDAL_ANTIGENES : [])
+                                          .some(a => { const w = S['Widal - ' + a.name];
+                                            return w && crV(w.titre) && w.titre !== 'Non réalisé'; })
+                                        || crV(S['Widal - Conclusion']) !== ''],
+    [/HBs|Hépatite B/i,           () => sero('Ag HBs') || sero('Ac anti-HBs') || sero('Ac anti-HBc total')],
+    [/VHC|Hépatite C/i,           () => sero('Ac anti-VHC')],
+    [/VIH/i,                      () => sero('VIH 1 & 2')],
+    [/TPHA|VDRL|Syphilis/i,       () => sero('TPHA / VDRL (Syphilis)')],
+    [/Toxo/i,                     () => sero('Toxoplasmose IgG') || sero('Toxoplasmose IgM')],
+    [/Rubéole|Rube/i,             () => sero('Rubéole IgG') || sero('Rubéole IgM')],
+    [/Groupe|ABO|Rhésus/i,        () => crV(G['Groupe ABO']) !== '' || crV(S['Groupe ABO']) !== ''],
+  ];
+  for (const [rx, ok] of T) { if (rx.test(label)) { try { return !!ok(); } catch (e) { return false; } } }
+  // Biochimie et autres : le libellé correspond au nom du paramètre.
+  const nomsBio = [];
+  crGroupesBio().forEach(([grp]) => grp.forEach(x => nomsBio.push(x.name)));
+  const direct = nomsBio.filter(n => label.indexOf(n) >= 0 || n.indexOf(label) >= 0);
+  if (direct.length) return direct.some(n => B[n] && crV(B[n].valeur) !== '');
+  if (/ASAT|ALAT|Transaminase/i.test(label)) {
+    return ['ASAT (TGO)', 'ALAT (TGP)'].some(n => B[n] && crV(B[n].valeur) !== '');
+  }
+  return true;   // examen inconnu du rendu : on ne le signale pas à tort
+}
+
 // ── Examens demandés mais non saisis ────────────────────────
 function crBlocNonRealises(labels) {
   if (!labels.length) return '';
@@ -274,6 +314,10 @@ async function crBuildHTML(record) {
   // Ligne « RÉSULTAT : … » — noms courts des examens demandés
   const courts = [];
   const pushCourt = (rx, nom) => { if (estCoche(rx) && courts.indexOf(nom) < 0) courts.push(nom); };
+  // ✅ v13.144 — Le forfait prénatal est nommé EN TÊTE : le compte rendu remis à
+  // la patiente doit dire qu'il s'agit d'un bilan prénatal, pas seulement
+  // énumérer les examens qui le composent.
+  pushCourt(/Bilan prénatal/i, 'Bilan prénatal complet');
   pushCourt(/NFS/i, 'NFS');
   pushCourt(/Goutte|TDR|Palud/i, 'GE');
   pushCourt(/CRP/i, 'CRP');
@@ -304,17 +348,9 @@ async function crBuildHTML(record) {
   corps += crBlocGroupe(Object.keys(gs).length ? gs : sero);
 
   // Examens demandés dont aucun résultat n'a été saisi
-  const rendu = corps;
-  const nonFaits = labels.filter(l => {
-    const t = String(l);
-    if (/NFS/i.test(t))            return !/NFS — Num/.test(rendu);
-    if (/Goutte|TDR|Palud/i.test(t)) return !/Goutte épaisse/.test(rendu);
-    if (/CRP/i.test(t))            return !/CRP — Prot/.test(rendu);
-    if (/Widal|SWF/i.test(t))      return !/Widal —/.test(rendu);
-    if (/HBs|Hépatite B/i.test(t)) return !/Hépatite B/.test(rendu);
-    if (/Groupe|ABO/i.test(t))     return !/Groupe sanguin/.test(rendu);
-    return false;
-  });
+  // ✅ v13.144 — Chaque examen demandé est confronté aux résultats réellement
+  // présents (crExamFait), quel que soit son type.
+  const nonFaits = labels.filter(l => !crExamFait(String(l), R));
   corps += crBlocNonRealises(nonFaits);
   if (!corps) corps = '<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>';
 

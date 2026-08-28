@@ -559,7 +559,7 @@ async function flushSyncQueue(silent) {
 
 async function insertRecordRemote(record) {
   // ✅ v13 — insertion via RPC sécurisée par jeton
-  const est_bpn = record.type === 'Bilan prénatal' || (record.resultats?._types||[]).includes('Bilan prénatal');
+  const est_bpn = estDossierBPN(record);
   if (!navigator.onLine) return enqueueInsert(record, est_bpn); // ✅ v13.4 — hors-ligne connu
   try {
     const { data, error } = await _sb.rpc('insert_resultat', {
@@ -596,10 +596,26 @@ function estJourVerrouille(e) {
 }
 
 // Met à jour une fiche existante (édition depuis l'historique)
+// ✅ v13.144 — Le forfait prénatal est désormais un EXAMEN du catalogue
+// (« Bilan prénatal complet (forfait) », onglet Hématologie) et non plus un
+// type d'analyse : le test historique sur type/_types renvoyait donc false pour
+// TOUS les bilans prénatals (74 dossiers en base, aucun marqué). On reconnaît
+// le forfait à son libellé parmi les examens cochés.
+function estDossierBPN(record) {
+  if (!record) return false;
+  if (record.type === 'Bilan prénatal') return true;
+  const res = record.resultats || {};
+  if ((res._types || []).includes('Bilan prénatal')) return true;
+  const coches = res._examens_coches || {};
+  const labels = Array.isArray(coches) ? coches
+    : Object.values(coches).reduce((a, v) => a.concat(v || []), []);
+  return labels.some(l => /pr[ée]natal/i.test(String(l)));
+}
+
 async function updateRecordRemote(id, record, opts = {}) {
   // ✅ v13.34 — opts.onlyPatient : ne met à jour que les infos patient (pas résultats ni montant)
   // opts.onlyResultats : ne met à jour que les résultats (montant gelé au cache)
-  const est_bpn = record.type === 'Bilan prénatal' || (record.resultats?._types||[]).includes('Bilan prénatal');
+  const est_bpn = estDossierBPN(record);
   if (!navigator.onLine || String(id).startsWith('tmp_')) return enqueueUpdate(id, record, est_bpn);
 
   // Construire le payload selon ce qu'on modifie
