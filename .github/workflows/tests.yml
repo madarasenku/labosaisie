@@ -18,6 +18,16 @@ on:
     - cron: '17 6 * * *'
   workflow_dispatch:
 
+# Anti-doublon : sans cela, pousser sur une branche qui a une PR ouverte vers
+# main déclenchait DEUX runs identiques sur le même commit (l'événement `push`
+# ET l'événement `pull_request`). On regroupe les deux par nom de branche
+# (`head_ref` existe pour une PR, `ref_name` pour un push) et on annule le run
+# le plus ancien : il n'en reste qu'un seul par branche, sans perdre le test
+# des branches de travail ni celui des PR.
+concurrency:
+  group: tests-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   tests:
     runs-on: ubuntu-latest
