@@ -4,7 +4,7 @@
 const { serve, openApp, createReporter } = require('./helpers');
 
 const doss = {
-  id: 2001, type: 'Dossier', montant: 20000, created_at: '2026-08-26T18:00:00Z', created_by: 'YERIGUE',
+  id: 2001, type: 'Dossier', montant: 10000, created_at: '2026-08-26T18:00:00Z', created_by: 'YERIGUE',
   patient: { nom: 'BPN ESSAI', dossier: '0380-0826', date: '2026-08-26', sexe: 'F', age: '27',
              medecin: 'SAGE-FEMME', service: 'Maternité', clinique: 'Grossesse 24 SA', paiement_status: 'paye' },
   resultats: {
@@ -94,12 +94,36 @@ const doss = {
     r.check('biochimie rénale imprimée', /Biochimie — Fonction rénale/.test(txt), true);
     r.check('groupe sanguin imprimé', /Groupe ABO \/ Rhésus/.test(txt), true);
 
-    r.section('Examens demandés mais non réalisés');
-    r.check('bloc « non réalisés » présent', /Examens demandés — non réalisés/.test(txt), true);
-    r.check('Électrophorèse signalée', /Électrophorèse de l'hémoglobine/.test(txt), true);
-    r.check('Rubéole signalée', /Rubéole IgG \/ IgM/.test(txt), true);
-    r.check('le forfait n\'est PAS listé comme non réalisé', /non réalisés[\s\S]*Bilan prénatal complet/.test(txt), false);
-    r.check('Toxoplasmose (saisie) non listée', /non réalisés[\s\S]*Toxoplasmose/.test(txt), false);
+    // ✅ v13.147 — Le BPN est rendu sur DEUX feuilles.
+    r.section('Rendu en deux feuilles');
+    r.check('deux feuilles (cr-page) générées', (h.match(/class="cr-page"/g) || []).length, 2);
+    r.check('feuille 1 étiquetée', /Feuille 1\/2/.test(txt), true);
+    r.check('feuille 2 étiquetée', /Feuille 2\/2/.test(txt), true);
+    const parts = h.split(/break-before:page/);
+    const t1 = (parts[0] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    const t2 = (parts[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    r.check('Feuille 1 = Hématologie + Groupe sanguin', /NFS/.test(t1) && /Groupe ABO/.test(t1), true);
+    r.check('Feuille 1 SANS biochimie', /Biochimie — Fonction rénale/.test(t1), false);
+    r.check('Feuille 2 = Biochimie + Sérologies', /Biochimie — Fonction rénale/.test(t2) && /Bilan Hépatite B/.test(t2), true);
+    r.check('Feuille 2 SANS NFS', /NFS —/.test(t2), false);
+
+    // ✅ v13.147 — Forfait affiché à 20 000 même si 10 000 saisi en caisse.
+    r.section('Forfait affiché à 20 000 FCFA');
+    r.check('montant CR forcé à 20 000', /Montant : 20 000 FCFA/.test(txt), true);
+    r.check('le 10 000 saisi n\'apparaît pas', /Montant : 10 000 FCFA/.test(txt), false);
+
+    // ✅ v13.147 — Examen demandé non rempli = ligne VIDE à compléter.
+    r.section('Examens demandés mais non remplis → à compléter');
+    r.check('bloc « à compléter » présent', /Examens demandés — à compléter/.test(txt), true);
+    r.check('Électrophorèse à compléter', /Électrophorèse/.test(txt), true);
+    r.check('Rubéole à compléter', /Rubéole/.test(txt), true);
+    r.check('plus de mention « non réalisés »', /non réalisés/.test(txt), false);
+    // On isole le CONTENU des tables « à compléter » (l'en-tête, répété sur chaque
+    // feuille, contient « Bilan prénatal complet » et « Toxoplasmose » saisie).
+    const aCompleter = (h.match(/Examens demandés — à compléter[\s\S]*?<\/table>/g) || [])
+      .join(' ').replace(/<[^>]+>/g, ' ');
+    r.check('le forfait n\'est PAS listé à compléter', /Bilan prénatal complet/.test(aCompleter), false);
+    r.check('Toxoplasmose (saisie) non listée à compléter', /Toxoplasmose/.test(aCompleter), false);
 
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   JS:', errors.slice(0, 6));

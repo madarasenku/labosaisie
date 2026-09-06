@@ -273,6 +273,25 @@ function crBlocNonRealises(labels) {
   return crTable('Examens demandés — non réalisés', rows);
 }
 
+// ✅ v13.147 — BPN : un examen demandé mais non rempli s'imprime avec une case
+// résultat VIDE (ligne à compléter à la main après coup — ex. examen envoyé au
+// labo externe), et non plus une simple mention « Non réalisé ».
+function crBlocACompleter(titre, labels) {
+  if (!labels || !labels.length) return '';
+  const trs = labels.map(l =>
+    '<tr><td class="cr-nom">' + crEsc(l) + '</td>'
+    + '<td class="cr-val cr-vide">&nbsp;</td>'
+    + '<td class="cr-ref">à compléter</td></tr>').join('');
+  return '<table class="cr-t"><thead><tr>'
+    + '<th class="cr-th-nom">' + crEsc(titre) + '</th>'
+    + '<th class="cr-th-c">Résultat</th>'
+    + '<th class="cr-th-c">Observation</th></tr></thead><tbody>' + trs + '</tbody></table>';
+}
+
+// Classe un examen demandé sur la bonne feuille du BPN :
+//  Feuille 1 = Hématologie + Groupe sanguin ; Feuille 2 = Biochimie + Sérologies.
+const CR_RX_FEUILLE1 = /NFS|H[ée]mogramme|Goutte|TDR|Palud|[ÉE]lectro|H[ée]moglobine|VS |Vitesse de s|Groupe|ABO|Rh[eé]sus/i;
+
 // ── Feuille de style du compte rendu (noir & blanc, modèle validé) ──
 const CR_STYLE = `
 <style>
@@ -310,6 +329,10 @@ const CR_STYLE = `
   .cr-unite { text-align:center; font-size:8pt; color:#444; }
   .cr-ref { text-align:center; font-size:8pt; color:#444; }
   .cr-interp { font-style:italic; font-size:8.5pt; text-align:center; background:#eee; }
+  /* ✅ v13.147 — case résultat vide à compléter à la main + intitulé de feuille */
+  .cr-val.cr-vide { height:18px; }
+  .cr-feuille { font-size:8pt; font-weight:700; color:#333; text-transform:uppercase;
+                letter-spacing:.5px; text-align:right; margin:0 0 4px; }
   .cr-foot { border-top:1px solid #999; padding-top:5px; margin-top:6px; font-size:8pt; }
   .cr-foot-grid { display:flex; align-items:flex-start; gap:14px; }
   .cr-foot-l { flex:1; } .cr-foot-c { flex:1.2; text-align:center; } .cr-foot-r { text-align:right; }
@@ -386,24 +409,20 @@ async function crBuildHTML(record) {
   }
   const titreRes = courts.length ? courts.join(' + ') : (R._types || []).join(' + ');
 
-  // Corps : un tableau par examen / panel
-  let corps = '';
-  corps += crBlocNFS(hema, profile);
-  corps += crBlocEPHB(hema);
-  corps += crBlocGE(hema);
-  corps += crBlocCRP(sero);
-  corps += crBlocWidal(sero);
-  corps += crBlocVHB(sero);
-  corps += crBlocSerologies(sero);
-  corps += crBlocsBiochimie(bio, profile);
-  corps += crBlocGroupe(Object.keys(gs).length ? gs : sero);
+  // ✅ v13.147 — Un bilan prénatal est rendu sur DEUX feuilles :
+  //   Feuille 1 = Hématologie + Groupe sanguin ; Feuille 2 = Biochimie + Sérologies.
+  const isBpn = (typeof estDossierBPN === 'function') && estDossierBPN(record);
 
-  // Examens demandés dont aucun résultat n'a été saisi
+  // Blocs par famille d'analyse.
+  const blocHema = crBlocNFS(hema, profile) + crBlocEPHB(hema) + crBlocGE(hema);
+  const blocGroupe = crBlocGroupe(Object.keys(gs).length ? gs : sero);
+  const blocSero = crBlocCRP(sero) + crBlocWidal(sero) + crBlocVHB(sero) + crBlocSerologies(sero);
+  const blocBio = crBlocsBiochimie(bio, profile);
+
+  // Examens demandés dont aucun résultat n'a été saisi.
   // ✅ v13.144 — Chaque examen demandé est confronté aux résultats réellement
   // présents (crExamFait), quel que soit son type.
   const nonFaits = labels.filter(l => !crExamFait(String(l), R));
-  corps += crBlocNonRealises(nonFaits);
-  if (!corps) corps = '<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>';
 
   // QR de vérification
   const refDoc = (typeof getOrCreateRef === 'function') ? getOrCreateRef(record) : '';
@@ -420,7 +439,11 @@ async function crBuildHTML(record) {
     ? '<img src="' + _maSignature + '" style="height:12mm;max-width:44mm;object-fit:contain">' : '';
   const now = new Date();
   const dateFr = d => { try { return new Date(d).toLocaleDateString('fr-FR'); } catch (e) { return '—'; } };
-  const montant = Number(record && record.montant) || 0;
+  // ✅ v13.147 — Le bilan prénatal est un FORFAIT : le compte rendu affiche
+  // toujours 20 000 FCFA, même si une remise (10 000…) a été saisie en caisse.
+  // (Affichage du CR uniquement : le montant réel en caisse/historique n'est pas
+  // modifié par ce rendu.)
+  const montant = isBpn ? 20000 : (Number(record && record.montant) || 0);
 
   const PIED = '<div class="cr-foot"><div class="cr-foot-grid">'
     + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR'))
@@ -431,9 +454,9 @@ async function crBuildHTML(record) {
     + '</div><div class="cr-foot-pat">' + crEsc(p.nom || '') + ' · N° ' + crEsc(p.dossier || '')
     +   (refDoc ? ' · Réf. ' + crEsc(refDoc) : '') + '</div></div>';
 
-  return CR_STYLE
-    + '<table class="cr-page"><tfoot><tr><td>' + PIED + '</td></tr></tfoot><tbody><tr><td>'
-    + '<div class="cr-h1">CPMI DE GRAND-BASSAM</div>'
+  // En-tête répété en tête de CHAQUE feuille (chaque feuille est autonome).
+  const enTete =
+      '<div class="cr-h1">CPMI DE GRAND-BASSAM</div>'
     + '<div class="cr-h2">Centre de Protection Mère et Infantile · Laboratoire d\'analyses médicales · Grand-Bassam, Côte d\'Ivoire</div>'
     + '<hr class="cr-rule">'
     + '<div class="cr-box cr-box-res">RÉSULTAT : ' + crEsc(titreRes || '—') + '</div>'
@@ -446,7 +469,30 @@ async function crBuildHTML(record) {
     +   '<tr><td class="cr-lab">Service / Unité</td><td>' + crEsc(p.service || '—') + '</td>'
     +       '<td class="cr-lab">Renseignements cliniques</td><td>' + crEsc(p.clinique || '—') + '</td></tr>'
     + '</tbody></table>'
-    + '<div class="cr-bandeau">Examens demandés — résultats</div>'
-    + corps
+    + '<div class="cr-bandeau">Examens demandés — résultats</div>';
+
+  // Une feuille = une table cr-page (pied répété via <tfoot>).
+  const feuille = (corpsHtml, sousTitre) =>
+      '<table class="cr-page"><tfoot><tr><td>' + PIED + '</td></tr></tfoot><tbody><tr><td>'
+    + enTete
+    + (sousTitre ? '<div class="cr-feuille">' + sousTitre + '</div>' : '')
+    + (corpsHtml || '<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour cette partie.</p>')
     + '</td></tr></tbody></table>';
+
+  if (isBpn) {
+    // ✅ v13.147 — Cases non remplies : lignes VIDES à compléter (pas « Non réalisé »).
+    const nf1 = nonFaits.filter(l => CR_RX_FEUILLE1.test(String(l)));
+    const nf2 = nonFaits.filter(l => !CR_RX_FEUILLE1.test(String(l)));
+    const corps1 = blocGroupe + blocHema + crBlocACompleter('Examens demandés — à compléter', nf1);
+    const corps2 = blocSero + blocBio + crBlocACompleter('Examens demandés — à compléter', nf2);
+    return CR_STYLE
+      + feuille(corps1, 'Feuille 1/2 · Hématologie & Groupe sanguin')
+      + '<div style="break-before:page;page-break-before:always"></div>'
+      + feuille(corps2, 'Feuille 2/2 · Biochimie & Immuno-Sérologie');
+  }
+
+  // Rendu standard (une seule feuille) pour tout dossier non-BPN.
+  let corps = blocHema + blocSero + blocBio + blocGroupe + crBlocNonRealises(nonFaits);
+  if (!corps) corps = '<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>';
+  return CR_STYLE + feuille(corps, '');
 }
