@@ -226,7 +226,8 @@ function crBlocsBiochimie(res, profile) {
 // Le modèle validé impose que CHAQUE examen demandé apparaisse.
 function crExamFait(label, R) {
   const H = (R['Hématologie'] || {}), S = (R['Immuno-Sérologie'] || {}),
-        B = (R['Biochimie'] || {}), G = (R['Groupe sanguin'] || {});
+        B = (R['Biochimie'] || {}), G = (R['Groupe sanguin'] || {}),
+        Bac = (R['Bactériologie'] || {});
   const sero = n => { const v = S[n]; return !!(v && (crV(v.resultat) || crV(v.valeur))); };
   const T = [
     [/Bilan prénatal/i,           () => true],   // forfait : pas un examen mesurable
@@ -246,6 +247,12 @@ function crExamFait(label, R) {
     [/Toxo/i,                     () => sero('Toxoplasmose IgG') || sero('Toxoplasmose IgM')],
     [/Rubéole|Rube/i,             () => sero('Rubéole IgG') || sero('Rubéole IgM')],
     [/Groupe|ABO|Rhésus/i,        () => crV(G['Groupe ABO']) !== '' || crV(S['Groupe ABO']) !== ''],
+    // ✅ v13.146 — ECBU / Bactériologie : demandé mais non saisi disparaissait du
+    // compte rendu (ni résultat, ni « non réalisé »), car le fallback plus bas
+    // renvoie « true » pour tout examen inconnu. Un ECBU de bilan prénatal revient
+    // souvent après coup : il DOIT figurer en « non réalisé » tant qu'il est vide.
+    [/ECBU|Bact[eé]riolog|Cytobact/i, () => ['Culture','Germe identifié','Numération bactérienne',
+                                    'Leucocytes (/mm³)','Aspect'].some(n => crV(Bac[n]) !== '')],
   ];
   for (const [rx, ok] of T) { if (rx.test(label)) { try { return !!ok(); } catch (e) { return false; } } }
   // Biochimie et autres : le libellé correspond au nom du paramètre.
@@ -310,13 +317,39 @@ const CR_STYLE = `
   .cr-sigbox { border:1px solid #666; height:15mm; margin-top:2px; }
   .cr-foot-pat { margin-top:4px; font-size:7.5pt; color:#444; }
 
+  /* ✅ v13.146 — PIED DE PAGE (prix, signature, QR/code-barres) ANCRÉ EN BAS.
+     Sur une page courte le tfoot remontait sous les résultats. On force la table
+     à occuper toute la hauteur imprimable : le contenu s'étire, le pied descend.
+     La hauteur agit comme un minimum — un CR plus long déborde et le pied se répète. */
+  .cr-page > tbody > tr > td { vertical-align: top; }
+  @media print {
+    .cr-page { height: 27.6cm; }
+  }
 </style>`;
 
 // ── Assemblage du compte rendu complet ──────────────────────
 async function crBuildHTML(record) {
-  const R = (record && record.resultats) || {};
+  let R = (record && record.resultats) || {};
   const p = (record && record.patient) || {};
   const profile = (typeof profileFromPatient === 'function') ? profileFromPatient(p) : {};
+
+  // ✅ v13.146 — DOSSIER MONO-ANALYSE : compte rendu vide.
+  // printRecord() APLATIT un dossier à une seule analyse : il passe
+  // type='<analyse>' et resultats = le SOUS-objet de ce type (paramètres à plat
+  // + _examens_coches en tableau), au lieu du format dossier attendu ici
+  // (R['Biochimie'] = {…}, R._examens_coches = { Biochimie:[…] }). Le renderer
+  // cherchait alors R['Biochimie'] = undefined et rendait TOUT « non réalisé ».
+  // On re-niche le sous-objet sous son type quand on détecte ce format aplati.
+  if (record && record.type && record.type !== 'Dossier' && !R[record.type]) {
+    const typeData = {}; const meta = {};
+    Object.keys(R).forEach(k => { if (k[0] === '_') meta[k] = R[k]; else typeData[k] = R[k]; });
+    const reNiche = { [record.type]: typeData };
+    Object.keys(meta).forEach(k => {
+      reNiche[k] = (k === '_examens_coches' && Array.isArray(meta[k]))
+        ? { [record.type]: meta[k] } : meta[k];
+    });
+    R = reNiche;
+  }
 
   // Sous-résultats par analyse (dossier unifié ou fiche simple)
   const sub = t => (R[t] && typeof R[t] === 'object') ? R[t] : {};
