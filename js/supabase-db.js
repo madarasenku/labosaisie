@@ -626,11 +626,13 @@ async function updateRecordRemote(id, record, opts = {}) {
   }
   if (!opts.onlyPatient) {
     payload.p_resultats = record.resultats;
-    // ✅ Montant gelé si on modifie uniquement les résultats
-    const cachedRecord = _dbCache.find(r => r.id === id);
-    payload.p_montant = opts.onlyResultats
-      ? (cachedRecord?.montant || record.montant || 0)
-      : (record.montant || 0);
+    // ✅ v13.146 — CORRECTION DES RÉSULTATS SUR JOURNÉE VERROUILLÉE.
+    // En mode « résultats seuls » on n'envoie PLUS de montant : le RPC fait
+    // coalesce(NULL, montant) = montant inchangé, donc le garde-fou « argent »
+    // du trigger ne peut plus se déclencher et la correction passe toujours.
+    if (!opts.onlyResultats) {
+      payload.p_montant = record.montant || 0;
+    }
   } else {
     // onlyPatient : garder montant et résultats existants
     const cachedRecord = _dbCache.find(r => r.id === id);

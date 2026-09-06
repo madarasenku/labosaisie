@@ -49,7 +49,7 @@ async function verrouillerJournee() {
   const c = calculerCloture(jour);
   if (typeof showConfirmModal === 'function' && !await showConfirmModal({
     icon: '🔒', title: 'Verrouiller la journée ?',
-    message: 'La journée du <strong>' + esc(jour) + '</strong> (' + _fcfa(c.total) + ') sera <strong>gelée</strong> : plus aucune modification (encaissements, résultats, suppressions) possible sur ces dossiers. Seul l\'administrateur pourra la rouvrir.',
+    message: 'La journée du <strong>' + esc(jour) + '</strong> (' + _fcfa(c.total) + ') sera <strong>gelée sur le plan financier</strong> : plus aucun encaissement, changement de montant ni suppression sur ces dossiers.<br><br>La <strong>saisie des résultats reste possible</strong> — un examen envoyé au labo externe peut être complété et le compte rendu réimprimé après le verrouillage. Seul l\'administrateur pourra rouvrir la journée.',
     confirmText: '🔒 Verrouiller', cancelText: 'Annuler'
   })) return;
   showLoading('Verrouillage…');
