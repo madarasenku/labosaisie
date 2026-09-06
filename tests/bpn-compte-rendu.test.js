@@ -103,6 +103,8 @@ const doss = {
     const t1 = (parts[0] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     const t2 = (parts[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     r.check('Feuille 1 = Hématologie + Groupe sanguin', /NFS/.test(t1) && /Groupe ABO/.test(t1), true);
+    // ✅ v13.148 — NFS (Hématologie) en tête de feuille 1, avant le groupe sanguin.
+    r.check('Feuille 1 : NFS avant Groupe sanguin', t1.indexOf('NFS') < t1.indexOf('Groupe ABO'), true);
     r.check('Feuille 1 SANS biochimie', /Biochimie — Fonction rénale/.test(t1), false);
     r.check('Feuille 2 = Biochimie + Sérologies', /Biochimie — Fonction rénale/.test(t2) && /Bilan Hépatite B/.test(t2), true);
     r.check('Feuille 2 SANS NFS', /NFS —/.test(t2), false);

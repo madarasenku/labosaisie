@@ -483,7 +483,7 @@ async function crBuildHTML(record) {
     // ✅ v13.147 — Cases non remplies : lignes VIDES à compléter (pas « Non réalisé »).
     const nf1 = nonFaits.filter(l => CR_RX_FEUILLE1.test(String(l)));
     const nf2 = nonFaits.filter(l => !CR_RX_FEUILLE1.test(String(l)));
-    const corps1 = blocGroupe + blocHema + crBlocACompleter('Examens demandés — à compléter', nf1);
+    const corps1 = blocHema + blocGroupe + crBlocACompleter('Examens demandés — à compléter', nf1);
     const corps2 = blocSero + blocBio + crBlocACompleter('Examens demandés — à compléter', nf2);
     return CR_STYLE
       + feuille(corps1, 'Feuille 1/2 · Hématologie & Groupe sanguin')
