@@ -35,6 +35,7 @@ async function exportRecord(id) {
   if (!record) { toast('Fiche introuvable', 'err'); return; }
   if (typeof sortieAutorisee === 'function' && !sortieAutorisee(id)) return;
   if (!ensureExcelJSReady()) return;
+  await ensureFull(record); // ✅ v13.148 — charger le détail (sinon Excel vide : tout « à compléter »)
 
   const wb = new ExcelJS.Workbook();
   wb.creator = CENTRE;
@@ -42,7 +43,32 @@ async function exportRecord(id) {
 
   const usedNamesR = new Set();
   try {
-    if (isDossierRecord(record)) {
+    if (isDossierRecord(record) && typeof estBPN === 'function' && estBPN(record)) {
+      // ✅ v13.148 — BILAN PRÉNATAL : deux feuilles seulement.
+      //   Feuille 1 = Hématologie + Groupe sanguin ; Feuille 2 = Biochimie +
+      //   Immuno-Sérologies. Forfait affiché à 20 000 FCFA (le montant réel en
+      //   caisse n'est pas modifié). Widal masqué, électrophorèse = profil en grand.
+      const resDe = t => getRecordResultats(record, t);
+      const pendingDe = types => types.reduce((a, t) => {
+        try { return a.concat(getPendingCheckedExams(record, t)); } catch (e) { return a; }
+      }, []);
+      const FORFAIT = 20000;
+      buildProfessionalSheet(wb, { ...record, type: 'Dossier' },
+        safeSheetName('Hématologie + Groupe', usedNamesR), {
+          bpn: true, montant: FORFAIT,
+          render: [{ type: 'Hématologie', res: resDe('Hématologie') },
+                   { type: 'Groupe sanguin', res: resDe('Groupe sanguin') }],
+          pending: pendingDe(['Hématologie', 'Groupe sanguin']),
+          composition: record.resultats && record.resultats['_bpn_inclus'],
+        });
+      buildProfessionalSheet(wb, { ...record, type: 'Dossier' },
+        safeSheetName('Biochimie + Sérologies', usedNamesR), {
+          bpn: true, montant: FORFAIT,
+          render: [{ type: 'Biochimie', res: resDe('Biochimie') },
+                   { type: 'Immuno-Sérologie', res: resDe('Immuno-Sérologie') }],
+          pending: pendingDe(['Biochimie', 'Immuno-Sérologie']),
+        });
+    } else if (isDossierRecord(record)) {
       const types = getRecordTypes(record);
       if (!types.length) { toast('Aucune analyse dans ce dossier', 'err'); return; }
       types.forEach(type => {
@@ -87,7 +113,10 @@ async function exportRecord(id) {
     addR('Service', p.service);
     addR('Médecin', p.medecin);
     addR('Analyses', getRecordTypes(record).join(', '));
-    addR('Montant total', record.montant ? record.montant.toLocaleString('fr-FR') + ' FCFA' : '—', true);
+    // ✅ v13.148 — Le forfait prénatal s'affiche à 20 000 FCFA (affichage CR/récap
+    // uniquement ; le montant réel en caisse/historique n'est pas modifié).
+    const _montantRecap = (typeof estBPN === 'function' && estBPN(record)) ? 20000 : record.montant;
+    addR('Montant total', _montantRecap ? _montantRecap.toLocaleString('fr-FR') + ' FCFA' : '—', true);
     addR('Saisi par', record.createdBy);
     addR('Date enregistrement', record.savedAt ? new Date(record.savedAt).toLocaleString('fr-FR') : '');
     // Déplacer la feuille récap en premier

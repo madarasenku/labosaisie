@@ -231,6 +231,7 @@ let _grilleKey = 'nfs';
 let _grilleDate = null;                 // date filtrée (YYYY-MM-DD) ; '' = toutes
 let _grilleInclureReception = false;    // inclure les dossiers « réception seule »
 let _grilleInclureSaisis = false;       // ✅ v13.133 — inclure les paramètres déjà saisis (correction)
+let _grilleInclureMasquees = false;     // ✅ v13.148 — inclure les fiches masquées pour y saisir des résultats
 let _grilleDernierLot = [];             // ✅ v13.133 — ids du dernier lot enregistré (pour impression)
 let _grilleSelForce = {};               // ✅ v13.134 — override manuel de la coche « terminé » par dossier
 
@@ -324,10 +325,27 @@ function grilleExamsRestants(r) {
   return grilleExamsDuDossier(r).filter(k => !faits.has(k));
 }
 
+// ✅ v13.148 — Source des dossiers de la grille. Par défaut = getDB() (qui exclut
+// les fiches masquées). Si « fiches masquées » est coché, on y ajoute les fiches
+// masquées que l'utilisateur a le droit de traiter (admin : toutes ; sinon : les
+// siennes ou celles qu'il a masquées). Le serveur applique de toute façon le
+// contrôle de propriété sur update_resultat ; on ne fait qu'exposer la saisie.
+function grilleSourceDB() {
+  let base; try { base = getDB(); } catch (e) { base = []; }
+  if (!_grilleInclureMasquees) return base;
+  let cache; try { cache = (typeof _dbCache !== 'undefined' && _dbCache) ? _dbCache : []; } catch (e) { cache = []; }
+  const uid = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.username : null;
+  const admin = (typeof isAdmin === 'function') && isAdmin();
+  const seen = new Set(base.map(r => r.id));
+  const extra = cache.filter(r => r && r.restrictedBy && !r.deletedAt && !r._hardDeleted
+    && !seen.has(r.id) && (admin || r.createdBy === uid || r.restrictedBy === uid));
+  return base.concat(extra);
+}
+
 // Patients à afficher : filtres date / réception seule, et au moins un examen
 // de la grille à saisir (sauf si « déjà saisis » est coché).
 function grilleDossiers() {
-  let db; try { db = getDB(); } catch (e) { db = []; }
+  let db = grilleSourceDB();
   return db.filter(r => {
     if (!isDossierRecord(r) || r.deletedAt || r._hardDeleted) return false;
     if (!_grilleInclureReception && r.resultats && r.resultats._reception_seule) return false;
@@ -377,6 +395,7 @@ function fermerGrille() {
 function grilleSetDate(v) { _grilleDate = v || ''; grilleRender(); }
 function grilleToggleReception(on) { _grilleInclureReception = !!on; grilleRender(); }
 function grilleToggleSaisis(on) { _grilleInclureSaisis = !!on; grilleRender(); }
+function grilleToggleMasquees(on) { _grilleInclureMasquees = !!on; grilleRender(); } // ✅ v13.148
 function grilleChangeExam(key) { if (GRILLE_EXAMS[key]) { _grilleKey = key; grilleRender(); } }
 
 // ── Rendu ───────────────────────────────────────────────────
@@ -396,6 +415,9 @@ function grilleRender() {
     + '<input type="checkbox"' + (_grilleInclureReception ? ' checked' : '') + ' onchange="grilleToggleReception(this.checked)" style="width:15px;height:15px"> réception seule</label>'
     + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Réafficher les examens déjà saisis pour les corriger">'
     + '<input type="checkbox"' + (_grilleInclureSaisis ? ' checked' : '') + ' onchange="grilleToggleSaisis(this.checked)" style="width:15px;height:15px"> déjà saisis</label>'
+    // ✅ v13.148 — Saisir les résultats sur des fiches masquées (restreintes).
+    + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Afficher aussi les fiches masquées pour y saisir des résultats">'
+    + '<input type="checkbox"' + (_grilleInclureMasquees ? ' checked' : '') + ' onchange="grilleToggleMasquees(this.checked)" style="width:15px;height:15px"> fiches masquées</label>'
     + '</div>';
 
   const entete = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px">'
@@ -489,7 +511,7 @@ function grilleExamsEditables(r) {
   const faits = new Set(grilleExamsSaisis(r));
   return grilleExamsDuDossier(r).filter(k => _grilleInclureSaisis || !faits.has(k));
 }
-function _grilleDossier(id) { try { return getDB().find(x => String(x.id) === String(id)); } catch (e) { return null; } }
+function _grilleDossier(id) { try { return grilleSourceDB().find(x => String(x.id) === String(id)); } catch (e) { return null; } }
 // « Prêt » = tout examen COMMENCÉ est entièrement rempli (et au moins un l'est).
 // Le travail est progressif : on saisit la NFS le matin et la CRP plus tard ;
 // exiger que TOUS les examens du patient soient remplis bloquerait ce flux.
@@ -617,7 +639,7 @@ async function grilleImprimerLot() {
   if (typeof printLot !== 'function') { toast('Impression indisponible', 'err'); return; }
   showLoading('Préparation de l\'impression…');
   try {
-    const db = getDB(); const records = []; let nonCharges = 0;
+    const db = grilleSourceDB(); const records = []; let nonCharges = 0; // ✅ v13.148 — inclut les fiches masquées saisies
     for (const id of _grilleDernierLot) {
       const rec = db.find(x => String(x.id) === String(id));
       if (!rec) continue;

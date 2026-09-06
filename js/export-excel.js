@@ -282,7 +282,17 @@ function makeFilename(dossier, date, nom, type) {
   return [safe(type), safe(nom)||'PATIENT', safe(dossier), d].filter(Boolean).join('_') + '.xlsx';
 }
 
-function buildProfessionalSheet(wb, r, sheetName) {
+function buildProfessionalSheet(wb, r, sheetName, opts) {
+  // ✅ v13.148 — opts (facultatif) :
+  //   render      : [{type,res}]  → corps à rendre sur CETTE feuille (défaut : le
+  //                 seul type de r). Permet de COMBINER plusieurs analyses sur une
+  //                 même feuille (bilan prénatal : Héma+Groupe puis Bio+Séro).
+  //   bpn         : bool          → réglages prénatals (électrophorèse = profil en
+  //                 grand sans pourcentages ; pas de Widal).
+  //   montant     : number        → montant affiché (forfait BPN = 20 000).
+  //   pending     : [{label,rows}] → examens demandés non remplis (à compléter).
+  //   composition : [string]      → « _bpn_inclus » (traçabilité du forfait).
+  opts = opts || {};
   // ── Helpers globaux ──────────────────────────────────────────
   const p = r.patient || {};
   const res = r.resultats || {};
@@ -558,9 +568,12 @@ function buildProfessionalSheet(wb, r, sheetName) {
 
   // ════════════════════════════════════════════════════
   // CONTENU PAR TYPE D'ANALYSE
+  // ✅ v13.148 — extrait en fonction pour pouvoir combiner plusieurs analyses
+  //   sur une même feuille (bilan prénatal). `bt` = type rendu, `res` = ses
+  //   sous-résultats.
   // ════════════════════════════════════════════════════
-
-  if (r.type === 'Hématologie') {
+  function renderTypeBody(bt, res) {
+  if (bt === 'Hématologie') {
     const nfsVals = [...HEMA_PARAMS,...HEMA_FL].filter(q=>res[q.name]&&res[q.name].valeur);
     if (nfsVals.length) {
       secHdr('NFS — Numération Formule Sanguine');
@@ -572,8 +585,10 @@ function buildProfessionalSheet(wb, r, sheetName) {
       });
       row++;
     }
+    // ✅ v13.148 — En BPN, l'électrophorèse est rendue à part (profil en grand,
+    //   sans pourcentages) par bigProfil() : on saute donc le tableau ici.
     const ephbNames=['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].filter(n=>res[n]&&res[n].valeur);
-    if (ephbNames.length||res['Profil Hb']) {
+    if (!opts.bpn && (ephbNames.length||res['Profil Hb'])) {
       secHdr("Electrophorese de l'Hemoglobine");
       tblHdr('Fraction', '%', '', 'Valeur normale');
       ephbNames.forEach(n=>{const v=res[n]; pRow(n,v.valeur,'%','',v.interp||'');});
@@ -610,7 +625,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       row++;
     }
     const _wid = widalReport(res);
-    if (_wid.show) {
+    if (!opts.bpn && _wid.show) {
       secHdr('Sérodiagnostic de Widal & Felix');
       if (_wid.rows.length) {
         tblHdr('Antigène', 'Titre', 'Cinétique', 'Commentaire');
@@ -620,7 +635,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       row++;
     }
 
-  } else if (r.type === 'Biochimie') {
+  } else if (bt === 'Biochimie') {
     const bioSections = [
       {label:'Glucides', params:BIO_GLUCIDES},
       {label:'Fonction rénale', params:BIO_REIN},
@@ -641,7 +656,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       row++;
     });
 
-  } else if (r.type === 'Bactériologie') {
+  } else if (bt === 'Bactériologie') {
     if (res['Type de prélèvement']) fRow('Type de prélèvement', res['Type de prélèvement']);
     if (res['Site / Précision'])    fRow('Site / Précision', res['Site / Précision']);
     // Macroscopie
@@ -699,7 +714,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       row++;
     }
 
-  } else if (r.type === 'Immuno-Sérologie') {
+  } else if (bt === 'Immuno-Sérologie') {
     const seroVals = (typeof SERO_TESTS!=='undefined') ? SERO_TESTS.filter(t=>{const v=res[t.name];return v&&(v.resultat||v.valeur);}) : [];
     if (seroVals.length) {
       secHdr('Sérologies');
@@ -719,7 +734,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       pRow('CRP Latex', _crp, '', '< 6 mg/L', res['CRP - Valeur'] === 'neg' ? 'Normal' : 'Élevé');
       row++;
     }
-    if (typeof WIDAL_ANTIGENES !== 'undefined') {
+    if (!opts.bpn && typeof WIDAL_ANTIGENES !== 'undefined') {
       const _widD = WIDAL_ANTIGENES.filter(ag => { const w = res['Widal - ' + ag.name]; return w && w.titre; });
       if (_widD.length) {
         secHdr('Sérodiagnostic de Widal & Félix (SWF)');
@@ -739,7 +754,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       row++;
     }
 
-  } else if (r.type === 'Groupe sanguin') {
+  } else if (bt === 'Groupe sanguin') {
     secHdr('Groupe Sanguin ABO / Rhésus');
     tblHdr('Paramètre', 'Résultat', '', '');
     if (res['Groupe ABO']) pRow('Groupe ABO', res['Groupe ABO'], '', '', '');
@@ -747,7 +762,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
     if (res['Commentaire GS']) nRow(res['Commentaire GS']);
     row++;
 
-  } else if (r.type === 'Parasitologie') {
+  } else if (bt === 'Parasitologie') {
     // ✅ v13.37 — CORRECTIF : lisait des clés inexistantes (« Aspect des selles »,
     // « EPS_… ») → section vide. On lit désormais les vraies clés (collectResults).
     secHdr('Examen Parasitologique / Paludisme');
@@ -780,7 +795,7 @@ function buildProfessionalSheet(wb, r, sheetName) {
       }
     });
     if (gRows.length) {
-      secHdr(r.type + ' — Résultats');
+      secHdr(bt + ' — Résultats');
       tblHdr('Paramètre', 'Résultat', 'Unité', '');
       gRows.forEach(q=>pRow(q.n,q.v,q.u,'',q.i));
       row++;
@@ -796,16 +811,46 @@ function buildProfessionalSheet(wb, r, sheetName) {
       afgD.forEach(af=>abgRow(af,res['AFG_'+af])); row++;
     }
   }
+  } // fin renderTypeBody
+
+  // ✅ v13.148 — Électrophorèse en BPN : profil en GRAND, sans les pourcentages.
+  function bigProfil(value) {
+    secHdr("Electrophorese de l'Hemoglobine");
+    ws.getRow(row).height = 34;
+    mg(row,1,row,NC);
+    const c = ws.getCell(row,1);
+    c.value = 'PROFIL : ' + value;
+    sC(c, {bg:PAT_VAL, fg:BLU, bold:true, size:16, ha:'center', border:true});
+    row++;
+  }
+
+  // ✅ v13.148 — Rendu du/des corps : un seul type (défaut) ou plusieurs combinés
+  //   sur cette feuille (bilan prénatal).
+  const _bodies = (Array.isArray(opts.render) && opts.render.length)
+    ? opts.render : [{ type: r.type, res: res }];
+  _bodies.forEach(b => {
+    if (opts.bpn && b.type === 'Hématologie') {
+      // Électrophorèse : profil en grand, pas de pourcentages (rendu spécial),
+      // puis le reste de l'hématologie via renderTypeBody (qui ignore l'ephb en
+      // mode bpn — voir la garde dans la section électrophorèse).
+      renderTypeBody(b.type, b.res);
+      const profil = b.res && b.res['Profil Hb'];
+      if (profil) bigProfil(profil);
+    } else {
+      renderTypeBody(b.type, b.res);
+    }
+  });
 
   // ✅ v12.4 — Composition BPN (traçabilité des examens inclus, forfait fixe)
-  if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
-    secHdr('Composition du bilan prénatal (forfait ' + (r.montant||20000).toLocaleString('fr-FR') + ' FCFA)');
-    res['_bpn_inclus'].forEach(lbl => nRow('☑  ' + lbl, 'FFEDEDED'));
+  const _compo = opts.composition || res['_bpn_inclus'];
+  if (Array.isArray(_compo) && _compo.length) {
+    secHdr('Composition du bilan prénatal (forfait ' + ((opts.montant || r.montant || 20000)).toLocaleString('fr-FR') + ' FCFA)');
+    _compo.forEach(lbl => nRow('☑  ' + lbl, 'FFEDEDED'));
     row++;
   }
 
   // ✅ v12.4 — Examens demandés non encore renseignés → affichés vides à compléter
-  const pending = getPendingCheckedExams(r, r.type);
+  const pending = opts.pending || getPendingCheckedExams(r, r.type);
   if (pending.length) {
     secHdr('Examens demandés — résultats à compléter');
     pending.forEach(ex => {
@@ -831,8 +876,9 @@ function buildProfessionalSheet(wb, r, sheetName) {
 
   mg(row,4,row,NC);
   const cMontant = ws.getCell(row,4);
-  if (r.montant) {
-    cMontant.value = 'Montant : ' + r.montant.toLocaleString('fr-FR') + ' FCFA';
+  const _montantAff = opts.montant || r.montant;
+  if (_montantAff) {
+    cMontant.value = 'Montant : ' + _montantAff.toLocaleString('fr-FR') + ' FCFA';
     sC(cMontant, {fg:DARK, bold:true, size:9, ha:'right'});
   }
   row++; row++;
