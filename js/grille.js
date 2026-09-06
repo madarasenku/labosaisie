@@ -140,6 +140,18 @@ const GRILLE_EXAMS = {
       { k: 'alat', lab: 'ALAT (TGP)', dom: 'v_alat', kind: 'num' },
     ],
   },
+  // ✅ v13.150 — Coagulation TP / TCA : absents de la grille (signalé). TP et TCA
+  // sont deux examens distincts ; on les regroupe en une colonne « Coagulation »
+  // pour la saisie rapide (chacun facturé séparément à la fiche).
+  coag: {
+    label: 'Coagulation (TP / TCA)', type: 'Biochimie', exId: 'ex_tp',
+    coche: /TP\s*\/?\s*INR|\bTP\b|\bTCA\b|prothrombine|c[ée]phaline/i,
+    filled: b => (b['TP / INR'] && b['TP / INR'].valeur) || (b['TCA'] && b['TCA'].valeur),
+    cols: [
+      { k: 'tp',  lab: 'TP / INR (%)', dom: 'v_tp',  kind: 'num' },
+      { k: 'tca', lab: 'TCA (s)',      dom: 'v_tca', kind: 'num' },
+    ],
+  },
 
   // ── Paramètres du bilan prénatal (sérologies + groupe) ──────
   // (L'hémogramme, la glycémie et la créatinine du BPN se saisissent via les
@@ -303,7 +315,7 @@ function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
 // ══════════════════════════════════════════════════════════════
 
 // Ordre d'affichage des examens dans la grille.
-const GRILLE_ORDRE = ['nfs','ge','ephb','gly','uree','crea','ua','transa','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
+const GRILLE_ORDRE = ['nfs','ge','ephb','gly','uree','crea','ua','transa','coag','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
 
 // Examens de la grille réellement demandés pour ce dossier.
 function grilleExamsDuDossier(r) {
@@ -443,16 +455,20 @@ function grilleRender() {
   }
 
   // En-tête à deux niveaux : examen (fusionné) puis paramètres.
+  // ✅ v13.150 — En-têtes FIGÉS : ils restent visibles quand on descend dans la
+  //   liste (avant, ils disparaissaient). La 1ʳᵉ ligne colle en haut (top:0), la
+  //   2ᵉ juste dessous (décalage posé en JS après rendu), et le coin « Patient »
+  //   colle en haut ET à gauche.
   const HD = 'background:var(--cpmi-deep);color:#fff;padding:6px 6px;font-size:11px;text-align:center';
-  let h1 = '<th rowspan="2" style="position:sticky;left:0;z-index:3;' + HD + ';text-align:left;min-width:180px">'
+  let h1 = '<th rowspan="2" class="gr-corner" style="position:sticky;left:0;top:0;z-index:6;' + HD + ';text-align:left;min-width:180px">'
     + '<input type="checkbox" id="grille-selall" onchange="grilleSelAll(this.checked)" title="Tout cocher" '
     + 'style="width:15px;height:15px;vertical-align:middle;margin-right:6px;cursor:pointer">Patient</th>';
   let h2 = '';
   cols.forEach(k => {
     const cfg = GRILLE_EXAMS[k];
-    h1 += '<th colspan="' + cfg.cols.length + '" style="' + HD + ';font-weight:800;border-left:2px solid rgba(255,255,255,.35)">' + esc(cfg.label) + '</th>';
+    h1 += '<th colspan="' + cfg.cols.length + '" class="gr-h1" style="position:sticky;top:0;z-index:4;' + HD + ';font-weight:800;border-left:2px solid rgba(255,255,255,.35)">' + esc(cfg.label) + '</th>';
     cfg.cols.forEach((c, i) => {
-      h2 += '<th style="' + HD + ';font-weight:600;opacity:.92' + (i === 0 ? ';border-left:2px solid rgba(255,255,255,.35)' : '') + '">' + esc(c.lab) + '</th>';
+      h2 += '<th class="gr-h2" style="position:sticky;z-index:4;' + HD + ';font-weight:600;opacity:.92' + (i === 0 ? ';border-left:2px solid rgba(255,255,255,.35)' : '') + '">' + esc(c.lab) + '</th>';
     });
   });
 
@@ -499,11 +515,23 @@ function grilleRender() {
     + 'Chaque ligne = un patient, avec tous ses examens demandés. Les cases « — » ne le concernent pas. '
     + 'La coche se met d\'elle-même quand tout est rempli.</div>'
     + '<div id="grille-hint" style="font-size:12px;color:var(--text-muted);margin-bottom:8px"></div>'
-    + '<div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)">'
-    + '<table style="border-collapse:collapse;width:100%;font-size:12.5px"><thead>'
+    // ✅ v13.150 — Conteneur défilable (X et Y) + hauteur bornée : le défilement
+    //   vertical se fait DANS la grille, ce qui permet aux en-têtes figés de
+    //   rester collés en haut.
+    + '<div id="grille-scroll" style="overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:var(--radius)">'
+    + '<table style="border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px"><thead>'
     + '<tr>' + h1 + '</tr><tr>' + h2 + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
   grilleUpdateHint();
   grilleUpdateSelCount();
+  // ✅ v13.150 — Décale la 2ᵉ ligne d'en-tête juste sous la 1ʳᵉ (hauteur mesurée).
+  try {
+    const thead = cont.querySelector('#grille-scroll thead');
+    const trs = thead ? thead.querySelectorAll('tr') : [];
+    if (trs.length >= 2) {
+      const h1h = trs[0].offsetHeight || 30;
+      trs[1].querySelectorAll('th').forEach(th => { th.style.top = h1h + 'px'; });
+    }
+  } catch (e) {}
 }
 
 // ── État des lignes ─────────────────────────────────────────

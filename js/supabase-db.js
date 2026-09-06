@@ -100,6 +100,18 @@ function getDB() {
                               && r.createdBy === uid);
 }
 
+// ✅ v13.150 — Retrouve un dossier pour l'IMPRESSION / EXPORT, y compris s'il est
+// MASQUÉ (getDB() l'exclut). Accessible à l'admin, au créateur et à celui qui l'a
+// masqué. Permet d'imprimer/exporter un compte rendu depuis une fiche masquée.
+function recordForOutput(id) {
+  let r = getDB().find(x => x.id === id);
+  if (r) return r;
+  const uid = _currentUser?.username;
+  const admin = (typeof isAdmin === 'function') && isAdmin();
+  return _dbCache.find(x => x.id === id && !x.deletedAt && !x._hardDeleted && x.restrictedBy
+                            && (admin || x.createdBy === uid || x.restrictedBy === uid)) || null;
+}
+
 /**
  * Un bilan prénatal INTERNE alimente le cahier jaune. Conservé comme
  * repère, mais il n'exclut plus rien : voir la note ci-dessous.

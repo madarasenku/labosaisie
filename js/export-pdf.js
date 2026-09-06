@@ -8,7 +8,7 @@
 
 async function exportPDF(id) {
   try {
-    const record = getDB().find(x => x.id === id);
+    const record = (typeof recordForOutput === 'function' ? recordForOutput(id) : getDB().find(x => x.id === id)); // ✅ v13.150 — fiches masquées incluses
     if (!record) { toast('Fiche introuvable', 'err'); return; }
   if (typeof sortieAutorisee === 'function' && !sortieAutorisee(id)) return;
     await ensureFull(record); // ✅ v13.5 — détail complet avant export PDF
@@ -31,7 +31,9 @@ async function exportPDF(id) {
 // Export Excel d'une fiche depuis l'historique (par id) — c'était la fonction
 // manquante qui empêchait le bouton ⬇ Excel de la table Historique de fonctionner.
 async function exportRecord(id) {
-  const record = getDB().find(x => x.id === id);
+  // ✅ v13.150 — recordForOutput : retrouve aussi les fiches masquées (impression
+  // autorisée depuis une fiche masquée pour l'admin/créateur).
+  const record = (typeof recordForOutput === 'function' ? recordForOutput(id) : getDB().find(x => x.id === id));
   if (!record) { toast('Fiche introuvable', 'err'); return; }
   if (typeof sortieAutorisee === 'function' && !sortieAutorisee(id)) return;
   if (!ensureExcelJSReady()) return;
@@ -336,36 +338,40 @@ async function buildPDF(r, analyses) {
   // ── Tableau des résultats ─────────────────────────────────
   const rows = [];
 
+  // ✅ v13.150 — Helpers PARTAGÉS par toutes les branches (Hématologie ET le bloc
+  // « else » : Biochimie, Immuno-Sérologie, Groupe…). Ils étaient définis dans le
+  // seul bloc Hématologie → ReferenceError « sectionTitle is not defined » à
+  // l'export PDF d'un dossier contenant biochimie/sérologie (ex. bilan prénatal).
+  const addTable = (head, body, opts={}) => {
+    if (!body.length) return;
+    const o2 = { ...opts }; delete o2.interpCol;
+    doc.autoTable({
+      startY: y, head: [head], body,
+      margin: { left: MARGIN, right: MARGIN },
+      styles: { fontSize: 8, cellPadding: 2 /* ✅ v13.34 */ },
+      headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+      alternateRowStyles: { fillColor: [250,251,253] },
+      ...o2,
+      // ✅ v13.18 — colorer la cellule Valeur (col 1) selon l'interprétation
+      // stockée en dernière colonne (même logique qu'Excel, sans afficher l'interp)
+      didParseCell: (data) => {
+        if (data.section !== 'body' || data.column.index !== 1) return;
+        const rowData = data.row.raw;
+        const interp = String(rowData[rowData.length - 1] || '').toLowerCase();
+        if (interp.includes('élevé')||interp.includes('eleve'))       { data.cell.styles.textColor=[153,27,27];  data.cell.styles.fillColor=[253,232,232]; }
+        else if (interp.includes('bas'))                               { data.cell.styles.textColor=[30,64,175];  data.cell.styles.fillColor=[232,240,254]; }
+        else if (interp.includes('normal'))                            { data.cell.styles.textColor=[21,128,61];  data.cell.styles.fillColor=[232,248,238]; }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 3; // ✅ v13.34
+  };
+
+  const sectionTitle = (txt) => {
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,58,138);
+    doc.text(txt, MARGIN, y); y += 3.5; // ✅ v13.34
+  };
+
   if (rType === 'Hématologie') {
-
-    const addTable = (head, body, opts={}) => {
-      if (!body.length) return;
-      const o2 = { ...opts }; delete o2.interpCol;
-      doc.autoTable({
-        startY: y, head: [head], body,
-        margin: { left: MARGIN, right: MARGIN },
-        styles: { fontSize: 8, cellPadding: 2 /* ✅ v13.34 */ },
-        headStyles: { fillColor: [30,58,138], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-        alternateRowStyles: { fillColor: [250,251,253] },
-        ...o2,
-        // ✅ v13.18 — colorer la cellule Valeur (col 1) selon l'interprétation
-        // stockée en dernière colonne (même logique qu'Excel, sans afficher l'interp)
-        didParseCell: (data) => {
-          if (data.section !== 'body' || data.column.index !== 1) return;
-          const rowData = data.row.raw;
-          const interp = String(rowData[rowData.length - 1] || '').toLowerCase();
-          if (interp.includes('élevé')||interp.includes('eleve'))       { data.cell.styles.textColor=[153,27,27];  data.cell.styles.fillColor=[253,232,232]; }
-          else if (interp.includes('bas'))                               { data.cell.styles.textColor=[30,64,175];  data.cell.styles.fillColor=[232,240,254]; }
-          else if (interp.includes('normal'))                            { data.cell.styles.textColor=[21,128,61];  data.cell.styles.fillColor=[232,248,238]; }
-        }
-      });
-      y = doc.lastAutoTable.finalY + 3; // ✅ v13.34
-    };
-
-    const sectionTitle = (txt) => {
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,58,138);
-      doc.text(txt, MARGIN, y); y += 3.5; // ✅ v13.34
-    };
 
     // ── NFS ─────────────────────────────────────────────────────
     const nfsRows = [];

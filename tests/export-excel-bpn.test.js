@@ -21,8 +21,8 @@ const bpn = {
     'Hématologie': {
       'Globules blancs (GB)': { valeur: '6.4', unite: '10³/µL', interp: 'Normal' },
       'Hémoglobine (Hb)': { valeur: '11.2', unite: 'g/dL', interp: 'Bas' },
-      'Hb A': { valeur: '60', unite: '%', interp: '' },
-      'Hb S': { valeur: '37', unite: '%', interp: '' },
+      // ✅ v13.150 — Électrophorèse rendue PAR SON PROFIL seul (cas réel BPN,
+      // sans pourcentages) : ne doit PAS réapparaître vide « à compléter ».
       'Profil Hb': 'Profil AS (Drépanocytose trait)',
     },
     'Biochimie': {
@@ -77,16 +77,22 @@ const bpn = {
         pending: pendingDe(['Biochimie', 'Immuno-Sérologie']),
       });
       const textOf = ws => { const t = []; ws.eachRow(row => row.eachCell(c => t.push(String(c.value == null ? '' : c.value)))); return t.join(' | '); };
+      // Logo + QR + signature : images ajoutées juste avant le téléchargement.
+      let imgCount = 0;
+      try { await addQrAndSignatures(wb); imgCount = (wb.worksheets[0].getImages() || []).length; } catch (e) {}
       return {
         est,
         names: wb.worksheets.map(w => w.name),
         s1: textOf(wb.worksheets[0]),
         s2: textOf(wb.worksheets[1]),
+        imgCount,
       };
     });
 
     r.check('dossier reconnu BPN', out.est, true);
     r.check('exactement 2 feuilles', out.names.length, 2);
+    // ✅ v13.150 — Logo CPMI + QR + signature insérés (≥ 2 images sur la feuille).
+    r.check('images insérées (logo + QR…)', out.imgCount >= 2, true);
 
     r.section('Feuille 1 — Hématologie + Groupe sanguin');
     r.check('NFS présente', /Globules blancs|NFS/.test(out.s1), true);
@@ -94,6 +100,12 @@ const bpn = {
     r.check('profil en grand', /PROFIL : Profil AS/.test(out.s1), true);
     r.check('PAS de tableau de pourcentages (Fraction)', /Fraction/.test(out.s1), false);
     r.check('PAS la biochimie ici', /Fonction rénale|Glyc/.test(out.s1), false);
+    // ✅ v13.150 — Anti-duplication : plus de bloc « à compléter » quand tout est
+    // rempli ; l'électrophorèse (profil) et le groupe ne réapparaissent pas vides.
+    r.check('électrophorèse non dupliquée (pas de fractions vides)', /Hb A\b/.test(out.s1), false);
+    r.check('pas de bloc « à compléter » (tout est rempli)', /à compléter/.test(out.s1), false);
+    r.check('groupe sanguin non dupliqué', (out.s1.match(/Groupe ABO/g) || []).length, 1);
+    r.check('forfait non listé « à compléter »', /Bilan prénatal complet/.test(out.s1), false);
 
     r.section('Feuille 2 — Biochimie + Immuno-Sérologies');
     r.check('biochimie présente', /Biochimie —|Créatinine|Glyc/.test(out.s2), true);

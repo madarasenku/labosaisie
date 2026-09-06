@@ -73,7 +73,7 @@ function prepareRecordForPrint(r) {
 }
 
 async function printRecord(id) {
-  let r = getDB().find(x => x.id === id);
+  let r = (typeof recordForOutput === 'function' ? recordForOutput(id) : getDB().find(x => x.id === id)); // ✅ v13.150 — fiches masquées incluses
   if (!r) { toast('Fiche introuvable', 'err'); return; }
   if (typeof sortieAutorisee === 'function' && !sortieAutorisee(id)) return;
   await ensureFull(r); // ✅ v13.5 — détail complet avant impression
@@ -278,11 +278,34 @@ function _svgToPngDataURL(svgStr, w = 300, h = 84) {
 // ✅ v13.37 — Ajoute le QR + la signature (images) aux feuilles Excel qui l'ont
 // demandé (via ws._qrSig, posé par buildProfessionalSheet). Appelé juste avant
 // le téléchargement du classeur. Silencieux si la génération échoue.
+// ✅ v13.150 — Emblème CPMI (cercle + silhouette mère-enfant + croix médicale),
+// identique à l'en-tête d'impression, pour l'insérer comme logo dans l'Excel.
+function cpmiLogoSVG() {
+  return '<svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg">'
+    + '<circle cx="32" cy="32" r="31" fill="#0b2545"/>'
+    + '<path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff"/>'
+    + '<circle cx="32" cy="14" r="3.4" fill="#fff"/>'
+    + '<rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#00b4d8"/>'
+    + '<rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#00b4d8"/>'
+    + '</svg>';
+}
+
 async function addQrAndSignatures(wb) {
   if (!wb || !wb.worksheets) return;
+  // ✅ v13.150 — Logo CPMI en haut à gauche de l'en-tête (une fois par feuille de
+  // compte rendu). Généré depuis l'emblème vectoriel de l'app (aucun fichier).
+  let _logoPng = null;
+  try { _logoPng = await _svgToPngDataURL(cpmiLogoSVG(), 128, 128); } catch (e) { _logoPng = null; }
   for (const ws of wb.worksheets) {
     const a = ws._qrSig;
     if (!a) continue;
+    try {
+      if (_logoPng) {
+        const lid = wb.addImage({ base64: _logoPng.split(',')[1] || _logoPng, extension: 'png' });
+        // Ancré sur la ligne du nom du centre (row index 1 = 2e ligne), coin gauche.
+        ws.addImage(lid, { tl: { col: 0, row: 1 }, ext: { width: 44, height: 44 } });
+      }
+    } catch (e) { /* logo optionnel */ }
     try {
       if (a.techName) {
         const sigPng = await _svgToPngDataURL(generateSignatureSVG(a.techName, 220, 60), 300, 82);

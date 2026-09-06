@@ -64,6 +64,10 @@ const dossMasque = {
     });
     r.check('résultat NFS enregistré sur fiche masquée', saved.gb, '7.2');
 
+    // ✅ v13.150 — Impression/export possible depuis une fiche masquée.
+    r.section('Impression/export d\'une fiche masquée');
+    r.check('recordForOutput retrouve la fiche masquée', await page.evaluate(() => { const r = recordForOutput(940); return !!(r && r.id === 940); }), true);
+
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 5));
     const s = r.summary();
