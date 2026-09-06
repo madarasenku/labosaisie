@@ -58,8 +58,8 @@ const GRILLE_EXAMS = {
       { k: 'ht',  lab: 'Ht', dom: 'v_ht',  kind: 'num' },
       { k: 'plt', lab: 'Plq', dom: 'v_plt', kind: 'num' },
       { k: 'pnn', lab: 'PNN %', dom: 'v_pnn', kind: 'num' },
-      { k: 'pne', lab: 'PNE %', dom: 'v_pne', kind: 'num' },
-      { k: 'pnb', lab: 'PNB %', dom: 'v_pnb', kind: 'num' },
+      // ✅ v13.151 — PNE (éosino) et PNB (baso) retirés : calculés automatiquement
+      // (baso=0 ; éosino=100−(neutro+lympho+mono)) lors du rejeu.
       { k: 'lymp', lab: 'Lymph %', dom: 'v_lymp', kind: 'num' },
       { k: 'mono', lab: 'Mono %', dom: 'v_mono', kind: 'num' },
     ],
@@ -121,12 +121,12 @@ const GRILLE_EXAMS = {
     label: 'Créatinine (+ urée auto)', type: 'Biochimie', exId: 'ex_crea', coche: /Créat|Creat/i,
     filled: b => b['Créatinine'] && b['Créatinine'].valeur,
     cols: [{ k: 'crea', lab: 'Créatinine (mg/L)', dom: 'v_crea', kind: 'num' }],
-    // ✅ v13.123 — L'urée est déduite de la créatinine : urée (g/L) = créat / 44.4.
+    // ✅ v13.151 — L'urée est déduite de la créatinine : urée (g/L) = créat / 44.
+    //   Règle centralisée dans deduireUreeDeCrea() (formulaire + série).
     postSet: () => {
-      const c = parseFloat(document.getElementById('v_crea')?.value);
+      if (typeof deduireUreeDeCrea === 'function') deduireUreeDeCrea();
       const el = document.getElementById('v_uree');
-      if (el && !isNaN(c)) {
-        el.value = (c / 44.4).toFixed(2);
+      if (el && el.value !== '') {
         try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
         if (typeof onParamInputColored === 'function') { try { onParamInputColored('uree'); } catch (e) {} }
       }

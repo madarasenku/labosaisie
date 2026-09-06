@@ -57,7 +57,7 @@ const mk = (id, n) => ({
     r.section('Saisie NFS + CRP sur la même ligne');
     await page.evaluate(() => {
       const set = (id, v, ev) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event(ev, { bubbles: true })); };
-      ['gbc','gr','hb','ht','plt','pnn','pne','pnb','lymp','mono'].forEach((k, i) => set('g_9101_nfs_' + k, String(5 + i), 'input'));
+      ['gbc','gr','hb','ht','plt','pnn','lymp','mono'].forEach((k, i) => set('g_9101_nfs_' + k, String(5 + i), 'input'));
       set('g_9101_crp_crp', '48', 'change');
     });
     await page.waitForTimeout(200);

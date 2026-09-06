@@ -86,6 +86,7 @@ const bpn = {
         s1: textOf(wb.worksheets[0]),
         s2: textOf(wb.worksheets[1]),
         imgCount,
+        footer: (wb.worksheets[0].headerFooter && wb.worksheets[0].headerFooter.oddFooter) || '',
       };
     });
 
@@ -93,6 +94,8 @@ const bpn = {
     r.check('exactement 2 feuilles', out.names.length, 2);
     // ✅ v13.150 — Logo CPMI + QR + signature insérés (≥ 2 images sur la feuille).
     r.check('images insérées (logo + QR…)', out.imgCount >= 2, true);
+    // ✅ v13.151 — Numéro de page en pied (impression).
+    r.check('numéro de page en pied', out.footer.includes('&P'), true);
 
     r.section('Feuille 1 — Hématologie + Groupe sanguin');
     r.check('NFS présente', /Globules blancs|NFS/.test(out.s1), true);

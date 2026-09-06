@@ -365,6 +365,11 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
       margins:{left:0.4,right:0.4,top:0.4,bottom:0.4,header:0.15,footer:0.15} },
     views: [{ showGridLines:false, state:'frozen', ySplit:10 }],
   });
+  // ✅ v13.151 — Numéro de page en bas (visible à l'impression) : « Page X / Y ».
+  ws.headerFooter = {
+    oddFooter: '&C&"Calibri"&8Page &P / &N',
+    evenFooter: '&C&"Calibri"&8Page &P / &N',
+  };
   ws.columns = [
     {width:37}, {width:20}, {width:12},
     {width:12}, {width:20}, {width:14},

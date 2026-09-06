@@ -302,8 +302,9 @@ async function addQrAndSignatures(wb) {
     try {
       if (_logoPng) {
         const lid = wb.addImage({ base64: _logoPng.split(',')[1] || _logoPng, extension: 'png' });
-        // Ancré sur la ligne du nom du centre (row index 1 = 2e ligne), coin gauche.
-        ws.addImage(lid, { tl: { col: 0, row: 1 }, ext: { width: 44, height: 44 } });
+        // ✅ v13.151 — Logo plus discret (était 44 px, trop grand). Ancré coin
+        // haut-gauche, sur la bande d'en-tête.
+        ws.addImage(lid, { tl: { col: 0, row: 1.15 }, ext: { width: 30, height: 30 } });
       }
     } catch (e) { /* logo optionnel */ }
     try {
