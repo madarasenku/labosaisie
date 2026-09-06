@@ -182,10 +182,27 @@ function collectPendingForType(res, coches) {
   let list = coches || [];
   if (!Array.isArray(list)) list = Object.values(list).flat();
   list.forEach(label => {
+    // ✅ v13.150 — Le FORFAIT prénatal n'est pas un examen mesurable : ne jamais
+    // le lister « à compléter » (ses composants le sont individuellement).
+    if (/pr[ée]natal/i.test(String(label))) return;
     const ex = cat.find(e => e.label === label);
     const rows = ex ? examExpectedRows(ex.id) : [];
     if (rows.length) {
-      if (!rows.some(r => isValFilled(res[r.key]))) out.push({ label, rows });
+      // ✅ v13.150 — « rempli » robuste : certaines clés de résultat diffèrent des
+      // clés attendues (groupe sanguin : « Groupe ABO »/« Rhésus » et non
+      // « GS - ABO »), et l'électrophorèse est remplie dès qu'un PROFIL est posé
+      // (sans forcément les pourcentages). Sans ça, ces examens ressortaient en
+      // double : rendus remplis PUIS re-listés vides « à compléter ».
+      let filled = rows.some(r => isValFilled(res[r.key]));
+      if (!filled && ex && ex.id === 'ex_gs') {
+        filled = isValFilled(res['Groupe ABO']) || isValFilled(res['Rhésus'])
+              || isValFilled(res['GS - ABO']) || isValFilled(res['GS - Rhésus']);
+      }
+      if (!filled && ex && ex.id === 'ex_ephb') {
+        filled = isValFilled(res['Profil Hb'])
+              || ['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].some(k => isValFilled(res[k]));
+      }
+      if (!filled) out.push({ label, rows });
     } else {
       out.push({ label, rows: [{ key: null, name: label, unit: '', ref: '' }] });
     }

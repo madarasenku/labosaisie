@@ -483,8 +483,11 @@ async function renderHistory(forceRefresh) {
                     : '';
                 })()
           )
-        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')">⬇</button>'
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#dc2626;color:#fff" onclick="exportPDF(' + r.id + ')" title="Exporter en PDF" aria-label="Exporter en PDF">📄</button>'
+        // ✅ v13.150 — Un seul bouton pour sortir les résultats : Excel (⬇).
+        // Les boutons PDF (📄) et Impression navigateur (🖨) ont été retirés à la
+        // demande — le compte rendu officiel se sort en Excel (mise en forme,
+        // logo, QR). exportPDF/printRecord restent définis pour un usage éventuel.
+        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')" title="Compte rendu Excel">⬇ Excel</button>'
         + ((isCaissier() || isSpectateur()) ? ''
             : '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
               + dossierMulti
@@ -499,7 +502,6 @@ async function renderHistory(forceRefresh) {
         // même titre que la duplication. Seul le spectateur en reste exclu, et
         // c'est softDeleteBtn qui le décide — un seul endroit qui tranche.
         + softDeleteBtn(r)
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer résultats" aria-label="Imprimer les résultats">🖨</button>'
         + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="choisirSignataireRecu(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
         + '<button class=\'btn btn-action-menu\' style=\'display:none;padding:4px 10px;font-size:15px;margin-left:3px;line-height:1\' onclick=\'toggleActionMenu(this)\' title=\'Actions\' aria-label=\'Actions\'>⋯</button>'
       + '</td></tr>';
