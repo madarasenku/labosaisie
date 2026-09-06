@@ -151,8 +151,9 @@ const NORM = {
   // créatinine était donc signalée anormale et la référence imprimée était
   // fausse. On s'aligne sur la liste canonique.
   crea: { _all: { ref:'4–16', lo:4, hi:16 } },
-  // ✅ v13.143 — Idem : bornes en mmol/L alors que la saisie est en g/L
-  // (liste canonique BIO_REIN : 0.15–0.45 g/L).
+  // ✅ v13.143 — Bornes en g/L (liste canonique BIO_REIN : 0.15–0.45 g/L).
+  // ⚠ Références NON modifiées (demande explicite) : seul le RÉSULTAT de l'urée
+  //   est déduit de la créatinine (créat / 44), pas les valeurs normales.
   uree: { _all: { ref:'0.15–0.45', lo:0.15, hi:0.45 } },
   // ✅ v13.145 — Bornes en µmol/L alors que la saisie et l'impression sont en
   // mg/L (liste canonique BIO_REIN : 25–70 mg/L). Tout acide urique était
@@ -634,6 +635,18 @@ function onParamInput(id) {
   interpEl.textContent = interp || '—';
   interpEl.className = 'interp ' + (interp === 'Élevé' ? 'hi' : interp === 'Bas' ? 'lo' : interp === 'Normal' ? 'ok' : '');
   updateMontantCurrent();
+  // ✅ v13.151 — Urée déduite de la créatinine (résultat, pas la référence).
+  if (id === 'crea') { deduireUreeDeCrea(); onParamInput('uree'); }
+}
+
+// ✅ v13.151 — Urée (g/L) = créatinine (mg/L) / 44. Source unique de la règle,
+// partagée par le formulaire et la saisie en série. Créatinine vidée → urée vidée
+// (pas de valeur périmée qui contredirait la créatinine absente).
+function deduireUreeDeCrea() {
+  const u = document.getElementById('v_uree');
+  if (!u) return;
+  const c = parseFloat(document.getElementById('v_crea')?.value);
+  u.value = isNaN(c) ? '' : (c / 44).toFixed(2);
 }
 
 // Variante NFS : colore directement la case input selon l'interprétation,
@@ -1087,10 +1100,14 @@ function buildHema() {
     const profile = getPatientProfile();
     const dynRef = getRef(p.id, profile);
     const refDisplay = dynRef ? dynRef.ref : (p.ref || '');
+    // ✅ v13.151 — Éosinophiles et Basophiles CALCULÉS (baso=0 ; éosino=reste) :
+    //   champs en lecture seule pour éviter toute saisie contradictoire.
+    const _auto = (p.id === 'pne' || p.id === 'pnb');
+    const _ro = _auto ? ' readonly title="Calculé automatiquement" style="width:75px;background:#f1f3f5;color:#555"' : ' style="width:75px"';
     tr.innerHTML = `
-      <td style="font-size:13px">${p.name}</td>
-      <td><input type="number" id="v_${p.id}" step="any" min="0" max="100" style="width:75px"
-          oninput="onParamInputColored('${p.id}'); calcFLAbsolues()"></td>
+      <td style="font-size:13px">${p.name}${_auto ? ' <span style="font-size:9px;color:#94a3b8">(auto)</span>' : ''}</td>
+      <td><input type="number" id="v_${p.id}" step="any" min="0" max="100"${_ro}
+          oninput="onFLParamInput('${p.id}')"></td>
       <td>
         <span class="unit">%</span>
         <span style="display:inline-block;margin-left:6px;min-width:60px;font-size:11px;color:var(--accent);font-weight:600" id="abs_${p.id}"></span>
@@ -1132,6 +1149,41 @@ function buildHema() {
   // Brancher calcul FL absolues sur GB
   const gbEl = document.getElementById('v_gbc');
   if (gbEl) gbEl.addEventListener('input', calcFLAbsolues);
+}
+
+// ✅ v13.151 — Formule leucocytaire semi-automatique (demande labo) :
+//   • Basophiles = 0 (dès qu'on saisit la formule).
+//   • Éosinophiles = 100 − (Neutrophiles + Lymphocytes + Monocytes) ; VIDE tant
+//     que les trois ne sont pas saisis (évite toute valeur périmée d'un patient
+//     précédent lors de la saisie en série).
+//   N'est appelée QUE sur saisie utilisateur d'un pilote (neutro/lympho/mono),
+//   jamais au chargement d'un dossier existant → ne réécrit pas un PNE/PNB
+//   historique déjà enregistré.
+function calcFLAuto() {
+  const g = id => { const v = parseFloat(document.getElementById('v_' + id)?.value); return isNaN(v) ? null : v; };
+  const setV = (id, val) => { const el = document.getElementById('v_' + id); if (el && String(el.value) !== String(val)) el.value = val; };
+  if (document.getElementById('v_pnb')) setV('pnb', '0');
+  const pnn = g('pnn'), lymp = g('lymp'), mono = g('mono');
+  if (document.getElementById('v_pne')) {
+    if (pnn !== null && lymp !== null && mono !== null) {
+      let pne = Math.round((100 - (pnn + lymp + mono)) * 10) / 10;
+      if (pne < 0) pne = 0;
+      setV('pne', pne);
+    } else {
+      setV('pne', ''); // formule incomplète : pas de valeur périmée
+    }
+  }
+}
+
+// Saisie d'un paramètre de la formule leucocytaire : recalcule baso/éosino
+// uniquement quand l'utilisateur touche un pilote, puis les valeurs absolues.
+function onFLParamInput(id) {
+  onParamInputColored(id);
+  if (id === 'pnn' || id === 'lymp' || id === 'mono') {
+    calcFLAuto();
+    ['pne', 'pnb'].forEach(x => { try { onParamInputColored(x); } catch (e) {} });
+  }
+  calcFLAbsolues();
 }
 
 function calcFLAbsolues() {

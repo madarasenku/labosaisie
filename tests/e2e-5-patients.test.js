@@ -82,7 +82,8 @@ const { serve, openApp, createReporter } = require('./helpers');
       [...document.querySelectorAll('#grille-serie tr[data-doss]')].forEach((tr, n) => {
         const d = tr.dataset.doss;
         set('g_'+d+'_nfs_gbc', String(6+n)); set('g_'+d+'_nfs_gr','4.5'); set('g_'+d+'_nfs_hb','13'); set('g_'+d+'_nfs_ht','40');
-        set('g_'+d+'_nfs_plt','250'); set('g_'+d+'_nfs_pnn','55'); set('g_'+d+'_nfs_pne','2'); set('g_'+d+'_nfs_pnb','1');
+        set('g_'+d+'_nfs_plt','250'); set('g_'+d+'_nfs_pnn','55');
+        // ✅ v13.151 — PNE/PNB retirés de la grille (calculés auto).
         set('g_'+d+'_nfs_lymp','35'); set('g_'+d+'_nfs_mono','7');
       });
     });

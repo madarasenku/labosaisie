@@ -1,4 +1,4 @@
-// ✅ v13.123 — Grille en série : créatinine (+ urée auto = créat/44.4),
+// ✅ v13.123 — Grille en série : créatinine (+ urée auto = créat/44),
 // transaminases (ASAT/ALAT), et suppression de TSH + Urée du sélecteur.
 const { serve, openApp, createReporter } = require('./helpers');
 
@@ -46,7 +46,7 @@ const DOSS = [
     r.check('créatinine présente', opts.includes('crea'), true);
     r.check('transaminases présentes', opts.includes('transa'), true);
 
-    r.section('Créatinine → urée = créat / 44.4');
+    r.section('Créatinine → urée = créat / 44');
     await page.waitForTimeout(200);
     await page.evaluate(() => { const el = document.getElementById('g_910_crea_crea'); el.value = '9.2'; el.dispatchEvent(new Event('input', { bubbles: true })); });
     await page.evaluate(() => window.grilleSaveAll());
@@ -57,7 +57,7 @@ const DOSS = [
       return { crea: b && b['Créatinine'] && b['Créatinine'].valeur, uree: b && b['Urée'] && b['Urée'].valeur };
     });
     r.check('créatinine enregistrée', creaRes.crea, '9.2');
-    r.check('urée calculée (9.2/44.4=0.21)', creaRes.uree, (9.2 / 44.4).toFixed(2));
+    r.check('urée calculée (9.2/44)', creaRes.uree, (9.2 / 44).toFixed(2));
 
     r.section('Transaminases ASAT/ALAT');
     await page.evaluate(() => window.grilleChangeExam('transa'));
