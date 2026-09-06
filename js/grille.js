@@ -25,6 +25,20 @@ const _PN_OPTS = [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif']]
 const _WIDAL_OPTS = [['', '—']].concat(
   (typeof WIDAL_DILUTIONS !== 'undefined' ? WIDAL_DILUTIONS : ['Non réalisé', 'Négatif', '1/40', '1/80', '1/160', '1/320'])
     .map(v => [v, v]));
+// ✅ v13.147 — Profils d'électrophorèse (mêmes libellés que le <select> du
+// formulaire #ephb_profil : la valeur écrite doit correspondre à une option).
+const _EPHB_PROFILS = [
+  ['', '—'],
+  ['Profil AA (Normal)', 'AA (Normal)'],
+  ['Profil AS (Drépanocytose trait)', 'AS (trait)'],
+  ['Profil SS (Drépanocytose homozygote)', 'SS'],
+  ['Profil AC (Trait HbC)', 'AC'],
+  ['Profil SC (Drépanocytose SC)', 'SC'],
+  ['Profil CC (HbC homozygote)', 'CC'],
+  ['β-Thalassémie mineure', 'β-Thal mineure'],
+  ['β-Thalassémie majeure', 'β-Thal majeure'],
+  ['Profil AF (Hb fœtale élevée)', 'AF'],
+];
 
 // Registre des examens saisissables en série.
 //  type    : analyse de stockage (clé dans resultats)
@@ -58,6 +72,23 @@ const GRILLE_EXAMS = {
     cols: [
       { k: 'geres', lab: 'Résultat GE', dom: 'ge_result', kind: 'sel', opts: _PN_OPTS },
       { k: 'getdr', lab: 'TDR', dom: 'ge_tdr', kind: 'sel', opts: _PN_OPTS },
+    ],
+  },
+  // ✅ v13.147 — Électrophorèse de l'hémoglobine : absente de la grille série,
+  // elle ne pouvait pas être saisie au fil de la sortie machine (signalé sur le
+  // bilan prénatal, qui l'inclut). Les fractions portent leur id brut (ephb_a…),
+  // le profil écrit la même valeur que le <select> du formulaire.
+  ephb: {
+    label: 'Électrophorèse Hb', type: 'Hématologie', exId: 'ex_ephb', coche: /Électro|Electro|Hémoglobine|EPHB/i,
+    filled: h => (h['Hb A'] && h['Hb A'].valeur) || (h['Hb A2'] && h['Hb A2'].valeur)
+               || (h['Hb S'] && h['Hb S'].valeur) || h['Profil Hb'],
+    cols: [
+      { k: 'ephba',  lab: 'Hb A %',  dom: 'ephb_a',  kind: 'num' },
+      { k: 'ephba2', lab: 'Hb A2 %', dom: 'ephb_a2', kind: 'num' },
+      { k: 'ephbf',  lab: 'Hb F %',  dom: 'ephb_f',  kind: 'num' },
+      { k: 'ephbs',  lab: 'Hb S %',  dom: 'ephb_s',  kind: 'num' },
+      { k: 'ephbc',  lab: 'Hb C %',  dom: 'ephb_c',  kind: 'num' },
+      { k: 'ephbprofil', lab: 'Profil', dom: 'ephb_profil', kind: 'sel', opts: _EPHB_PROFILS },
     ],
   },
   uree: {
@@ -119,11 +150,13 @@ const GRILLE_EXAMS = {
     cols: [{ k: 'vih1', lab: 'VIH 1 & 2', dom: 'sr_vih1', kind: 'sel', opts: _SERO_OPTS }],
   },
   hbs: {
+    // ✅ v13.147 — Ac anti-HBc RETIRÉ de la grille série : rarement demandé en
+    // prénatal ici. Il reste facturable et saisissable via le formulaire complet
+    // (examen « Ac anti-HBc totaux »), mais ne surcharge plus la grille.
     label: 'BPN · Hépatite B (Ag HBs)', type: 'Immuno-Sérologie', exId: 'ex_hbs', coche: /HBs|Hépatite B/i,
     filled: s => s['Ag HBs'] && s['Ag HBs'].resultat,
     cols: [
       { k: 'hbsag', lab: 'Ag HBs', dom: 'sr_hbsag', kind: 'sel', opts: _SERO_OPTS },
-      { k: 'hbcac', lab: 'Ac anti-HBc', dom: 'sr_hbcac', kind: 'sel', opts: _SERO_OPTS },
       { k: 'hbsac', lab: 'Ac anti-HBs (UI/L)', dom: 'sv_hbsac', kind: 'num' },
     ],
   },
@@ -269,7 +302,7 @@ function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
 // ══════════════════════════════════════════════════════════════
 
 // Ordre d'affichage des examens dans la grille.
-const GRILLE_ORDRE = ['nfs','ge','gly','uree','crea','ua','transa','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
+const GRILLE_ORDRE = ['nfs','ge','ephb','gly','uree','crea','ua','transa','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
 
 // Examens de la grille réellement demandés pour ce dossier.
 function grilleExamsDuDossier(r) {

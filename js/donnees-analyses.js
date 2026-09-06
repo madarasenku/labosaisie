@@ -729,10 +729,12 @@ const BPN_EXAMENS = [
   { id:'bpnc_ephb',  label:'Électrophorèse de l\'hémoglobine', def:true },
   { id:'bpnc_rube',  label:'Rubéole IgG / IgM', def:true },
   { id:'bpnc_toxo',  label:'Toxoplasmose IgG / IgM', def:true },
-  { id:'bpnc_vih',   label:'Sérologie VIH', def:true },
   { id:'bpnc_hbs',   label:'Ag HBs (Hépatite B)', def:true },
   { id:'bpnc_tpha',  label:'TPHA / VDRL (Syphilis)', def:true },
-  { id:'bpnc_ecbu',  label:'ECBU', def:true },
+  // ✅ v13.147 — VIH et ECBU rarement demandés en prénatal : décochés par
+  // défaut (restent cochables au cas par cas), au même titre que l'ECBU.
+  { id:'bpnc_vih',   label:'Sérologie VIH', def:false },
+  { id:'bpnc_ecbu',  label:'ECBU', def:false },
 ];
 
 function buildBpnCompo() {
@@ -758,7 +760,10 @@ const BPN_SERO_IDS = ['vih1', 'hbsag', 'syphil', 'toxo', 'toxoig', 'rubig'];
 
 function applyBpnSections() {
   const on = !!document.getElementById('ex_bpn')?.checked;
-  const bpnExamIds = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_vih','ex_hbs','ex_tpha','ex_toxo','ex_rube','ex_ecbu'];
+  // ✅ v13.147 — VIH et ECBU RETIRÉS de la composition par défaut du forfait :
+  // ils sont rarement demandés en prénatal ici. Ils restent cochables au cas par
+  // cas (ex_vih / ex_ecbu sur leurs onglets), mais ne sont plus inclus d'office.
+  const bpnExamIds = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_hbs','ex_tpha','ex_toxo','ex_rube'];
   bpnExamIds.forEach(id => {
     const chk = document.getElementById(id);
     if (chk && on && !chk.checked) {

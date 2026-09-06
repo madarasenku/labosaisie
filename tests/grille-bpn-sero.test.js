@@ -51,18 +51,20 @@ const dossGs = {
     await page.evaluate(() => {
       const set = (id, v, ev) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event(ev, { bubbles: true })); };
       set('g_920_hbs_hbsag', 'Positif', 'change');
-      set('g_920_hbs_hbcac', 'Négatif', 'change');
       set('g_920_hbs_hbsac', '12.5', 'input');
     });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);
     const hb = await page.evaluate(() => {
       const p = window.__u.find(u => u.p_id === 920); const s = p && p.p_resultats['Immuno-Sérologie'];
-      return { ag: s && s['Ag HBs'] && s['Ag HBs'].resultat, hbc: s && s['Ac anti-HBc total'] && s['Ac anti-HBc total'].resultat, hbsac: s && s['Ac anti-HBs'] && s['Ac anti-HBs'].valeur };
+      return { ag: s && s['Ag HBs'] && s['Ag HBs'].resultat, hbsac: s && s['Ac anti-HBs'] && s['Ac anti-HBs'].valeur };
     });
     r.check('Ag HBs = Positif', hb.ag, 'Positif');
-    r.check('Ac anti-HBc = Négatif', hb.hbc, 'Négatif');
     r.check('Ac anti-HBs (quant) = 12.5', hb.hbsac, '12.5');
+    // ✅ v13.147 — L'Ac anti-HBc a été retiré de la grille série (rarement
+    // demandé) : sa colonne ne doit plus exister.
+    const noHbc = await page.evaluate(() => !document.getElementById('g_920_hbs_hbcac'));
+    r.check('colonne Ac anti-HBc absente de la grille', noHbc, true);
 
     r.section('Groupe sanguin ABO / Rhésus');
     await page.evaluate(() => window.grilleChangeExam('gs'));
