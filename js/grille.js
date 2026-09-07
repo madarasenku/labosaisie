@@ -122,14 +122,11 @@ const GRILLE_EXAMS = {
     filled: b => b['Créatinine'] && b['Créatinine'].valeur,
     cols: [{ k: 'crea', lab: 'Créatinine (mg/L)', dom: 'v_crea', kind: 'num' }],
     // ✅ v13.151 — L'urée est déduite de la créatinine : urée (g/L) = créat / 44.
-    //   Règle centralisée dans deduireUreeDeCrea() (formulaire + série).
+    //   Règle centralisée dans deduireUreeDeCrea() ; onParamInput('uree') rafraîchit
+    //   l'interprétation (même chemin que le formulaire, sans double traitement).
     postSet: () => {
       if (typeof deduireUreeDeCrea === 'function') deduireUreeDeCrea();
-      const el = document.getElementById('v_uree');
-      if (el && el.value !== '') {
-        try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
-        if (typeof onParamInputColored === 'function') { try { onParamInputColored('uree'); } catch (e) {} }
-      }
+      if (typeof onParamInput === 'function') { try { onParamInput('uree'); } catch (e) {} }
     },
   },
   transa: {
