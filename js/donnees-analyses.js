@@ -624,7 +624,9 @@ function makeParamRowColored(p, tbody) {
   tbody.appendChild(tr);
 }
 
-function onParamInput(id) {
+// skipMontant : évite de recalculer le montant (indépendant des valeurs) quand
+// cet appel est un effet secondaire d'un autre (ex. urée déduite de la créat).
+function onParamInput(id, skipMontant) {
   const profile = getPatientProfile();
   const ref = getRef(id, profile);
   if (!ref) return;
@@ -634,9 +636,10 @@ function onParamInput(id) {
   const interp = interprete(valEl.value, ref.lo, ref.hi);
   interpEl.textContent = interp || '—';
   interpEl.className = 'interp ' + (interp === 'Élevé' ? 'hi' : interp === 'Bas' ? 'lo' : interp === 'Normal' ? 'ok' : '');
-  updateMontantCurrent();
+  if (!skipMontant) updateMontantCurrent();
   // ✅ v13.151 — Urée déduite de la créatinine (résultat, pas la référence).
-  if (id === 'crea') { deduireUreeDeCrea(); onParamInput('uree'); }
+  // Le montant a déjà été mis à jour ci-dessus → on l'évite pour l'urée.
+  if (id === 'crea') { deduireUreeDeCrea(); onParamInput('uree', true); }
 }
 
 // ✅ v13.151 — Urée (g/L) = créatinine (mg/L) / 44. Source unique de la règle,
@@ -651,14 +654,14 @@ function deduireUreeDeCrea() {
 
 // Variante NFS : colore directement la case input selon l'interprétation,
 // sans afficher de texte d'interprétation (pas de colonne dédiée).
-function onParamInputColored(id) {
+function onParamInputColored(id, skipMontant) {
   const profile = getPatientProfile();
   const ref = getRef(id, profile);
   const valEl = document.getElementById('v_' + id);
   if (!valEl) return;
   if (!ref || valEl.value === '') {
     valEl.classList.remove('val-hi', 'val-lo');
-    updateMontantCurrent();
+    if (!skipMontant) updateMontantCurrent();
     return;
   }
   // ✅ v13.26 — FL : interprétation sur la valeur absolue × 1000 (/µL)
@@ -676,7 +679,7 @@ function onParamInputColored(id) {
   const interp = interprete(val, lo, hi);
   valEl.classList.toggle('val-hi', interp === 'Élevé');
   valEl.classList.toggle('val-lo', interp === 'Bas');
-  updateMontantCurrent();
+  if (!skipMontant) updateMontantCurrent();
   if (id === 'hb' || id === 'ht' || id === 'gr') { if (typeof calcConstantes === 'function') calcConstantes(); }
   if (id === 'gbc') { if (typeof calcFLAbsolues === 'function') calcFLAbsolues(); }
   if (id === 'bpn_hb' || id === 'bpn_ht' || id === 'bpn_gr') { if (typeof calcConstantesBPN === 'function') calcConstantesBPN(); }
@@ -1102,7 +1105,7 @@ function buildHema() {
     const refDisplay = dynRef ? dynRef.ref : (p.ref || '');
     // ✅ v13.151 — Éosinophiles et Basophiles CALCULÉS (baso=0 ; éosino=reste) :
     //   champs en lecture seule pour éviter toute saisie contradictoire.
-    const _auto = (p.id === 'pne' || p.id === 'pnb');
+    const _auto = FL_COMPUTED.indexOf(p.id) >= 0;
     const _ro = _auto ? ' readonly title="Calculé automatiquement" style="width:75px;background:#f1f3f5;color:#555"' : ' style="width:75px"';
     tr.innerHTML = `
       <td style="font-size:13px">${p.name}${_auto ? ' <span style="font-size:9px;color:#94a3b8">(auto)</span>' : ''}</td>
@@ -1151,6 +1154,12 @@ function buildHema() {
   if (gbEl) gbEl.addEventListener('input', calcFLAbsolues);
 }
 
+// ✅ v13.151 — Formule leucocytaire : quels champs sont SAISIS (pilotes) et quels
+// champs sont CALCULÉS (baso=0 ; éosino=reste). Défini une seule fois, utilisé par
+// le gabarit de ligne (lecture seule) ET par le calcul → pas de liste dupliquée.
+const FL_DRIVERS  = ['pnn', 'lymp', 'mono'];
+const FL_COMPUTED = ['pne', 'pnb'];
+
 // ✅ v13.151 — Formule leucocytaire semi-automatique (demande labo) :
 //   • Basophiles = 0 (dès qu'on saisit la formule).
 //   • Éosinophiles = 100 − (Neutrophiles + Lymphocytes + Monocytes) ; VIDE tant
@@ -1161,7 +1170,7 @@ function buildHema() {
 //   historique déjà enregistré.
 function calcFLAuto() {
   const g = id => { const v = parseFloat(document.getElementById('v_' + id)?.value); return isNaN(v) ? null : v; };
-  const setV = (id, val) => { const el = document.getElementById('v_' + id); if (el && String(el.value) !== String(val)) el.value = val; };
+  const setV = (id, val) => { const el = document.getElementById('v_' + id); if (el) el.value = val; };
   if (document.getElementById('v_pnb')) setV('pnb', '0');
   const pnn = g('pnn'), lymp = g('lymp'), mono = g('mono');
   if (document.getElementById('v_pne')) {
@@ -1177,11 +1186,13 @@ function calcFLAuto() {
 
 // Saisie d'un paramètre de la formule leucocytaire : recalcule baso/éosino
 // uniquement quand l'utilisateur touche un pilote, puis les valeurs absolues.
+// Le montant (indépendant des valeurs) n'est mis à jour qu'une fois, via la
+// coloration du champ édité ; on l'évite pour la recoloration de pne/pnb.
 function onFLParamInput(id) {
   onParamInputColored(id);
-  if (id === 'pnn' || id === 'lymp' || id === 'mono') {
+  if (FL_DRIVERS.indexOf(id) >= 0) {
     calcFLAuto();
-    ['pne', 'pnb'].forEach(x => { try { onParamInputColored(x); } catch (e) {} });
+    FL_COMPUTED.forEach(x => { try { onParamInputColored(x, true); } catch (e) {} });
   }
   calcFLAbsolues();
 }
