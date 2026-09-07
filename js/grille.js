@@ -529,6 +529,49 @@ function grilleRender() {
       trs[1].querySelectorAll('th').forEach(th => { th.style.top = h1h + 'px'; });
     }
   } catch (e) {}
+  // ✅ v13.154 — En mode correction (« déjà saisis »), pré-remplir les cases avec
+  //   les valeurs DÉJÀ enregistrées, pour les voir et les corriger sans tout
+  //   re-saisir. Sans ça les cases s'affichaient vides et la fiche semblait
+  //   « se vider ». Asynchrone (charge le détail des fiches) : on ne bloque pas
+  //   le rendu.
+  if (_grilleInclureSaisis) { try { grillePrefillSaisis(doss); } catch (e) {} }
+}
+
+// ✅ v13.154 — Pré-remplissage des valeurs déjà saisies (mode correction).
+//   Réutilise loadResultsIntoForm (mapping résultat→formulaire canonique, qui
+//   n'appelle PAS calcFLAuto), puis recopie chaque champ dans sa case de grille.
+async function grillePrefillSaisis(doss) {
+  if (!_grilleInclureSaisis) return;
+  // Tous les champs de formulaire adressés par la grille → nettoyage inter-fiches.
+  const allDoms = [];
+  Object.keys(GRILLE_EXAMS).forEach(k => GRILLE_EXAMS[k].cols.forEach(c => { if (c.dom) allDoms.push(c.dom); }));
+  const clearForm = () => allDoms.forEach(d => { const el = document.getElementById(d); if (el) el.value = ''; });
+  let prefilled = false;
+  for (const r of doss) {
+    const saisis = grilleExamsSaisis(r);
+    if (!saisis.length) continue;
+    try { await ensureFull(r); } catch (e) { continue; }
+    if (r._light) continue;
+    // Regrouper les examens saisis par type d'analyse (un chargement par type).
+    const parType = {};
+    saisis.forEach(k => { const cfg = GRILLE_EXAMS[k]; if (cfg) (parType[cfg.type] = parType[cfg.type] || []).push(k); });
+    Object.keys(parType).forEach(type => {
+      const tab = _TYPE_TO_TAB[type] || 'hema';
+      if (typeof ensurePanelBuilt === 'function') { try { ensurePanelBuilt(tab); } catch (e) {} }
+      clearForm();
+      const res = getRecordResultats(r, type);
+      if (res && typeof loadResultsIntoForm === 'function') { try { loadResultsIntoForm(type, res); } catch (e) {} }
+      parType[type].forEach(k => {
+        GRILLE_EXAMS[k].cols.forEach(c => {
+          const cell = document.getElementById('g_' + r.id + '_' + k + '_' + c.k);
+          const src = c.dom ? document.getElementById(c.dom) : null;
+          if (cell && src && String(src.value).trim() !== '') { cell.value = src.value; prefilled = true; }
+        });
+      });
+    });
+  }
+  // Rafraîchir les compteurs/indices sans cocher automatiquement les lignes.
+  if (prefilled) { try { grilleUpdateSelCount(); grilleUpdateHint(); } catch (e) {} }
 }
 
 // ── État des lignes ─────────────────────────────────────────

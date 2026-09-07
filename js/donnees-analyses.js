@@ -24,15 +24,23 @@ const TRANCHES = {
 };
 
 function getPatientProfile() {
-  const ageRaw = parseFloat(document.getElementById('p_age')?.value || '0');
+  const ageRaw = parseFloat(document.getElementById('p_age')?.value);
   const sexe = document.getElementById('p_sexe')?.value || '';
-  const age = isNaN(ageRaw) ? 0 : ageRaw;
+  // ✅ v13.154 — Âge NON saisi (vide/non numérique) = INCONNU → profil ADULTE
+  // (défaut raisonnable), et surtout PAS « nouveau-né ». Auparavant l'âge vide
+  // devenait 0, classé « NN » (GB 9–30) : un GB adulte normal (ex. 8) était alors
+  // interprété « Bas » et surligné à tort, et cette interprétation fausse était
+  // stockée puis réimprimée. Aligne getPatientProfile sur profileFromPatient.
+  const known = !isNaN(ageRaw);
+  const age = known ? ageRaw : 0;
   let tranche = 'ADULTE';
-  if (age < 0.08) tranche = 'NN';
-  else if (age < 2)  tranche = 'NOURR';
-  else if (age < 15) tranche = 'ENFANT';
-  else if (age < 60) tranche = 'ADULTE';
-  else tranche = 'SENIOR';
+  if (known) {
+    if (age < 0.08) tranche = 'NN';
+    else if (age < 2)  tranche = 'NOURR';
+    else if (age < 15) tranche = 'ENFANT';
+    else if (age < 60) tranche = 'ADULTE';
+    else tranche = 'SENIOR';
+  }
   return { age, sexe, tranche };
 }
 
