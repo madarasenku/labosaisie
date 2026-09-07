@@ -475,7 +475,7 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
     mg(row,1,row,NC);
     const c = ws.getCell(row,1);
     c.value = title.replace(/[^\w\s\-–·'àâäéèêëîïôùûüç%°()\/,.:]/g, '').trim();
-    sC(c, {bg:SEC_BG, fg:SEC_FG, bold:true, size:10});
+    sC(c, {bg:SEC_BG, fg:SEC_FG, bold:true, size:11.5});
     c.border = { top:{style:'medium',color:{argb:BLU}}, bottom:{style:'thin',color:{argb:BLU}},
       left:tB().left, right:tB().right };
     row++;
@@ -485,7 +485,7 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
   // tblHdr : mêmes fusions que pRow pour éviter tout conflit ExcelJS
   function tblHdr(label, valeur, unite, ref) {
     const rr = ws.getRow(row); rr.height = 15;
-    const th = {bg:TH_BG, fg:TH_FG, bold:true, size:9, wt:false};
+    const th = {bg:TH_BG, fg:TH_FG, bold:true, size:10, wt:false};
     sC(rr.getCell(1), {...th, ha:'left'});   rr.getCell(1).value = label  || 'Paramètre';
     sC(rr.getCell(2), {...th, ha:'center'}); rr.getCell(2).value = valeur || 'Valeur';
     sC(rr.getCell(3), {...th, ha:'center'}); rr.getCell(3).value = unite  || 'Unité';
@@ -511,11 +511,12 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
     rr.height = fitH([
       {text:nom, c1:1}, {text:valeur, c1:2}, {text:unite, c1:3}, {text:ref, c1:4, c2:NC}
     ], 16);
-    sC(rr.getCell(1), {bg,    fg:DARK,  size:9.5, border:true}); rr.getCell(1).value = nom;
-    sC(rr.getCell(2), {bg:vBg, fg:vFg,  bold:true, size:11, ha:'center', border:true}); rr.getCell(2).value = valeur;
-    sC(rr.getCell(3), {bg,    fg:MUTED, size:9,    ha:'center', border:true}); rr.getCell(3).value = unite||'';
+    // ✅ v13.153 — Texte du rapport un peu plus grand (plus lisible à l'impression).
+    sC(rr.getCell(1), {bg,    fg:DARK,  size:10.5, border:true}); rr.getCell(1).value = nom;
+    sC(rr.getCell(2), {bg:vBg, fg:vFg,  bold:true, size:13, ha:'center', border:true}); rr.getCell(2).value = valeur;
+    sC(rr.getCell(3), {bg,    fg:MUTED, size:10,   ha:'center', border:true}); rr.getCell(3).value = unite||'';
     mg(row,4,row,NC);
-    sC(rr.getCell(4), {bg,    fg:MUTED, size:9,    ha:'center', border:true}); rr.getCell(4).value = ref||'';
+    sC(rr.getCell(4), {bg,    fg:MUTED, size:10,   ha:'center', border:true}); rr.getCell(4).value = ref||'';
     row++;
   }
 
@@ -525,11 +526,11 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
     const bg = alt ? PAR_A : PAR_W;
     const rr = ws.getRow(row);
     rr.height = fitH([{text:nom, c1:1}, {text:ref, c1:4, c2:NC}], 18);
-    sC(rr.getCell(1), {bg, fg:DARK, size:9.5, border:true}); rr.getCell(1).value = nom;
+    sC(rr.getCell(1), {bg, fg:DARK, size:10.5, border:true}); rr.getCell(1).value = nom;
     sC(rr.getCell(2), {bg:'FFFFFFFF', fg:DARK, border:true}); rr.getCell(2).value = '';
-    sC(rr.getCell(3), {bg, fg:MUTED, size:9, ha:'center', border:true}); rr.getCell(3).value = unite||'';
+    sC(rr.getCell(3), {bg, fg:MUTED, size:10, ha:'center', border:true}); rr.getCell(3).value = unite||'';
     mg(row,4,row,NC);
-    sC(rr.getCell(4), {bg, fg:MUTED, size:9, ha:'center', border:true}); rr.getCell(4).value = ref||'';
+    sC(rr.getCell(4), {bg, fg:MUTED, size:10, ha:'center', border:true}); rr.getCell(4).value = ref||'';
     row++;
   }
 
@@ -939,17 +940,31 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
   (function fillPage() {
     const lastRow = row - 1;
     if (lastRow < 3) return;
-    // ✅ v13.61 — TAILLE STANDARD FIXE (même densité pour tous les onglets).
-    //   On agrandit chaque ligne d'un facteur constant, calibré pour qu'un
-    //   rapport courant (NFS + Goutte épaisse) remplisse ~90 % d'une page A4.
-    //   • Rapport plus court (ex. CRP seule) : laisse un peu d'espace en bas.
-    //   • Rapport plus long (biochimie, ATB, immuno, hormones) : garde la même
-    //     taille de ligne et s'étale naturellement sur 2 pages.
-    const STD = (typeof window !== 'undefined' && window.__stdFactor) ? window.__stdFactor : 1.49;
+    // ✅ v13.153 — REMPLISSAGE ADAPTATIF « jusqu'au bas de page ».
+    //   Auparavant un facteur FIXE (1.49) agrandissait chaque ligne : bien
+    //   calibré pour un rapport moyen, mais une NFS seule (courte) laissait tout
+    //   le bas de la feuille vide et le pied de page (Édité le / Montant /
+    //   signature) restait collé au milieu.
+    //   Désormais on mesure la hauteur naturelle du rapport puis on agrandit
+    //   chaque ligne du MÊME facteur pour que le contenu descende au bas d'une
+    //   page A4 :
+    //     • Rapport court (NFS seule) → gros facteur → occupe toute la page,
+    //       pied de page en bas et lignes un peu plus grandes.
+    //     • Rapport long (biochimie, ATB…) → facteur ≤ 1 : on ne touche à rien,
+    //       il s'étale naturellement sur 2 pages (fitToHeight:0).
+    const getH = rr => (rr.height != null ? rr.height : 15);
+    let rawSum = 0;
+    for (let i = 1; i <= lastRow; i++) rawSum += getH(ws.getRow(i));
+    if (rawSum <= 0) { ws.pageSetup.fitToHeight = 0; return; }
+    // Hauteur imprimable d'une page A4 (points), marges hautes/basses déduites.
+    // Réglable sans redéploiement via window.__pageFill.
+    const PAGE = (typeof window !== 'undefined' && window.__pageFill) ? window.__pageFill : 750;
+    let factor = PAGE / rawSum;
+    if (factor <= 1) { ws.pageSetup.fitToHeight = 0; return; } // déjà ≥ 1 page
+    if (factor > 2.6) factor = 2.6; // garde-fou : lignes pas démesurées
     for (let i = 1; i <= lastRow; i++) {
       const rr = ws.getRow(i);
-      const h = (rr.height != null ? rr.height : 15);
-      rr.height = Math.round(h * STD * 10) / 10;
+      rr.height = Math.round(getH(rr) * factor * 10) / 10;
     }
     ws.pageSetup.fitToHeight = 0; // jamais de compression : long => 2 pages
   })();
