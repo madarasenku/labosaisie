@@ -939,17 +939,31 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
   (function fillPage() {
     const lastRow = row - 1;
     if (lastRow < 3) return;
-    // ✅ v13.61 — TAILLE STANDARD FIXE (même densité pour tous les onglets).
-    //   On agrandit chaque ligne d'un facteur constant, calibré pour qu'un
-    //   rapport courant (NFS + Goutte épaisse) remplisse ~90 % d'une page A4.
-    //   • Rapport plus court (ex. CRP seule) : laisse un peu d'espace en bas.
-    //   • Rapport plus long (biochimie, ATB, immuno, hormones) : garde la même
-    //     taille de ligne et s'étale naturellement sur 2 pages.
-    const STD = (typeof window !== 'undefined' && window.__stdFactor) ? window.__stdFactor : 1.49;
+    // ✅ v13.153 — REMPLISSAGE ADAPTATIF « jusqu'au bas de page ».
+    //   Auparavant un facteur FIXE (1.49) agrandissait chaque ligne : bien
+    //   calibré pour un rapport moyen, mais une NFS seule (courte) laissait tout
+    //   le bas de la feuille vide et le pied de page (Édité le / Montant /
+    //   signature) restait collé au milieu.
+    //   Désormais on mesure la hauteur naturelle du rapport puis on agrandit
+    //   chaque ligne du MÊME facteur pour que le contenu descende au bas d'une
+    //   page A4 :
+    //     • Rapport court (NFS seule) → gros facteur → occupe toute la page,
+    //       pied de page en bas et lignes un peu plus grandes.
+    //     • Rapport long (biochimie, ATB…) → facteur ≤ 1 : on ne touche à rien,
+    //       il s'étale naturellement sur 2 pages (fitToHeight:0).
+    const getH = rr => (rr.height != null ? rr.height : 15);
+    let rawSum = 0;
+    for (let i = 1; i <= lastRow; i++) rawSum += getH(ws.getRow(i));
+    if (rawSum <= 0) { ws.pageSetup.fitToHeight = 0; return; }
+    // Hauteur imprimable d'une page A4 (points), marges hautes/basses déduites.
+    // Réglable sans redéploiement via window.__pageFill.
+    const PAGE = (typeof window !== 'undefined' && window.__pageFill) ? window.__pageFill : 750;
+    let factor = PAGE / rawSum;
+    if (factor <= 1) { ws.pageSetup.fitToHeight = 0; return; } // déjà ≥ 1 page
+    if (factor > 2.6) factor = 2.6; // garde-fou : lignes pas démesurées
     for (let i = 1; i <= lastRow; i++) {
       const rr = ws.getRow(i);
-      const h = (rr.height != null ? rr.height : 15);
-      rr.height = Math.round(h * STD * 10) / 10;
+      rr.height = Math.round(getH(rr) * factor * 10) / 10;
     }
     ws.pageSetup.fitToHeight = 0; // jamais de compression : long => 2 pages
   })();
