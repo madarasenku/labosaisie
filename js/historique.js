@@ -483,11 +483,12 @@ async function renderHistory(forceRefresh) {
                     : '';
                 })()
           )
-        // ✅ v13.156 — Sortie du compte rendu en PDF (mise en page fidèle au modèle :
-        // contenu compact en haut, pied de page/signature en bas). L'export Excel
-        // ne rendait pas cette mise en page à l'impression ; exportRecord (Excel)
-        // reste défini pour un usage éventuel.
-        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportPDF(' + r.id + ')" title="Compte rendu PDF">📄 PDF</button>'
+        // ✅ v13.158 — Sortie du compte rendu via le rendu HTML (printRecord) :
+        // modèle validé en nuances de gris, sans signature imprimée (apposée à la
+        // main à la sortie des résultats), seuls les résultats anormaux surlignés.
+        // Depuis la fenêtre d'impression, « Enregistrer au format PDF » donne le
+        // PDF. exportPDF/exportRecord restent définis pour un usage éventuel.
+        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer le compte rendu">🖨 Imprimer</button>'
         + ((isCaissier() || isSpectateur()) ? ''
             : '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
               + dossierMulti
