@@ -431,8 +431,6 @@ async function crBuildHTML(record) {
   try { const u = await generateQRDataURL(qrTxt, 90); if (u) qr = '<img src="' + u + '" width="62" height="62" alt="">'; } catch (e) {}
 
   const tech = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '—';
-  const sig = (typeof _maSignature !== 'undefined' && _maSignature)
-    ? '<img src="' + _maSignature + '" style="height:12mm;max-width:44mm;object-fit:contain">' : '';
   const now = new Date();
   const dateFr = d => { try { return new Date(d).toLocaleDateString('fr-FR'); } catch (e) { return '—'; } };
   // ✅ v13.146 — Pour les BPN, afficher le tarif forfaitaire (20 000 FCFA)
@@ -445,7 +443,10 @@ async function crBuildHTML(record) {
   const PIED = '<div class="cr-foot"><div class="cr-foot-grid">'
     + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR'))
     +   '<br><b>Montant : ' + montant.toLocaleString('fr-FR') + ' FCFA</b></div>'
-    + '<div class="cr-foot-c">Signature du technicien :<div class="cr-sigbox">' + sig + '</div>'
+    // ✅ v13.158 — On NE pré-imprime PLUS de signature numérique : la case reste
+    //   VIDE pour être signée à la main à la sortie des résultats. Le nom du
+    //   technicien (TBM) figure sous la case.
+    + '<div class="cr-foot-c">Signature du technicien :<div class="cr-sigbox"></div>'
     +   '<div style="font-size:7.5pt;color:#444">TBM ' + crEsc(tech.toUpperCase()) + ' · Technicien Biologiste Médical</div></div>'
     + '<div class="cr-foot-r">' + qr + '</div>'
     + '</div><div class="cr-foot-pat">' + crEsc(p.nom || '') + ' · N° ' + crEsc(p.dossier || '')

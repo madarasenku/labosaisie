@@ -90,7 +90,11 @@ const doss = {
 
     r.section('Pied de page');
     r.check('montant', /Montant : 50 500 FCFA/.test(txt.replace(/ | /g, ' ')), true);
-    r.check('signature technicien', /Signature du technicien/.test(txt), true);
+    // ✅ v13.158 — La case « Signature du technicien » reste présente mais VIDE
+    //   (à signer à la main à la sortie) : plus de signature numérique pré-imprimée.
+    r.check('case signature présente (vide)', /Signature du technicien/.test(txt), true);
+    r.check('case signature vide (aucune image)', /cr-sigbox"><\/div>/.test(h), true);
+    r.check('nom du technicien (TBM) présent', /TBM /.test(txt), true);
     r.check('rappel patient en pied', /DIARRA ROKIA · N° 0022-0826/.test(txt), true);
 
     r.check('aucune erreur JS', errors.length, 0);
