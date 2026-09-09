@@ -46,7 +46,13 @@ jobs:
       # que Playwright utilise son PROPRE Chromium (aucun besoin de Google Chrome).
       # On retire ce dépôt pour que l'installation des dépendances système passe.
       - name: Neutraliser le dépôt Chrome (évite un échec apt transitoire)
-        run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome*.list
+        run: |
+          # Retire TOUT fichier apt référençant le dépôt Google (formats .list ET
+          # .sources sur les runners Ubuntu récents), sinon `apt-get update` échoue
+          # sur son index corrompu et fait planter `playwright install --with-deps`.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome* || true
+          sudo grep -rlE 'dl\.google\.com|google-chrome' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null | sudo xargs -r rm -f || true
+          echo "Sources apt restantes :"; ls -la /etc/apt/sources.list.d/ || true
 
       - name: Installer Playwright et Chromium
         run: |
