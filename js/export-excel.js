@@ -866,6 +866,15 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
     row++;
   }
 
+  // ✅ v13.155 — Espaceur : une ligne vide dont la hauteur sera calculée à la fin
+  //   pour POUSSER le pied de page tout en bas de la feuille A4 (comme le modèle
+  //   PDF : contenu compact en haut, signature ancrée en bas). Les lignes de
+  //   résultats gardent leur taille normale (pas d'étirement).
+  row++;
+  const _spacerRow = row;
+  ws.getRow(row).height = 6;
+  row++;
+
   // ════════════════════════════════════════════════════
   // PIED DE PAGE
   // ════════════════════════════════════════════════════
@@ -930,43 +939,25 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
       + (_techName ? ('\nTECH: ' + _techName) : '')
   };
 
-  // ✅ v13.60 — Remplissage adaptatif, valable pour TOUS les onglets :
-  //   • Rapport COURT (tient sur une page) → on agrandit les lignes pour
-  //     remplir exactement UNE page A4 (aucun espace vide) et on la verrouille
-  //     sur une page (fitToHeight:1).
-  //   • Rapport LONG (dépasse une page) → on ne touche à rien : il garde sa
-  //     taille normale, lisible, et s'étale naturellement sur 2 pages
-  //     (fitToHeight:0). Concerne biochimie, bactériologie/ATB, immuno, hormones.
-  (function fillPage() {
+  // ✅ v13.155 — PIED DE PAGE ANCRÉ EN BAS (modèle PDF).
+  //   Les lignes de résultats gardent leur taille normale, lisible (pas
+  //   d'étirement). On mesure la hauteur totale du contenu + du pied de page,
+  //   puis on dilate UNIQUEMENT la ligne espaceur pour combler le vide restant
+  //   jusqu'au bas d'une page A4 → contenu compact en haut, signature en bas.
+  //     • Rapport court (NFS seule) → grand espaceur → pied de page en bas.
+  //     • Rapport long (bilan complet) → petit/zéro espaceur, tout tient sur
+  //       une page ; s'il déborde vraiment, il s'étale (fitToHeight:0).
+  (function anchorFooter() {
     const lastRow = row - 1;
-    if (lastRow < 3) return;
-    // ✅ v13.153 — REMPLISSAGE ADAPTATIF « jusqu'au bas de page ».
-    //   Auparavant un facteur FIXE (1.49) agrandissait chaque ligne : bien
-    //   calibré pour un rapport moyen, mais une NFS seule (courte) laissait tout
-    //   le bas de la feuille vide et le pied de page (Édité le / Montant /
-    //   signature) restait collé au milieu.
-    //   Désormais on mesure la hauteur naturelle du rapport puis on agrandit
-    //   chaque ligne du MÊME facteur pour que le contenu descende au bas d'une
-    //   page A4 :
-    //     • Rapport court (NFS seule) → gros facteur → occupe toute la page,
-    //       pied de page en bas et lignes un peu plus grandes.
-    //     • Rapport long (biochimie, ATB…) → facteur ≤ 1 : on ne touche à rien,
-    //       il s'étale naturellement sur 2 pages (fitToHeight:0).
+    if (lastRow < 3 || !_spacerRow) { ws.pageSetup.fitToHeight = 0; return; }
     const getH = rr => (rr.height != null ? rr.height : 15);
-    let rawSum = 0;
-    for (let i = 1; i <= lastRow; i++) rawSum += getH(ws.getRow(i));
-    if (rawSum <= 0) { ws.pageSetup.fitToHeight = 0; return; }
-    // Hauteur imprimable d'une page A4 (points), marges hautes/basses déduites.
-    // Réglable sans redéploiement via window.__pageFill.
-    const PAGE = (typeof window !== 'undefined' && window.__pageFill) ? window.__pageFill : 750;
-    let factor = PAGE / rawSum;
-    if (factor <= 1) { ws.pageSetup.fitToHeight = 0; return; } // déjà ≥ 1 page
-    if (factor > 2.6) factor = 2.6; // garde-fou : lignes pas démesurées
-    for (let i = 1; i <= lastRow; i++) {
-      const rr = ws.getRow(i);
-      rr.height = Math.round(getH(rr) * factor * 10) / 10;
-    }
-    ws.pageSetup.fitToHeight = 0; // jamais de compression : long => 2 pages
+    let total = 0;
+    for (let i = 1; i <= lastRow; i++) total += getH(ws.getRow(i));
+    // Hauteur imprimable d'une page A4 (points). Réglable via window.__pageFill.
+    const PAGE = (typeof window !== 'undefined' && window.__pageFill) ? window.__pageFill : 756;
+    const deficit = PAGE - total;
+    if (deficit > 6) ws.getRow(_spacerRow).height = Math.round(deficit * 10) / 10;
+    ws.pageSetup.fitToHeight = 0; // jamais de compression
   })();
 }
 
