@@ -40,6 +40,14 @@ jobs:
         with:
           node-version: '20'
 
+      # Le dépôt apt « google-chrome » préinstallé sur les runners Ubuntu a parfois
+      # un index corrompu (Hash Sum mismatch) : cela fait échouer `apt-get update`
+      # — donc `playwright install --with-deps` — avant même le moindre test, alors
+      # que Playwright utilise son PROPRE Chromium (aucun besoin de Google Chrome).
+      # On retire ce dépôt pour que l'installation des dépendances système passe.
+      - name: Neutraliser le dépôt Chrome (évite un échec apt transitoire)
+        run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome*.list
+
       - name: Installer Playwright et Chromium
         run: |
           npm install --no-save playwright
