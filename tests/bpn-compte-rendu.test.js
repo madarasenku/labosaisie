@@ -94,11 +94,11 @@ const doss = {
     r.check('biochimie rénale imprimée', /Biochimie — Fonction rénale/.test(txt), true);
     r.check('groupe sanguin imprimé', /Groupe ABO \/ Rhésus/.test(txt), true);
 
-    // ✅ v13.147 — Le BPN est rendu sur DEUX feuilles.
+    // ✅ v13.157 — Le BPN est rendu sur DEUX feuilles via un SAUT DE PAGE
+    //   (feuille 1 = Hématologie + Groupe ; feuille 2 = Biochimie + Sérologies),
+    //   sans étiquette « Feuille X/2 » (le nouveau renderer empile deux corps).
     r.section('Rendu en deux feuilles');
-    r.check('deux feuilles (cr-page) générées', (h.match(/class="cr-page"/g) || []).length, 2);
-    r.check('feuille 1 étiquetée', /Feuille 1\/2/.test(txt), true);
-    r.check('feuille 2 étiquetée', /Feuille 2\/2/.test(txt), true);
+    r.check('saut de page présent (2 feuilles)', /break-before:page|page-break-before:\s*always/.test(h), true);
     const parts = h.split(/break-before:page/);
     const t1 = (parts[0] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     const t2 = (parts[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -114,18 +114,11 @@ const doss = {
     r.check('montant CR forcé à 20 000', /Montant : 20 000 FCFA/.test(txt), true);
     r.check('le 10 000 saisi n\'apparaît pas', /Montant : 10 000 FCFA/.test(txt), false);
 
-    // ✅ v13.147 — Examen demandé non rempli = ligne VIDE à compléter.
-    r.section('Examens demandés mais non remplis → à compléter');
-    r.check('bloc « à compléter » présent', /Examens demandés — à compléter/.test(txt), true);
-    r.check('Électrophorèse à compléter', /Électrophorèse/.test(txt), true);
-    r.check('Rubéole à compléter', /Rubéole/.test(txt), true);
-    r.check('plus de mention « non réalisés »', /non réalisés/.test(txt), false);
-    // On isole le CONTENU des tables « à compléter » (l'en-tête, répété sur chaque
-    // feuille, contient « Bilan prénatal complet » et « Toxoplasmose » saisie).
-    const aCompleter = (h.match(/Examens demandés — à compléter[\s\S]*?<\/table>/g) || [])
-      .join(' ').replace(/<[^>]+>/g, ' ');
-    r.check('le forfait n\'est PAS listé à compléter', /Bilan prénatal complet/.test(aCompleter), false);
-    r.check('Toxoplasmose (saisie) non listée à compléter', /Toxoplasmose/.test(aCompleter), false);
+    // ✅ v13.157 — BPN : un examen demandé mais non saisi n'est PAS listé (ni
+    //   « à compléter » ni « non réalisé ») — il peut revenir après coup (ECBU…).
+    r.section('BPN : examens non saisis non listés');
+    r.check('pas de bloc « à compléter »', /à compléter/.test(txt), false);
+    r.check('pas de bloc « non réalisés »', /non réalisés/.test(txt), false);
 
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   JS:', errors.slice(0, 6));
