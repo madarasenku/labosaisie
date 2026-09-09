@@ -276,7 +276,10 @@ function crBlocNonRealises(labels) {
 // ── Feuille de style du compte rendu (noir & blanc, modèle validé) ──
 const CR_STYLE = `
 <style>
-  @page { size: A4; margin: 0.9cm 1cm; }
+  /* ✅ v13.161 — Marge basse de page RÉSERVÉE (38mm) sur CHAQUE feuille : le pied
+     de page (position:fixed) s'y loge, donc il reste TOUJOURS collé en bas de
+     chaque feuille imprimée et le contenu ne passe jamais dessous. */
+  @page { size: A4; margin: 9mm 10mm 38mm 10mm; }
   /* Neutralise le filigrane hérité de l'ancien rendu (il tombait dans la case
      de signature du nouveau modèle). */
   /* Neutralise le filigrane « CPMI » (body::after) et la mention de bas de page
@@ -284,14 +287,6 @@ const CR_STYLE = `
   #print-render::after, #print-render::before,
   body::after, body::before { content: none !important; display: none !important; }
   #print-render { font-family: 'Segoe UI', Arial, sans-serif; color:#000; background:#fff; }
-  /* ✅ v13.160 — Le compte rendu est UN grand tableau : son <tfoot> (le pied) est
-     répété par le navigateur en bas de CHAQUE feuille imprimée, avec sa place
-     réservée (le contenu ne passe jamais dessous). Sur une feuille courte, la
-     hauteur minimale pousse le pied tout en bas. */
-  .cr-page { width:100%; border-collapse:collapse; }
-  .cr-page > tbody > tr > td, .cr-page > tfoot > tr > td { border:0; padding:0; vertical-align:top; }
-  .cr-page > tfoot { display:table-footer-group; }
-  @media print { .cr-page { height:26.5cm; } }
   .cr-h1 { text-align:center; font-size:16.5pt; font-weight:800; letter-spacing:.4px; margin:0; }
   .cr-h2 { text-align:center; font-size:8pt; color:#333; margin:3px 0 5px; }
   .cr-rule { border:0; border-top:1.6pt solid #111; margin:0 0 8px; }
@@ -320,6 +315,12 @@ const CR_STYLE = `
   .cr-sigbox { border:1px solid #666; height:15mm; margin-top:2px; }
   .cr-foot-pat { margin-top:4px; font-size:7.5pt; color:#444; }
 
+  /* ✅ v13.161 — À l'impression, le pied est FIXE en bas de chaque feuille (il se
+     répète physiquement sur toutes les pages), dans la marge basse réservée par
+     @page. À l'écran il reste dans le flux (pas de position:fixed). */
+  @media print {
+    .cr-foot { position:fixed; bottom:0; left:10mm; right:10mm; margin:0; padding:4px 0 3mm; background:#fff; }
+  }
 </style>`;
 
 // ── Assemblage du compte rendu complet ──────────────────────
@@ -449,9 +450,6 @@ async function crBuildHTML(record) {
     + '</div><div class="cr-foot-pat">' + crEsc(p.nom || '') + ' · N° ' + crEsc(p.dossier || '')
     +   (refDoc ? ' · Réf. ' + crEsc(refDoc) : '') + '</div></div>';
 
-  // ✅ v13.160 — Tout le compte rendu dans UN tableau : <tfoot> = pied répété en
-  //   bas de chaque feuille (place réservée), <tbody> = contenu qui remplit et
-  //   déborde proprement sur la feuille suivante.
   const CORPS = '<div class="cr-main">'
     + '<div class="cr-h1">CPMI DE GRAND-BASSAM</div>'
     + '<div class="cr-h2">Centre de Protection Mère et Infantile · Laboratoire d\'analyses médicales · Grand-Bassam, Côte d\'Ivoire</div>'
@@ -470,7 +468,7 @@ async function crBuildHTML(record) {
     + corps
     + '</div>';
 
-  return CR_STYLE
-    + '<table class="cr-page"><tfoot><tr><td>' + PIED + '</td></tr></tfoot>'
-    + '<tbody><tr><td>' + CORPS + '</td></tr></tbody></table>';
+  // ✅ v13.161 — Pied FIXE (répété en bas de chaque feuille via @media print) +
+  //   contenu qui remplit et déborde proprement sur la feuille suivante.
+  return CR_STYLE + PIED + CORPS;
 }
