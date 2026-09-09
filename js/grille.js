@@ -21,6 +21,14 @@ const _CRP_OPTS = [
 const _SERO_OPTS = [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif'], ['Douteux', 'Douteux']];
 // Positif / Négatif simple (goutte épaisse, TDR).
 const _PN_OPTS = [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif']];
+
+// ✅ v13.157 — Résultat GE déduit de la densité parasitaire : > 0 → Positif,
+//   = 0 → Négatif, densité non saisie → pas de déduction (choix manuel conservé).
+function _geResultDeDensite(densStr) {
+  const d = parseFloat(densStr);
+  if (isNaN(d)) return '';
+  return d > 0 ? 'Positif' : 'Négatif';
+}
 // Dilutions du Widal (identiques au formulaire).
 const _WIDAL_OPTS = [['', '—']].concat(
   (typeof WIDAL_DILUTIONS !== 'undefined' ? WIDAL_DILUTIONS : ['Non réalisé', 'Négatif', '1/40', '1/80', '1/160', '1/320'])
@@ -66,13 +74,32 @@ const GRILLE_EXAMS = {
   },
   // ✅ v13.143 — Repérés manquants par le banc d'essai : un patient n'ayant QUE
   // la goutte épaisse, QUE le Widal ou QUE l'urée n'apparaissait pas en série.
+  // ✅ v13.157 — GE en série : on saisit la DENSITÉ parasitaire, d'où le résultat
+  //   est déduit (densité > 0 → Positif ; = 0 → Négatif). La TDR devient OPTIONNELLE.
   ge: {
     label: 'Goutte épaisse / TDR', type: 'Hématologie', exId: 'ex_ge', coche: /Goutte|TDR|Palud/i,
-    filled: h => h['GE - Résultat'],
+    filled: h => h['GE - Résultat'] || h['GE - Densité parasitaire (/µL)'],
     cols: [
+      { k: 'gedens', lab: 'Densité (/µL)', dom: 'ge_densite', kind: 'num' },
       { k: 'geres', lab: 'Résultat GE', dom: 'ge_result', kind: 'sel', opts: _PN_OPTS },
-      { k: 'getdr', lab: 'TDR', dom: 'ge_tdr', kind: 'sel', opts: _PN_OPTS },
+      { k: 'getdr', lab: 'TDR (opt.)', dom: 'ge_tdr', kind: 'sel', opts: _PN_OPTS, opt: true },
     ],
+    // Résultat GE déduit de la densité dans la CELLULE de grille (affichage direct).
+    deriv: (id) => {
+      const dens = document.getElementById('g_' + id + '_ge_gedens');
+      const res  = document.getElementById('g_' + id + '_ge_geres');
+      if (!dens || !res) return;
+      const v = _geResultDeDensite(dens.value);
+      if (v) res.value = v; // densité saisie → impose le résultat (sinon choix manuel conservé)
+    },
+    // Complet dès que la densité OU le résultat est renseigné (TDR non requise).
+    complet: (c) => (c.gedens !== '' || c.geres !== ''),
+    // À l'enregistrement : garantir le résultat déduit côté formulaire.
+    postSet: () => {
+      const d = document.getElementById('ge_densite');
+      const r = document.getElementById('ge_result');
+      if (d && r) { const v = _geResultDeDensite(d.value); if (v) r.value = v; }
+    },
   },
   // ✅ v13.147 — Électrophorèse de l'hémoglobine : absente de la grille série,
   // elle ne pouvait pas être saisie au fil de la sortie machine (signalé sur le
@@ -587,11 +614,21 @@ function grilleRowComplete(id) {
   const r = _grilleDossier(id); if (!r) return false;
   let commences = 0, complets = 0;
   grilleExamsEditables(r).forEach(k => {
-    const vals = GRILLE_EXAMS[k].cols.map(c => {
+    const cfg = GRILLE_EXAMS[k];
+    const cells = {};
+    cfg.cols.forEach(c => {
       const el = document.getElementById('g_' + id + '_' + k + '_' + c.k);
-      return el ? String(el.value).trim() : '';
+      cells[c.k] = el ? String(el.value).trim() : '';
     });
-    if (vals.some(v => v !== '')) { commences++; if (vals.every(v => v !== '')) complets++; }
+    const some = Object.keys(cells).some(kk => cells[kk] !== '');
+    if (!some) return;
+    commences++;
+    // ✅ v13.157 — Complétude : prédicat spécifique si défini, sinon toutes les
+    //   colonnes NON optionnelles doivent être remplies (colonnes opt exclues).
+    const ok = (typeof cfg.complet === 'function')
+      ? cfg.complet(cells)
+      : cfg.cols.filter(c => !c.opt).every(c => cells[c.k] !== '');
+    if (ok) complets++;
   });
   return commences > 0 && commences === complets;
 }
@@ -603,6 +640,11 @@ function grilleRowHasAny(id) {
   }));
 }
 function grilleCellChange(id) {
+  // ✅ v13.157 — Déductions inter-colonnes (ex. GE : résultat depuis la densité).
+  grilleExamsEditables(_grilleDossier(id) || {}).forEach(k => {
+    const cfg = GRILLE_EXAMS[k];
+    if (cfg && typeof cfg.deriv === 'function') { try { cfg.deriv(id); } catch (e) {} }
+  });
   const complete = grilleRowComplete(id);
   const sel = document.getElementById('gsel_' + id);
   if (sel && _grilleSelForce[id] === undefined) sel.checked = complete;
