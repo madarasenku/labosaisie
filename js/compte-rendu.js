@@ -276,8 +276,6 @@ function crBlocNonRealises(labels) {
 // ── Feuille de style du compte rendu (noir & blanc, modèle validé) ──
 const CR_STYLE = `
 <style>
-  /* Réserve la bande basse pour le pied de page répété : sans cela, le contenu
-     passe SOUS le pied sur chaque page (il est en position:fixed). */
   @page { size: A4; margin: 0.9cm 1cm; }
   /* Neutralise le filigrane hérité de l'ancien rendu (il tombait dans la case
      de signature du nouveau modèle). */
@@ -286,9 +284,14 @@ const CR_STYLE = `
   #print-render::after, #print-render::before,
   body::after, body::before { content: none !important; display: none !important; }
   #print-render { font-family: 'Segoe UI', Arial, sans-serif; color:#000; background:#fff; }
+  /* ✅ v13.160 — Le compte rendu est UN grand tableau : son <tfoot> (le pied) est
+     répété par le navigateur en bas de CHAQUE feuille imprimée, avec sa place
+     réservée (le contenu ne passe jamais dessous). Sur une feuille courte, la
+     hauteur minimale pousse le pied tout en bas. */
   .cr-page { width:100%; border-collapse:collapse; }
-  .cr-page > tbody > tr > td, .cr-page > tfoot > tr > td { border:0; padding:0; }
+  .cr-page > tbody > tr > td, .cr-page > tfoot > tr > td { border:0; padding:0; vertical-align:top; }
   .cr-page > tfoot { display:table-footer-group; }
+  @media print { .cr-page { height:26.5cm; } }
   .cr-h1 { text-align:center; font-size:16.5pt; font-weight:800; letter-spacing:.4px; margin:0; }
   .cr-h2 { text-align:center; font-size:8pt; color:#333; margin:3px 0 5px; }
   .cr-rule { border:0; border-top:1.6pt solid #111; margin:0 0 8px; }
@@ -317,13 +320,6 @@ const CR_STYLE = `
   .cr-sigbox { border:1px solid #666; height:15mm; margin-top:2px; }
   .cr-foot-pat { margin-top:4px; font-size:7.5pt; color:#444; }
 
-  /* ✅ v13.147 — PIED DE PAGE ancré en bas à position fixe sur chaque page imprimée.
-     position:fixed en @media print = répété en bas de chaque page physique.
-     cr-main réserve un padding-bottom pour éviter le chevauchement. */
-  @media print {
-    .cr-foot { position:fixed; bottom:0; left:0; right:0; padding:4px 12px 5px; margin:0; }
-    .cr-main { padding-bottom:38mm; }
-  }
 </style>`;
 
 // ── Assemblage du compte rendu complet ──────────────────────
@@ -413,11 +409,12 @@ async function crBuildHTML(record) {
   const nonFaits = _estBPN ? [] : labels.filter(l => !crExamFait(String(l), R));
   corps2 += crBlocNonRealises(nonFaits);
 
-  let corps = corps1;
-  if (corps1 && corps2) {
-    corps += '<div style="page-break-before:always;break-before:page;margin:0;padding:0"></div>';
-  }
-  corps += corps2;
+  // ✅ v13.160 — Remplissage « au plus juste » : AUCUN saut de page forcé. On
+  //   empile tous les tableaux et le navigateur remplit chaque feuille tant qu'il
+  //   y a de la place, puis passe à la suivante — sans jamais couper un tableau
+  //   (page-break-inside:avoid). Un dossier court (NFS+GE+CRP+SWF) tient sur une
+  //   feuille ; une longue biochimie déborde proprement sur la 2ᵉ.
+  let corps = corps1 + corps2;
   if (!corps) corps = '<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>';
 
   // QR de vérification
@@ -452,9 +449,10 @@ async function crBuildHTML(record) {
     + '</div><div class="cr-foot-pat">' + crEsc(p.nom || '') + ' · N° ' + crEsc(p.dossier || '')
     +   (refDoc ? ' · Réf. ' + crEsc(refDoc) : '') + '</div></div>';
 
-  return CR_STYLE
-    + PIED
-    + '<div class="cr-main">'
+  // ✅ v13.160 — Tout le compte rendu dans UN tableau : <tfoot> = pied répété en
+  //   bas de chaque feuille (place réservée), <tbody> = contenu qui remplit et
+  //   déborde proprement sur la feuille suivante.
+  const CORPS = '<div class="cr-main">'
     + '<div class="cr-h1">CPMI DE GRAND-BASSAM</div>'
     + '<div class="cr-h2">Centre de Protection Mère et Infantile · Laboratoire d\'analyses médicales · Grand-Bassam, Côte d\'Ivoire</div>'
     + '<hr class="cr-rule">'
@@ -471,4 +469,8 @@ async function crBuildHTML(record) {
     + '<div class="cr-bandeau">Examens demandés — résultats</div>'
     + corps
     + '</div>';
+
+  return CR_STYLE
+    + '<table class="cr-page"><tfoot><tr><td>' + PIED + '</td></tr></tfoot>'
+    + '<tbody><tr><td>' + CORPS + '</td></tr></tbody></table>';
 }

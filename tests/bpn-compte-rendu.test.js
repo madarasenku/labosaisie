@@ -94,20 +94,20 @@ const doss = {
     r.check('biochimie rénale imprimée', /Biochimie — Fonction rénale/.test(txt), true);
     r.check('groupe sanguin imprimé', /Groupe ABO \/ Rhésus/.test(txt), true);
 
-    // ✅ v13.157 — Le BPN est rendu sur DEUX feuilles via un SAUT DE PAGE
-    //   (feuille 1 = Hématologie + Groupe ; feuille 2 = Biochimie + Sérologies),
-    //   sans étiquette « Feuille X/2 » (le nouveau renderer empile deux corps).
-    r.section('Rendu en deux feuilles');
-    r.check('saut de page présent (2 feuilles)', /break-before:page|page-break-before:\s*always/.test(h), true);
-    const parts = h.split(/break-before:page/);
-    const t1 = (parts[0] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-    const t2 = (parts[1] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-    r.check('Feuille 1 = Hématologie + Groupe sanguin', /NFS/.test(t1) && /Groupe ABO/.test(t1), true);
-    // ✅ v13.148 — NFS (Hématologie) en tête de feuille 1, avant le groupe sanguin.
-    r.check('Feuille 1 : NFS avant Groupe sanguin', t1.indexOf('NFS') < t1.indexOf('Groupe ABO'), true);
-    r.check('Feuille 1 SANS biochimie', /Biochimie — Fonction rénale/.test(t1), false);
-    r.check('Feuille 2 = Biochimie + Sérologies', /Biochimie — Fonction rénale/.test(t2) && /Bilan Hépatite B/.test(t2), true);
-    r.check('Feuille 2 SANS NFS', /NFS —/.test(t2), false);
+    // ✅ v13.160 — Plus de saut de page FORCÉ (remplissage « au plus juste » :
+    //   le contenu remplit chaque feuille puis déborde proprement). On vérifie
+    //   l'ORDRE des blocs : Hématologie (NFS) + Groupe AVANT Biochimie/Sérologies.
+    r.section('Ordre des blocs (héma+groupe puis bio+séro), sans saut forcé');
+    r.check('plus de saut de page forcé', /break-before:page/.test(h), false);
+    const iNFS = txt.indexOf('NFS —');
+    const iGroupe = txt.indexOf('Groupe ABO');
+    const iBio = txt.indexOf('Biochimie — Fonction rénale');
+    r.check('NFS (Hématologie) présent', iNFS >= 0, true);
+    r.check('Groupe sanguin présent', iGroupe >= 0, true);
+    r.check('Biochimie présente', iBio >= 0, true);
+    r.check('NFS avant Groupe sanguin', iNFS < iGroupe, true);
+    r.check('Hématologie + Groupe AVANT Biochimie', Math.max(iNFS, iGroupe) < iBio, true);
+    r.check('Hépatite B présent', /Bilan Hépatite B/.test(txt), true);
 
     // ✅ v13.147 — Forfait affiché à 20 000 même si 10 000 saisi en caisse.
     r.section('Forfait affiché à 20 000 FCFA');

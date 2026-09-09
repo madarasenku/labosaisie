@@ -510,7 +510,9 @@ async function buildRecordPrintHTMLLegacy(r) {
 }
 
 // Injecte le HTML dans le conteneur d'impression puis lance l'impression.
-function _injectAndPrint(html) {
+// ✅ v13.159 — On ATTEND le décodage des images (le QR est un data:URL) avant
+//   d'imprimer : window.print() lancé trop tôt sortait un QR blanc.
+async function _injectAndPrint(html) {
   let printDiv = document.getElementById('print-render');
   if (!printDiv) {
     printDiv = document.createElement('div');
@@ -518,13 +520,21 @@ function _injectAndPrint(html) {
     document.body.appendChild(printDiv);
   }
   printDiv.innerHTML = html;
+  const imgs = Array.from(printDiv.querySelectorAll('img'));
+  await Promise.all(imgs.map(img => {
+    if (img.complete && img.naturalWidth) return Promise.resolve();
+    if (img.decode) return img.decode().catch(() => {});
+    return new Promise(res => { img.onload = img.onerror = res; });
+  }));
+  // Laisse le navigateur finaliser la mise en page avant l'impression.
+  await new Promise(res => setTimeout(res, 60));
   window.print();
 }
 
 // Imprime UN dossier (compat : ancien point d'entrée).
 async function buildAndPrint(r) {
   const html = await buildRecordPrintHTML(r);
-  _injectAndPrint(html);
+  await _injectAndPrint(html);
 }
 
 // ✅ v13.133 — Imprime PLUSIEURS dossiers d'affilée, un par page (saut de page
@@ -540,7 +550,7 @@ async function printLot(records) {
   }
   if (!parts.length) return;
   const html = parts.join('<div style="break-after:page;page-break-after:always"></div>');
-  _injectAndPrint(html);
+  await _injectAndPrint(html);
 }
 
 

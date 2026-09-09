@@ -97,6 +97,13 @@ const doss = {
     r.check('nom du technicien (TBM) présent', /TBM /.test(txt), true);
     r.check('rappel patient en pied', /DIARRA ROKIA · N° 0022-0826/.test(txt), true);
 
+    // ✅ v13.159 — Dossier NON-BPN : pas de saut de page FORCÉ (NFS+GE+CRP+SWF…
+    //   sur une seule feuille tant que ça rentre ; le saut n'est forcé que pour
+    //   le BPN). Et le QR doit être présent dans le HTML imprimé.
+    r.section('Une seule feuille (non-BPN) + QR');
+    r.check('pas de saut de page forcé', /break-before:page/.test(h), false);
+    r.check('QR présent (image data)', /<img src="data:image\/png/.test(h), true);
+
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   JS:', errors.slice(0, 6));
     const s = r.summary();
