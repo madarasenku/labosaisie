@@ -483,11 +483,11 @@ async function renderHistory(forceRefresh) {
                     : '';
                 })()
           )
-        // ✅ v13.150 — Un seul bouton pour sortir les résultats : Excel (⬇).
-        // Les boutons PDF (📄) et Impression navigateur (🖨) ont été retirés à la
-        // demande — le compte rendu officiel se sort en Excel (mise en forme,
-        // logo, QR). exportPDF/printRecord restent définis pour un usage éventuel.
-        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportRecord(' + r.id + ')" title="Compte rendu Excel">⬇ Excel</button>'
+        // ✅ v13.156 — Sortie du compte rendu en PDF (mise en page fidèle au modèle :
+        // contenu compact en haut, pied de page/signature en bas). L'export Excel
+        // ne rendait pas cette mise en page à l'impression ; exportRecord (Excel)
+        // reste défini pour un usage éventuel.
+        + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="exportPDF(' + r.id + ')" title="Compte rendu PDF">📄 PDF</button>'
         + ((isCaissier() || isSpectateur()) ? ''
             : '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
               + dossierMulti
