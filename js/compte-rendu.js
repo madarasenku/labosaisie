@@ -276,29 +276,39 @@ function crBlocNonRealises(labels) {
 // ── Feuille de style du compte rendu (noir & blanc, modèle validé) ──
 const CR_STYLE = `
 <style>
-  /* ✅ v13.161 — Marge basse de page RÉSERVÉE (38mm) sur CHAQUE feuille : le pied
-     de page (position:fixed) s'y loge, donc il reste TOUJOURS collé en bas de
-     chaque feuille imprimée et le contenu ne passe jamais dessous. */
-  @page { size: A4; margin: 9mm 10mm 38mm 10mm; }
-  /* Neutralise le filigrane hérité de l'ancien rendu (il tombait dans la case
-     de signature du nouveau modèle). */
-  /* Neutralise le filigrane « CPMI » (body::after) et la mention de bas de page
-     hérités de l'ancien rendu : ils se superposaient au nouveau modèle. */
+  /* ✅ v13.162 — PAGINATION SUR MESURE : le contenu est découpé (en JS, à
+     l'impression) en pages A4 de hauteur fixe. Chaque page = colonne flex avec
+     ENTÊTE en haut (répétée), tableaux au milieu, PIED collé en bas. Aucun
+     résultat caché, aucun tableau coupé, pied toujours en bas de CHAQUE feuille.
+     Marge @page à 0 : chaque .cr-page-a4 occupe toute la feuille et gère ses
+     propres marges internes. */
+  @page { size: A4; margin: 0; }
   #print-render::after, #print-render::before,
   body::after, body::before { content: none !important; display: none !important; }
   #print-render { font-family: 'Segoe UI', Arial, sans-serif; color:#000; background:#fff; }
-  .cr-h1 { text-align:center; font-size:16.5pt; font-weight:800; letter-spacing:.4px; margin:0; }
-  .cr-h2 { text-align:center; font-size:8pt; color:#333; margin:3px 0 5px; }
-  .cr-rule { border:0; border-top:1.6pt solid #111; margin:0 0 8px; }
-  .cr-box { border:1px solid #444; padding:5px 10px; margin-bottom:5px; }
-  .cr-box-res { text-align:center; font-weight:700; font-size:10.5pt; }
-  .cr-box-nom { text-align:center; font-weight:800; font-size:20pt; letter-spacing:.5px; padding:7px 10px; }
-  .cr-infos { width:100%; border-collapse:collapse; margin-bottom:7px; font-size:9pt; }
-  .cr-infos td { border:1px solid #999; padding:5px 9px; }
-  .cr-infos .cr-lab { font-weight:700; background:#f2f2f2; width:22%; font-size:8.5pt; }
-  .cr-bandeau { border:1px solid #444; background:#eee; font-weight:700; font-size:9.5pt; padding:5px 10px; margin:9px 0 6px; }
-  .cr-t { width:100%; border-collapse:collapse; margin-bottom:9px; font-size:9pt; page-break-inside:avoid; }
-  .cr-t th, .cr-t td { border:1px solid #999; padding:5px 8px; }
+  .cr-page-a4 { width:210mm; min-height:297mm; height:297mm; box-sizing:border-box; padding:9mm 10mm;
+                display:flex; flex-direction:column; overflow:hidden; background:#fff; }
+  .cr-page-a4 + .cr-page-a4 { page-break-before:always; }
+  .cr-page-head { flex:0 0 auto; }
+  .cr-page-body { flex:1 1 auto; overflow:hidden; }
+  .cr-page-foot { flex:0 0 auto; }
+  /* La source (blocs à paginer) et les gabarits entête/pied restent cachés. */
+  .cr-src, .cr-head-run, .cr-foot-run { display:none; }
+  /* En-tête compacte répétée sur chaque page. */
+  .cr-run-head { text-align:center; margin-bottom:5px; }
+  .cr-run-pat { font-size:8pt; color:#333; margin-top:1px; padding-bottom:3px; border-bottom:1px solid #bbb; }
+  .cr-h1 { text-align:center; font-size:14pt; font-weight:800; letter-spacing:.3px; margin:0; }
+  .cr-h2 { text-align:center; font-size:7.5pt; color:#333; margin:2px 0 3px; }
+  .cr-rule { border:0; border-top:1.6pt solid #111; margin:0 0 6px; }
+  .cr-box { border:1px solid #444; padding:3px 10px; margin-bottom:4px; }
+  .cr-box-res { text-align:center; font-weight:700; font-size:10pt; }
+  .cr-box-nom { text-align:center; font-weight:800; font-size:17pt; letter-spacing:.5px; padding:4px 10px; }
+  .cr-infos { width:100%; border-collapse:collapse; margin-bottom:6px; font-size:8.5pt; }
+  .cr-infos td { border:1px solid #999; padding:3px 8px; }
+  .cr-infos .cr-lab { font-weight:700; background:#f2f2f2; width:22%; font-size:8pt; }
+  .cr-bandeau { border:1px solid #444; background:#eee; font-weight:700; font-size:9.5pt; padding:4px 10px; margin:7px 0 5px; }
+  .cr-t { width:100%; border-collapse:collapse; margin-bottom:7px; font-size:8.5pt; page-break-inside:avoid; }
+  .cr-t th, .cr-t td { border:1px solid #999; padding:3px 7px; }
   .cr-th-nom { text-align:left; font-weight:700; background:#eee; width:33%; font-size:8.5pt; }
   .cr-th-c { text-align:center; font-weight:700; background:#eee; }
   .cr-u { width:11%; }
@@ -314,13 +324,6 @@ const CR_STYLE = `
   .cr-foot b { font-size:8.5pt; }
   .cr-sigbox { border:1px solid #666; height:15mm; margin-top:2px; }
   .cr-foot-pat { margin-top:4px; font-size:7.5pt; color:#444; }
-
-  /* ✅ v13.161 — À l'impression, le pied est FIXE en bas de chaque feuille (il se
-     répète physiquement sur toutes les pages), dans la marge basse réservée par
-     @page. À l'écran il reste dans le flux (pas de position:fixed). */
-  @media print {
-    .cr-foot { position:fixed; bottom:0; left:10mm; right:10mm; margin:0; padding:4px 0 3mm; background:#fff; }
-  }
 </style>`;
 
 // ── Assemblage du compte rendu complet ──────────────────────
@@ -389,36 +392,32 @@ async function crBuildHTML(record) {
   // Feuille 1 : Hématologie (NFS, Électrophorèse, GE) + Groupe sanguin.
   // Feuille 2 : Biochimie + Immuno-Sérologie + examens non réalisés.
   // Le saut de page est inséré seulement quand les deux feuilles ont du contenu.
-  let corps1 = '';
-  corps1 += crBlocNFS(hema, profile);
-  corps1 += crBlocEPHB(hema);
-  corps1 += crBlocGE(hema);
-  corps1 += crBlocGroupe(Object.keys(gs).length ? gs : sero);
+  // ── Blocs de contenu : CHAQUE tableau devient un bloc indivisible, pour que la
+  //    pagination place les blocs entiers page par page (jamais coupés). ──
+  const blocsHema = [];
+  const pushT = (arr, html) => { (String(html || '').match(/<table[\s\S]*?<\/table>/g) || []).forEach(t => arr.push(t)); };
+  pushT(blocsHema, crBlocNFS(hema, profile));
+  pushT(blocsHema, crBlocEPHB(hema));
+  pushT(blocsHema, crBlocGE(hema));
+  pushT(blocsHema, crBlocGroupe(Object.keys(gs).length ? gs : sero));
 
-  let corps2 = '';
-  corps2 += crBlocCRP(sero);
-  corps2 += crBlocWidal(sero);
-  corps2 += crBlocVHB(sero);
-  corps2 += crBlocSerologies(sero);
-  corps2 += crBlocsBiochimie(bio, profile);
-
-  // Examens demandés dont aucun résultat n'a été saisi
-  // ✅ v13.144 — Chaque examen demandé est confronté aux résultats réellement
-  // présents (crExamFait), quel que soit son type.
-  // ✅ v13.146 — BPN : si un examen n'est pas saisi, c'est qu'il n'est pas
-  // disponible (ECBU, etc.) — on ne l'affiche PAS en « non réalisé ».
+  const blocsBio = [];
+  // ✅ v13.162 — Le bilan prénatal n'inclut PAS de CRP : on ne l'affiche pas en BPN.
+  if (!_estBPN) pushT(blocsBio, crBlocCRP(sero));
+  pushT(blocsBio, crBlocWidal(sero));
+  pushT(blocsBio, crBlocVHB(sero));
+  pushT(blocsBio, crBlocSerologies(sero));
+  pushT(blocsBio, crBlocsBiochimie(bio, profile));
+  // Examens demandés dont aucun résultat n'a été saisi (sauf BPN).
   const nonFaits = _estBPN ? [] : labels.filter(l => !crExamFait(String(l), R));
-  corps2 += crBlocNonRealises(nonFaits);
+  pushT(blocsBio, crBlocNonRealises(nonFaits));
 
-  // ✅ v13.160 — Remplissage « au plus juste » : AUCUN saut de page forcé. On
-  //   empile tous les tableaux et le navigateur remplit chaque feuille tant qu'il
-  //   y a de la place, puis passe à la suivante — sans jamais couper un tableau
-  //   (page-break-inside:avoid). Un dossier court (NFS+GE+CRP+SWF) tient sur une
-  //   feuille ; une longue biochimie déborde proprement sur la 2ᵉ.
-  let corps = corps1 + corps2;
-  if (!corps) corps = '<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>';
+  // ✅ v13.162 — Règle métier : plus d'UN examen de sérologie → la sérologie (+
+  //   biochimie) est renvoyée sur une nouvelle feuille (héma + groupe restent
+  //   ensemble sur la 1ʳᵉ).
+  const _seroLabels = labels.filter(l => /CRP|Widal|SWF|HBs|H[ée]patite|VIH|TPHA|VDRL|Syphilis|Toxo|Rub[eé]ole|VHC|S[ée]rolog/i.test(String(l)));
+  const _forceSeroBreak = _seroLabels.length > 1 && blocsHema.length && blocsBio.length;
 
-  // QR de vérification
   const refDoc = (typeof getOrCreateRef === 'function') ? getOrCreateRef(record) : '';
   const share = p.share_token;
   const qrTxt = share && typeof APP_PUBLIC_URL !== 'undefined'
@@ -431,30 +430,29 @@ async function crBuildHTML(record) {
   const tech = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '—';
   const now = new Date();
   const dateFr = d => { try { return new Date(d).toLocaleDateString('fr-FR'); } catch (e) { return '—'; } };
-  // ✅ v13.146 — Pour les BPN, afficher le tarif forfaitaire (20 000 FCFA)
-  // même si la caisse enregistre un acompte (paiement partiel ou saisie à 10 000).
-  // ✅ v13.147 — BPN : afficher 20 000 si la caisse montre moins (acompte),
-  // mais conserver le montant réel s'il est supérieur (BPN + actes supplémentaires).
   const _montantReel = Number(record && record.montant) || 0;
   const montant = _estBPN ? Math.max(20000, _montantReel) : _montantReel;
 
+  // ── Entête RÉPÉTÉE sur chaque feuille (compacte : CPMI + patient) ──
+  const HEADRUN = '<div class="cr-run-head">'
+    + '<div class="cr-h1">CPMI DE GRAND-BASSAM</div>'
+    + '<div class="cr-h2">Centre de Protection Mère et Infantile · Laboratoire d\'analyses médicales · Grand-Bassam, Côte d\'Ivoire</div>'
+    + '<div class="cr-run-pat">' + crEsc(String(p.nom || '—').toUpperCase()) + ' · N° ' + crEsc(p.dossier || '—')
+    + (p.date ? (' · ' + crEsc(dateFr(p.date))) : '') + '</div>'
+    + '</div>';
+
+  // ── Pied RÉPÉTÉ en bas de chaque feuille ──
   const PIED = '<div class="cr-foot"><div class="cr-foot-grid">'
     + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR'))
     +   '<br><b>Montant : ' + montant.toLocaleString('fr-FR') + ' FCFA</b></div>'
-    // ✅ v13.158 — On NE pré-imprime PLUS de signature numérique : la case reste
-    //   VIDE pour être signée à la main à la sortie des résultats. Le nom du
-    //   technicien (TBM) figure sous la case.
     + '<div class="cr-foot-c">Signature du technicien :<div class="cr-sigbox"></div>'
     +   '<div style="font-size:7.5pt;color:#444">TBM ' + crEsc(tech.toUpperCase()) + ' · Technicien Biologiste Médical</div></div>'
     + '<div class="cr-foot-r">' + qr + '</div>'
     + '</div><div class="cr-foot-pat">' + crEsc(p.nom || '') + ' · N° ' + crEsc(p.dossier || '')
     +   (refDoc ? ' · Réf. ' + crEsc(refDoc) : '') + '</div></div>';
 
-  const CORPS = '<div class="cr-main">'
-    + '<div class="cr-h1">CPMI DE GRAND-BASSAM</div>'
-    + '<div class="cr-h2">Centre de Protection Mère et Infantile · Laboratoire d\'analyses médicales · Grand-Bassam, Côte d\'Ivoire</div>'
-    + '<hr class="cr-rule">'
-    + '<div class="cr-box cr-box-res">RÉSULTAT : ' + crEsc(titreRes || '—') + '</div>'
+  // ── Bloc d'introduction (page 1) : RÉSULTAT + NOM + infos + bandeau ──
+  const INTRO = '<div class="cr-box cr-box-res">RÉSULTAT : ' + crEsc(titreRes || '—') + '</div>'
     + '<div class="cr-box cr-box-nom">' + crEsc(String(p.nom || '—').toUpperCase()) + '</div>'
     + '<table class="cr-infos"><tbody>'
     +   '<tr><td class="cr-lab">N° Dossier</td><td>' + crEsc(p.dossier || '—') + '</td>'
@@ -464,11 +462,78 @@ async function crBuildHTML(record) {
     +   '<tr><td class="cr-lab">Service / Unité</td><td>' + crEsc(p.service || '—') + '</td>'
     +       '<td class="cr-lab">Renseignements cliniques</td><td>' + crEsc(p.clinique || '—') + '</td></tr>'
     + '</tbody></table>'
-    + '<div class="cr-bandeau">Examens demandés — résultats</div>'
-    + corps
-    + '</div>';
+    + '<div class="cr-bandeau">Examens demandés — résultats</div>';
 
-  // ✅ v13.161 — Pied FIXE (répété en bas de chaque feuille via @media print) +
-  //   contenu qui remplit et déborde proprement sur la feuille suivante.
-  return CR_STYLE + PIED + CORPS;
+  // ── Blocs source à paginer (dans l'ordre) ──
+  const srcBlocs = [INTRO];
+  blocsHema.forEach(b => srcBlocs.push(b));
+  if (_forceSeroBreak) srcBlocs.push('__BREAK__');
+  blocsBio.forEach(b => srcBlocs.push(b));
+  if (!blocsHema.length && !blocsBio.length) {
+    srcBlocs.push('<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>');
+  }
+  const srcHTML = srcBlocs.map(b => b === '__BREAK__'
+    ? '<div class="cr-break"></div>'
+    : '<div class="cr-blk">' + b + '</div>').join('');
+
+  // ✅ v13.162 — On renvoie les GABARITS (entête, pied) + les blocs source ; la
+  //   fonction crPaginate() (appelée à l'impression) construit les pages A4.
+  return CR_STYLE
+    + '<div class="cr-report">'
+    +   '<div class="cr-head-run">' + HEADRUN + '</div>'
+    +   '<div class="cr-foot-run">' + PIED + '</div>'
+    +   '<div class="cr-src">' + srcHTML + '</div>'
+    +   '<div class="cr-pages"></div>'
+    + '</div>';
+}
+
+// ✅ v13.162 — PAGINATION SUR MESURE. Découpe les blocs de chaque .cr-report en
+//   pages A4 de hauteur fixe : entête répétée en haut, tableaux au milieu (jamais
+//   coupés), pied collé en bas. Aucun résultat caché. Appelée à l'impression,
+//   quand le DOM est mesurable (voir _injectAndPrint).
+function crPaginate(root) {
+  root = root || document;
+  const reports = root.querySelectorAll ? root.querySelectorAll('.cr-report') : [];
+  reports.forEach(rep => {
+    if (rep.getAttribute('data-paged')) return;
+    const src = rep.querySelector('.cr-src');
+    const headRun = rep.querySelector('.cr-head-run');
+    const footRun = rep.querySelector('.cr-foot-run');
+    const pagesC = rep.querySelector('.cr-pages');
+    if (!src || !headRun || !footRun || !pagesC) return;
+    const headHTML = headRun.innerHTML, footHTML = footRun.innerHTML;
+    const blks = Array.from(src.children);
+    // Le conteneur d'impression est souvent display:none à l'écran → mesure
+    // impossible dedans. On CONSTRUIT les pages dans un hôte VISIBLE hors-écran
+    // (les règles CSS .cr-page-a4 s'appliquent globalement), puis on déplace les
+    // pages finies vers le conteneur d'impression.
+    const meas = document.createElement('div');
+    meas.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;';
+    document.body.appendChild(meas);
+    let body = null;
+    const newPage = () => {
+      const page = document.createElement('div'); page.className = 'cr-page-a4';
+      const h = document.createElement('div'); h.className = 'cr-page-head'; h.innerHTML = headHTML;
+      body = document.createElement('div'); body.className = 'cr-page-body';
+      const f = document.createElement('div'); f.className = 'cr-page-foot'; f.innerHTML = footHTML;
+      page.appendChild(h); page.appendChild(body); page.appendChild(f);
+      meas.appendChild(page);
+    };
+    newPage();
+    blks.forEach(blk => {
+      if (blk.classList && blk.classList.contains('cr-break')) { newPage(); return; }
+      const clone = blk.cloneNode(true);
+      body.appendChild(clone);
+      // La hauteur du corps est bornée (flex + overflow caché) : si le contenu
+      // dépasse, ce bloc va sur une nouvelle page (sauf s'il est seul).
+      if (body.scrollHeight > body.clientHeight + 1 && body.children.length > 1) {
+        body.removeChild(clone);
+        newPage();
+        body.appendChild(clone);
+      }
+    });
+    while (meas.firstChild) pagesC.appendChild(meas.firstChild);
+    document.body.removeChild(meas);
+    rep.setAttribute('data-paged', '1');
+  });
 }

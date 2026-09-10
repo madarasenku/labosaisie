@@ -127,11 +127,14 @@ const GRILLE_EXAMS = {
     label: 'Widal & Félix (SWF)', type: 'Immuno-Sérologie', exId: 'ex_widal', coche: /Widal|SWF/i,
     filled: s => s['Widal - Salmonella typhi O (TO)'] && s['Widal - Salmonella typhi O (TO)'].titre
                  && s['Widal - Salmonella typhi O (TO)'].titre !== 'Non réalisé',
+    // ✅ v13.162 — En routine on ne fait que TO et TH (Salmonella typhi). Les
+    //   antigènes paratyphoïdiques AO/AH sont OPTIONNELS : une fiche Widal est
+    //   complète dès que TO/TH sont renseignés, sans exiger AO/AH.
     cols: [
       { k: 'wto', lab: 'TO', dom: 'widal_to', kind: 'sel', opts: _WIDAL_OPTS },
       { k: 'wth', lab: 'TH', dom: 'widal_th', kind: 'sel', opts: _WIDAL_OPTS },
-      { k: 'wao', lab: 'AO', dom: 'widal_ao', kind: 'sel', opts: _WIDAL_OPTS },
-      { k: 'wah', lab: 'AH', dom: 'widal_ah', kind: 'sel', opts: _WIDAL_OPTS },
+      { k: 'wao', lab: 'AO (opt.)', dom: 'widal_ao', kind: 'sel', opts: _WIDAL_OPTS, opt: true },
+      { k: 'wah', lab: 'AH (opt.)', dom: 'widal_ah', kind: 'sel', opts: _WIDAL_OPTS, opt: true },
     ],
   },
   crp: {

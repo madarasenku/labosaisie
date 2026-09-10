@@ -520,6 +520,9 @@ async function _injectAndPrint(html) {
     document.body.appendChild(printDiv);
   }
   printDiv.innerHTML = html;
+  // ✅ v13.162 — Pagination sur mesure : découpe le contenu en pages A4 (entête +
+  //   tableaux + pied) une fois le DOM en place et mesurable.
+  if (typeof crPaginate === 'function') { try { crPaginate(printDiv); } catch (e) { console.error('pagination:', e); } }
   const imgs = Array.from(printDiv.querySelectorAll('img'));
   await Promise.all(imgs.map(img => {
     if (img.complete && img.naturalWidth) return Promise.resolve();
