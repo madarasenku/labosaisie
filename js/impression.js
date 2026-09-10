@@ -520,6 +520,14 @@ async function _injectAndPrint(html) {
     document.body.appendChild(printDiv);
   }
   printDiv.innerHTML = html;
+  // ✅ v13.163 — La pagination est assurée par le NAVIGATEUR (entête / pied fixes
+  //   répétés, marges @page réservées). crPaginate() est un no-op conservé pour
+  //   compatibilité.
+  if (typeof crPaginate === 'function') { try { crPaginate(printDiv); } catch (e) { console.error('pagination:', e); } }
+  // ✅ v13.164 — En LOT (plusieurs comptes rendus), le pied « fixe » (un seul
+  //   possible par feuille) se superposerait pour tous les patients. On bascule
+  //   alors sur le pied du <tfoot> (un par patient, en bas du contenu de chacun).
+  printDiv.classList.toggle('cr-lot', printDiv.querySelectorAll('.cr-doc').length > 1);
   const imgs = Array.from(printDiv.querySelectorAll('img'));
   await Promise.all(imgs.map(img => {
     if (img.complete && img.naturalWidth) return Promise.resolve();

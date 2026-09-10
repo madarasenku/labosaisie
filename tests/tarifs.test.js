@@ -53,7 +53,7 @@ const { serve, openApp, createReporter } = require('./helpers');
     await page.waitForTimeout(700);
     for (const [id, prix] of [['ex_nfs', 3000], ['ex_crp', 3500],
                               ['ex_widal', 4500], ['ex_gs', 2000],
-                              ['ex_ecbu', 10000], ['ex_vih', 2000]]) {
+                              ['ex_ecbu', 10000], ['ex_vih', 0]]) {
       r.check(`prix ${id}`, await page.evaluate(x => prixExamen(x), id), prix);
     }
     r.check('aucune erreur JS', errors.length, 0);
@@ -141,9 +141,10 @@ const { serve, openApp, createReporter } = require('./helpers');
     const zeros = envoye ? Object.entries(envoye)
       .filter(([id, p]) => p === 0)
       .map(([id]) => id) : ['(rien envoyé)'];
-    // Seuls ces examens sont gratuits au catalogue (inclus dans un forfait).
+    // Seuls ces examens sont gratuits au catalogue (GE + prélèvements bactério,
+    // et la sérologie VIH prise en charge → 0).
     r.check('aucun examen facturé remis à zéro',
-            zeros.sort().join(',') , 'ex_ge,ex_prot,ex_pg,ex_pus,ex_vs'.split(',').sort().join(','));
+            zeros.sort().join(',') , 'ex_ge,ex_pg,ex_pus,ex_vih'.split(',').sort().join(','));
 
     r.check('écran rafraîchi avec les nouveaux prix', await page.evaluate(
       () => prixExamen('ex_nfs')), 3000);

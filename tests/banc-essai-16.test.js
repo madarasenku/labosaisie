@@ -67,10 +67,13 @@ const FIXTURES = COMBOS.map((combo, i) => {
     const cols = await page.evaluate(() => { const h = document.getElementById('grille-serie').innerHTML;
       const e = t => t.replace(/&/g, '&amp;');
       return Object.keys(GRILLE_EXAMS).filter(k => h.indexOf(e(GRILLE_EXAMS[k].label)) >= 0); });
-    r.check('colonnes = tous les examens demandés', cols.slice().sort().join(','), 'crea,crp,ge,gly,nfs,transa,uree,widal');
+    // ✅ v13.164 — l'urée n'a plus de colonne propre : elle est déduite de la
+    //   créatinine (colonne « Créatinine (+ urée auto) »), donc « uree » disparaît.
+    r.check('colonnes = tous les examens demandés', cols.slice().sort().join(','), 'crea,crp,ge,gly,nfs,transa,widal');
     r.check('ESSAI 1 (GE seul) listé', await page.evaluate(() => !!document.getElementById('g_1008_ge_geres')), true);
     r.check('ESSAI 3 (SWF seul) listé', await page.evaluate(() => !!document.getElementById('g_1010_widal_wto')), true);
-    r.check('ESSAI 6 (Urée seule) listé', await page.evaluate(() => !!document.getElementById('g_1013_uree_uree')), true);
+    // ✅ v13.164 — urée seule → colonne Créatinine (urée déduite), pas de colonne urée.
+    r.check('ESSAI 6 (Urée seule) → colonne Créatinine', await page.evaluate(() => !!document.getElementById('g_1013_crea_crea')), true);
     r.check('ESSAI 0 a une case NFS', await page.evaluate(() => !!document.getElementById('g_1007_nfs_gbc')), true);
     r.check('ESSAI 0 n\'a PAS de case CRP', await page.evaluate(() => !document.getElementById('g_1007_crp_crp')), true);
     r.check('ESSAI 15 a NFS + CRP + bio', await page.evaluate(() => !!document.getElementById('g_1022_nfs_gbc') && !!document.getElementById('g_1022_crp_crp') && !!document.getElementById('g_1022_gly_gly')), true);

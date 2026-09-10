@@ -118,20 +118,22 @@ const GRILLE_EXAMS = {
       { k: 'ephbprofil', lab: 'Profil', dom: 'ephb_profil', kind: 'sel', opts: _EPHB_PROFILS },
     ],
   },
-  uree: {
-    label: 'Urée', type: 'Biochimie', exId: 'ex_uree', coche: /^Urée$|Uree/i,
-    filled: b => b['Urée'] && b['Urée'].valeur,
-    cols: [{ k: 'uree', lab: 'Urée (g/L)', dom: 'v_uree', kind: 'num' }],
-  },
+  // ✅ v13.164 — L'urée n'a PLUS de colonne à saisir en série : elle est DÉDUITE
+  //   de la créatinine (urée g/L = créat / 44, voir crea.postSet). Un dossier qui
+  //   demande l'urée fait apparaître la colonne « Créatinine (+ urée auto) »
+  //   (la créatinine y est saisie, l'urée en est calculée).
   widal: {
     label: 'Widal & Félix (SWF)', type: 'Immuno-Sérologie', exId: 'ex_widal', coche: /Widal|SWF/i,
     filled: s => s['Widal - Salmonella typhi O (TO)'] && s['Widal - Salmonella typhi O (TO)'].titre
                  && s['Widal - Salmonella typhi O (TO)'].titre !== 'Non réalisé',
+    // ✅ v13.162 — En routine on ne fait que TO et TH (Salmonella typhi). Les
+    //   antigènes paratyphoïdiques AO/AH sont OPTIONNELS : une fiche Widal est
+    //   complète dès que TO/TH sont renseignés, sans exiger AO/AH.
     cols: [
       { k: 'wto', lab: 'TO', dom: 'widal_to', kind: 'sel', opts: _WIDAL_OPTS },
       { k: 'wth', lab: 'TH', dom: 'widal_th', kind: 'sel', opts: _WIDAL_OPTS },
-      { k: 'wao', lab: 'AO', dom: 'widal_ao', kind: 'sel', opts: _WIDAL_OPTS },
-      { k: 'wah', lab: 'AH', dom: 'widal_ah', kind: 'sel', opts: _WIDAL_OPTS },
+      { k: 'wao', lab: 'AO (opt.)', dom: 'widal_ao', kind: 'sel', opts: _WIDAL_OPTS, opt: true },
+      { k: 'wah', lab: 'AH (opt.)', dom: 'widal_ah', kind: 'sel', opts: _WIDAL_OPTS, opt: true },
     ],
   },
   crp: {
@@ -145,7 +147,7 @@ const GRILLE_EXAMS = {
     cols: [{ k: 'gly', lab: 'Glycémie (g/L)', dom: 'v_gly', kind: 'num' }],
   },
   crea: {
-    label: 'Créatinine (+ urée auto)', type: 'Biochimie', exId: 'ex_crea', coche: /Créat|Creat/i,
+    label: 'Créatinine (+ urée auto)', type: 'Biochimie', exId: 'ex_crea', coche: /Créat|Creat|^Urée$|Uree/i,
     filled: b => b['Créatinine'] && b['Créatinine'].valeur,
     cols: [{ k: 'crea', lab: 'Créatinine (mg/L)', dom: 'v_crea', kind: 'num' }],
     // ✅ v13.151 — L'urée est déduite de la créatinine : urée (g/L) = créat / 44.
