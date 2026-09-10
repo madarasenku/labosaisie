@@ -1,11 +1,16 @@
-// ✅ v13.162 — Pagination sur mesure du compte rendu : le contenu est découpé en
-//   pages A4 de hauteur fixe ; chaque page porte l'ENTÊTE (répétée) en haut et le
-//   PIED en bas. Un bilan long produit plusieurs pages ; aucun résultat n'est
-//   caché (pas de bloc coupé). On vérifie via crPaginate() dans un vrai DOM.
+// ✅ v13.164 — Pagination du compte rendu PAR LE NAVIGATEUR (média impression).
+//   Chaque compte rendu est une table `.cr-doc` :
+//     · <thead> = entête → répétée en haut de chaque feuille (table-header-group) ;
+//     · <tfoot> = pied → réserve sa hauteur en bas du contenu (jamais chevauché) ;
+//     · <tbody> = les tableaux de résultats, qui s'écoulent sur autant de feuilles
+//       que nécessaire (un bilan long déborde sur la feuille suivante).
+//   En plus, un pied `position:fixed` (`.cr-foot-fixed`) est collé au bas de CHAQUE
+//   feuille imprimée. On vérifie la STRUCTURE qui garantit tout cela dans un vrai
+//   DOM (le nombre de feuilles, lui, est décidé par le moteur d'impression).
 const { serve, openApp, createReporter } = require('./helpers');
 
 (async () => {
-  const r = createReporter('COMPTE RENDU — PAGINATION SUR MESURE');
+  const r = createReporter('COMPTE RENDU — PAGINATION (navigateur, entête+pied répétés)');
   const srv = await serve(8163);
   let ctx;
   try {
@@ -14,7 +19,7 @@ const { serve, openApp, createReporter } = require('./helpers');
 
     const res = await page.evaluate(async () => {
       const G = n => { try { return eval(n) || []; } catch (e) { return []; } };
-      // Biochimie longue (toutes les familles) → plusieurs pages.
+      // Biochimie longue (toutes les familles) → plusieurs tableaux.
       const bio = {};
       ['BIO_GLUCIDES','BIO_REIN','BIO_FOIE','BIO_LIPIDES','BIO_IONO','BIO_FER','BIO_CARD','BIO_HORM','BIO_COAG','BIO_AUTRE']
         .map(G).forEach(g => g.forEach((p, i) => { bio[p.name] = { valeur: String(10 + i), unite: p.unit || '', interp: '' }; }));
@@ -24,29 +29,39 @@ const { serve, openApp, createReporter } = require('./helpers');
       const html = await crBuildHTML(rec);
       const div = document.createElement('div'); div.id = 'print-render';
       document.body.appendChild(div); div.innerHTML = html;
-      crPaginate(div);
-      const pages = div.querySelectorAll('.cr-page-a4');
-      const allHaveHeadFoot = Array.from(pages).every(pg =>
-        pg.querySelector('.cr-page-head') && pg.querySelector('.cr-page-foot') && pg.querySelector('.cr-page-body'));
-      // L'entête (nom CPMI) et le pied (Signature) présents sur CHAQUE page.
-      const headEveryPage = Array.from(pages).every(pg => /CPMI DE GRAND-BASSAM/.test(pg.querySelector('.cr-page-head').textContent));
-      const footEveryPage = Array.from(pages).every(pg => /Signature du technicien/.test(pg.querySelector('.cr-page-foot').textContent));
-      // Aucun bloc perdu : le nombre de tableaux rendus == nombre de blocs source.
-      const srcTables = div.querySelectorAll('.cr-src .cr-blk table').length;
-      const pagedTables = Array.from(pages).reduce((a, pg) => a + pg.querySelectorAll('.cr-page-body table').length, 0);
-      const out = { nbPages: pages.length, allHaveHeadFoot, headEveryPage, footEveryPage, srcTables, pagedTables };
+
+      const doc = div.querySelector('table.cr-doc');
+      const thead = doc && doc.querySelector('thead');
+      const tfoot = doc && doc.querySelector('tfoot');
+      const body = doc && doc.querySelector('tbody .cr-body');
+      const footFixed = div.querySelector('.cr-foot-fixed');
+      const out = {
+        aUneTable: !!doc,
+        theadRepete: !!thead && getComputedStyle(thead).display === 'table-header-group',
+        tfootRepete: !!tfoot && getComputedStyle(tfoot).display === 'table-footer-group',
+        enteteCPMI: !!thead && /CPMI DE GRAND-BASSAM/.test(thead.textContent),
+        piedSignatureTfoot: !!tfoot && /Signature du technicien/.test(tfoot.textContent),
+        piedFixeEnBas: !!footFixed && getComputedStyle(footFixed).position === 'fixed'
+                        && /Signature du technicien/.test(footFixed.textContent),
+        // Aucun tableau de résultat perdu : tous sont dans le corps.
+        nbTables: body ? body.querySelectorAll('table.cr-t').length : 0,
+      };
       div.remove();
       return out;
     });
 
-    r.section('Découpage en pages A4');
-    r.check('plusieurs pages générées', res.nbPages >= 2, true);
-    r.check('chaque page a entête + corps + pied', res.allHaveHeadFoot, true);
-    r.check('entête CPMI sur chaque page', res.headEveryPage, true);
-    r.check('pied (signature) sur chaque page', res.footEveryPage, true);
+    r.section('Structure table-cadre (entête + pied répétés)');
+    r.check('une table .cr-doc', res.aUneTable, true);
+    r.check('entête <thead> répétée (table-header-group)', res.theadRepete, true);
+    r.check('pied <tfoot> réservé (table-footer-group)', res.tfootRepete, true);
+    r.check('entête CPMI présente', res.enteteCPMI, true);
+    r.check('pied (signature) dans le tfoot', res.piedSignatureTfoot, true);
+
+    r.section('Pied toujours en bas');
+    r.check('pied fixe (position:fixed) collé en bas', res.piedFixeEnBas, true);
 
     r.section('Aucun résultat perdu');
-    r.check('tous les tableaux répartis (aucun caché)', res.pagedTables >= res.srcTables && res.srcTables > 0, true);
+    r.check('plusieurs tableaux de résultats présents', res.nbTables >= 5, true);
 
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 5));

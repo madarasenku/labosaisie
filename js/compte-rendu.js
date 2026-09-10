@@ -274,56 +274,90 @@ function crBlocNonRealises(labels) {
 }
 
 // ── Feuille de style du compte rendu (noir & blanc, modèle validé) ──
+//
+// ✅ v13.163 — PAGINATION PAR LE NAVIGATEUR (et non plus en JS).
+//   Raison : une pagination JS mesure les hauteurs en média ÉCRAN, alors que
+//   l'impression compose en média IMPRESSION (lignes plus courtes, polices
+//   différentes) ; les deux ne coïncident jamais → pages en trop, feuilles
+//   mal remplies. Ici c'est le NAVIGATEUR qui pagine, directement en média
+//   impression — donc l'aperçu (rendu via le moteur d'impression) est fidèle.
+//
+//   Technique : chaque compte rendu est UNE grande table `.cr-doc` avec un
+//   `<thead>` (entête) et un `<tfoot>` (pied). Le navigateur RÉPÈTE
+//   automatiquement le thead en haut et le tfoot en bas du contenu de CHAQUE
+//   feuille imprimée, et — garantie du modèle de table — ne laisse JAMAIS le
+//   contenu passer sous le pied (l'espace du tfoot est réservé dans le flux).
+//   Donc : entête + pied sur chaque feuille, aucun résultat caché, aucune ligne
+//   coupée, et plusieurs comptes rendus (impression de lot) s'enchaînent sans
+//   se chevaucher. Un bilan long déborde simplement sur la feuille suivante.
 const CR_STYLE = `
 <style>
-  /* ✅ v13.162 — PAGINATION SUR MESURE : le contenu est découpé (en JS, à
-     l'impression) en pages A4 de hauteur fixe. Chaque page = colonne flex avec
-     ENTÊTE en haut (répétée), tableaux au milieu, PIED collé en bas. Aucun
-     résultat caché, aucun tableau coupé, pied toujours en bas de CHAQUE feuille.
-     Marge @page à 0 : chaque .cr-page-a4 occupe toute la feuille et gère ses
-     propres marges internes. */
-  @page { size: A4; margin: 0; }
+  @page { size: A4; margin: 12mm 10mm; }
   #print-render::after, #print-render::before,
   body::after, body::before { content: none !important; display: none !important; }
   #print-render { font-family: 'Segoe UI', Arial, sans-serif; color:#000; background:#fff; }
-  .cr-page-a4 { width:210mm; min-height:297mm; height:297mm; box-sizing:border-box; padding:9mm 10mm;
-                display:flex; flex-direction:column; overflow:hidden; background:#fff; }
-  .cr-page-a4 + .cr-page-a4 { page-break-before:always; }
-  .cr-page-head { flex:0 0 auto; }
-  .cr-page-body { flex:1 1 auto; overflow:hidden; }
-  .cr-page-foot { flex:0 0 auto; }
-  /* La source (blocs à paginer) et les gabarits entête/pied restent cachés. */
-  .cr-src, .cr-head-run, .cr-foot-run { display:none; }
-  /* En-tête compacte répétée sur chaque page. */
-  .cr-run-head { text-align:center; margin-bottom:5px; }
-  .cr-run-pat { font-size:8pt; color:#333; margin-top:1px; padding-bottom:3px; border-bottom:1px solid #bbb; }
-  .cr-h1 { text-align:center; font-size:14pt; font-weight:800; letter-spacing:.3px; margin:0; }
-  .cr-h2 { text-align:center; font-size:7.5pt; color:#333; margin:2px 0 3px; }
-  .cr-rule { border:0; border-top:1.6pt solid #111; margin:0 0 6px; }
+
+  /* La table-cadre : thead répété en haut, tfoot répété en bas de chaque feuille. */
+  .cr-doc { width:100%; border-collapse:collapse; }
+  .cr-doc > thead { display:table-header-group; }
+  .cr-doc > tfoot { display:table-footer-group; }
+  .cr-doc > thead > tr > td, .cr-doc > tbody > tr > td, .cr-doc > tfoot > tr > td {
+    border:0; padding:0; }
+  .cr-doc + .cr-doc { page-break-before:always; }
+
+  /* Entête (thead) : répétée en haut de chaque feuille. */
+  .cr-head { text-align:center; padding-bottom:4px; }
+  .cr-h1 { font-size:13.5pt; font-weight:800; letter-spacing:.3px; margin:0; }
+  .cr-h2 { font-size:7pt; color:#333; margin:1px 0 3px; }
+  .cr-head-pat { font-size:8.5pt; color:#222; padding-bottom:3px; border-bottom:1.3pt solid #111; }
+
+  /* Pied FIXE : collé au bas de CHAQUE feuille imprimée (répété par le navigateur). */
+  .cr-foot-fixed { position:fixed; left:0; right:0; bottom:0; padding:0 10mm; background:#fff; }
+  /* Le pied du <tfoot> RÉSERVE sa hauteur sur chaque feuille (contenu jamais
+     sous le pied) mais reste invisible en fiche simple : c'est le pied fixe qui
+     s'affiche, toujours en bas. */
+  .cr-doc > tfoot .cr-foot { visibility:hidden; }
+  /* Impression de LOT : pas de pied fixe (un par patient via le tfoot). */
+  #print-render.cr-lot .cr-foot-fixed { display:none; }
+  #print-render.cr-lot .cr-doc > tfoot .cr-foot { visibility:visible; }
+  .cr-foot { padding-top:4px; font-size:7.5pt; border-top:1.4px solid #333; }
+  .cr-foot-grid { display:flex; align-items:flex-start; gap:14px; }
+  .cr-foot-l { flex:1; } .cr-foot-c { flex:1.2; text-align:center; } .cr-foot-r { text-align:right; }
+  .cr-foot b { font-size:8pt; }
+  .cr-sigbox { border:1px solid #666; height:12mm; margin-top:2px; }
+  .cr-foot-pat { margin-top:3px; font-size:7.5pt; color:#444; }
+
+  /* Contenu : s'écoule naturellement dans le tbody (le pied fixe est toujours
+     en bas ; le tfoot réserve sa hauteur, donc pas de chevauchement). */
+  .cr-body { color:#000; }
   .cr-box { border:1px solid #444; padding:3px 10px; margin-bottom:4px; }
-  .cr-box-res { text-align:center; font-weight:700; font-size:10pt; }
-  .cr-box-nom { text-align:center; font-weight:800; font-size:17pt; letter-spacing:.5px; padding:4px 10px; }
-  .cr-infos { width:100%; border-collapse:collapse; margin-bottom:6px; font-size:8.5pt; }
+  .cr-box-res { text-align:center; font-weight:700; font-size:10.5pt; }
+  .cr-box-nom { text-align:center; font-weight:800; font-size:16pt; letter-spacing:.5px; padding:4px 10px; }
+  .cr-infos { width:100%; border-collapse:collapse; margin-bottom:5px; font-size:9pt; }
   .cr-infos td { border:1px solid #999; padding:3px 8px; }
-  .cr-infos .cr-lab { font-weight:700; background:#f2f2f2; width:22%; font-size:8pt; }
-  .cr-bandeau { border:1px solid #444; background:#eee; font-weight:700; font-size:9.5pt; padding:4px 10px; margin:7px 0 5px; }
-  .cr-t { width:100%; border-collapse:collapse; margin-bottom:7px; font-size:8.5pt; page-break-inside:avoid; }
-  .cr-t th, .cr-t td { border:1px solid #999; padding:3px 7px; }
-  .cr-th-nom { text-align:left; font-weight:700; background:#eee; width:33%; font-size:8.5pt; }
-  .cr-th-c { text-align:center; font-weight:700; background:#eee; }
+  .cr-infos .cr-lab { font-weight:700; background:#f2f2f2; width:22%; font-size:8.5pt; }
+  .cr-bandeau { border:1px solid #444; background:#eee; font-weight:700; font-size:10pt; padding:4px 10px; margin:6px 0 5px; }
+  /* Les tableaux peuvent se répartir sur plusieurs feuilles (un long bilan ne
+     tient pas sur une page). On coupe SEULEMENT entre deux lignes (jamais au
+     milieu d'une ligne) et l'en-tête de colonnes se répète en haut de chaque
+     feuille — ainsi aucune ligne ne passe sous le pied. */
+  .cr-t { width:100%; border-collapse:collapse; margin-bottom:7px; font-size:9pt; page-break-inside:auto; }
+  .cr-t thead { display:table-header-group; }
+  .cr-t tr { page-break-inside:avoid; }
+  /* Lignes aérées : un bilan court (NFS + GE + CRP) remplit la feuille sans
+     agrandir le texte ; un bilan long déborde simplement sur la feuille suivante. */
+  .cr-t th, .cr-t td { border:1px solid #999; padding:5px 8px; }
+  .cr-th-nom { text-align:left; font-weight:700; background:#eee; width:33%; font-size:9pt; }
+  .cr-th-c { text-align:center; font-weight:700; background:#eee; font-size:9pt; }
   .cr-u { width:11%; }
   .cr-nom { text-align:left; }
   .cr-val { text-align:center; font-size:10pt; }
   .cr-val.cr-ano { font-weight:800; background:#d2d2d2; }
-  .cr-unite { text-align:center; font-size:8pt; color:#444; }
-  .cr-ref { text-align:center; font-size:8pt; color:#444; }
+  .cr-unite { text-align:center; font-size:8.5pt; color:#444; }
+  .cr-ref { text-align:center; font-size:8.5pt; color:#444; }
   .cr-interp { font-style:italic; font-size:8.5pt; text-align:center; background:#eee; }
-  .cr-foot { border-top:1.5px solid #333; padding-top:5px; margin-top:6px; font-size:8pt; background:#fff; }
-  .cr-foot-grid { display:flex; align-items:flex-start; gap:14px; }
-  .cr-foot-l { flex:1; } .cr-foot-c { flex:1.2; text-align:center; } .cr-foot-r { text-align:right; }
-  .cr-foot b { font-size:8.5pt; }
-  .cr-sigbox { border:1px solid #666; height:15mm; margin-top:2px; }
-  .cr-foot-pat { margin-top:4px; font-size:7.5pt; color:#444; }
+  /* Saut de feuille imposé (ex. sérologie renvoyée en page 2). */
+  .cr-break { page-break-before:always; }
 </style>`;
 
 // ── Assemblage du compte rendu complet ──────────────────────
@@ -433,20 +467,20 @@ async function crBuildHTML(record) {
   const _montantReel = Number(record && record.montant) || 0;
   const montant = _estBPN ? Math.max(20000, _montantReel) : _montantReel;
 
-  // ── Entête RÉPÉTÉE sur chaque feuille (compacte : CPMI + patient) ──
-  const HEADRUN = '<div class="cr-run-head">'
+  // ── Entête FIXE (position:fixed) : répétée en haut de chaque feuille ──
+  const HEAD = '<div class="cr-head">'
     + '<div class="cr-h1">CPMI DE GRAND-BASSAM</div>'
     + '<div class="cr-h2">Centre de Protection Mère et Infantile · Laboratoire d\'analyses médicales · Grand-Bassam, Côte d\'Ivoire</div>'
-    + '<div class="cr-run-pat">' + crEsc(String(p.nom || '—').toUpperCase()) + ' · N° ' + crEsc(p.dossier || '—')
+    + '<div class="cr-head-pat">' + crEsc(String(p.nom || '—').toUpperCase()) + ' · N° ' + crEsc(p.dossier || '—')
     + (p.date ? (' · ' + crEsc(dateFr(p.date))) : '') + '</div>'
     + '</div>';
 
-  // ── Pied RÉPÉTÉ en bas de chaque feuille ──
+  // ── Pied FIXE (position:fixed) : répété en bas de chaque feuille ──
   const PIED = '<div class="cr-foot"><div class="cr-foot-grid">'
     + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR'))
     +   '<br><b>Montant : ' + montant.toLocaleString('fr-FR') + ' FCFA</b></div>'
     + '<div class="cr-foot-c">Signature du technicien :<div class="cr-sigbox"></div>'
-    +   '<div style="font-size:7.5pt;color:#444">TBM ' + crEsc(tech.toUpperCase()) + ' · Technicien Biologiste Médical</div></div>'
+    +   '<div style="font-size:8pt;color:#444">TBM ' + crEsc(tech.toUpperCase()) + ' · Technicien Biologiste Médical</div></div>'
     + '<div class="cr-foot-r">' + qr + '</div>'
     + '</div><div class="cr-foot-pat">' + crEsc(p.nom || '') + ' · N° ' + crEsc(p.dossier || '')
     +   (refDoc ? ' · Réf. ' + crEsc(refDoc) : '') + '</div></div>';
@@ -464,76 +498,41 @@ async function crBuildHTML(record) {
     + '</tbody></table>'
     + '<div class="cr-bandeau">Examens demandés — résultats</div>';
 
-  // ── Blocs source à paginer (dans l'ordre) ──
-  const srcBlocs = [INTRO];
-  blocsHema.forEach(b => srcBlocs.push(b));
-  if (_forceSeroBreak) srcBlocs.push('__BREAK__');
-  blocsBio.forEach(b => srcBlocs.push(b));
-  if (!blocsHema.length && !blocsBio.length) {
-    srcBlocs.push('<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>');
-  }
-  const srcHTML = srcBlocs.map(b => b === '__BREAK__'
-    ? '<div class="cr-break"></div>'
-    : '<div class="cr-blk">' + b + '</div>').join('');
-
-  // ✅ v13.162 — On renvoie les GABARITS (entête, pied) + les blocs source ; la
-  //   fonction crPaginate() (appelée à l'impression) construit les pages A4.
-  return CR_STYLE
-    + '<div class="cr-report">'
-    +   '<div class="cr-head-run">' + HEADRUN + '</div>'
-    +   '<div class="cr-foot-run">' + PIED + '</div>'
-    +   '<div class="cr-src">' + srcHTML + '</div>'
-    +   '<div class="cr-pages"></div>'
-    + '</div>';
-}
-
-// ✅ v13.162 — PAGINATION SUR MESURE. Découpe les blocs de chaque .cr-report en
-//   pages A4 de hauteur fixe : entête répétée en haut, tableaux au milieu (jamais
-//   coupés), pied collé en bas. Aucun résultat caché. Appelée à l'impression,
-//   quand le DOM est mesurable (voir _injectAndPrint).
-function crPaginate(root) {
-  root = root || document;
-  const reports = root.querySelectorAll ? root.querySelectorAll('.cr-report') : [];
-  reports.forEach(rep => {
-    if (rep.getAttribute('data-paged')) return;
-    const src = rep.querySelector('.cr-src');
-    const headRun = rep.querySelector('.cr-head-run');
-    const footRun = rep.querySelector('.cr-foot-run');
-    const pagesC = rep.querySelector('.cr-pages');
-    if (!src || !headRun || !footRun || !pagesC) return;
-    const headHTML = headRun.innerHTML, footHTML = footRun.innerHTML;
-    const blks = Array.from(src.children);
-    // Le conteneur d'impression est souvent display:none à l'écran → mesure
-    // impossible dedans. On CONSTRUIT les pages dans un hôte VISIBLE hors-écran
-    // (les règles CSS .cr-page-a4 s'appliquent globalement), puis on déplace les
-    // pages finies vers le conteneur d'impression.
-    const meas = document.createElement('div');
-    meas.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden;';
-    document.body.appendChild(meas);
-    let body = null;
-    const newPage = () => {
-      const page = document.createElement('div'); page.className = 'cr-page-a4';
-      const h = document.createElement('div'); h.className = 'cr-page-head'; h.innerHTML = headHTML;
-      body = document.createElement('div'); body.className = 'cr-page-body';
-      const f = document.createElement('div'); f.className = 'cr-page-foot'; f.innerHTML = footHTML;
-      page.appendChild(h); page.appendChild(body); page.appendChild(f);
-      meas.appendChild(page);
-    };
-    newPage();
-    blks.forEach(blk => {
-      if (blk.classList && blk.classList.contains('cr-break')) { newPage(); return; }
-      const clone = blk.cloneNode(true);
-      body.appendChild(clone);
-      // La hauteur du corps est bornée (flex + overflow caché) : si le contenu
-      // dépasse, ce bloc va sur une nouvelle page (sauf s'il est seul).
-      if (body.scrollHeight > body.clientHeight + 1 && body.children.length > 1) {
-        body.removeChild(clone);
-        newPage();
-        body.appendChild(clone);
-      }
-    });
-    while (meas.firstChild) pagesC.appendChild(meas.firstChild);
-    document.body.removeChild(meas);
-    rep.setAttribute('data-paged', '1');
+  // ── Corps qui s'écoule (le navigateur le répartit sur les feuilles) ──
+  //   INTRO (page 1) → blocs hématologie → [saut imposé] → blocs bio/sérologie.
+  let corps = INTRO;
+  blocsHema.forEach(b => { corps += b; });
+  if (_forceSeroBreak) corps += '<div class="cr-break"></div>';
+  blocsBio.forEach((b, i) => {
+    // Sur saut imposé, le 1ᵉʳ bloc bio ouvre la nouvelle feuille : on le colle au
+    // saut pour éviter une feuille vide si le navigateur double le break.
+    corps += b;
   });
+  if (!blocsHema.length && !blocsBio.length) {
+    corps += '<p style="text-align:center;font-style:italic;color:#555">Aucun résultat saisi pour ce dossier.</p>';
+  }
+
+  // ✅ v13.164 — PIED TOUJOURS EN BAS + entête/pied répétés sur chaque feuille.
+  //   · L'entête est un <thead> (répété en haut de chaque feuille par le navigateur).
+  //   · Le PIED est posé DEUX fois :
+  //       – dans le <tfoot> (répété en bas du CONTENU de chaque feuille) : il RÉSERVE
+  //         sa hauteur (visibility:hidden en fiche simple) pour que le contenu ne
+  //         passe jamais dessous ;
+  //       – dans un bloc `position:fixed` collé au BAS de la feuille (répété par le
+  //         navigateur sur chaque page) : c'est le pied VISIBLE, toujours en bas.
+  //   En impression de LOT (plusieurs fiches), on masque le pied fixe et on rend
+  //   visible le pied du tfoot (un pied par patient) — voir impression.js.
+  return CR_STYLE
+    + '<div class="cr-foot-fixed">' + PIED + '</div>'
+    + '<table class="cr-doc">'
+    +   '<thead><tr><td>' + HEAD + '</td></tr></thead>'
+    +   '<tfoot><tr><td>' + PIED + '</td></tr></tfoot>'
+    +   '<tbody><tr><td><div class="cr-body">' + corps + '</div></td></tr></tbody>'
+    + '</table>';
 }
+
+// ✅ v13.163 — Plus de pagination JS : c'est le navigateur qui pagine, en média
+//   impression (entête / pied fixes répétés, marges @page réservées). Aucune
+//   mesure d'écran, donc aucun décalage écran ⇄ impression. crPaginate() est
+//   conservée en NO-OP tolérant pour les appelants existants (impression.js).
+function crPaginate(/* root */) { /* pagination assurée par le navigateur */ }
