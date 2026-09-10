@@ -474,9 +474,6 @@ const BIO_LIPIDES = [
   { id:'trig', name:'Triglycérides',             unit:'g/L',    ref:'< 1.7',      lo:0,    hi:1.7  },
   { id:'hdl',  name:'HDL-cholestérol',           unit:'g/L',    ref:'> 0.50',     lo:0.50, hi:99   },
   { id:'ldl',  name:'LDL-cholestérol ⚙',         unit:'g/L',    ref:'< 1.30',     lo:0,    hi:1.30, calc:true },
-  { id:'apoa', name:'Apolipoprotéine A1',        unit:'g/L',    ref:'1.1–2.1',    lo:1.1,  hi:2.1  },
-  { id:'apob', name:'Apolipoprotéine B',         unit:'g/L',    ref:'0.5–1.3',    lo:0.5,  hi:1.3  },
-  { id:'lpa',  name:'Lipoprotéine (a)',          unit:'mg/dL',  ref:'< 30',       lo:0,    hi:30   },
 ];
 const BIO_IONO = [
   { id:'na',   name:'Sodium (Na⁺)',              unit:'mmol/L', ref:'135–145',    lo:135,  hi:145  },
@@ -524,11 +521,6 @@ const BIO_COAG = [
 ];
 const BIO_AUTRE = [
   { id:'pct',  name:'Procalcitonine (PCT)',      unit:'µg/L',   ref:'< 0.1',      lo:0,    hi:0.1  },
-  { id:'hcrp', name:'CRP ultra-sensible (hs-CRP)',unit:'mg/L',  ref:'< 1.0',      lo:0,    hi:1.0  },
-  { id:'osm',  name:'Osmolarité',               unit:'mOsm/L', ref:'275–295',    lo:275,  hi:295  },
-  { id:'hcy',  name:'Homocystéine',             unit:'µmol/L', ref:'5–15',       lo:5,    hi:15   },
-  { id:'amm',  name:'Ammoniaque',               unit:'µmol/L', ref:'10–50',      lo:10,   hi:50   },
-  { id:'lact', name:'Acide lactique',            unit:'mmol/L', ref:'0.5–1.8',    lo:0.5,  hi:1.8  },
   { id:'bhcg', name:'Beta-HCG',                 unit:'UI/L',   ref:'< 5',        lo:0,    hi:5    },
 ];
 
