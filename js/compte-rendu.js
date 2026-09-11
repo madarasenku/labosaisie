@@ -491,7 +491,7 @@ async function crBuildHTML(record) {
     + '<table class="cr-infos"><tbody>'
     +   '<tr><td class="cr-lab">N° Dossier</td><td>' + crEsc(p.dossier || '—') + '</td>'
     +       '<td class="cr-lab">Date de prélèvement</td><td>' + (p.date ? crEsc(dateFr(p.date)) : '—') + '</td></tr>'
-    +   '<tr><td class="cr-lab">Âge / Sexe</td><td>' + crEsc(p.age ? p.age + ' ans' : '—') + ' / ' + crEsc(p.sexe || '—') + '</td>'
+    +   '<tr><td class="cr-lab">Âge / Sexe</td><td>' + crEsc(p.age ? formatAge(p.age) : '—') + ' / ' + crEsc(p.sexe || '—') + '</td>'
     +       '<td class="cr-lab">Médecin prescripteur</td><td>' + crEsc(p.medecin || '—') + '</td></tr>'
     +   '<tr><td class="cr-lab">Service / Unité</td><td>' + crEsc(p.service || '—') + '</td>'
     +       '<td class="cr-lab">Renseignements cliniques</td><td>' + crEsc(p.clinique || '—') + '</td></tr>'

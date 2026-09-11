@@ -23,8 +23,36 @@ const TRANCHES = {
   SENIOR:    { label: 'Senior',      min: 60,   max: 999  },
 };
 
+// ✅ v13.167 — L'âge se saisit en NOMBRE + UNITÉ (ans / mois / jours). On stocke
+//   une valeur lisible : « 26 ans » → nombre nu « 26 » (rétro-compatible avec les
+//   anciennes fiches), « 3 mois », « 10 jours ». Deux aides centralisent la lecture.
+//   ageEnAnnees() : convertit en ANNÉES (fraction) pour le profil / les références.
+function ageEnAnnees(v) {
+  if (v == null) return null;
+  const s = String(v).trim(); if (!s) return null;
+  const m = /^([\d.]+)\s*(ans?|mois|jours?|j)?/i.exec(s);
+  if (!m) return null;
+  const n = parseFloat(m[1]); if (isNaN(n)) return null;
+  const u = (m[2] || '').toLowerCase();
+  if (/mois/.test(u)) return n / 12;
+  if (/^(jours?|j)$/.test(u)) return n / 365;
+  return n;                       // « ans » ou nombre nu
+}
+// formatAge() : affichage. Une unité explicite (mois/jours/ans) est gardée telle
+//   quelle ; un nombre nu (anciennes fiches ou saisie en années) reçoit « ans ».
+function formatAge(v) {
+  if (v == null) return '';
+  const s = String(v).trim(); if (!s) return '';
+  if (/mois|jours?|ans?/i.test(s)) return s;
+  const n = parseFloat(s);
+  if (isNaN(n)) return s;
+  return n + ' an' + (n > 1 ? 's' : '');
+}
+
 function getPatientProfile() {
-  const ageRaw = parseFloat(document.getElementById('p_age')?.value);
+  const cnt = parseFloat(document.getElementById('p_age')?.value);
+  const unit = document.getElementById('p_age_unit')?.value || 'ans';
+  const ageRaw = isNaN(cnt) ? NaN : (unit === 'mois' ? cnt / 12 : unit === 'jours' ? cnt / 365 : cnt);
   const sexe = document.getElementById('p_sexe')?.value || '';
   // ✅ v13.154 — Âge NON saisi (vide/non numérique) = INCONNU → profil ADULTE
   // (défaut raisonnable), et surtout PAS « nouveau-né ». Auparavant l'âge vide
@@ -47,8 +75,8 @@ function getPatientProfile() {
 // ✅ v13.17 — Profil (âge/sexe/tranche) reconstruit depuis un patient ENREGISTRÉ
 // (pour recalculer les valeurs normales dans les exports Excel/PDF/impression).
 function profileFromPatient(pat) {
-  const ageRaw = parseFloat((pat && pat.age) || '');
-  const age = isNaN(ageRaw) ? null : ageRaw; // null = inconnu
+  const ageRaw = ageEnAnnees(pat && pat.age);
+  const age = ageRaw == null ? null : ageRaw; // null = inconnu
   const sexe = (pat && pat.sexe) || '';
   let tranche = 'ADULTE'; // défaut raisonnable si âge inconnu
   if (age !== null) {

@@ -868,7 +868,7 @@ function showEditPatientModal(id) {
         </div>
         <div>
           <label style="font-size:11.5px;font-weight:700;color:#475569;display:block;margin-bottom:4px">Âge</label>
-          <input id="ep_age" type="number" min="0" max="120" value="${esc(p.age || '')}"
+          <input id="ep_age" type="text" placeholder="ex. 34 ou 3 mois" value="${esc(p.age || '')}"
             style="width:100%;border:1.5px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:13px;box-sizing:border-box">
         </div>
         <div>
@@ -1390,9 +1390,8 @@ async function saveThenNext(type) {
     setTimeout(() => {
       const nomEl = document.getElementById('p_nom');
       if (nomEl) { nomEl.value = ''; nomEl.focus(); }
-      ['p_age','p_ddn'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.value = '';
-      });
+      const ageEl = document.getElementById('p_age'); if (ageEl) ageEl.value = '';
+      const unitEl = document.getElementById('p_age_unit'); if (unitEl) unitEl.value = 'ans';
       const lblEl = document.getElementById('p_age_label');
       if (lblEl) lblEl.textContent = '';
       regenDossier();

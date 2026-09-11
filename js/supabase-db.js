@@ -135,41 +135,28 @@ function isExcludedFromCalc(r) {
 }
 
 // ✅ v13.34 — Tableau de bord : synthèse du jour, affichée en haut de la Saisie
-// ✅ v13.34 — Calcul âge depuis DDN (jours/mois/ans)
-function calcAgeFromDDN() {
-  const ddnEl = document.getElementById('p_ddn');
-  const ageEl = document.getElementById('p_age');
+// ✅ v13.167 — Âge saisi en NOMBRE + UNITÉ (ans / mois / jours). À chaque
+//   changement du nombre ou de l'unité, on rafraîchit les valeurs de référence
+//   (le profil dépend de l'âge en années) et le montant, et on affiche un rappel
+//   lisible sous le champ. Plus de date de naissance.
+function onAgeInput() {
+  const cnt = document.getElementById('p_age')?.value;
+  const unit = document.getElementById('p_age_unit')?.value || 'ans';
   const lblEl = document.getElementById('p_age_label');
-  if (!ddnEl || !ddnEl.value) return;
-  const ddn = new Date(ddnEl.value), now = new Date();
-  const diffMs = now - ddn;
-  if (diffMs < 0) { if (lblEl) lblEl.textContent = '⚠ Date dans le futur'; return; }
-  const diffDays = Math.floor(diffMs / 86400000);
-  let ageDisplay = '', ageValeur = 0;
-  if (diffDays < 30) {
-    ageValeur = parseFloat((diffDays / 365).toFixed(3));
-    ageDisplay = diffDays + ' jour' + (diffDays > 1 ? 's' : '');
-  } else if (diffDays < 365) {
-    const mois = Math.floor(diffDays / 30.44);
-    ageValeur = parseFloat((mois / 12).toFixed(2));
-    ageDisplay = mois + ' mois';
-  } else {
-    const ans = now.getFullYear() - ddn.getFullYear();
-    const corr = (now.getMonth() < ddn.getMonth() ||
-      (now.getMonth() === ddn.getMonth() && now.getDate() < ddn.getDate())) ? 1 : 0;
-    ageValeur = ans - corr;
-    ageDisplay = ageValeur + ' an' + (ageValeur > 1 ? 's' : '');
+  if (lblEl) {
+    lblEl.textContent = (cnt !== '' && cnt != null && !isNaN(parseFloat(cnt)))
+      ? '→ ' + parseFloat(cnt) + ' ' + unit : '';
   }
-  if (ageEl) ageEl.value = ageValeur;
-  if (lblEl) lblEl.textContent = '→ ' + ageDisplay;
   updateAllRefs(); updateMontantCurrent();
 }
-function onAgeInput() {
-  const ddnEl = document.getElementById('p_ddn');
-  const lblEl = document.getElementById('p_age_label');
-  if (ddnEl) ddnEl.value = '';
-  if (lblEl) lblEl.textContent = '';
-  updateAllRefs(); updateMontantCurrent();
+// Valeur d'âge à ENREGISTRER : nombre nu pour les années (« 26 », rétro-compatible),
+// « 3 mois » / « 10 jours » pour les autres unités. '' si non saisi.
+function ageSaisi() {
+  const cnt = document.getElementById('p_age')?.value;
+  if (cnt === '' || cnt == null || isNaN(parseFloat(cnt))) return '';
+  const n = parseFloat(cnt);
+  const unit = document.getElementById('p_age_unit')?.value || 'ans';
+  return unit === 'ans' ? String(n) : n + ' ' + unit;
 }
 
 function renderDashboard() {
@@ -1126,7 +1113,7 @@ function onPatientNameInput() {
     const sameNameCount = _patientCache.filter(x => x.nom === p.nom).length;
 
     const parts = [];
-    if (p.age)    parts.push(p.age + ' ans');
+    if (p.age)    parts.push(formatAge(p.age));
     if (p.sexe)   parts.push(p.sexe === 'M' ? 'Homme' : 'Femme');
     if (p.medecin) parts.push('Dr ' + p.medecin);
     // Si plusieurs profils portent ce nom → afficher la date de la dernière visite pour distinguer
@@ -1499,11 +1486,11 @@ function resetPanelAfterSave(tabKey) {
   // Vider nom et âge uniquement (pas la date, le sexe, le service…)
   const nomEl = document.getElementById('p_nom');
   const ageEl = document.getElementById('p_age');
-  const ddnEl2 = document.getElementById('p_ddn');
+  const unitEl2 = document.getElementById('p_age_unit');
   const lblEl2 = document.getElementById('p_age_label');
   if (nomEl) nomEl.value = '';
   if (ageEl) ageEl.value = '';
-  if (ddnEl2) ddnEl2.value = '';
+  if (unitEl2) unitEl2.value = 'ans';
   if (lblEl2) lblEl2.textContent = '';
 
   const panel = document.getElementById('panel-' + tabKey);
