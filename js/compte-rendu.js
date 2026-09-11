@@ -438,7 +438,11 @@ async function crBuildHTML(record) {
   const blocsBio = [];
   // ✅ v13.162 — Le bilan prénatal n'inclut PAS de CRP : on ne l'affiche pas en BPN.
   if (!_estBPN) pushT(blocsBio, crBlocCRP(sero));
-  pushT(blocsBio, crBlocWidal(sero));
+  // ✅ v13.168 — Le bloc Widal n'apparaît que si le Widal a été DEMANDÉ. Les
+  //   antigènes TO/TH sont préremplis « Négatif » et une conclusion est générée
+  //   même sans Widal coché ; sans ce garde, un compte rendu NFS + GE + CRP
+  //   sortait une 2ᵉ page Widal non demandée.
+  if (estCoche(/Widal|SWF/i)) pushT(blocsBio, crBlocWidal(sero));
   pushT(blocsBio, crBlocVHB(sero));
   pushT(blocsBio, crBlocSerologies(sero));
   pushT(blocsBio, crBlocsBiochimie(bio, profile));
