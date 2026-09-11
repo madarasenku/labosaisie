@@ -401,7 +401,7 @@ async function buildRecordPrintHTMLLegacy(r) {
   // ── ✅ v13.35 — Double QR + UUID + technicien ───────────────
   const shareToken = p?.share_token;
   const refDoc     = getOrCreateRef(r);
-  const techName   = (typeof _currentUser !== 'undefined' && _currentUser?.username) || '—';
+  const techName   = (typeof nomTechnicien === 'function' ? nomTechnicien() : (_currentUser?.username || '')) || '—';
 
   // QR 1 : vérification en ligne (share_token) ou infos dossier
   const qrContent1 = shareToken
@@ -729,7 +729,7 @@ function buildPrintSections(type, res, pat) {
     // CRP
     const crpValS = res['CRP - Valeur'];
     if (crpValS) {
-      const crpLabel = crpValS === 'neg' ? 'Négatif (< 6 mg/L)' : crpValS + ' mg/L';
+      const crpLabel = crpValS === 'neg' ? '< 6 mg/L' : crpValS + ' mg/L';
       const crpCls   = crpValS === 'neg' ? 'print-ok' : 'print-hi';
       html += section('🔥 CRP — Protéine C-réactive (Latex)', `
         <table class="print-table"><thead><tr><th>Test</th><th>Résultat</th><th>Valeurs normales</th></tr></thead>

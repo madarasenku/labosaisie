@@ -91,6 +91,13 @@ function clearSession() {
 function isAdmin() {
   return !!_currentUser && _currentUser.role === 'admin';
 }
+// ✅ v13.169 — Nom du technicien porté sur le compte rendu (signature « TBM … »).
+// Quand c'est l'administrateur qui saisit/édite, le compte rendu est signé au
+// nom du biologiste responsable (TBM YERIGUE) plutôt qu'au nom du compte admin.
+function nomTechnicien() {
+  if (isAdmin()) return 'YERIGUE';
+  return (_currentUser && _currentUser.username) || '';
+}
 // ✅ v13.33 — Rôle Caissier : accès lecture à toutes les fiches + caisse complète, pas de saisie
 function isCaissier() {
   return !!_currentUser && _currentUser.role === 'caissier';

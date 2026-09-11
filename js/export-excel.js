@@ -625,7 +625,7 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
     if (res['CRP - Valeur']) {
       secHdr('CRP — Protéine C-réactive (Latex)');
       tblHdr('Test', 'Résultat', '', '');
-      const crpL = res['CRP - Valeur']==='neg'?'Négatif (< 6 mg/L)':res['CRP - Valeur']+' mg/L';
+      const crpL = res['CRP - Valeur']==='neg'?'< 6 mg/L':res['CRP - Valeur']+' mg/L';
       const crpI = (res['CRP - Interprétation']||'').replace(/^[^\w]+/,'');
       pRow('CRP Latex', crpL, 'mg/L', '< 6', crpI);
       row++;
@@ -736,7 +736,7 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
     if (res['CRP - Valeur']) {
       secHdr('CRP — Protéine C-réactive (Latex)');
       tblHdr('Test', 'Résultat', 'Unité', 'Valeurs normales');
-      const _crp = res['CRP - Valeur'] === 'neg' ? 'Négatif (< 6 mg/L)' : res['CRP - Valeur'] + ' mg/L';
+      const _crp = res['CRP - Valeur'] === 'neg' ? '< 6 mg/L' : res['CRP - Valeur'] + ' mg/L';
       pRow('CRP Latex', _crp, '', '< 6 mg/L', res['CRP - Valeur'] === 'neg' ? 'Normal' : 'Élevé');
       row++;
     }
@@ -914,8 +914,7 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
   }
   // ✅ v13.37 — Nom (façon signature) + titre sous la ligne de signature,
   // et QR : les IMAGES sont ajoutées ensuite par addQrAndSignatures(wb).
-  const _techName = (typeof _currentUser !== 'undefined' && _currentUser?.username)
-    ? _currentUser.username.toUpperCase() : '';
+  const _techName = ((typeof nomTechnicien === 'function' ? nomTechnicien() : (_currentUser?.username || '')) || '').toUpperCase();
   const _refDoc = getOrCreateRef(r);
   ws.getCell(sigStartRow + 2, 4).value = _techName || '—';
   sC(ws.getCell(sigStartRow + 2, 4), { fg: SEC_FG, bold: true, size: 9 });

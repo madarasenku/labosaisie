@@ -112,10 +112,10 @@ function crBlocEPHB(res) {
 function crBlocCRP(res) {
   const brut = crV(res['CRP - Valeur']);
   if (brut === '') return '';
-  const val = (brut === 'neg') ? 'Négatif' : brut;
+  const val = (brut === 'neg') ? '< 6' : brut;
   const ano = (brut !== 'neg' && parseFloat(brut) >= 6);
   return crTable('CRP — Protéine C-réactive',
-    [{ nom: 'CRP — Protéine C-réactive', val, unite: (brut === 'neg' ? '' : 'mg/L'), ref: '< 6 mg/L', ano }]);
+    [{ nom: 'CRP — Protéine C-réactive', val, unite: 'mg/L', ref: '< 6 mg/L', ano }]);
 }
 
 function crBlocWidal(res) {
@@ -465,7 +465,7 @@ async function crBuildHTML(record) {
   let qr = '';
   try { const u = await generateQRDataURL(qrTxt, 90); if (u) qr = '<img src="' + u + '" width="62" height="62" alt="">'; } catch (e) {}
 
-  const tech = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '—';
+  const tech = (typeof nomTechnicien === 'function' ? nomTechnicien() : ((typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '')) || '—';
   const now = new Date();
   const dateFr = d => { try { return new Date(d).toLocaleDateString('fr-FR'); } catch (e) { return '—'; } };
   const _montantReel = Number(record && record.montant) || 0;

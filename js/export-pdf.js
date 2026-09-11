@@ -448,7 +448,7 @@ async function buildPDF(r, analyses) {
     const crpVal    = res['CRP - Valeur'] || '';
     if (crpVal) {
       sectionTitle('🔥 CRP — Protéine C-réactive');
-      const crpLabel = crpVal === 'neg' ? 'Négatif (< 6 mg/L)' : crpVal + ' mg/L';
+      const crpLabel = crpVal === 'neg' ? '< 6 mg/L' : crpVal + ' mg/L';
       const crpColor = crpVal === 'neg' ? [21,128,61] : [185,28,28];
       doc.autoTable({
         startY: y,
@@ -491,7 +491,7 @@ async function buildPDF(r, analyses) {
     const _crpV = res['CRP - Valeur'];
     if (_crpV) {
       sectionTitle('🔥 CRP — Protéine C-réactive');
-      const _lbl = _crpV === 'neg' ? 'Négatif (< 6 mg/L)' : _crpV + ' mg/L';
+      const _lbl = _crpV === 'neg' ? '< 6 mg/L' : _crpV + ' mg/L';
       addTable(['Test','Résultat','Valeurs normales'], [['CRP Latex', _lbl, '< 6 mg/L']]);
     }
     const _wid2 = (typeof widalReport === 'function') ? widalReport(res) : { show:false, rows:[], concl:'' };
@@ -596,7 +596,7 @@ async function buildPDF(r, analyses) {
   doc.setFontSize(8);
   // ✅ v13.35 — Ligne méta avec UUID
   const _refDoc = getOrCreateRef(r);
-  const _techName = (typeof _currentUser !== 'undefined' && _currentUser?.username) ? _currentUser.username.toUpperCase() : '—';
+  const _techName = ((typeof nomTechnicien === 'function' ? nomTechnicien() : (_currentUser?.username || '')) || '—').toUpperCase();
   doc.text('Édité le ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + '  ·  CPMI DE GRAND-BASSAM  ·  Réf. ' + _refDoc, MARGIN, y);
   // ✅ v13.156 — Montant en gras sur sa propre ligne (comme le modèle Excel).
   //   Forfait BPN = 20 000 (affichage CR seulement). Espace fine remplacée par
