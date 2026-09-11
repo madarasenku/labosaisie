@@ -49,7 +49,7 @@ const { serve, openApp, createReporter } = require('./helpers');
     return { synthese: _regSynthese(res), examens: _regExamens(res) };
   });
   r.check('synthèse NFS+GE+CRP (valeurs seules)', cas1.synthese,
-    'GE négatif · GB 6.92 · GR 4.62 · Hb 10.9 · Ht 35.1 · PNN 75% · Mono 3% · Lympho 20% · CRP <6 mg/L');
+    'GE négatif · GB 6.92 · GR 4.62 · Hb 10.9 · Ht 35.1 · PNN 75% · Mono 3% · Lympho 20% · CRP < 6 mg/L');
   r.check('aucune interprétation couleur (flag)', /flag/.test(cas1.synthese), false);
   r.check('aucune flèche ↑/↓', /[↑↓]/.test(cas1.synthese), false);
   r.check('Mono « 03 » normalisé en « 3 »', /Mono 3%/.test(cas1.synthese), true);

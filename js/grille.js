@@ -14,7 +14,7 @@
 
 // Options du sélecteur CRP (identiques au formulaire).
 const _CRP_OPTS = [
-  ['', '—'], ['neg', 'Négatif (< 6)'], ['6', '6'], ['12', '12'], ['24', '24'],
+  ['', '—'], ['neg', '< 6 mg/L'], ['6', '6'], ['12', '12'], ['24', '24'],
   ['48', '48'], ['96', '96'], ['192', '192'], ['384', '≥ 384'],
 ];
 // Options qualitatives des sérologies (identiques au formulaire).

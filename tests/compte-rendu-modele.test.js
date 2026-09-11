@@ -74,7 +74,7 @@ const doss = {
     r.check('colonnes Résultat/Unité/Valeurs normales', /Résultat.*Unité.*Valeurs normales/.test(txt), true);
     r.check('GE en tableau propre', /Goutte épaisse \/ TDR Paludisme/.test(txt), true);
     r.check('CRP', /CRP — Protéine C-réactive/.test(txt), true);
-    r.check('CRP « neg » rendue « Négatif »', /Négatif/.test(txt) && !/\bneg\b/.test(txt), true);
+    r.check('CRP « neg » rendue « < 6 mg/L »', /&lt;\s*6 mg\/L/.test(txt) && !/\bneg\b/.test(txt), true);
     r.check('Widal', /Widal — Agglutination/.test(txt), true);
     r.check('Hépatite B', /Bilan Hépatite B \(VHB\)/.test(txt), true);
     r.check('interprétation VHB', /Interprétation : Infection par le virus de l'hépatite B/.test(txt), true);

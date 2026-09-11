@@ -86,7 +86,7 @@ function _regSynthese(res) {
   pushPct('Lympho', h['Lymphocytes']);
   // CRP : valeur directe, négatif → « <6 mg/L »
   const crp = _regVal(s['CRP - Valeur']);
-  if (crp) parts.push(/^neg/i.test(crp) ? 'CRP <6 mg/L' : 'CRP ' + crp + ' mg/L');
+  if (crp) parts.push(/^neg/i.test(crp) ? 'CRP < 6 mg/L' : 'CRP ' + crp + ' mg/L');
   // Biochimie
   push('Gly', b['Glycémie à jeun'], ' g/L');
   push('Créat', b['Créatinine'], ' mg/L');
