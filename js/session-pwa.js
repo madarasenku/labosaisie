@@ -1318,10 +1318,16 @@ async function renderCaisse() {
     // vue simplifiée d'un agent, qui ne tient pas le tiroir.
     const carte = document.getElementById('cloture-card');
     if (carte) carte.style.display = 'none';
+    // ✅ v13.169 — Le registre du jour vit à côté de la clôture (document de
+    // caisse) : il disparaît aussi de la vue simplifiée de l'agent.
+    const carteReg = document.getElementById('registre-card');
+    if (carteReg) carteReg.style.display = 'none';
     renderUserCaisse(); return;
   }
   // ✅ v13.84 — Aperçu de la clôture du jour, recalculé à chaque ouverture.
   if (typeof renderCloture === 'function') renderCloture();
+  // ✅ v13.169 — Aperçu du registre du jour (document clinique).
+  if (typeof renderRegistre === 'function') renderRegistre();
   const db = getCalcDB(); // exclut les fiches verrouillées selon le choix admin
   const { from, to } = getCaisseRange();
   const rows = filterByDateRange(db, from, to);
