@@ -387,7 +387,7 @@ async function buildRecordPrintHTMLLegacy(r) {
         <tr>
           <td><b>N° Dossier</b><br><span class="print-dossier">${escHTML(p.dossier)||'—'}</span></td>
           <td><b>Patient</b><br><strong style="text-transform:uppercase;font-size:14px;letter-spacing:.3px">${escHTML(p.nom)||'—'}</strong></td>
-          <td><b>Âge / Sexe</b><br>${escHTML(p.age)||'—'} ans / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td>
+          <td><b>Âge / Sexe</b><br>${p.age?escHTML(formatAge(p.age)):'—'} / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td>
           <td><b>Date prélèvement</b><br>${p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—'}</td>
         </tr>
         <tr>
@@ -1212,7 +1212,7 @@ async function printReceipt(id, signataire) {
     <div class="section-title">Patient</div>
     <div class="meta-row"><span class="lbl">Nom</span><span class="val">${escHTML((p.nom||'').toUpperCase())}</span></div>
     <div class="meta-row"><span class="lbl">N° Dossier</span><span class="val">${escHTML(p.dossier||'—')}</span></div>
-    <div class="meta-row"><span class="lbl">Âge / Sexe</span><span class="val">${escHTML(p.age||'—')} ans / ${escHTML(p.sexe||'—')}</span></div>
+    <div class="meta-row"><span class="lbl">Âge / Sexe</span><span class="val">${p.age?escHTML(formatAge(p.age)):'—'} / ${escHTML(p.sexe||'—')}</span></div>
     <div class="meta-row"><span class="lbl">Prescripteur</span><span class="val">${escHTML(p.medecin||'—')}</span></div>
 
     <div class="sep"></div>

@@ -299,7 +299,7 @@ function buildProfessionalSheet(wb, r, sheetName, opts) {
   const profile = profileFromPatient(p); // ✅ v13.17 — pour les valeurs normales
   const nomMAJ = (p.nom || 'PATIENT').toUpperCase();
   const dateF  = p.date ? p.date.split('-').reverse().join('/') : '—';
-  const ageSexeF = [p.age ? p.age + ' ans' : '', p.sexe === 'M' ? 'Masculin' : p.sexe === 'F' ? 'Féminin' : p.sexe || ''].filter(Boolean).join(' · ');
+  const ageSexeF = [p.age ? formatAge(p.age) : '', p.sexe === 'M' ? 'Masculin' : p.sexe === 'F' ? 'Féminin' : p.sexe || ''].filter(Boolean).join(' · ');
 
   // ✅ v13.111 — RENDU NOIR & BLANC (économie d'encre, impression N&B).
   //   Plus aucune couleur : surlignage GRIS uniquement sur les valeurs anormales.

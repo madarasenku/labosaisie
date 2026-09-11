@@ -164,7 +164,7 @@ function cmdkRender() {
     const nom = (p.nom || '—').toUpperCase();
     const initiales = nom.split(/\s+/).map(w => w[0]).slice(0, 2).join('');
     const paye = (typeof getPaiementStatus === 'function') && getPaiementStatus(r.id) === 'paye';
-    const sub = [p.age ? p.age + ' ans' : '', p.sexe || '', p.medecin || '', p.telephone || '']
+    const sub = [p.age ? formatAge(p.age) : '', p.sexe || '', p.medecin || '', p.telephone || '']
       .filter(Boolean).join(' · ');
     return '<div class="cmdk-item' + (i === _cmdkActive ? ' active' : '') + '" data-idx="' + i + '"'
       + ' onmouseenter="_cmdkActive=' + i + ';cmdkPaint()" onclick="cmdkOpen(' + i + ')">'
@@ -331,7 +331,7 @@ function getPatient() {
     dossier:      document.getElementById('p_dossier').value.trim(),
     date:         document.getElementById('p_date').value,
     nom:          document.getElementById('p_nom').value.trim().toUpperCase(),
-    age:          document.getElementById('p_age').value,
+    age:          (typeof ageSaisi === 'function' ? ageSaisi() : document.getElementById('p_age').value),
       telephone:    (document.getElementById('p_telephone')?.value || '').trim(),
     sexe:         document.getElementById('p_sexe').value,
     medecin:      document.getElementById('p_medecin').value.trim().toUpperCase(),

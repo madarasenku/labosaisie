@@ -111,7 +111,7 @@ async function exportRecord(id) {
     addR('N° Dossier', p.dossier, true);
     addR('Patient', p.nom);
     addR('Date', p.date ? p.date.split('-').reverse().join('/') : '');
-    addR('Âge / Sexe', [p.age ? p.age + ' ans' : '', p.sexe].filter(Boolean).join(' · '));
+    addR('Âge / Sexe', [p.age ? formatAge(p.age) : '', p.sexe].filter(Boolean).join(' · '));
     addR('Service', p.service);
     addR('Médecin', p.medecin);
     addR('Analyses', getRecordTypes(record).join(', '));
@@ -326,7 +326,7 @@ async function buildPDF(r, analyses) {
   doc.text('Patient', col1, y + 11); doc.setFont('helvetica','normal'); doc.text(p.nom || '—', col2, y + 11);
   doc.setFont('helvetica','bold');
   doc.text('Âge / Sexe', col3, y + 11); doc.setFont('helvetica','normal');
-  doc.text((p.age ? p.age + ' ans' : '') + (p.sexe ? ' — ' + p.sexe : ''), col4, y + 11);
+  doc.text((p.age ? formatAge(p.age) : '') + (p.sexe ? ' — ' + p.sexe : ''), col4, y + 11);
 
   doc.setFont('helvetica','bold');
   doc.text('Médecin', col1, y + 17); doc.setFont('helvetica','normal'); doc.text(p.medecin || '—', col2, y + 17);

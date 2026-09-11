@@ -974,7 +974,7 @@ async function checkShareMode() {
         <table style="width:100%;font-size:13px;border-collapse:collapse">
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0;white-space:nowrap">N° Dossier</td><td><strong style="font-size:15px;color:#0b2545">${escHTML(p.dossier||'—')}</strong></td></tr>
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Patient</td><td><strong style="text-transform:uppercase">${escHTML(p.nom||'—')}</strong></td></tr>
-          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Âge / Sexe</td><td>${escHTML(p.age||'—')} ans / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td></tr>
+          <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Âge / Sexe</td><td>${p.age?escHTML(formatAge(p.age)):'—'} / ${p.sexe==='M'?'Masculin':p.sexe==='F'?'Féminin':'—'}</td></tr>
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Date</td><td>${escHTML(dateF)}</td></tr>
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Prescripteur</td><td>${escHTML(p.medecin||'—')}</td></tr>
           <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Analyses</td><td><strong>${escHTML(types)}</strong></td></tr>
