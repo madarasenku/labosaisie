@@ -68,6 +68,16 @@ const lire = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
   // dans le temps via le journal git — ici on se contente du format.
   r.check('format du nom de cache', /^cpmi-labo-(V2-)?v\d+$/.test(cache || ''), true);
 
+  r.section('Le badge de version n\'est pas figé (dérive du ?v=)');
+  // Historique : APP_VERSION_UI était une constante codée en dur (« 13.152 »)
+  // qu'on oubliait de bumper — le badge affichait une version périmée alors que
+  // l'app tournait sur une autre. Il doit maintenant se DÉRIVER du ?v= des actifs.
+  const idx = lire('index.html');
+  r.check('pas de version codée en dur dans APP_VERSION_UI',
+          /APP_VERSION_UI\s*=\s*['"]\d/.test(idx) ? 'codée en dur' : 'dérivée', 'dérivée');
+  r.check('APP_VERSION_UI dérive du ?v=',
+          /APP_VERSION_UI\s*=\s*\(function[\s\S]*\?v=/.test(idx), true);
+
   const s = r.summary();
   process.exit(s.allPassed ? 0 : 1);
 })();
