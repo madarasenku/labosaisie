@@ -61,6 +61,11 @@ function showView(v) {
     // dès l'ouverture de l'onglet, sinon le libellé reste vide.
     if (typeof majNavPeriode === 'function') majNavPeriode();
     renderHistory(true);
+    // ✅ v13.171 — Liste des électrophorèses de la semaine : réservée à l'ADMIN.
+    const _ec = document.getElementById('electro-card');
+    const _ecAdmin = (typeof isAdmin === 'function') && isAdmin();
+    if (_ec) _ec.style.display = _ecAdmin ? '' : 'none';
+    if (_ecAdmin && typeof renderElectro === 'function') renderElectro();
   }
   if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors();
     if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
