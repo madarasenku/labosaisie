@@ -408,11 +408,16 @@ function grilleColonnes(dossiers) {
   return GRILLE_ORDRE.filter(k => vus.has(k));
 }
 
-function ouvrirGrille(key) {
+async function ouvrirGrille(key) {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
   if (key && GRILLE_EXAMS[key]) _grilleKey = key;
   if (_grilleDate === null) {
-    try { _grilleDate = new Date().toISOString().slice(0, 10); } catch (e) { _grilleDate = ''; }
+    // ✅ v3 — Date du jour en heure LOCALE (et non UTC via toISOString, qui
+    //   décalait d'un jour et pouvait vider la grille près de minuit).
+    try {
+      const d = new Date(); const pp = n => String(n).padStart(2, '0');
+      _grilleDate = d.getFullYear() + '-' + pp(d.getMonth() + 1) + '-' + pp(d.getDate());
+    } catch (e) { _grilleDate = ''; }
   }
   const cont = document.getElementById('grille-serie');
   if (!cont) return;
@@ -420,8 +425,17 @@ function ouvrirGrille(key) {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
   cont.style.display = '';
-  grilleRender();
+  // ✅ v3 — CORRECTIF « la saisie en série n'affiche rien » : on attendait que
+  //   le cache des dossiers soit déjà chargé. Si l'utilisateur ouvrait la série
+  //   avant la fin du chargement (ou hors-ligne au démarrage), la liste était
+  //   vide sans explication. On charge maintenant les dossiers AVANT le rendu,
+  //   avec un indicateur, et on affiche toujours un message clair si vide.
+  cont.innerHTML = '<div style="padding:28px;text-align:center;color:var(--text-muted)">Chargement des dossiers…</div>';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  try { if (typeof refreshDB === 'function') await refreshDB(); } catch (e) { /* réseau : on rend avec ce qu'on a */ }
+  // L'utilisateur a pu fermer la grille pendant le chargement.
+  if (cont.style.display === 'none') return;
+  grilleRender();
 }
 function ouvrirGrilleNFS() { ouvrirGrille('nfs'); }
 function fermerGrille() {
