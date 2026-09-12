@@ -44,7 +44,19 @@
             color:#fff;font:600 10.5px/1 system-ui,sans-serif;padding:5px 9px;border-radius:99px;
             cursor:pointer;letter-spacing:.03em;user-select:none;opacity:.72"></div>
 <script>
-  window.APP_VERSION_UI = '13.152';
+  // ✅ v13.171 — Le badge dérive la version du ?v= des actifs (app.css), au lieu
+  //   d'une constante codée en dur qu'on oubliait de bumper : le badge restait
+  //   figé (« v13.152 ») alors que l'app tournait en réalité sur une version plus
+  //   récente. Le ?v= vaut TOUJOURS APP_VERSION (garanti par tests/deploiement).
+  window.APP_VERSION_UI = (function () {
+    try {
+      var el = document.querySelector('link[rel="stylesheet"][href*="?v="]')
+            || document.querySelector('script[src*="?v="]');
+      var u = el && (el.getAttribute('href') || el.getAttribute('src') || '');
+      var m = u && u.match(/\?v=([0-9.]+)/);
+      return m ? m[1] : '?';
+    } catch (e) { return '?'; }
+  })();
   (function () {
     var b = document.getElementById('badge-version');
     if (b) b.textContent = 'v' + window.APP_VERSION_UI;
