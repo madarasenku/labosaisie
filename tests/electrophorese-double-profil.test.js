@@ -1,4 +1,4 @@
-// ✅ v3 — DOUBLE PROFIL ÉLECTROPHORÈSE.
+// ✅ v13.173 — DOUBLE PROFIL ÉLECTROPHORÈSE.
 //
 // Cas réel (dossier ADJETOUAN) : le « Profil Hb » posé est « Profil AS
 // (Drépanocytose trait) » mais le « Commentaire Hb » a gardé un texte pré-rempli

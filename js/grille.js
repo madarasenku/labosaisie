@@ -429,7 +429,7 @@ async function ouvrirGrille(key) {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
   cont.style.display = '';
-  // ✅ v3 — RECHARGER la base AVANT d'afficher. Sans ça, entrer dans la saisie en
+  // ✅ v13.173 — RECHARGER la base AVANT d'afficher. Sans ça, entrer dans la saisie en
   //   série juste après la connexion (cache pas encore peuplé) montrait une
   //   grille vide alors qu'il y avait des patients à saisir. On rafraîchit puis
   //   on rend ; le rendu immédiat sert de repli si le réseau est lent/absent.

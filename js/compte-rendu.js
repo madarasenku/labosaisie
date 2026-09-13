@@ -105,7 +105,7 @@ function crBlocEPHB(res) {
   const profil = crV(res['Profil Hb']);
   if (profil) rows.push({ interpretation: 'Profil : ' + profil });
   const com = crV(res['Commentaire Hb']);
-  // ✅ v3 — DOUBLE PROFIL : quand un « Profil Hb » est choisi, le commentaire
+  // ✅ v13.173 — DOUBLE PROFIL : quand un « Profil Hb » est choisi, le commentaire
   //   libre ne doit PAS redire un profil. Certains dossiers gardent un
   //   commentaire pré-rempli d'une saisie antérieure (« Électrophorèse normale
   //   (profil AA). ») qui contredit le profil réellement posé (ex. AS) : le
@@ -461,7 +461,7 @@ async function crBuildHTML(record) {
   //   biochimie) est renvoyée sur une nouvelle feuille (héma + groupe restent
   //   ensemble sur la 1ʳᵉ).
   const _seroLabels = labels.filter(l => /CRP|Widal|SWF|HBs|H[ée]patite|VIH|TPHA|VDRL|Syphilis|Toxo|Rub[eé]ole|VHC|S[ée]rolog/i.test(String(l)));
-  // ✅ v3.172 — Le BILAN PRÉNATAL ne force PLUS le saut de page avant la
+  // ✅ v13.172 — Le BILAN PRÉNATAL ne force PLUS le saut de page avant la
   //   sérologie : le forfait cumule NFS + électrophorèse + groupe + biochimie +
   //   plusieurs sérologies, et le saut laissait la 1ʳᵉ feuille à moitié vide en
   //   repoussant le reste sur une 3ᵉ feuille. Sans le saut, le contenu s'écoule
