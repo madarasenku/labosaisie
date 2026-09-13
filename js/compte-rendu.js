@@ -454,7 +454,12 @@ async function crBuildHTML(record) {
   //   biochimie) est renvoyée sur une nouvelle feuille (héma + groupe restent
   //   ensemble sur la 1ʳᵉ).
   const _seroLabels = labels.filter(l => /CRP|Widal|SWF|HBs|H[ée]patite|VIH|TPHA|VDRL|Syphilis|Toxo|Rub[eé]ole|VHC|S[ée]rolog/i.test(String(l)));
-  const _forceSeroBreak = _seroLabels.length > 1 && blocsHema.length && blocsBio.length;
+  // ✅ v3.172 — Le BILAN PRÉNATAL ne force PLUS le saut de page avant la
+  //   sérologie : le forfait cumule NFS + électrophorèse + groupe + biochimie +
+  //   plusieurs sérologies, et le saut laissait la 1ʳᵉ feuille à moitié vide en
+  //   repoussant le reste sur une 3ᵉ feuille. Sans le saut, le contenu s'écoule
+  //   et remplit la 2ᵉ feuille → le compte rendu BPN tient sur 2 pages.
+  const _forceSeroBreak = _seroLabels.length > 1 && blocsHema.length && blocsBio.length && !_estBPN;
 
   const refDoc = (typeof getOrCreateRef === 'function') ? getOrCreateRef(record) : '';
   const share = p.share_token;
