@@ -1225,6 +1225,20 @@ async function saveRecord(type) {
   }
 }
 
+// ✅ v13.173 — Doublon potentiel pour le garde-fou anti-doublon de numéro :
+//   un dossier NON supprimé, du même patient (nom normalisé) et de la même date
+//   de prélèvement. Renvoie le dossier trouvé, ou null (fonction pure, testable).
+function trouverDoublonDossier(db, patient) {
+  const nom = String(patient?.nom || '').trim().toUpperCase();
+  const date = patient?.date || '';
+  if (!nom || !date) return null;
+  return (db || []).find(rr =>
+    isDossierRecord(rr) && !rr.deletedAt && !rr._hardDeleted
+    && String(rr.patient?.nom || '').trim().toUpperCase() === nom
+    && (rr.patient?.date || '') === date
+  ) || null;
+}
+
 async function _saveRecordImpl(type) {
   const p = getPatient();
   if (!validatePatient(p)) return;
@@ -1316,7 +1330,7 @@ async function _saveRecordImpl(type) {
   });
 
   const prescripteurId = document.getElementById('p_prescripteur_id')?.value || null;
-  const dossier = p.dossier;
+  let dossier = p.dossier;
 
   // ── Mode édition d'une fiche existante ─────────────────────
   if (_editingRecordId) {
@@ -1389,9 +1403,43 @@ async function _saveRecordImpl(type) {
   // On rafraîchit d'abord pour être sûr d'avoir les données les plus récentes
   if (!getDB().length) await refreshDB();
 
-  const existingDossier = getDB().find(rr =>
+  let existingDossier = getDB().find(rr =>
     isDossierRecord(rr) && rr.patient?.dossier === dossier
   );
+
+  // ✅ v13.173 — GARDE-FOU ANTI-DOUBLON DE NUMÉRO.
+  //   Après un enregistrement, le formulaire régénère le N° de dossier
+  //   (regenDossier). Corriger le patient qu'on vient de saisir sans repasser par
+  //   « Modifier » créait alors un 2ᵉ dossier au N° suivant (doublon qu'il fallait
+  //   supprimer à la main). Si aucun dossier ne correspond au N° affiché mais
+  //   qu'un dossier NON supprimé existe déjà pour le même patient le même jour, on
+  //   propose de METTRE À JOUR ce dossier (en conservant SON numéro) au lieu d'en
+  //   créer un nouveau.
+  if (!existingDossier) {
+    const doublon = trouverDoublonDossier(getDB(), p);
+    if (doublon) {
+      hideLoading();
+      const majExistant = await showConfirmModal({
+        icon: '📄',
+        title: 'Dossier déjà existant',
+        message: 'Un dossier existe déjà pour <b>' + esc(p.nom) + '</b> le '
+          + esc(p.date) + ' (N° <b>' + esc(doublon.patient?.dossier || '?') + '</b>).<br><br>'
+          + 'Mettre à jour ce dossier (recommandé) ou créer un nouveau dossier ?',
+        confirmText: 'Mettre à jour le N° ' + esc(doublon.patient?.dossier || ''),
+        cancelText: 'Créer un nouveau dossier',
+      });
+      showLoading('Enregistrement…');
+      if (majExistant) {
+        existingDossier = doublon;
+        // Conserver le numéro D'ORIGINE du dossier mis à jour (ne pas y écrire le
+        // N° régénéré affiché dans le formulaire).
+        dossier = doublon.patient?.dossier || dossier;
+        p.dossier = dossier;
+        const champDoss = document.getElementById('p_dossier');
+        if (champDoss) champDoss.value = dossier;
+      }
+    }
+  }
 
   if (existingDossier) {
     // ✅ v13.5 — CHARGER LE DÉTAIL COMPLET avant de fusionner (sinon les autres
