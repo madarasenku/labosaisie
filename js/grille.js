@@ -408,11 +408,20 @@ function grilleColonnes(dossiers) {
   return GRILLE_ORDRE.filter(k => vus.has(k));
 }
 
-function ouvrirGrille(key) {
+// Jour LOCAL (YYYY-MM-DD). ⚠ NE PAS utiliser toISOString() : il renvoie la date
+// UTC — un poste réglé sur un fuseau décalé pouvait filtrer sur la veille/le
+// lendemain et la grille s'affichait vide (« aucun patient »).
+function _grilleJourLocal() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+async function ouvrirGrille(key) {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
   if (key && GRILLE_EXAMS[key]) _grilleKey = key;
   if (_grilleDate === null) {
-    try { _grilleDate = new Date().toISOString().slice(0, 10); } catch (e) { _grilleDate = ''; }
+    try { _grilleDate = _grilleJourLocal(); } catch (e) { _grilleDate = ''; }
   }
   const cont = document.getElementById('grille-serie');
   if (!cont) return;
@@ -420,7 +429,19 @@ function ouvrirGrille(key) {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
   cont.style.display = '';
+  // ✅ v13.173 — RECHARGER la base AVANT d'afficher. Sans ça, entrer dans la saisie en
+  //   série juste après la connexion (cache pas encore peuplé) montrait une
+  //   grille vide alors qu'il y avait des patients à saisir. On rafraîchit puis
+  //   on rend ; le rendu immédiat sert de repli si le réseau est lent/absent.
   grilleRender();
+  if (typeof refreshDB === 'function') {
+    try {
+      if (typeof showLoading === 'function') showLoading('Chargement des dossiers…');
+      await refreshDB(true);
+    } catch (e) { /* réseau : on garde ce qui est déjà en cache */ }
+    finally { if (typeof hideLoading === 'function') hideLoading(); }
+    grilleRender();
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function ouvrirGrilleNFS() { ouvrirGrille('nfs'); }
