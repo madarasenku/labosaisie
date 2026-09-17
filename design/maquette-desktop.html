@@ -1,0 +1,453 @@
+<title>LaboSaisie Poste Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --surface-3:#eef2f6;
+  --ink:#172433; --ink-2:#3b4a5c; --muted:#6a7889; --faint:#93a1b0;
+  --line:#e0e6ec; --line-2:#eceff3;
+  --accent:#0f766e; --accent-2:#14b8a6; --accent-soft:#e2f4f1; --accent-ink:#0b544e;
+  --todo:#b45309; --todo-bg:#fdf1e3; --doing:#0369a1; --doing-bg:#e6f1fa; --done:#15803d; --done-bg:#e8f6ec;
+  --danger:#b91c1c; --danger-bg:#fdeaea;
+  --radius:9px; --radius-sm:7px;
+  --shadow:0 1px 2px rgba(23,36,51,.05),0 4px 14px -8px rgba(23,36,51,.14);
+  --shadow-sm:0 1px 1px rgba(23,36,51,.06);
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0c131b; --surface:#151d27; --surface-2:#111823; --surface-3:#1a232f;
+  --ink:#e7ecf2; --ink-2:#bcc7d3; --muted:#8595a4; --faint:#5f6f7e;
+  --line:#25313e; --line-2:#1c2734;
+  --accent:#2dd4bf; --accent-2:#5eead4; --accent-soft:#0f2b28; --accent-ink:#7fe9db;
+  --todo:#e0a256; --todo-bg:#2a2013; --doing:#5aa7dd; --doing-bg:#0e2436; --done:#57c07f; --done-bg:#0e2519;
+  --danger:#e07a7a; --danger-bg:#2a1616;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --ground:#0c131b; --surface:#151d27; --surface-2:#111823; --surface-3:#1a232f;
+  --ink:#e7ecf2; --ink-2:#bcc7d3; --muted:#8595a4; --faint:#5f6f7e;
+  --line:#25313e; --line-2:#1c2734;
+  --accent:#2dd4bf; --accent-2:#5eead4; --accent-soft:#0f2b28; --accent-ink:#7fe9db;
+  --todo:#e0a256; --todo-bg:#2a2013; --doing:#5aa7dd; --doing-bg:#0e2436; --done:#57c07f; --done-bg:#0e2519;
+  --danger:#e07a7a; --danger-bg:#2a1616;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px -10px rgba(0,0,0,.6);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;line-height:1.2;font-weight:700}
+button{font-family:inherit;cursor:pointer}
+.tnum{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ===== Shell ===== */
+.shell{display:grid;grid-template-columns:212px 1fr;min-height:100vh}
+.side{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line-2)}
+.brand .logo{width:34px;height:34px;border-radius:9px;flex:none;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+.brand b{font-size:13.5px;display:block;font-weight:700}.brand span{font-size:10.5px;color:var(--muted)}
+.nav{padding:10px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;flex:1}
+.nav .grp{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--faint);font-weight:600;padding:12px 10px 5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--ink-2);
+  font-weight:500;font-size:13px;text-decoration:none;border:0;background:none;width:100%;text-align:left}
+.nav a .i{width:18px;text-align:center;font-size:14px}
+.nav a .cnt{margin-left:auto;font-size:11px;font-weight:700;background:var(--surface-3);color:var(--muted);border-radius:999px;padding:1px 7px}
+.nav a:hover{background:var(--surface-2);color:var(--ink)}
+.nav a.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.nav a.on .cnt{background:var(--accent);color:#fff}
+.side .u{border-top:1px solid var(--line-2);padding:10px;display:flex;align-items:center;gap:9px}
+.side .u .av{width:32px;height:32px;border-radius:8px;background:var(--surface-3);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--ink-2)}
+.side .u .nm{font-size:12.5px;font-weight:600;line-height:1.2}.side .u .rl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.side .u .acts{margin-left:auto;display:flex;gap:4px}
+.miniic{width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.miniic:hover{border-color:var(--accent);color:var(--accent)}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--ground) 86%,transparent);
+  backdrop-filter:blur(6px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:11px 20px}
+.topbar h1{font-size:16px;font-weight:700}
+.topbar .crumb{font-size:11.5px;color:var(--muted)}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);
+  border-radius:8px;padding:7px 11px;color:var(--muted);min-width:230px}
+.search input{border:0;background:transparent;color:var(--ink);width:100%;font-family:var(--sans);font-size:13px}
+.search input:focus{outline:none}
+.content{padding:18px 20px 48px;max-width:1120px;width:100%}
+
+.screen{display:none}.screen.on{display:block;animation:fade .18s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.screen{animation:none}}
+
+/* ===== KPI strip ===== */
+.kpis{display:flex;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);margin-bottom:14px;box-shadow:var(--shadow-sm)}
+.kpi{flex:1;padding:11px 16px;border-left:1px solid var(--line-2)}.kpi:first-child{border-left:0}
+.kpi .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
+.kpi .n{font-size:22px;font-weight:700;margin-top:1px}
+.kpi.todo .n{color:var(--todo)}.kpi.doing .n{color:var(--doing)}.kpi.done .n{color:var(--done)}
+.kpi .d{font-size:10.5px;color:var(--faint)}
+
+/* ===== toolbar ===== */
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--muted);font-weight:600;font-size:12px;padding:7px 13px;border-left:1px solid var(--line-2)}
+.seg button:first-child{border-left:0}.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink)}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:8px;padding:8px 13px;font-weight:600;font-size:12.5px;display:inline-flex;align-items:center;gap:7px}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}.btn.pri:hover{filter:brightness(1.06);color:#fff}
+.btn.go{background:linear-gradient(135deg,var(--done),#0aa06f);border:0;color:#fff}
+.spacer{margin-left:auto}
+
+/* ===== data table ===== */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.tablewrap{overflow-x:auto}
+table.dt{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px}
+.dt thead th{text-align:left;background:var(--surface-2);color:var(--muted);font-weight:600;font-size:10.5px;letter-spacing:.4px;
+  text-transform:uppercase;padding:9px 14px;border-bottom:1px solid var(--line);position:sticky;top:0}
+.dt th.r,.dt td.r{text-align:right}
+.dt td{padding:9px 14px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.dt tbody tr:last-child td{border-bottom:0}
+.dt tbody tr:hover{background:var(--surface-2)}
+.doss{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--muted)}
+.who2 .nm{font-weight:600}.who2 .sub{color:var(--muted);font-size:11px}
+.exs{display:flex;flex-wrap:wrap;gap:4px}
+.ex{font-size:10.5px;font-weight:600;color:var(--ink-2);background:var(--surface-3);border:1px solid var(--line);padding:2px 7px;border-radius:6px}
+.ex.bpn{color:var(--accent-ink);border-color:var(--accent);background:var(--accent-soft)}
+.mini{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.mini i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.mini.todo{color:var(--todo);background:var(--todo-bg)}.mini.doing{color:var(--doing);background:var(--doing-bg)}.mini.done{color:var(--done);background:var(--done-bg)}
+.lnk{color:var(--accent);font-weight:700;font-size:12px;background:none;border:0;padding:4px 2px}
+.lnk:hover{text-decoration:underline}
+
+/* ===== série grid ===== */
+.panel-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.panel-h h2{font-size:14px}
+.mini-field{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.mini-field select,.mini-field input{font-family:var(--sans);font-size:12.5px;padding:6px 9px;border-radius:7px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+table.grid{width:100%;border-collapse:collapse;font-size:12.5px;min-width:680px}
+.grid thead th{position:sticky;top:0;background:var(--surface-2);text-align:left;font-weight:600;font-size:10.5px;letter-spacing:.3px;
+  color:var(--muted);text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--line)}
+.grid td{padding:6px 12px;border-bottom:1px solid var(--line-2)}
+.grid tbody tr:hover{background:var(--surface-2)}
+.grid .cell{width:58px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600;font-size:12.5px;padding:6px 5px;
+  border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink)}
+.grid .cell:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.gname b{font-weight:600}.gname span{color:var(--muted);font-size:11px}.tick{color:var(--done);font-weight:700}
+.hintbar{display:flex;gap:8px;align-items:center;padding:10px 14px;font-size:12px;color:var(--done);background:var(--done-bg);border-top:1px solid var(--line-2)}
+
+/* ===== patient entry ===== */
+.pstrip{display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding:13px 16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:14px}
+.pstrip .av{width:42px;height:42px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:17px;flex:none}
+.pstrip .nm{font-size:15px;font-weight:700}.pstrip .meta{font-size:11.5px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;margin-top:2px}
+.pstrip .price{margin-left:auto;text-align:right}.pstrip .price b{font-size:16px;font-weight:700;display:block}.pstrip .price span{font-size:10.5px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.sec .hd{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line-2);background:var(--surface-2)}
+.sec .hd h3{font-size:12.5px;font-weight:700}.sec .hd .tag{margin-left:auto;font-size:10px;font-weight:700;color:var(--doing);background:var(--doing-bg);padding:2px 8px;border-radius:999px}
+.sec .bd{padding:13px 14px}
+.fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.f label{display:block;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.f .inp{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface-2)}
+.f .inp input{border:0;background:transparent;font-size:13px;width:100%;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600;font-family:var(--sans)}
+.f .inp input:focus{outline:none}.f .inp .u{font-size:10.5px;color:var(--muted);white-space:nowrap}
+.f .inp.hi{border-color:#e7b98f;background:var(--todo-bg)}.f .inp.hi .u{color:var(--todo)}
+.f .inp.lo{border-color:#8fb8e7;background:var(--doing-bg)}.f .inp.lo .u{color:var(--doing)}
+.norm{font-size:9.5px;color:var(--faint);margin-top:3px}
+.savebar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:14px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.note{font-size:11.5px;color:var(--muted)}
+
+/* ===== réception ===== */
+.recwrap{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start}
+.checkfam{margin-bottom:12px}
+.checkfam .ft{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:0 0 7px}
+.chk{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--surface-2)}
+.chk input{width:16px;height:16px;accent-color:var(--accent)}
+.chk .lb{font-size:12.5px;font-weight:500}
+.chk .pr{margin-left:auto;font-size:12px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.chk.on{border-color:var(--accent);background:var(--accent-soft)}.chk.on .pr{color:var(--accent-ink)}
+.summary{position:sticky;top:70px}
+.total{display:flex;align-items:baseline;justify-content:space-between;padding:14px;border-top:2px solid var(--line);margin-top:4px}
+.total .lab{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.total .val{font-size:26px;font-weight:700;color:var(--accent-ink)}
+
+/* ===== registre print-like ===== */
+.reg{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:18px}
+.reg .rh{text-align:center;border-bottom:1.5px solid var(--ink);padding-bottom:8px;margin-bottom:12px}
+.reg .rh b{font-size:15px;font-weight:700}.reg .rh div{font-size:11px;color:var(--muted)}
+table.rt{width:100%;border-collapse:collapse;font-size:11.5px}
+.rt th{background:var(--surface-2);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);padding:7px 9px;border:1px solid var(--line)}
+.rt td{padding:7px 9px;border:1px solid var(--line-2);vertical-align:top}
+.rt .syn{color:var(--ink-2)}
+
+.ribbon{position:fixed;right:-42px;top:18px;transform:rotate(45deg);background:var(--todo);color:#fff;font-weight:700;font-size:10.5px;
+  letter-spacing:1px;padding:5px 48px;box-shadow:var(--shadow);z-index:50;pointer-events:none}
+
+@media (max-width:880px){
+  .shell{grid-template-columns:1fr}
+  .side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .side .nav{flex-direction:row;flex-wrap:wrap;flex:1 1 100%;order:3}.nav .grp{display:none}
+  .nav a{width:auto}.side .u{order:2;border-top:0;margin-left:auto}
+  .grid2,.recwrap{grid-template-columns:1fr}.summary{position:static}
+}
+</style>
+
+<div class="ribbon">MAQUETTE</div>
+<div class="shell">
+  <!-- ===== Sidebar ===== -->
+  <aside class="side">
+    <div class="brand"><div class="logo">CB</div><div><b>LaboSaisie</b><span>CPMI Grand-Bassam</span></div></div>
+    <nav class="nav">
+      <span class="grp">Travail du jour</span>
+      <a class="on" data-s="file" onclick="nav('file',this)"><span class="i">🗂️</span>File du jour<span class="cnt tnum">12</span></a>
+      <a data-s="serie" onclick="nav('serie',this)"><span class="i">📋</span>Saisie en série</a>
+      <a data-s="patient" onclick="nav('patient',this)"><span class="i">🧾</span>Saisir un patient</a>
+      <a data-s="reception" onclick="nav('reception',this)"><span class="i">➕</span>Réception</a>
+      <a data-s="registre" onclick="nav('registre',this)"><span class="i">🖨️</span>Registre du jour</a>
+      <span class="grp">Consultation</span>
+      <a data-s="file" onclick="nav('file',this)"><span class="i">🔎</span>Historique</a>
+      <a data-s="file" onclick="nav('file',this)"><span class="i">📊</span>Statistiques</a>
+    </nav>
+    <div class="u">
+      <div class="av">AT</div>
+      <div><div class="nm">Ago Thierry</div><div class="rl">Technicien</div></div>
+      <div class="acts">
+        <button class="miniic" title="Changer mon mot de passe">🔑</button>
+        <button class="miniic" title="Clair / sombre" onclick="toggleTheme()">🌓</button>
+        <button class="miniic" title="Déconnexion">⎋</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <div class="main">
+    <header class="topbar">
+      <div><h1 id="pgtitle">File du jour</h1><div class="crumb" id="pgcrumb">Lundi 14 septembre 2026</div></div>
+      <div class="search">🔎<input placeholder="Rechercher un patient, un N° de dossier…" aria-label="Rechercher"></div>
+    </header>
+    <div class="content">
+
+      <!-- ===== FILE DU JOUR ===== -->
+      <section id="file" class="screen on">
+        <div class="kpis">
+          <div class="kpi todo"><div class="k">À saisir</div><div class="n tnum">12</div><div class="d">résultats attendus</div></div>
+          <div class="kpi doing"><div class="k">En cours</div><div class="n tnum">3</div><div class="d">à terminer</div></div>
+          <div class="kpi done"><div class="k">Rendus</div><div class="n tnum">27</div><div class="d">imprimés aujourd’hui</div></div>
+          <div class="kpi"><div class="k">Total reçus</div><div class="n tnum">42</div><div class="d">depuis 07:00</div></div>
+        </div>
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Filtre statut">
+            <button aria-pressed="true">Tous</button><button aria-pressed="false">À saisir</button>
+            <button aria-pressed="false">En cours</button><button aria-pressed="false">Prénatal</button>
+          </div>
+          <span class="spacer"></span>
+          <button class="btn" onclick="nav('serie',qs('serie'))">📋 Saisie en série</button>
+          <button class="btn pri" onclick="nav('reception',qs('reception'))">➕ Nouveau patient</button>
+        </div>
+        <div class="card"><div class="tablewrap"><table class="dt">
+          <thead><tr><th>N°</th><th>Patient</th><th>Âge</th><th>Prescripteur</th><th>Examens</th><th>Reçu</th><th>Statut</th><th class="r">Action</th></tr></thead>
+          <tbody id="filebody"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- ===== SÉRIE ===== -->
+      <section id="serie" class="screen">
+        <div class="card">
+          <div class="panel-h">
+            <h2>NFS — Hémogramme</h2>
+            <div class="mini-field"><label for="ex">Examen</label>
+              <select id="ex"><option>NFS — Hémogramme</option><option>CRP</option><option>Glycémie</option><option>Électrophorèse Hb</option><option>Créatinine (+ urée auto)</option></select>
+            </div>
+            <div class="mini-field"><input type="date" value="2026-09-14" aria-label="Date"></div>
+            <span class="spacer"></span>
+            <button class="btn go">💾 Enregistrer les cochés (4)</button>
+          </div>
+          <div class="tablewrap"><table class="grid">
+            <thead><tr><th>N° · Patient</th><th>GB</th><th>GR</th><th>Hb</th><th>Ht</th><th>Plq</th><th>PNN%</th><th>Lymph%</th><th>Mono%</th></tr></thead>
+            <tbody id="serierows"></tbody>
+          </table></div>
+          <div class="hintbar">✅ La liste se charge automatiquement à l’ouverture — plus jamais de grille vide. 4 complets · 1 commencé.</div>
+        </div>
+      </section>
+
+      <!-- ===== SAISIR PATIENT ===== -->
+      <section id="patient" class="screen">
+        <div class="pstrip">
+          <div class="av">🩺</div>
+          <div><div class="nm">KOUAKOU AMOIN GRÂCE</div><div class="meta"><span class="mono">N° 0201-0926</span><span>28 ans · F</span><span>Dr Konan · Maternité</span></div></div>
+          <div class="price"><b class="tnum">20 000 F</b><span>Bilan prénatal · payé</span></div>
+        </div>
+        <div class="grid2">
+          <div class="sec"><div class="hd"><h3>🩸 Hématologie — NFS</h3><span class="tag">1 à confirmer</span></div><div class="bd"><div class="fg">
+            <div class="f"><label>GB</label><div class="inp"><input value="6.92"><span class="u">10³/µL</span></div><div class="norm">4,0–10,0</div></div>
+            <div class="f"><label>GR</label><div class="inp"><input value="4.62"><span class="u">10⁶/µL</span></div><div class="norm">3,8–5,2</div></div>
+            <div class="f"><label>Hémoglobine</label><div class="inp lo"><input value="10.9"><span class="u">g/dL ↓</span></div><div class="norm">12,0–16,0</div></div>
+            <div class="f"><label>Hématocrite</label><div class="inp lo"><input value="35.1"><span class="u">% ↓</span></div><div class="norm">36–46</div></div>
+            <div class="f"><label>Plaquettes</label><div class="inp"><input value="228"><span class="u">10³/µL</span></div><div class="norm">150–400</div></div>
+            <div class="f"><label>PNN</label><div class="inp"><input value="55"><span class="u">%</span></div><div class="norm">45–70</div></div>
+          </div></div></div>
+          <div class="sec"><div class="hd"><h3>🧬 Électrophorèse Hb</h3><span class="tag">profil</span></div><div class="bd"><div class="fg">
+            <div class="f"><label>Hb A</label><div class="inp"><input value="61.7"><span class="u">%</span></div></div>
+            <div class="f"><label>Hb A2</label><div class="inp"><input value="1.6"><span class="u">%</span></div></div>
+            <div class="f"><label>Hb S</label><div class="inp"><input value="36.7"><span class="u">%</span></div></div>
+            <div class="f" style="grid-column:1/-1"><label>Profil / conclusion</label><div class="inp"><input value="Profil AS (Drépanocytose trait)"></div><div class="norm">Le commentaire ne redit plus le profil.</div></div>
+          </div></div></div>
+          <div class="sec"><div class="hd"><h3>🧪 Biochimie</h3></div><div class="bd"><div class="fg">
+            <div class="f"><label>Glycémie</label><div class="inp"><input value="0.83"><span class="u">g/L</span></div><div class="norm">0,70–1,10</div></div>
+            <div class="f"><label>Urée</label><div class="inp"><input value="0.20"><span class="u">g/L</span></div><div class="norm">0,15–0,45</div></div>
+            <div class="f"><label>Créatinine</label><div class="inp"><input value="9.0"><span class="u">mg/L</span></div><div class="norm">6–12</div></div>
+          </div></div></div>
+          <div class="sec"><div class="hd"><h3>🦠 Immuno-Sérologie</h3><span class="tag">prénatal</span></div><div class="bd"><div class="fg">
+            <div class="f"><label>Ag HBs</label><div class="inp"><input value="Négatif"></div></div>
+            <div class="f"><label>TPHA/VDRL</label><div class="inp"><input value="Négatif"></div></div>
+            <div class="f"><label>Toxo IgG/IgM</label><div class="inp"><input value="Négatif"></div></div>
+            <div class="f"><label>Rubéole IgG/IgM</label><div class="inp"><input value="Négatif"></div></div>
+            <div class="f"><label>Groupe / Rhésus</label><div class="inp"><input value="O Rh+"></div></div>
+          </div></div></div>
+        </div>
+        <div class="savebar">
+          <button class="btn go">💾🖨️ Enregistrer + Imprimer</button>
+          <button class="btn pri">💾 Enregistrer</button>
+          <button class="btn">Annuler</button>
+          <span class="spacer"></span>
+          <span class="note">✔ Mise à jour du dossier <b class="mono">0201-0926</b> — aucun nouveau numéro créé.</span>
+        </div>
+      </section>
+
+      <!-- ===== RÉCEPTION ===== -->
+      <section id="reception" class="screen">
+        <div class="recwrap">
+          <div class="card" style="padding:16px">
+            <div class="sec" style="border:0;box-shadow:none"><div class="bd" style="padding:0">
+              <div class="fg" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+                <div class="f" style="grid-column:1/-1"><label>Nom & prénoms</label><div class="inp"><input placeholder="NOM Prénoms"></div></div>
+                <div class="f"><label>Âge</label><div class="inp"><input value="28" class="tnum"><span class="u">ans</span></div></div>
+                <div class="f"><label>Sexe</label><div class="inp"><input value="F"></div></div>
+                <div class="f"><label>Prescripteur</label><div class="inp"><input value="Dr Konan"></div></div>
+                <div class="f"><label>Service</label><div class="inp"><input value="Maternité"></div></div>
+              </div>
+            </div></div>
+            <div class="checkfam">
+              <p class="ft">Bilan prénatal</p>
+              <label class="chk on"><input type="checkbox" checked onchange="recCalc()"><span class="lb">Bilan prénatal complet (forfait)</span><span class="pr">20 000</span></label>
+            </div>
+            <div class="checkfam">
+              <p class="ft">Hématologie</p>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">NFS — Hémogramme</span><span class="pr">3 000</span></label>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Goutte épaisse / TDR</span><span class="pr">2 000</span></label>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Électrophorèse de l’hémoglobine</span><span class="pr">6 000</span></label>
+            </div>
+            <div class="checkfam">
+              <p class="ft">Biochimie</p>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Glycémie à jeun</span><span class="pr">2 000</span></label>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Créatinine</span><span class="pr">2 500</span></label>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Bilan lipidique</span><span class="pr">6 000</span></label>
+            </div>
+            <div class="checkfam">
+              <p class="ft">Immuno-Sérologie</p>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">CRP</span><span class="pr">3 000</span></label>
+              <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Widal</span><span class="pr">3 000</span></label>
+            </div>
+          </div>
+          <div class="card summary" style="padding:0;overflow:hidden">
+            <div class="sec" style="border:0;box-shadow:none"><div class="hd"><h3>Récapitulatif</h3></div>
+              <div class="bd">
+                <div id="reclist" style="display:flex;flex-direction:column;gap:7px;font-size:12.5px"></div>
+                <div class="total"><span class="lab">Total</span><span class="val tnum" id="rectotal">20 000 F</span></div>
+                <div style="display:flex;gap:9px;margin-top:6px">
+                  <button class="btn go" style="flex:1;justify-content:center">💾 Enregistrer</button>
+                  <button class="btn pri" style="flex:1;justify-content:center">💵 Enreg. + encaisser</button>
+                </div>
+                <p class="note" style="margin:10px 0 0;text-align:center">Un seul dossier sera créé pour ce patient aujourd’hui.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== REGISTRE ===== -->
+      <section id="registre" class="screen">
+        <div class="toolbar">
+          <div class="mini-field"><label>Jour</label><input type="date" value="2026-09-14"></div>
+          <span class="spacer"></span>
+          <button class="btn pri">🖨️ Imprimer le registre</button>
+        </div>
+        <div class="reg">
+          <div class="rh"><b>REGISTRE JOURNALIER DU LABORATOIRE</b><div>CPMI Grand-Bassam · Lundi 14 septembre 2026</div></div>
+          <div class="tablewrap"><table class="rt">
+            <thead><tr><th style="width:26px">N°</th><th style="width:90px">Dossier</th><th>Patient</th><th>Examens</th><th>Résultat (synthèse)</th><th style="width:70px" class="r">Prix</th></tr></thead>
+            <tbody id="regbody"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const root=document.documentElement;
+root.setAttribute('data-theme',matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function toggleTheme(){const c=root.getAttribute('data-theme')==='dark'?'light':'dark';root.setAttribute('data-theme',c);}
+const titles={file:['File du jour','Lundi 14 septembre 2026'],serie:['Saisie en série','Un examen, plusieurs patients'],
+  patient:['Saisir un patient','Dossier 0201-0926'],reception:['Réception','Nouveau patient'],registre:['Registre du jour','Lundi 14 septembre 2026']};
+function qs(s){return document.querySelector('.nav a[data-s="'+s+'"]');}
+function nav(s,el){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('on',x.id===s));
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('on'));
+  (el||qs(s)).classList.add('on');
+  document.getElementById('pgtitle').textContent=titles[s][0];
+  document.getElementById('pgcrumb').textContent=titles[s][1];
+  document.querySelector('.content').scrollTo?.({top:0});window.scrollTo({top:0,behavior:'smooth'});
+}
+const P=[
+  {d:'0201-0926',n:'KOUAKOU AMOIN GRÂCE',a:'28 · F',pr:'Dr Konan',ex:['NFS','Électro','BPN'],bpn:1,h:'08:12',st:'todo',syn:'—'},
+  {d:'0202-0926',n:'TRAORÉ MARIAM',a:'31 · F',pr:'S-F Aya',ex:['NFS','Glycémie','Créat'],h:'08:20',st:'todo',syn:'—'},
+  {d:'0203-0926',n:'N’GUESSAN KOFFI',a:'45 · M',pr:'Dr Blé',ex:['CRP','Widal','GE'],h:'08:34',st:'doing',syn:'CRP 96 · GE nég'},
+  {d:'0204-0926',n:'BAMBA AWA',a:'26 · F',pr:'Dr Konan',ex:['NFS','Électro','BPN'],bpn:1,h:'08:41',st:'todo',syn:'—'},
+  {d:'0205-0926',n:'YAO KOUADIO',a:'52 · M',pr:'Dr Sanogo',ex:['Glycémie','Cholest.','Créat'],h:'08:55',st:'todo',syn:'—'},
+  {d:'0206-0926',n:'DIABATÉ FANTA',a:'34 · F',pr:'Dr Blé',ex:['NFS','CRP'],h:'09:03',st:'doing',syn:'GB 11,2 ↑'},
+  {d:'0207-0926',n:'KOUAMÉ GRÂCE',a:'23 · F',pr:'S-F Aya',ex:['Groupe','Électro','BPN'],bpn:1,h:'09:10',st:'todo',syn:'—'},
+  {d:'0208-0926',n:'OUATTARA SALIF',a:'60 · M',pr:'Dr Sanogo',ex:['Glycémie','Urée','Créat'],h:'09:22',st:'todo',syn:'—'},
+  {d:'0199-0926',n:'ADJETOUAN GRÂCE',a:'29 · F',pr:'Dr Konan',ex:['Électro','BPN'],bpn:1,h:'07:48',st:'done',syn:'Profil AS'},
+  {d:'0198-0926',n:'KONE AWA',a:'27 · F',pr:'S-F Aya',ex:['NFS','BPN'],bpn:1,h:'07:41',st:'done',syn:'Hb 11,1 ↓'},
+];
+const L={todo:['À saisir','todo'],doing:['En cours','doing'],done:['Rendu','done']};
+const exHTML=p=>p.ex.map(e=>`<span class="ex ${e==='BPN'?'bpn':''}">${e}</span>`).join('');
+document.getElementById('filebody').innerHTML=P.map(p=>{const[t,c]=L[p.st];
+  return `<tr><td><span class="doss">${p.d}</span></td>
+    <td class="who2"><div class="nm">${p.n}</div></td><td class="who2"><span class="sub">${p.a}</span></td>
+    <td class="who2"><span class="sub">${p.pr}</span></td><td><div class="exs">${exHTML(p)}</div></td>
+    <td class="tnum" style="color:var(--muted)">${p.h}</td><td><span class="mini ${c}"><i></i>${t}</span></td>
+    <td class="r"><button class="lnk" onclick="nav('patient',qs('patient'))">${p.st==='done'?'Voir':'Saisir'} →</button></td></tr>`;}).join('');
+const S=[
+  {d:'0201',n:'KOUAKOU AMOIN GRÂCE',v:['6.92','4.62','10.9','35.1','228','55','32','9']},
+  {d:'0202',n:'TRAORÉ MARIAM',v:['7.10','4.40','11.8','37.0','254','60','30','8']},
+  {d:'0204',n:'BAMBA AWA',v:['5.80','4.10','10.2','33.4','198','52','36','9']},
+  {d:'0206',n:'DIABATÉ FANTA',v:['','','','','','','','']},
+  {d:'0207',n:'KOUAMÉ GRÂCE',v:['8.03','4.80','12.4','38.1','301','58','31','8']},
+];
+document.getElementById('serierows').innerHTML=S.map(r=>{const done=r.v[0]!=='';
+  return `<tr><td class="gname"><b class="mono">${r.d}</b> · <span>${r.n}</span> ${done?'<span class="tick">✓</span>':''}</td>
+  ${r.v.map(x=>`<td><input class="cell" value="${x}"></td>`).join('')}</tr>`;}).join('');
+document.getElementById('regbody').innerHTML=P.filter(p=>p.st==='done').concat(P.filter(p=>p.st!=='done')).slice(0,10).map((p,i)=>
+  `<tr><td class="tnum">${i+1}</td><td class="mono">${p.d}</td><td>${p.n}</td><td>${p.ex.join(', ')}</td>
+   <td class="syn">${p.syn}</td><td class="r tnum">${p.bpn?'20 000':(p.st==='done'?'8 000':'—')}</td></tr>`).join('');
+// réception live total
+function recCalc(){
+  let tot=0;const items=[];
+  document.querySelectorAll('#reception .chk').forEach(c=>{
+    const on=c.querySelector('input').checked;c.classList.toggle('on',on);
+    if(on){const pr=parseInt(c.querySelector('.pr').textContent.replace(/\s/g,''),10)||0;tot+=pr;items.push([c.querySelector('.lb').textContent,pr]);}
+  });
+  document.getElementById('rectotal').textContent=tot.toLocaleString('fr-FR')+' F';
+  document.getElementById('reclist').innerHTML=items.length?items.map(([l,p])=>
+    `<div style="display:flex;justify-content:space-between"><span>${l}</span><span class="tnum" style="color:var(--muted)">${p.toLocaleString('fr-FR')}</span></div>`).join('')
+    :'<span class="note">Cochez les examens demandés.</span>';
+}
+recCalc();
+</script>

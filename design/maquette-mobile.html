@@ -1,0 +1,450 @@
+<title>LaboSaisie Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --ground:#dde4ec; --surface:#ffffff; --surface-2:#f4f7fa; --surface-3:#eaeff4;
+  --ink:#172433; --ink-2:#3b4a5c; --muted:#6a7889; --faint:#93a1b0;
+  --line:#e2e8ee; --line-2:#eef2f6;
+  --accent:#0f766e; --accent-2:#14b8a6; --accent-soft:#e2f4f1; --accent-ink:#0b544e;
+  --todo:#b45309; --todo-bg:#fdf1e3; --doing:#0369a1; --doing-bg:#e6f1fa; --done:#15803d; --done-bg:#e8f6ec;
+  --danger:#b91c1c; --danger-bg:#fdeaea;
+  --radius:16px; --radius-sm:11px;
+  --shadow:0 1px 2px rgba(23,36,51,.06),0 10px 26px -14px rgba(23,36,51,.28);
+  --shadow-sm:0 1px 2px rgba(23,36,51,.07);
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --navh:64px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#05090e; --surface:#141d28; --surface-2:#0f1822; --surface-3:#1b2732;
+  --ink:#e7ecf2; --ink-2:#bcc7d3; --muted:#8595a4; --faint:#5f6f7e;
+  --line:#26313d; --line-2:#1b2530;
+  --accent:#2dd4bf; --accent-2:#5eead4; --accent-soft:#0f2b28; --accent-ink:#7fe9db;
+  --todo:#e0a256; --todo-bg:#2a2013; --doing:#5aa7dd; --doing-bg:#0e2436; --done:#57c07f; --done-bg:#0e2519;
+  --danger:#e07a7a; --danger-bg:#2a1616;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 30px -16px rgba(0,0,0,.75);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --ground:#05090e; --surface:#141d28; --surface-2:#0f1822; --surface-3:#1b2732;
+  --ink:#e7ecf2; --ink-2:#bcc7d3; --muted:#8595a4; --faint:#5f6f7e;
+  --line:#26313d; --line-2:#1b2530;
+  --accent:#2dd4bf; --accent-2:#5eead4; --accent-soft:#0f2b28; --accent-ink:#7fe9db;
+  --todo:#e0a256; --todo-bg:#2a2013; --doing:#5aa7dd; --doing-bg:#0e2436; --done:#57c07f; --done-bg:#0e2519;
+  --danger:#e07a7a; --danger-bg:#2a1616;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 30px -16px rgba(0,0,0,.75);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;line-height:1.2;font-weight:700}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+.tnum{font-variant-numeric:tabular-nums}.mono{font-family:var(--mono)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.phone{max-width:440px;margin:0 auto;min-height:100vh;background:var(--surface-2);position:relative;box-shadow:var(--shadow);display:flex;flex-direction:column}
+@media(min-width:600px){.phone{margin:18px auto;min-height:calc(100vh - 36px);border-radius:26px;overflow:hidden;border:1px solid var(--line)}}
+
+.appbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:11px;padding:12px 14px}
+.appbar .logo{width:34px;height:34px;border-radius:9px;flex:none;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+.appbar .ttl{flex:1;min-width:0}
+.appbar .ttl b{font-size:15px;font-weight:700;display:block;line-height:1.15}
+.appbar .ttl span{font-size:11px;color:var(--muted)}
+.appbar .ic{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:16px;color:var(--ink-2)}
+.appbar .ic:active{background:var(--surface-2)}
+.avatar{width:38px;height:38px;border-radius:50%;border:2px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none}
+.backbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:17px;color:var(--ink-2);display:none}
+
+.body{flex:1;overflow-y:auto;padding:14px 14px calc(var(--navh) + 20px)}
+
+.tabbar{position:sticky;bottom:0;z-index:20;height:var(--navh);background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom,0)}
+.tabbar button{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:600}
+.tabbar button .i{font-size:20px;line-height:1}
+.tabbar button.on{color:var(--accent)}
+.tabbar .fab .i{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;display:grid;place-items:center;margin-top:-14px;box-shadow:var(--shadow);font-size:24px}
+
+.screen{display:none}.screen.on{display:block;animation:fade .18s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.screen{animation:none}}
+
+.kpis{display:flex;gap:9px;margin-bottom:14px}
+.kchip{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 12px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.kchip::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.kchip .n{font-size:23px;font-weight:700;line-height:1}.kchip .k{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px}
+.kchip.todo{--c:var(--todo)}.kchip.todo .n{color:var(--todo)}
+.kchip.doing{--c:var(--doing)}.kchip.doing .n{color:var(--doing)}
+.kchip.done{--c:var(--done)}.kchip.done .n{color:var(--done)}
+
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:8px 15px;font-weight:600;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.sec-title{display:flex;align-items:center;gap:8px;margin:4px 2px 10px}
+.sec-title h2{font-size:15px}.sec-title .c{font-size:12px;color:var(--muted);font-weight:600;background:var(--surface-3);border-radius:999px;padding:2px 9px}
+
+.pcards{display:flex;flex-direction:column;gap:10px}
+.pcard2{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:13px 14px}
+.pcard2 .top{display:flex;align-items:flex-start;gap:10px}
+.pcard2 .nm{font-size:15.5px;font-weight:700;line-height:1.2}
+.pcard2 .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.pcard2 .meta .doss{font-family:var(--mono);font-weight:600}
+.mini{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.mini i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.mini.todo{color:var(--todo);background:var(--todo-bg)}.mini.doing{color:var(--doing);background:var(--doing-bg)}.mini.done{color:var(--done);background:var(--done-bg)}
+.exs{display:flex;flex-wrap:wrap;gap:5px;margin:11px 0 12px}
+.ex{font-size:11.5px;font-weight:600;color:var(--ink-2);background:var(--surface-3);border:1px solid var(--line);padding:3px 9px;border-radius:7px}
+.ex.bpn{color:var(--accent-ink);border-color:var(--accent);background:var(--accent-soft)}
+.cardbtn{width:100%;border:0;border-radius:11px;font-weight:700;font-size:14px;padding:11px;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;gap:7px}
+.cardbtn.done{background:var(--surface-2);color:var(--muted)}
+.cardbtn:active{filter:brightness(.97)}
+
+.exampick{display:flex;gap:9px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;box-shadow:var(--shadow-sm)}
+.exampick label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.exampick select,.exampick input{flex:1;border:0;background:transparent;font-size:15px;font-weight:600;color:var(--ink)}
+.scard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:12px 13px;margin-bottom:10px}
+.scard .sh{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.scard .sh b{font-size:14.5px}.scard .sh .doss{font-family:var(--mono);font-size:11.5px;color:var(--muted);font-weight:600}
+.scard .sh .tick{margin-left:auto;color:var(--done);font-weight:700;font-size:13px}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.sf label{display:block;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:4px;text-align:center}
+.sf input{width:100%;text-align:center;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;padding:10px 4px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink)}
+.sf input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+
+.sticky-act{position:sticky;bottom:0;margin:14px -14px calc(-1 * (var(--navh) + 20px));padding:12px 14px;background:linear-gradient(transparent,var(--surface-2) 22%)}
+.bigbtn{width:100%;border:0;border-radius:13px;font-weight:700;font-size:15.5px;padding:15px;color:#fff;background:linear-gradient(135deg,var(--done),#0aa06f);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--shadow)}
+.bigbtn.alt{background:var(--accent)}.bigbtn:active{filter:brightness(.96)}
+.subact{display:flex;gap:9px;margin-top:9px}
+.subact .b{flex:1;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:11px;font-weight:600;font-size:13.5px;padding:11px;text-align:center}
+
+.pstrip{background:linear-gradient(135deg,var(--accent-ink),var(--accent));color:#fff;border-radius:var(--radius);padding:14px 15px;margin-bottom:13px;box-shadow:var(--shadow-sm)}
+.pstrip .nm{font-size:17px;font-weight:700}.pstrip .meta{font-size:12px;opacity:.9;margin-top:3px;display:flex;gap:12px;flex-wrap:wrap}
+.pstrip .pill{display:inline-flex;gap:8px;align-items:center;margin-top:10px;background:rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:11px}
+.sec .hd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line-2)}
+.sec .hd h3{font-size:14px}.sec .hd .tag{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--doing);background:var(--doing-bg);padding:3px 9px;border-radius:999px}
+.sec .bd{padding:13px 14px}
+.fg{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+.f label{display:block;font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px}
+.f .inp{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:var(--surface-2)}
+.f .inp input{border:0;background:transparent;font-size:16px;width:100%;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600}
+.f .inp input:focus{outline:none}.f .inp .u{font-size:11px;color:var(--muted);white-space:nowrap}
+.f .inp.lo{border-color:#8fb8e7;background:var(--doing-bg)}.f .inp.lo .u{color:var(--doing)}
+.norm{font-size:10px;color:var(--faint);margin-top:4px}.wide{grid-column:1/-1}
+
+.chk{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:var(--surface)}
+.chk input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.chk .lb{font-size:14px;font-weight:500}.chk .pr{margin-left:auto;font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.chk.on{border-color:var(--accent);background:var(--accent-soft)}.chk.on .pr{color:var(--accent-ink)}
+.famt{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:14px 2px 8px}
+.totbar{position:sticky;bottom:0;margin:8px -14px calc(-1 * (var(--navh) + 20px));padding:12px 14px;background:var(--surface);border-top:1px solid var(--line)}
+.totrow{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.totrow .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:600}.totrow .v{font-size:26px;font-weight:700;color:var(--accent-ink)}
+
+.reg{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.regrow{display:flex;gap:11px;padding:12px 14px;border-top:1px solid var(--line-2)}.regrow:first-child{border-top:0}
+.regrow .no{font-family:var(--mono);color:var(--muted);font-weight:600;font-size:12px;min-width:20px}
+.regrow .nm{font-weight:600;font-size:14px}.regrow .sub{font-size:12px;color:var(--muted);margin-top:1px}.regrow .syn{font-size:12px;color:var(--ink-2);margin-top:4px}
+.regrow .pr{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+
+/* ===== Compte / profil ===== */
+.profile{background:linear-gradient(135deg,var(--accent-ink),var(--accent));color:#fff;border-radius:var(--radius);padding:18px 16px;text-align:center;margin-bottom:14px;box-shadow:var(--shadow-sm)}
+.profile .big{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:24px;font-weight:700;margin:0 auto 9px}
+.profile .nm{font-size:18px;font-weight:700}.profile .rl{font-size:12px;opacity:.9;text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
+.profile .since{font-size:11.5px;opacity:.8;margin-top:6px}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 8px;text-align:center;box-shadow:var(--shadow-sm)}
+.stat .n{font-size:22px;font-weight:700;color:var(--accent-ink)}.stat .k{font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar .bl{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}.bar .bl b{font-weight:600}.bar .bl span{color:var(--muted);font-variant-numeric:tabular-nums}
+.bar .tr{height:8px;border-radius:999px;background:var(--surface-3);overflow:hidden}.bar .fl{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+.menu{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);margin-top:12px}
+.mrow{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:15px 15px;border-top:1px solid var(--line-2);color:var(--ink);font-size:14.5px;font-weight:500;text-align:left}
+.mrow:first-child{border-top:0}.mrow .i{width:22px;text-align:center;font-size:17px}.mrow .ch{margin-left:auto;color:var(--faint);font-size:16px}
+.mrow.danger{color:var(--danger)}.mrow:active{background:var(--surface-2)}
+.switch{margin-left:auto;width:44px;height:26px;border-radius:999px;background:var(--surface-3);position:relative;transition:background .15s;flex:none;border:1px solid var(--line)}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+.switch.on{background:var(--accent)}.switch.on::after{left:20px}
+.pwdform{padding:0 15px 15px;border-top:1px solid var(--line-2);display:none}
+.pwdform.open{display:block}
+.pwdform .f{margin-top:11px}
+.pwdform .inp{display:flex;border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:var(--surface-2)}
+.pwdform .inp input{border:0;background:transparent;font-size:16px;width:100%;color:var(--ink)}
+.pwdform .inp input:focus{outline:none}
+.pwdform .go{width:100%;margin-top:12px;border:0;border-radius:11px;background:var(--accent);color:#fff;font-weight:700;font-size:14.5px;padding:13px}
+
+/* ===== Recherche ===== */
+.searchbar{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:12px;box-shadow:var(--shadow-sm)}
+.searchbar input{border:0;background:transparent;font-size:16px;width:100%;color:var(--ink)}.searchbar input:focus{outline:none}
+
+/* ===== Aperçu compte rendu ===== */
+.rep{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:16px;font-size:13px}
+.rep .rh{text-align:center;border-bottom:1.5px solid var(--ink);padding-bottom:9px;margin-bottom:11px}
+.rep .rh b{font-size:14px}.rep .rh div{font-size:11px;color:var(--muted)}
+.rep .band{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;font-weight:700;font-size:12px;padding:6px 10px;margin:11px 0 8px}
+.rep table{width:100%;border-collapse:collapse;font-size:12px}
+.rep td{padding:5px 8px;border-bottom:1px solid var(--line-2)}.rep td.v{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.rep td.ano{background:var(--todo-bg);color:var(--todo);border-radius:5px}
+
+.note{font-size:12px;color:var(--muted)}
+.ribbon{position:fixed;left:10px;top:10px;background:var(--todo);color:#fff;font-weight:700;font-size:10px;letter-spacing:1px;padding:4px 11px;border-radius:6px;z-index:60}
+</style>
+
+<div class="ribbon">MAQUETTE</div>
+<div class="phone">
+
+  <header class="appbar">
+    <button class="backbtn" id="back" onclick="nav(_prev||'file')">‹</button>
+    <div class="logo">CB</div>
+    <div class="ttl"><b id="pt">File du jour</b><span id="ps">CPMI · lun. 14 sept.</span></div>
+    <button class="ic" title="Rechercher" onclick="nav('recherche')">🔎</button>
+    <button class="avatar" title="Mon compte" onclick="nav('compte')">AT</button>
+  </header>
+
+  <div class="body">
+
+    <!-- ===== FILE ===== -->
+    <section id="file" class="screen on">
+      <div class="kpis">
+        <div class="kchip todo"><div class="n tnum">12</div><div class="k">À saisir</div></div>
+        <div class="kchip doing"><div class="n tnum">3</div><div class="k">En cours</div></div>
+        <div class="kchip done"><div class="n tnum">27</div><div class="k">Rendus</div></div>
+      </div>
+      <div class="chips">
+        <button class="chip" aria-pressed="true">Tous</button><button class="chip" aria-pressed="false">À saisir</button>
+        <button class="chip" aria-pressed="false">En cours</button><button class="chip" aria-pressed="false">Prénatal</button>
+      </div>
+      <div class="sec-title"><h2>Patients du jour</h2><span class="c tnum">12</span></div>
+      <div class="pcards" id="filecards"></div>
+    </section>
+
+    <!-- ===== SÉRIE ===== -->
+    <section id="serie" class="screen">
+      <div class="exampick"><label for="ex">Examen</label>
+        <select id="ex"><option>NFS — Hémogramme</option><option>CRP</option><option>Glycémie</option><option>Électrophorèse Hb</option></select></div>
+      <div class="note" style="margin:0 2px 10px">✅ La liste se charge toute seule — remplis, puis « Enregistrer ».</div>
+      <div id="seriecards"></div>
+      <div class="sticky-act"><button class="bigbtn">💾 Enregistrer (4 patients)</button></div>
+    </section>
+
+    <!-- ===== PATIENT ===== -->
+    <section id="patient" class="screen">
+      <div class="pstrip">
+        <div class="nm">KOUAKOU AMOIN GRÂCE</div>
+        <div class="meta"><span class="mono">N° 0201-0926</span><span>28 ans · F</span><span>Dr Konan</span></div>
+        <span class="pill">🤰 Bilan prénatal · 20 000 F · payé</span>
+      </div>
+      <div class="sec"><div class="hd"><h3>🩸 NFS</h3><span class="tag">1 à confirmer</span></div><div class="bd"><div class="fg">
+        <div class="f"><label>GB</label><div class="inp"><input value="6.92" inputmode="decimal"><span class="u">10³</span></div></div>
+        <div class="f"><label>GR</label><div class="inp"><input value="4.62" inputmode="decimal"><span class="u">10⁶</span></div></div>
+        <div class="f"><label>Hémoglobine</label><div class="inp lo"><input value="10.9" inputmode="decimal"><span class="u">g/dL ↓</span></div><div class="norm">12–16</div></div>
+        <div class="f"><label>Hématocrite</label><div class="inp lo"><input value="35.1" inputmode="decimal"><span class="u">% ↓</span></div><div class="norm">36–46</div></div>
+        <div class="f"><label>Plaquettes</label><div class="inp"><input value="228" inputmode="numeric"><span class="u">10³</span></div></div>
+        <div class="f"><label>PNN</label><div class="inp"><input value="55" inputmode="numeric"><span class="u">%</span></div></div>
+      </div></div></div>
+      <div class="sec"><div class="hd"><h3>🧬 Électrophorèse Hb</h3></div><div class="bd"><div class="fg">
+        <div class="f"><label>Hb A</label><div class="inp"><input value="61.7" inputmode="decimal"><span class="u">%</span></div></div>
+        <div class="f"><label>Hb A2</label><div class="inp"><input value="1.6" inputmode="decimal"><span class="u">%</span></div></div>
+        <div class="f"><label>Hb S</label><div class="inp"><input value="36.7" inputmode="decimal"><span class="u">%</span></div></div>
+        <div class="f wide"><label>Profil / conclusion</label><div class="inp"><input value="Profil AS (Drépanocytose trait)"></div><div class="norm">Le commentaire ne redit plus le profil.</div></div>
+      </div></div></div>
+      <div class="sec"><div class="hd"><h3>🦠 Sérologie prénatale</h3></div><div class="bd"><div class="fg">
+        <div class="f"><label>Ag HBs</label><div class="inp"><input value="Négatif"></div></div>
+        <div class="f"><label>TPHA/VDRL</label><div class="inp"><input value="Négatif"></div></div>
+        <div class="f"><label>Toxo</label><div class="inp"><input value="Négatif"></div></div>
+        <div class="f"><label>Groupe</label><div class="inp"><input value="O Rh+"></div></div>
+      </div></div></div>
+      <div class="sticky-act">
+        <button class="bigbtn">💾🖨️ Enregistrer + Imprimer</button>
+        <div class="subact"><button class="b" onclick="nav('apercu')">👁 Aperçu</button><button class="b">💾 Enregistrer</button></div>
+        <div class="note" style="text-align:center;margin-top:9px">✔ Mise à jour du dossier <b class="mono">0201-0926</b> — aucun nouveau numéro.</div>
+      </div>
+    </section>
+
+    <!-- ===== RÉCEPTION ===== -->
+    <section id="reception" class="screen">
+      <div class="sec"><div class="bd"><div class="fg">
+        <div class="f wide"><label>Nom & prénoms</label><div class="inp"><input placeholder="NOM Prénoms"></div></div>
+        <div class="f"><label>Âge</label><div class="inp"><input value="28" inputmode="numeric"><span class="u">ans</span></div></div>
+        <div class="f"><label>Sexe</label><div class="inp"><input value="F"></div></div>
+        <div class="f"><label>Prescripteur</label><div class="inp"><input value="Dr Konan"></div></div>
+        <div class="f"><label>Service</label><div class="inp"><input value="Maternité"></div></div>
+      </div></div></div>
+      <div class="famt">Bilan prénatal</div>
+      <label class="chk on"><input type="checkbox" checked onchange="recCalc()"><span class="lb">Bilan prénatal complet</span><span class="pr">20 000</span></label>
+      <div class="famt">Hématologie</div>
+      <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">NFS — Hémogramme</span><span class="pr">3 000</span></label>
+      <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Goutte épaisse / TDR</span><span class="pr">2 000</span></label>
+      <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Électrophorèse Hb</span><span class="pr">6 000</span></label>
+      <div class="famt">Biochimie</div>
+      <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Glycémie à jeun</span><span class="pr">2 000</span></label>
+      <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Créatinine</span><span class="pr">2 500</span></label>
+      <div class="famt">Sérologie</div>
+      <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">CRP</span><span class="pr">3 000</span></label>
+      <label class="chk"><input type="checkbox" onchange="recCalc()"><span class="lb">Widal</span><span class="pr">3 000</span></label>
+      <div class="totbar">
+        <div class="totrow"><span class="l">Total</span><span class="v tnum" id="rectot">20 000 F</span></div>
+        <button class="bigbtn">💵 Enregistrer + encaisser</button>
+        <div class="note" style="text-align:center;margin-top:8px">Un seul dossier créé pour ce patient aujourd’hui.</div>
+      </div>
+    </section>
+
+    <!-- ===== REGISTRE ===== -->
+    <section id="registre" class="screen">
+      <div class="exampick"><label>Jour</label><input type="date" value="2026-09-14"></div>
+      <div class="sec-title"><h2>Résultats du jour</h2><span class="c tnum">10</span></div>
+      <div class="reg" id="regcards"></div>
+      <div class="sticky-act"><button class="bigbtn alt">🖨️ Imprimer le registre</button></div>
+    </section>
+
+    <!-- ===== RECHERCHE / HISTORIQUE ===== -->
+    <section id="recherche" class="screen">
+      <div class="searchbar">🔎<input placeholder="Nom, N° de dossier…" value="grâce"></div>
+      <div class="chips">
+        <button class="chip" aria-pressed="true">Cette semaine</button><button class="chip" aria-pressed="false">Ce mois</button><button class="chip" aria-pressed="false">Tout</button>
+      </div>
+      <div class="sec-title"><h2>Résultats</h2><span class="c tnum">4</span></div>
+      <div class="pcards" id="searchcards"></div>
+    </section>
+
+    <!-- ===== COMPTE (agent) ===== -->
+    <section id="compte" class="screen">
+      <div class="profile">
+        <div class="big">AT</div>
+        <div class="nm">Ago Thierry</div>
+        <div class="rl">Technicien</div>
+        <div class="since">Connecté depuis 07:12 · CPMI Grand-Bassam</div>
+      </div>
+
+      <div class="sec-title"><h2>Mes statistiques</h2></div>
+      <div class="statgrid">
+        <div class="stat"><div class="n tnum">18</div><div class="k">Aujourd’hui</div></div>
+        <div class="stat"><div class="n tnum">96</div><div class="k">Cette semaine</div></div>
+        <div class="stat"><div class="n tnum">412</div><div class="k">Ce mois</div></div>
+      </div>
+      <div class="sec"><div class="hd"><h3>Répartition de mes saisies</h3></div><div class="bd"><div class="bars">
+        <div class="bar"><div class="bl"><b>NFS</b><span>40 %</span></div><div class="tr"><div class="fl" style="width:40%"></div></div></div>
+        <div class="bar"><div class="bl"><b>Bilan prénatal</b><span>25 %</span></div><div class="tr"><div class="fl" style="width:25%"></div></div></div>
+        <div class="bar"><div class="bl"><b>Biochimie</b><span>20 %</span></div><div class="tr"><div class="fl" style="width:20%"></div></div></div>
+        <div class="bar"><div class="bl"><b>Sérologie</b><span>15 %</span></div><div class="tr"><div class="fl" style="width:15%"></div></div></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:13px">
+        <div class="stat" style="flex:1"><div class="n tnum" style="font-size:18px">3 min 20 s</div><div class="k">Temps moyen / dossier</div></div>
+        <div class="stat" style="flex:1"><div class="n tnum" style="font-size:18px">97 %</div><div class="k">Rendus à temps</div></div>
+      </div>
+      </div></div>
+
+      <div class="sec-title"><h2>Mon compte</h2></div>
+      <div class="menu">
+        <button class="mrow" onclick="togglePwd()"><span class="i">🔑</span>Changer mon mot de passe<span class="ch">›</span></button>
+        <div class="pwdform" id="pwdform">
+          <div class="f"><label>Mot de passe actuel</label><div class="inp"><input type="password" autocomplete="current-password"></div></div>
+          <div class="f"><label>Nouveau (min. 8 car., 1 chiffre)</label><div class="inp"><input type="password" autocomplete="new-password"></div></div>
+          <div class="f"><label>Confirmer</label><div class="inp"><input type="password" autocomplete="new-password"></div></div>
+          <button class="go">Enregistrer le nouveau mot de passe</button>
+        </div>
+        <button class="mrow" onclick="toggleTheme(this)"><span class="i">🌓</span>Thème sombre<span class="switch" id="themeSwitch"></span></button>
+        <button class="mrow"><span class="i">📊</span>Statistiques détaillées<span class="ch">›</span></button>
+        <button class="mrow danger"><span class="i">⎋</span>Se déconnecter<span class="ch">›</span></button>
+      </div>
+      <div class="note" style="text-align:center;margin:14px 0 0">Version 13.174 · LaboSaisie CPMI</div>
+    </section>
+
+    <!-- ===== APERÇU COMPTE RENDU ===== -->
+    <section id="apercu" class="screen">
+      <div class="rep">
+        <div class="rh"><b>CPMI DE GRAND-BASSAM</b><div>Laboratoire d’analyses médicales</div></div>
+        <div style="font-size:12px"><b>KOUAKOU AMOIN GRÂCE</b> · N° 0201-0926 · 28 ans · F · 14/09/2026</div>
+        <div class="band">Hématologie — NFS</div>
+        <table><tbody>
+          <tr><td>Globules blancs</td><td class="v">6,92</td><td class="v" style="color:var(--muted)">10³/µL</td></tr>
+          <tr><td>Hémoglobine</td><td class="v ano">10,9</td><td class="v" style="color:var(--muted)">g/dL</td></tr>
+          <tr><td>Hématocrite</td><td class="v ano">35,1</td><td class="v" style="color:var(--muted)">%</td></tr>
+          <tr><td>Plaquettes</td><td class="v">228</td><td class="v" style="color:var(--muted)">10³/µL</td></tr>
+        </tbody></table>
+        <div class="band">Électrophorèse de l’hémoglobine</div>
+        <table><tbody>
+          <tr><td>Hb A</td><td class="v">61,7 %</td></tr><tr><td>Hb S</td><td class="v">36,7 %</td></tr>
+          <tr><td colspan="2" style="font-style:italic;color:var(--ink-2)">Profil : Profil AS (Drépanocytose trait)</td></tr>
+        </tbody></table>
+      </div>
+      <div class="sticky-act"><button class="bigbtn">🖨️ Imprimer le compte rendu</button>
+        <div class="subact"><button class="b" onclick="nav('patient')">‹ Modifier</button><button class="b">📤 Partager</button></div>
+      </div>
+    </section>
+
+  </div>
+
+  <nav class="tabbar">
+    <button class="on" data-s="file" onclick="nav('file',this)"><span class="i">🗂️</span>File</button>
+    <button data-s="serie" onclick="nav('serie',this)"><span class="i">📋</span>Série</button>
+    <button class="fab" data-s="reception" onclick="nav('reception',this)"><span class="i">＋</span>Nouveau</button>
+    <button data-s="registre" onclick="nav('registre',this)"><span class="i">🖨️</span>Registre</button>
+  </nav>
+</div>
+
+<script>
+const root=document.documentElement;
+function applyThemeSwitch(){const d=root.getAttribute('data-theme')==='dark';const sw=document.getElementById('themeSwitch');if(sw)sw.classList.toggle('on',d);}
+root.setAttribute('data-theme',matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+function toggleTheme(){root.setAttribute('data-theme',root.getAttribute('data-theme')==='dark'?'light':'dark');applyThemeSwitch();}
+function togglePwd(){document.getElementById('pwdform').classList.toggle('open');}
+const TABS=['file','serie','reception','registre'];
+const T={file:['File du jour','CPMI · lun. 14 sept.'],serie:['Saisie en série','NFS — 12 patients'],
+  patient:['Saisir un patient','Dossier 0201-0926'],reception:['Réception','Nouveau patient'],registre:['Registre du jour','lun. 14 sept.'],
+  recherche:['Recherche','Historique des dossiers'],compte:['Mon compte','Ago Thierry · Technicien'],apercu:['Aperçu du compte rendu','Dossier 0201-0926']};
+let _prev='file';
+function nav(s,el){
+  const cur=document.querySelector('.screen.on');if(cur&&cur.id!==s)_prev=cur.id;
+  document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('on',x.id===s));
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+  document.getElementById('pt').textContent=T[s][0];document.getElementById('ps').textContent=T[s][1];
+  document.getElementById('back').style.display=TABS.includes(s)?'none':'grid';
+  document.querySelector('.body').scrollTop=0;
+  if(s==='compte')applyThemeSwitch();
+}
+const P=[
+  {d:'0201-0926',n:'KOUAKOU AMOIN GRÂCE',a:'28 ans · F',ex:['NFS','Électro','BPN'],bpn:1,st:'todo',syn:'—'},
+  {d:'0202-0926',n:'TRAORÉ MARIAM',a:'31 ans · F',ex:['NFS','Glycémie','Créat'],st:'todo',syn:'—'},
+  {d:'0203-0926',n:'N’GUESSAN KOFFI',a:'45 ans · M',ex:['CRP','Widal','GE'],st:'doing',syn:'CRP 96 · GE nég'},
+  {d:'0204-0926',n:'BAMBA AWA',a:'26 ans · F',ex:['NFS','Électro','BPN'],bpn:1,st:'todo',syn:'—'},
+  {d:'0206-0926',n:'DIABATÉ FANTA',a:'34 ans · F',ex:['NFS','CRP'],st:'doing',syn:'GB 11,2 ↑'},
+  {d:'0207-0926',n:'KOUAMÉ GRÂCE',a:'23 ans · F',ex:['Groupe','Électro','BPN'],bpn:1,st:'todo',syn:'—'},
+  {d:'0199-0926',n:'ADJETOUAN GRÂCE',a:'29 ans · F',ex:['Électro','BPN'],bpn:1,st:'done',syn:'Profil AS'},
+  {d:'0198-0926',n:'KONE AWA',a:'27 ans · F',ex:['NFS','BPN'],bpn:1,st:'done',syn:'Hb 11,1 ↓'},
+];
+const L={todo:['À saisir','todo'],doing:['En cours','doing'],done:['Rendu','done']};
+const card=p=>{const[t,c]=L[p.st];return `<div class="pcard2"><div class="top">
+  <div><div class="nm">${p.n}</div><div class="meta"><span class="doss">${p.d}</span> · ${p.a}</div></div>
+  <span class="mini ${c}"><i></i>${t}</span></div>
+  <div class="exs">${p.ex.map(e=>`<span class="ex ${e==='BPN'?'bpn':''}">${e}</span>`).join('')}</div>
+  <button class="cardbtn ${p.st==='done'?'done':''}" onclick="nav('${p.st==='done'?'apercu':'patient'}')">${p.st==='done'?'👁 Voir le compte rendu':'✍️ Saisir les résultats'}</button></div>`;};
+document.getElementById('filecards').innerHTML=P.map(card).join('');
+document.getElementById('searchcards').innerHTML=P.filter(p=>/GR[ÂA]CE/i.test(p.n)||p.n.includes('GRÂCE')).concat(P.filter(p=>p.n.includes('KONE'))).map(card).join('')||P.slice(0,3).map(card).join('');
+const S=[
+  {d:'0201-0926',n:'KOUAKOU AMOIN GRÂCE',v:['6.92','4.62','10.9']},
+  {d:'0202-0926',n:'TRAORÉ MARIAM',v:['7.10','4.40','11.8']},
+  {d:'0204-0926',n:'BAMBA AWA',v:['5.80','4.10','10.2']},
+  {d:'0206-0926',n:'DIABATÉ FANTA',v:['','','']},
+  {d:'0207-0926',n:'KOUAMÉ GRÂCE',v:['8.03','4.80','12.4']},
+];
+document.getElementById('seriecards').innerHTML=S.map(r=>{const done=r.v[0]!=='';
+  return `<div class="scard"><div class="sh"><b>${r.n}</b> <span class="doss">${r.d}</span>${done?'<span class="tick">✓ prêt</span>':''}</div>
+   <div class="sgrid">
+     <div class="sf"><label>GB</label><input value="${r.v[0]}" inputmode="decimal"></div>
+     <div class="sf"><label>GR</label><input value="${r.v[1]}" inputmode="decimal"></div>
+     <div class="sf"><label>Hb</label><input value="${r.v[2]}" inputmode="decimal"></div>
+     <div class="sf"><label>Ht</label><input inputmode="decimal"></div>
+     <div class="sf"><label>Plq</label><input inputmode="numeric"></div>
+     <div class="sf"><label>PNN%</label><input inputmode="numeric"></div>
+   </div></div>`;}).join('');
+document.getElementById('regcards').innerHTML=P.filter(p=>p.st==='done').concat(P.filter(p=>p.st!=='done')).slice(0,10).map((p,i)=>
+  `<div class="regrow"><span class="no">${i+1}</span><div><div class="nm">${p.n}</div><div class="sub mono">${p.d} · ${p.ex.join(', ')}</div><div class="syn">${p.syn}</div></div><span class="pr">${p.bpn?'20 000':(p.st==='done'?'8 000':'—')}</span></div>`).join('');
+function recCalc(){let tot=0;document.querySelectorAll('#reception .chk').forEach(c=>{const on=c.querySelector('input').checked;c.classList.toggle('on',on);if(on)tot+=parseInt(c.querySelector('.pr').textContent.replace(/\s/g,''),10)||0;});
+  document.getElementById('rectot').textContent=tot.toLocaleString('fr-FR')+' F';}
+recCalc();applyThemeSwitch();
+</script>
