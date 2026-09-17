@@ -141,10 +141,10 @@ const { serve, openApp, createReporter } = require('./helpers');
     const zeros = envoye ? Object.entries(envoye)
       .filter(([id, p]) => p === 0)
       .map(([id]) => id) : ['(rien envoyé)'];
-    // Seuls ces examens sont gratuits au catalogue (GE + prélèvements bactério,
-    // et la sérologie VIH prise en charge → 0).
+    // Seuls ces examens sont gratuits au catalogue (GE + TDR paludisme +
+    // prélèvements bactério, et la sérologie VIH prise en charge → 0).
     r.check('aucun examen facturé remis à zéro',
-            zeros.sort().join(',') , 'ex_ge,ex_pg,ex_pus,ex_vih'.split(',').sort().join(','));
+            zeros.sort().join(',') , 'ex_ge,ex_tdr,ex_pg,ex_pus,ex_vih'.split(',').sort().join(','));
 
     r.check('écran rafraîchi avec les nouveaux prix', await page.evaluate(
       () => prixExamen('ex_nfs')), 3000);
