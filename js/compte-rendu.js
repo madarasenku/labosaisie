@@ -138,7 +138,9 @@ function crBlocWidal(res) {
   return crTable('Widal — Agglutination (Fièvre typhoïde)', rows, { unite: false });
 }
 
-function crBlocVHB(res) {
+function crBlocVHB(res, seroOrd) {
+  // Ne rien imprimer si aucun test hépatite B n'a été demandé (anti-fuite).
+  if (seroOrd && !(seroOrd.has('hbsag') || seroOrd.has('hbsac') || seroOrd.has('hbcac'))) return '';
   const g = n => res[n] || {};
   const ag = g('Ag HBs'), hbs = g('Ac anti-HBs'), hbc = g('Ac anti-HBc total');
   // ✅ v13.145 — Ag HBs et Ac anti-HBc peuvent être rendus en QUALITATIF ou en
@@ -176,10 +178,11 @@ function crBlocVHB(res) {
 
 // Sérologies restantes (hors CRP / Widal / VHB / Groupe)
 const CR_SERO_EXCLUS = new Set(['Ag HBs', 'Ac anti-HBs', 'Ac anti-HBc total']);
-function crBlocSerologies(res) {
+function crBlocSerologies(res, seroOrd) {
   const rows = [];
   (typeof SERO_TESTS !== 'undefined' ? SERO_TESTS : []).forEach(t => {
     if (CR_SERO_EXCLUS.has(t.name)) return;
+    if (seroOrd && !seroOrd.has(t.id)) return;   // test non demandé → anti-fuite
     const v = res[t.name]; if (!v) return;
     const val = crV(v.resultat) || crV(v.valeur); if (val === '') return;
     rows.push({ nom: t.name, val, unite: crV(v.valeur) ? (v.unite || t.unit || '') : '',
@@ -211,12 +214,19 @@ function crGroupesBio() {
   add(typeof BIO_AUTRE    !== 'undefined' ? BIO_AUTRE    : null, 'Biochimie — Autres paramètres');
   return g;
 }
-function crBlocsBiochimie(res, profile) {
+// ✅ Un paramètre n'est imprimé que s'il fait partie d'un examen RÉELLEMENT
+//   demandé (`autorises` = ensemble des noms de résultats attendus des examens
+//   commandés). Sans ce filtre, un résultat contaminé d'un patient précédent
+//   (champ non vidé) — ex. HDL / Triglycérides d'un patient qui n'avait
+//   commandé que le ionogramme — s'imprimait sur le compte rendu. `autorises`
+//   null ⇒ pas de filtrage (repli sûr, on n'ampute jamais un rendu par erreur).
+function crBlocsBiochimie(res, profile, autorises) {
   let html = '';
   crGroupesBio().forEach(([grp, titre]) => {
     if (!grp) return;
     const rows = [];
     grp.forEach(p => {
+      if (autorises && !autorises.has(p.name)) return;
       const v = res[p.name]; if (!v || crV(v.valeur) === '') return;
       rows.push({ nom: p.name, val: v.valeur, unite: v.unite || p.unit,
                   ref: refDisplayFor(p, profile), ano: crAno(v.interp) });
@@ -402,6 +412,51 @@ async function crBuildHTML(record) {
     : Object.values(coches).reduce((a, v) => a.concat(v || []), []);
   const estCoche = rx => labels.some(l => rx.test(l));
 
+  // ✅ Noms de résultats RÉELLEMENT attendus (dérivés des examens commandés) :
+  //   permet de ne pas imprimer un paramètre contaminé d'un examen non demandé.
+  //   Repli sûr : si un libellé commandé ne se rattache à aucun examen du
+  //   catalogue, on désactive le filtrage plutôt que de risquer d'amputer un
+  //   rendu légitime.
+  let autorises = null;
+  try {
+    if (typeof examExpectedRows === 'function' && labels.length) {
+      const cat = (typeof getCatalogueComplet === 'function') ? getCatalogueComplet()
+                : (typeof CATALOGUE_EXAMENS !== 'undefined' ? CATALOGUE_EXAMENS : []);
+      const set = new Set();
+      let resolveOK = true;
+      labels.forEach(l => {
+        const e = cat.find(x => x.label === String(l));
+        if (!e) { resolveOK = false; return; }
+        (examExpectedRows(e.id) || []).forEach(row => {
+          if (row && row.key)  set.add(row.key);
+          if (row && row.name) set.add(row.name);
+        });
+      });
+      autorises = resolveOK ? set : null;
+    }
+  } catch (e) { autorises = null; }
+
+  // ✅ Tests sérologiques réellement demandés (ids SERO_TESTS), pour ne pas
+  //   imprimer une sérologie contaminée. Épargné en bilan prénatal, où la
+  //   sérologie fait partie du forfait (les libellés ne sont pas tous cochés).
+  let seroOrd = null;
+  try {
+    const _bpnIci = labels.some(l => /pr[ée]natal/i.test(l));
+    if (!_bpnIci && typeof examFieldIds === 'function' && labels.length) {
+      const cat = (typeof getCatalogueComplet === 'function') ? getCatalogueComplet()
+                : (typeof CATALOGUE_EXAMENS !== 'undefined' ? CATALOGUE_EXAMENS : []);
+      const set = new Set(); let ok = true;
+      labels.forEach(l => {
+        const e = cat.find(x => x.label === String(l));
+        if (!e) { ok = false; return; }
+        (examFieldIds(e.id) || []).forEach(fid => {
+          const m = /^s[orv]_(.+?)(?:_r)?$/.exec(fid); if (m) set.add(m[1]);
+        });
+      });
+      seroOrd = ok ? set : null;
+    }
+  } catch (e) { seroOrd = null; }
+
   // ✅ v13.146 — Détection BPN dès ici (utilisée pour non-réalisés ET montant)
   const _estBPN = labels.some(l => /pr[ée]natal/i.test(l));
 
@@ -439,20 +494,28 @@ async function crBuildHTML(record) {
   const pushT = (arr, html) => { (String(html || '').match(/<table[\s\S]*?<\/table>/g) || []).forEach(t => arr.push(t)); };
   pushT(blocsHema, crBlocNFS(hema, profile));
   pushT(blocsHema, crBlocEPHB(hema));
-  pushT(blocsHema, crBlocGE(hema));
-  pushT(blocsHema, crBlocGroupe(Object.keys(gs).length ? gs : sero));
+  // ✅ La GE ne s'imprime que si elle a été DEMANDÉE (GE ou TDR). Sans ce garde,
+  //   un « GE - Résultat : Négatif » contaminé s'imprimait sur des bilans
+  //   prénatals qui n'incluaient pas la goutte épaisse.
+  if (estCoche(/Goutte|TDR|Palud|\bGE\b/i)) pushT(blocsHema, crBlocGE(hema));
+  // Groupe sanguin : uniquement s'il a été demandé (le mini-GS de contexte de
+  // l'onglet Sérologie ne doit pas s'imprimer sur un rendu qui ne le demande pas).
+  if (estCoche(/Groupe|ABO|Rh[ée]sus/i)) pushT(blocsHema, crBlocGroupe(Object.keys(gs).length ? gs : sero));
 
   const blocsBio = [];
   // ✅ v13.162 — Le bilan prénatal n'inclut PAS de CRP : on ne l'affiche pas en BPN.
-  if (!_estBPN) pushT(blocsBio, crBlocCRP(sero));
+  // ✅ La CRP ne s'imprime que si elle a été DEMANDÉE : une valeur CRP contaminée
+  //   ajoutait sinon un tableau (et parfois une 2ᵉ feuille) à un rendu qui ne
+  //   comportait qu'une goutte épaisse.
+  if (!_estBPN && estCoche(/CRP/i)) pushT(blocsBio, crBlocCRP(sero));
   // ✅ v13.168 — Le bloc Widal n'apparaît que si le Widal a été DEMANDÉ. Les
   //   antigènes TO/TH sont préremplis « Négatif » et une conclusion est générée
   //   même sans Widal coché ; sans ce garde, un compte rendu NFS + GE + CRP
   //   sortait une 2ᵉ page Widal non demandée.
   if (estCoche(/Widal|SWF/i)) pushT(blocsBio, crBlocWidal(sero));
-  pushT(blocsBio, crBlocVHB(sero));
-  pushT(blocsBio, crBlocSerologies(sero));
-  pushT(blocsBio, crBlocsBiochimie(bio, profile));
+  pushT(blocsBio, crBlocVHB(sero, seroOrd));
+  pushT(blocsBio, crBlocSerologies(sero, seroOrd));
+  pushT(blocsBio, crBlocsBiochimie(bio, profile, autorises));
   // Examens demandés dont aucun résultat n'a été saisi (sauf BPN).
   const nonFaits = _estBPN ? [] : labels.filter(l => !crExamFait(String(l), R));
   pushT(blocsBio, crBlocNonRealises(nonFaits));

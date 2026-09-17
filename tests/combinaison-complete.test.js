@@ -6,7 +6,7 @@
 const { serve, openApp, createReporter } = require('./helpers');
 
 const COCHES = {
-  'Hématologie': ['NFS — Numération Formule Sanguine', 'Goutte épaisse / TDR Paludisme'],
+  'Hématologie': ['NFS — Numération Formule Sanguine', 'Goutte épaisse (GE)', 'TDR Paludisme'],
   'Biochimie': ['Glycémie à jeun', 'Urée', 'Créatinine', 'Acide urique',
                 'ASAT / ALAT (Transaminases)', 'Cholestérol total', 'HDL-cholestérol',
                 'Ionogramme (Na, K, Cl)'],
@@ -76,6 +76,8 @@ const doss = {
       // Hématologie
       ['gbc:7.5','gr:4.8','hb:14.2','ht:43','plt:280','pnn:55','pne:3','pnb:1','lymp:35','mono:6']
         .forEach(p => { const [k, v] = p.split(':'); o['v_' + k] = num('v_' + k, v); });
+      // GE + TDR commandés → cases cochées (la collecte GE/TDR est gardée par la coche).
+      ['ex_ge','ex_tdr'].forEach(id => { const c = document.getElementById(id); if (c) c.checked = true; });
       o.ge = sel('ge_result', 'Négatif'); o.tdr = sel('ge_tdr', 'Négatif');
       // Biochimie
       [['gly','0.95'],['uree','0.30'],['crea','11'],['ua','45'],['asat','28'],['alat','31'],
