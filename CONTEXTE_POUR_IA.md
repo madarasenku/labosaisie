@@ -174,6 +174,13 @@ dossier. Trigger : `trg_bloque_jour_verrouille`.
 `get_next_dossier_num(month_year, token)` · `liberer_numeros_verrouilles` (EXECUTE révoqué anon) ·
 `est_bpn_interne` (interne).
 
+> `get_next_dossier_num` **réserve** désormais le numéro rendu (table
+> `dossier_reserves`, clé `(month_year, num)`), sous `pg_advisory_xact_lock`.
+> Un même poste (token) conserve son numéro tant qu'il ne l'a pas enregistré ;
+> un autre poste obtient le suivant. Corrige la course entre deux réceptions
+> simultanées qui obtenaient le même numéro (ex. 0150-0926 dupliqué). Les
+> réservations non enregistrées se libèrent après 6 h (le numéro est recomblé).
+
 ---
 
 ## 5. Rôles et permissions
