@@ -579,7 +579,10 @@ async function submitUserModal() {
   if (data === 'protected_account')  { errEl.textContent = 'Le compte « admin » est protégé : son rôle ne peut pas être changé.'; return; }
   if (data !== 'ok') { errEl.textContent = 'Erreur : ' + data; return; }
   closeUserModal();
-  toast('Compte mis à jour ✓', 'ok');
+  // ✅ Reset admin : un mot de passe temporaire a été posé → l'utilisateur devra
+  //   le changer à sa prochaine connexion (must_change_password côté serveur).
+  toast(newPassword ? 'Mot de passe temporaire défini — à changer à la prochaine connexion ✓'
+                    : 'Compte mis à jour ✓', 'ok');
   renderUsersList();
 }
 
