@@ -25,7 +25,9 @@ const memo = page => page.evaluate(() => localStorage.getItem('labo_vue_courante
     r.section('L\'admin revient sur l\'onglet qu\'il consultait');
     const { ctx, page, errors } = await openApp({ role: 'admin', username: 'admin1', userId: 1, rpc: rpcBase });
     await page.waitForTimeout(900);
-    r.check('au départ : saisie', await vueActive(page), 'saisie');
+    // ✅ v13.180 — Sans onglet mémorisé, l'admin arrive désormais sur son
+    // tableau de bord Kiosque (« accueil »), plus sur la saisie.
+    r.check('au départ : accueil (tableau de bord admin)', await vueActive(page), 'accueil');
 
     await page.evaluate(() => showView('historique'));
     await page.waitForTimeout(300);

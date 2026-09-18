@@ -246,6 +246,9 @@ function updateUserBadge() {
   if (typeof chargerClotures === 'function') chargerClotures();
   const usersNavBtn = document.getElementById('btn-nav-users');
   if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
+  // ✅ Tableau de bord Kiosque : réservé à l'admin.
+  const accueilNavBtn = document.getElementById('btn-nav-accueil');
+  if (accueilNavBtn) accueilNavBtn.style.display = isAdmin() ? '' : 'none';
   // ✅ v13.107 — L'onglet du cahier jaune et ses cartes de réglage restent
   // masqués TANT QUE le serveur n'a pas confirmé l'accès. On ne les révèle
   // plus « parce qu'on est admin » : depuis la seconde porte, un admin en
@@ -283,8 +286,9 @@ function restaurerDerniereVue() {
   let v = null;
   try { v = localStorage.getItem('labo_vue_courante'); } catch (e) {}
   if (v && permises.includes(v)) { showView(v); return; }
-  // À défaut : le point de départ habituel de chaque rôle.
-  showView((isCaissier() || isSpectateur()) ? 'caisse' : 'saisie');
+  // À défaut : le point de départ habituel de chaque rôle. L'admin arrive sur
+  // son tableau de bord Kiosque (accueil).
+  showView(isAdmin() ? 'accueil' : (isCaissier() || isSpectateur()) ? 'caisse' : 'saisie');
 }
 
 // ============================================================
