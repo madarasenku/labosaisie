@@ -227,6 +227,19 @@ async function renderHistory(forceRefresh) {
     return 0;
   });
 
+  // ✅ v13.183 — Poste Pro « File du jour » : compteurs par statut sur les
+  // dossiers filtrés (réutilise getStatut, aucune nouvelle règle).
+  try {
+    let nAtt = 0, nUrg = 0, nRen = 0;
+    filtered.forEach(r => {
+      const s = getStatut(r.id);
+      if (s === 'rendu') nRen++; else if (s === 'urgent') nUrg++; else nAtt++;
+    });
+    const setK = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setK('hist-kpi-attente', nAtt); setK('hist-kpi-urgent', nUrg);
+    setK('hist-kpi-rendu', nRen);   setK('hist-kpi-total', filtered.length);
+  } catch (e) {}
+
   const sortDateEl    = document.getElementById('sort-date');
   const sortNomEl     = document.getElementById('sort-nom');
   const sortMontantEl = document.getElementById('sort-montant');
