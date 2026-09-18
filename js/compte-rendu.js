@@ -85,9 +85,11 @@ function crBlocNFS(res, profile) {
 
 function crBlocGE(res) {
   const rows = [];
-  const add = (n, v) => { if (crV(v) !== '') rows.push({ nom: n, val: v, ref: n === 'Résultat GE' || n === 'TDR paludisme' ? 'Négatif' : '' }); };
-  add('Résultat GE', res['GE - Résultat']);
-  add('TDR paludisme', res['GE - TDR']);
+  // ✅ La case Résultat GE / TDR est surlignée (gras + fond gris) quand le
+  //   résultat est POSITIF, comme les valeurs anormales du reste du rendu.
+  const add = (n, v, ano) => { if (crV(v) !== '') rows.push({ nom: n, val: v, ref: n === 'Résultat GE' || n === 'TDR paludisme' ? 'Négatif' : '', ano: !!ano }); };
+  add('Résultat GE', res['GE - Résultat'], /posit/i.test(crV(res['GE - Résultat'])));
+  add('TDR paludisme', res['GE - TDR'], /posit/i.test(crV(res['GE - TDR'])));
   add('Espèce plasmodiale', res['GE - Espèce']);
   add('Parasitémie', res['GE - Parasitémie (%)']);
   add('Densité parasitaire', res['GE - Densité parasitaire (/µL)']);

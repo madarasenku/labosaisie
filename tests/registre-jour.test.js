@@ -49,7 +49,7 @@ const { serve, openApp, createReporter } = require('./helpers');
     return { synthese: _regSynthese(res), examens: _regExamens(res) };
   });
   r.check('synthèse NFS+GE+CRP (valeurs seules)', cas1.synthese,
-    'GE négatif · GB 6.92 · GR 4.62 · Hb 10.9 · Ht 35.1 · PNN 75% · Mono 3% · Lympho 20% · CRP < 6 mg/L');
+    'GE négatif · GB 6.92 · GR 4.62 · Hb 10.9 · Ht 35.1 · PNN 75% · Lympho 20% · Mono 3% · CRP < 6 mg/L');
   r.check('aucune interprétation couleur (flag)', /flag/.test(cas1.synthese), false);
   r.check('aucune flèche ↑/↓', /[↑↓]/.test(cas1.synthese), false);
   r.check('Mono « 03 » normalisé en « 3 »', /Mono 3%/.test(cas1.synthese), true);
@@ -71,9 +71,25 @@ const { serve, openApp, createReporter } = require('./helpers');
     return _regSynthese(res);
   });
   r.check('CRP positive en valeur directe', /CRP 96 mg\/L/.test(cas2), true);
-  r.check('GE positif', /GE positif/.test(cas2), true);
+  r.check('GE positif', /GE POSITIF/.test(cas2), true);
   r.check('Groupe O Rhésus+', /Gpe O\+/.test(cas2), true);
-  r.check('Glycémie avec unité', /Gly 0\.97 g\/L/.test(cas2), true);
+  r.check('Glycémie avec unité', /Glycémie à jeun 0\.97 g\/L/.test(cas2), true);
+
+  // GE positive → la VALEUR (densité · espèce) apparaît directement.
+  const geVal = await page.evaluate(() => _regSynthese({
+    'Hématologie': { 'GE - Résultat': 'Positif',
+      'GE - Densité parasitaire (/µL)': '2400', 'GE - Espèce': 'P. falciparum' },
+  }));
+  r.check('GE positive affiche la densité', /GE POSITIF \(2400\/µL · P\. falciparum\)/.test(geVal), true);
+
+  // Patient « externe » (consultation externe) → ligne marquée externe.
+  const ext = await page.evaluate(() => {
+    const ln = _regLigne({ patient: { nom: 'X', dossier: '0001-0926', service: 'Consultation externe' }, resultats: {} });
+    const hosp = _regLigne({ patient: { nom: 'Y', dossier: '0002-0926', service: 'Hospitalisation' }, resultats: {} });
+    return { ext: ln.externe, hosp: hosp.externe };
+  });
+  r.check('consultation externe → marqué externe', ext.ext, true);
+  r.check('hospitalisation → non externe', ext.hosp, false);
 
   // Forfait prénatal regroupé.
   const exBpn = await page.evaluate(() => _regExamens({
