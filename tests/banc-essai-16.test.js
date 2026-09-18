@@ -69,7 +69,9 @@ const FIXTURES = COMBOS.map((combo, i) => {
       return Object.keys(GRILLE_EXAMS).filter(k => h.indexOf(e(GRILLE_EXAMS[k].label)) >= 0); });
     // ✅ v13.164 — l'urée n'a plus de colonne propre : elle est déduite de la
     //   créatinine (colonne « Créatinine (+ urée auto) »), donc « uree » disparaît.
-    r.check('colonnes = tous les examens demandés', cols.slice().sort().join(','), 'crea,crp,ge,gly,nfs,transa,widal');
+    // Le libellé fusionné historique « Goutte épaisse / TDR Paludisme » demande
+    // à la fois la GE et le TDR (désormais séparés) → colonnes ge ET tdr.
+    r.check('colonnes = tous les examens demandés', cols.slice().sort().join(','), 'crea,crp,ge,gly,nfs,tdr,transa,widal');
     r.check('ESSAI 1 (GE seul) listé', await page.evaluate(() => !!document.getElementById('g_1008_ge_geres')), true);
     r.check('ESSAI 3 (SWF seul) listé', await page.evaluate(() => !!document.getElementById('g_1010_widal_wto')), true);
     // ✅ v13.164 — urée seule → colonne Créatinine (urée déduite), pas de colonne urée.

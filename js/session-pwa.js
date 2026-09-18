@@ -1254,6 +1254,45 @@ async function submitFirstLoginPassword() {
   } catch (e) { errEl.textContent = 'Erreur : ' + (e.message || 'inconnue'); }
 }
 
+// ── v13.174 — Changement de mot de passe VOLONTAIRE (tous les rôles) ─
+// Chaque agent peut changer son propre mot de passe à tout moment (et pas
+// seulement à la première connexion). Réutilise la fonction sécurisée
+// change_password déjà existante (vérifie l'ancien mot de passe côté serveur).
+function ouvrirChangerMdp() {
+  ['cp_old', 'cp_new', 'cp_confirm'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const err = document.getElementById('cp-error'); if (err) err.textContent = '';
+  const modal = document.getElementById('change-pwd-modal');
+  if (modal) { modal.style.display = 'flex'; const f = document.getElementById('cp_old'); if (f) setTimeout(() => f.focus(), 50); }
+}
+function fermerChangerMdp() {
+  const modal = document.getElementById('change-pwd-modal');
+  if (modal) modal.style.display = 'none';
+}
+async function submitChangerMdp() {
+  const oldEl = document.getElementById('cp_old');
+  const newEl = document.getElementById('cp_new');
+  const confEl = document.getElementById('cp_confirm');
+  const errEl = document.getElementById('cp-error');
+  if (!oldEl || !newEl || !confEl || !errEl) return;
+  errEl.textContent = '';
+  const oldPwd = oldEl.value, newPwd = newEl.value, conf = confEl.value;
+  if (!oldPwd) { errEl.textContent = 'Saisissez votre mot de passe actuel.'; return; }
+  if (newPwd.length < 8) { errEl.textContent = 'Le nouveau mot de passe doit contenir au moins 8 caractères.'; return; }
+  if (!/\d/.test(newPwd)) { errEl.textContent = 'Le nouveau mot de passe doit contenir au moins 1 chiffre.'; return; }
+  if (newPwd !== conf) { errEl.textContent = 'Les deux mots de passe ne correspondent pas.'; return; }
+  if (newPwd === oldPwd) { errEl.textContent = 'Le nouveau mot de passe doit être différent de l\'ancien.'; return; }
+  const btn = document.getElementById('cp-submit'); if (btn) btn.disabled = true;
+  try {
+    const { data, error } = await _sb.rpc('change_password', { p_token: TK(), p_old_password: oldPwd, p_new_password: newPwd });
+    const ok = !error && (data === true || data?.success === true || (Array.isArray(data) ? data[0]?.success : false) || data === 'ok');
+    if (error || !ok) { errEl.textContent = (error?.message) || 'Mot de passe actuel incorrect.'; return; }
+    fermerChangerMdp();
+    toast('Mot de passe modifié ✓', 'ok');
+  } catch (e) {
+    errEl.textContent = 'Erreur : ' + (e.message || 'inconnue');
+  } finally { if (btn) btn.disabled = false; }
+}
+
 // ── FEATURE 5 : tableau de bord Caisse ────────────────────────────
 // ✅ v13.108 — Défaut aligné sur les autres vues (« ce mois ») : la période
 // est désormais commune à l'Historique, la Caisse et les Statistiques.

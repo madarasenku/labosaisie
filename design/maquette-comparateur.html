@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LaboSaisie · Comparateur de maquettes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Poppins:wght@700;800&display=swap">
+<style>
+/* ============================================================
+   TOKENS PARTAGÉS
+   ============================================================ */
+:root{
+  --gr:#dde4ec; --su:#fff; --su2:#f4f7fa; --su3:#eaeff4;
+  --ink:#172433; --ink2:#3b4a5c; --mut:#6a7889; --faint:#93a1b0;
+  --ln:#e2e8ee; --ln2:#eef2f6;
+  --acc:#0f766e; --acc2:#14b8a6; --accs:#e2f4f1; --acci:#0b544e;
+  --todo:#b45309; --todob:#fdf1e3;
+  --doing:#0369a1; --doingb:#e6f1fa;
+  --done:#15803d; --doneb:#e8f6ec;
+  --danger:#b91c1c; --dangerb:#fdeaea;
+  --rad:14px; --radsm:9px;
+  --sh:0 1px 2px rgba(23,36,51,.06),0 10px 26px -14px rgba(23,36,51,.28);
+  --shsm:0 1px 2px rgba(23,36,51,.07);
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --brand:"Poppins",system-ui,sans-serif;
+  /* Kiosque large radius */
+  --krad:20px; --kradsm:14px;
+}
+:root[data-theme="dark"]{
+  --gr:#05090e; --su:#141d28; --su2:#0f1822; --su3:#1b2732;
+  --ink:#e7ecf2; --ink2:#bcc7d3; --mut:#8595a4; --faint:#5f6f7e;
+  --ln:#26313d; --ln2:#1b2530;
+  --acc:#2dd4bf; --acc2:#5eead4; --accs:#0f2b28; --acci:#7fe9db;
+  --todo:#e0a256; --todob:#2a2013;
+  --doing:#5aa7dd; --doingb:#0e2436;
+  --done:#57c07f; --doneb:#0e2519;
+  --danger:#e07a7a; --dangerb:#2a1616;
+  --sh:0 1px 2px rgba(0,0,0,.5),0 12px 30px -16px rgba(0,0,0,.75);
+  --shsm:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--gr);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;line-height:1.2;font-weight:700}
+button{font-family:inherit;cursor:pointer}
+input,select{font-family:inherit}
+.tnum{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono)}
+
+/* ============================================================
+   BARRE DE CONTRÔLE
+   ============================================================ */
+.ctrl{position:sticky;top:0;z-index:50;background:var(--su);border-bottom:1px solid var(--ln);box-shadow:var(--shsm)}
+.ctrl-in{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:9px 16px;flex-wrap:wrap}
+.ctrl .lab{font-weight:700;font-size:11px;letter-spacing:.5px;color:var(--mut);text-transform:uppercase}
+.views{display:flex;gap:6px}
+.vbtn{border:1px solid var(--ln);background:var(--su2);color:var(--ink2);border-radius:999px;padding:7px 16px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px;transition:background .15s}
+.vbtn small{color:var(--mut);font-weight:500;font-size:11px}
+.vbtn[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
+.vbtn[aria-pressed="true"] small{color:rgba(255,255,255,.85)}
+.ctrl .theme{margin-left:auto;border:1px solid var(--ln);background:var(--su2);color:var(--ink2);width:36px;height:36px;border-radius:10px;font-size:16px}
+.ctrl .lbl2{font-size:11px;color:var(--mut);margin-left:4px}
+.ribbon{position:fixed;right:-38px;top:56px;transform:rotate(45deg);background:var(--todo);color:#fff;font-weight:700;font-size:10px;letter-spacing:1px;padding:4px 48px;box-shadow:var(--sh);z-index:45;pointer-events:none}
+
+/* ============================================================
+   WRAPPERS VUES
+   ============================================================ */
+.view{display:none}
+.view.on{display:block}
+
+/* ============================================================
+   A — MOBILE (SMARTPHONE)
+   ============================================================ */
+.view-m{padding:18px 16px 60px}
+.phone{max-width:440px;margin:0 auto;background:var(--su2);border-radius:26px;overflow:hidden;border:1px solid var(--ln);box-shadow:var(--sh);display:flex;flex-direction:column;min-height:700px}
+
+.phone .appbar{background:var(--su);border-bottom:1px solid var(--ln2);display:flex;align-items:center;gap:10px;padding:12px 14px}
+.phone .appbar .logo{width:34px;height:34px;border-radius:9px;flex:none;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+.phone .appbar .ttl{flex:1;min-width:0}
+.phone .appbar .ttl b{font-size:14.5px;font-weight:700;display:block;line-height:1.15}
+.phone .appbar .ttl span{font-size:11px;color:var(--mut)}
+.phone .appbar .ic{width:38px;height:38px;border-radius:10px;border:1px solid var(--ln);background:var(--su);display:grid;place-items:center;font-size:16px;color:var(--ink2)}
+.phone .av{width:38px;height:38px;border-radius:50%;border:2px solid var(--acc);background:var(--accs);color:var(--acci);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none}
+
+.phone .body{flex:1;padding:14px;overflow-y:auto}
+
+.phone .tabbar{height:64px;background:var(--su);border-top:1px solid var(--ln);display:grid;grid-template-columns:repeat(4,1fr)}
+.phone .tabbar button{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--mut);font-size:10px;font-weight:600}
+.phone .tabbar button .i{font-size:20px;line-height:1}
+.phone .tabbar button.on{color:var(--acc)}
+.phone .tabbar .fab .i{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;display:grid;place-items:center;margin-top:-14px;box-shadow:var(--sh);font-size:24px}
+
+.phone .kpis{display:flex;gap:9px;margin-bottom:13px}
+.phone .kc{flex:1;background:var(--su);border:1px solid var(--ln);border-radius:11px;padding:11px 12px;box-shadow:var(--shsm);position:relative;overflow:hidden}
+.phone .kc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.phone .kc .n{font-size:22px;font-weight:700;line-height:1}
+.phone .kc .k{font-size:10px;color:var(--mut);font-weight:600;margin-top:2px}
+.phone .kc.todo{--c:var(--todo)}.phone .kc.todo .n{color:var(--todo)}
+.phone .kc.doing{--c:var(--doing)}.phone .kc.doing .n{color:var(--doing)}
+.phone .kc.done{--c:var(--done)}.phone .kc.done .n{color:var(--done)}
+
+.phone .sec-title{display:flex;align-items:center;gap:8px;margin:4px 2px 10px}
+.phone .sec-title h2{font-size:15px}
+.phone .sec-title .c{font-size:12px;color:var(--mut);font-weight:600;background:var(--su3);border-radius:999px;padding:2px 9px}
+.phone .chips{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none}
+.phone .chips::-webkit-scrollbar{display:none}
+.phone .chip{flex:none;border:1px solid var(--ln);background:var(--su);color:var(--mut);border-radius:999px;padding:7px 13px;font-weight:600;font-size:12.5px}
+.phone .chip[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
+
+.phone .pcards{display:flex;flex-direction:column;gap:9px}
+.phone .pcard{background:var(--su);border:1px solid var(--ln);border-radius:14px;box-shadow:var(--shsm);padding:13px 14px}
+.phone .pcard .nm{font-size:15px;font-weight:700;line-height:1.2}
+.phone .pcard .meta{font-size:12px;color:var(--mut);margin-top:2px}
+.phone .mini{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;float:right;margin-top:-2px}
+.phone .mini.todo{color:var(--todo);background:var(--todob)}
+.phone .mini.doing{color:var(--doing);background:var(--doingb)}
+.phone .mini.done{color:var(--done);background:var(--doneb)}
+.phone .exs{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 11px}
+.phone .ex{font-size:11px;font-weight:600;color:var(--ink2);background:var(--su3);border:1px solid var(--ln);padding:3px 9px;border-radius:7px}
+.phone .cardbtn{width:100%;border:0;border-radius:11px;font-weight:700;font-size:13.5px;padding:10px;background:var(--accs);color:var(--acci);display:flex;align-items:center;justify-content:center;gap:7px}
+
+/* -- Screen patient -- */
+.phone .pstrip{background:linear-gradient(135deg,var(--acci),var(--acc));color:#fff;border-radius:14px;padding:14px 15px;margin-bottom:13px}
+.phone .pstrip .pnm{font-size:16.5px;font-weight:700}
+.phone .pstrip .pmeta{font-size:12px;opacity:.9;margin-top:3px;display:flex;gap:11px;flex-wrap:wrap}
+.phone .pstrip .ppill{display:inline-flex;gap:7px;align-items:center;margin-top:9px;background:rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}
+.phone .sec{background:var(--su);border:1px solid var(--ln);border-radius:14px;box-shadow:var(--shsm);overflow:hidden;margin-bottom:10px}
+.phone .sec .hd{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--ln2)}
+.phone .sec .hd h3{font-size:14px}
+.phone .sec .hd .tag{margin-left:auto;font-size:10px;font-weight:700;color:var(--doing);background:var(--doingb);padding:3px 9px;border-radius:999px}
+.phone .sec .bd{padding:12px 13px}
+.phone .fg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.phone .f label{display:block;font-size:10px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.phone .f .inp{display:flex;align-items:center;gap:7px;border:1px solid var(--ln);border-radius:11px;padding:10px 12px;background:var(--su2)}
+.phone .f .inp input{border:0;background:transparent;font-size:15px;width:100%;color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600}
+.phone .f .inp input:focus{outline:none}
+.phone .f .inp .u{font-size:11px;color:var(--mut);white-space:nowrap}
+.phone .f .inp.lo{border-color:#8fb8e7;background:var(--doingb)}.phone .f .inp.lo .u{color:var(--doing)}
+.phone .norm{font-size:10px;color:var(--faint);margin-top:3px}
+.phone .bigbtn{width:100%;border:0;border-radius:13px;font-weight:700;font-size:15px;padding:14px;color:#fff;background:linear-gradient(135deg,var(--done),#0aa06f);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--sh)}
+.phone .subact{display:flex;gap:9px;margin-top:9px}
+.phone .subact .b{flex:1;border:1px solid var(--ln);background:var(--su);color:var(--ink2);border-radius:11px;font-weight:600;font-size:13px;padding:10px;text-align:center}
+
+/* ============================================================
+   B — KIOSQUE ADMIN
+   ============================================================ */
+.view-k{background:var(--gr);min-height:calc(100vh - 60px)}
+.kiosk{max-width:960px;margin:0 auto;padding:20px 20px 60px}
+
+.kiosk .topbar{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.kiosk .brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+.kiosk .brand .logo{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#062033,#0087b3);display:grid;place-items:center;color:#fff;font-family:var(--brand);font-weight:800;font-size:17px}
+.kiosk .brand b{font-family:var(--brand);font-weight:700;font-size:15px;display:block}
+.kiosk .brand span{font-size:11px;color:var(--mut)}
+.kiosk .who{display:flex;align-items:center;gap:9px;background:var(--su);border:1px solid var(--ln);border-radius:999px;padding:6px 14px}
+.kiosk .who .nm{font-weight:700;font-size:13px;font-family:var(--brand)}
+.kiosk .who .rl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.kiosk .iconbtn{width:38px;height:38px;border-radius:11px;border:1px solid var(--ln);background:var(--su);display:grid;place-items:center;font-size:16px;color:var(--ink2)}
+
+.kiosk .tabs{display:flex;gap:4px;padding:4px;background:var(--su2);border:1px solid var(--ln);border-radius:14px;margin:0 0 28px;width:max-content;max-width:100%;overflow-x:auto}
+.kiosk .tabs button{border:0;background:transparent;color:var(--mut);font-weight:600;font-size:13px;padding:9px 18px;border-radius:10px;white-space:nowrap;display:flex;gap:7px;align-items:center}
+.kiosk .tabs button.on{background:var(--su);color:var(--acc);box-shadow:var(--shsm)}
+
+.kiosk .ks{display:none}.kiosk .ks.on{display:block}
+
+/* --- Tableau de bord --- */
+.kiosk .khead{text-align:center;margin-bottom:28px}
+.kiosk .khead h1{font-family:var(--brand);font-size:32px;font-weight:800;color:var(--ink)}
+.kiosk .khead p{color:var(--mut);font-size:14px;margin:8px 0 0}
+
+.kiosk .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.kiosk .tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:16px;min-height:160px;padding:22px;border-radius:26px;border:0;color:#fff;text-align:left;box-shadow:var(--sh);font-family:var(--brand);cursor:pointer}
+.kiosk .tile .ic{font-size:38px}
+.kiosk .tile b{font-size:20px;font-weight:800;display:block}
+.kiosk .tile span{font-size:12.5px;opacity:.93;font-weight:500;font-family:var(--sans)}
+.kiosk .tile .badge{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.22);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700;font-family:var(--sans)}
+.kiosk .tile:hover{transform:translateY(-3px);transition:transform .15s}
+.kiosk .tile.t1{background:linear-gradient(135deg,#062033,#0087b3)}
+.kiosk .tile.t2{background:linear-gradient(135deg,#0787b3,#00b4d8)}
+.kiosk .tile.t3{background:linear-gradient(135deg,#1a6a4f,#2bb583)}
+.kiosk .tile.t4{background:linear-gradient(135deg,#7c2d12,#f77f00)}
+.kiosk .tile.t5{background:linear-gradient(135deg,#4c1d95,#7c3aed)}
+.kiosk .tile.t6{background:linear-gradient(135deg,#1e293b,#475569)}
+
+.kiosk .kfoot{background:var(--su);border:1px solid var(--ln);border-radius:20px;padding:14px 20px;display:flex;align-items:center;gap:18px;box-shadow:var(--shsm);font-size:14px;flex-wrap:wrap}
+.kiosk .kfoot .s{display:flex;align-items:center;gap:10px;padding-right:18px;border-right:1px solid var(--ln2)}
+.kiosk .kfoot .s:last-child{border-right:0;padding-right:0}
+.kiosk .kfoot b{font-family:var(--brand);font-size:24px}
+.kiosk .kfoot .k{font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+
+/* --- File du jour admin --- */
+.kiosk .adminbar{display:flex;gap:9px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.kiosk .search-k{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:var(--su);border:1px solid var(--ln);border-radius:11px;padding:10px 13px;color:var(--mut)}
+.kiosk .search-k input{border:0;background:transparent;color:var(--ink);width:100%;font-size:14px}
+.kiosk .search-k input:focus{outline:none}
+.kiosk .kbtn{border:1px solid var(--ln);background:var(--su);color:var(--ink2);border-radius:11px;padding:9px 16px;font-weight:600;font-size:13px}
+.kiosk .kbtn.pri{background:linear-gradient(135deg,#062033,#0087b3);border:0;color:#fff}
+
+.kiosk .kpis-bar{display:flex;border:1px solid var(--ln);border-radius:14px;overflow:hidden;background:var(--su);margin-bottom:14px;box-shadow:var(--shsm)}
+.kiosk .kpi{flex:1;padding:13px 18px;border-left:1px solid var(--ln2)}.kiosk .kpi:first-child{border-left:0}
+.kiosk .kpi .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);font-weight:600}
+.kiosk .kpi .n{font-family:var(--brand);font-size:26px;font-weight:700;margin-top:2px}
+.kiosk .kpi.todo .n{color:var(--todo)}.kiosk .kpi.doing .n{color:var(--doing)}.kiosk .kpi.done .n{color:var(--done)}
+
+.kiosk .ktable{background:var(--su);border:1px solid var(--ln);border-radius:14px;overflow:hidden;box-shadow:var(--shsm)}
+.kiosk .ktable table{width:100%;border-collapse:collapse;font-size:13px}
+.kiosk .ktable thead th{background:var(--su2);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:11px 16px;border-bottom:1px solid var(--ln)}
+.kiosk .ktable td{padding:11px 16px;border-bottom:1px solid var(--ln2);vertical-align:middle}
+.kiosk .ktable tbody tr:last-child td{border-bottom:0}
+.kiosk .ktable tbody tr:hover{background:var(--su2)}
+.kiosk .st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;white-space:nowrap}
+.kiosk .st i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.kiosk .st.todo{color:var(--todo);background:var(--todob)}.kiosk .st.doing{color:var(--doing);background:var(--doingb)}.kiosk .st.done{color:var(--done);background:var(--doneb)}
+.kiosk .act-lnk{color:var(--acc);font-weight:700;font-size:12.5px;background:none;border:0;padding:4px 2px}
+
+/* --- Caisse --- */
+.kiosk .caisse-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+.kiosk .caisse-total{background:linear-gradient(135deg,#1a6a4f,#2bb583);border-radius:20px;padding:22px;color:#fff;box-shadow:var(--sh);margin-bottom:16px}
+.kiosk .caisse-total .ct-k{font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.kiosk .caisse-total .ct-n{font-family:var(--brand);font-size:42px;font-weight:800;line-height:1;margin-top:4px}
+.kiosk .caisse-total .ct-sub{font-size:13px;opacity:.9;margin-top:6px}
+.kiosk .caisse-list{background:var(--su);border:1px solid var(--ln);border-radius:14px;overflow:hidden;box-shadow:var(--shsm)}
+.kiosk .crow{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ln2)}
+.kiosk .crow:last-child{border-bottom:0}
+.kiosk .crow .av{width:36px;height:36px;border-radius:10px;background:var(--su2);display:grid;place-items:center;font-size:14px;flex:none}
+.kiosk .crow .nm{font-size:14px;font-weight:600}.kiosk .crow .sub{font-size:11px;color:var(--mut)}
+.kiosk .crow .pr{margin-left:auto;font-family:var(--brand);font-size:15px;font-weight:700;color:var(--done);white-space:nowrap}
+.kiosk .crow .prn{color:var(--mut);font-size:12px}
+.kiosk .caisse-stat{background:var(--su);border:1px solid var(--ln);border-radius:14px;box-shadow:var(--shsm)}
+.kiosk .cs-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--ln2)}
+.kiosk .cs-row:last-child{border-bottom:0}
+.kiosk .cs-row .cl{font-size:13px;color:var(--mut)}.kiosk .cs-row .cv{font-family:var(--brand);font-size:17px;font-weight:700}
+
+/* --- Tarifs --- */
+.kiosk .tarifs-wrap{background:var(--su);border:1px solid var(--ln);border-radius:14px;overflow:hidden;box-shadow:var(--shsm)}
+.kiosk .tarifs-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--ln2)}
+.kiosk .tarifs-head h2{font-size:15px}
+.kiosk .tarifs-head .save{margin-left:auto;background:linear-gradient(135deg,var(--done),#0aa06f);color:#fff;border:0;font-weight:700;font-size:13px;padding:9px 16px;border-radius:10px}
+.kiosk .tarif-fam{padding:14px 18px;border-bottom:1px solid var(--ln2)}
+.kiosk .tarif-fam:last-child{border-bottom:0}
+.kiosk .tarif-fam .ft{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.kiosk .tarif-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.kiosk .tarif-field{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--ln);border-radius:10px;padding:9px 12px;background:var(--su2)}
+.kiosk .tarif-field label{font-size:13px;font-weight:500;color:var(--ink2)}
+.kiosk .tarif-field input{border:0;background:transparent;font-size:14px;font-weight:700;width:72px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.kiosk .tarif-field input:focus{outline:none}
+.kiosk .tarif-field .cu{font-size:11px;color:var(--mut)}
+
+/* ============================================================
+   C — POSTE PRO (ORDINATEUR)
+   ============================================================ */
+.view-d{min-height:calc(100vh - 60px)}
+.shell{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 60px)}
+
+.shell .side{background:var(--su);border-right:1px solid var(--ln);display:flex;flex-direction:column;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto}
+.shell .brand{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid var(--ln2)}
+.shell .brand .logo{width:32px;height:32px;border-radius:8px;flex:none;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px}
+.shell .brand b{font-size:13px;display:block;font-weight:700}
+.shell .brand span{font-size:10.5px;color:var(--mut)}
+
+.shell .nav{padding:8px;display:flex;flex-direction:column;gap:2px;flex:1}
+.shell .nav .grp{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--faint);font-weight:600;padding:11px 8px 5px}
+.shell .nav a{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--ink2);font-weight:500;font-size:13px;text-decoration:none;border:0;background:none;width:100%;text-align:left;cursor:pointer}
+.shell .nav a .i{width:17px;text-align:center;font-size:13px}
+.shell .nav a .cnt{margin-left:auto;font-size:11px;font-weight:700;background:var(--su3);color:var(--mut);border-radius:999px;padding:1px 7px}
+.shell .nav a:hover{background:var(--su2);color:var(--ink)}
+.shell .nav a.on{background:var(--accs);color:var(--acci);font-weight:600}
+.shell .nav a.on .cnt{background:var(--acc);color:#fff}
+
+.shell .side-u{border-top:1px solid var(--ln2);padding:10px;display:flex;align-items:center;gap:8px}
+.shell .side-u .av{width:30px;height:30px;border-radius:7px;background:var(--su3);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink2)}
+.shell .side-u .nm{font-size:12px;font-weight:600;line-height:1.2}
+.shell .side-u .rl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px}
+.shell .side-u .acts{margin-left:auto;display:flex;gap:3px}
+.shell .mic{width:26px;height:26px;border-radius:6px;border:1px solid var(--ln);background:var(--su);display:grid;place-items:center;font-size:11px;color:var(--mut)}
+.shell .mic:hover{border-color:var(--acc);color:var(--acc)}
+
+.shell .main{min-width:0;display:flex;flex-direction:column}
+.shell .topbar{position:sticky;top:60px;z-index:10;background:color-mix(in srgb,var(--gr) 80%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--ln);display:flex;align-items:center;gap:12px;padding:10px 18px}
+.shell .topbar h1{font-size:15px;font-weight:700}
+.shell .topbar .crumb{font-size:11px;color:var(--mut)}
+.shell .dsearch{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--su);border:1px solid var(--ln);border-radius:8px;padding:7px 11px;color:var(--mut);min-width:220px}
+.shell .dsearch input{border:0;background:transparent;color:var(--ink);width:100%;font-size:13px}
+.shell .dsearch input:focus{outline:none}
+.shell .content{padding:16px 18px 48px}
+
+.shell .ds{display:none}.shell .ds.on{display:block;animation:fade .18s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.shell .kpis{display:flex;border:1px solid var(--ln);border-radius:9px;overflow:hidden;background:var(--su);margin-bottom:13px;box-shadow:var(--shsm)}
+.shell .kpi{flex:1;padding:11px 15px;border-left:1px solid var(--ln2)}.shell .kpi:first-child{border-left:0}
+.shell .kpi .k{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);font-weight:600}
+.shell .kpi .n{font-size:21px;font-weight:700;margin-top:2px}
+.shell .kpi.todo .n{color:var(--todo)}.shell .kpi.doing .n{color:var(--doing)}.shell .kpi.done .n{color:var(--done)}
+.shell .kpi .d{font-size:10px;color:var(--faint)}
+
+.shell .toolbar{display:flex;gap:7px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.shell .seg{display:flex;background:var(--su);border:1px solid var(--ln);border-radius:8px;overflow:hidden}
+.shell .seg button{border:0;background:transparent;color:var(--mut);font-weight:600;font-size:12px;padding:7px 12px;border-left:1px solid var(--ln2)}
+.shell .seg button:first-child{border-left:0}.shell .seg button[aria-pressed="true"]{background:var(--accs);color:var(--acci)}
+.shell .dbtn{border:1px solid var(--ln);background:var(--su);color:var(--ink2);border-radius:8px;padding:7px 12px;font-weight:600;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.shell .dbtn:hover{border-color:var(--acc);color:var(--acc)}
+.shell .dbtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.shell .dbtn.go{background:linear-gradient(135deg,var(--done),#0aa06f);border:0;color:#fff}
+.shell .spacer{margin-left:auto}
+
+.shell .card{background:var(--su);border:1px solid var(--ln);border-radius:9px;box-shadow:var(--shsm);overflow:hidden}
+.shell .tablewrap{overflow-x:auto}
+.shell table.dt{width:100%;border-collapse:collapse;font-size:12.5px;min-width:760px}
+.shell .dt thead th{text-align:left;background:var(--su2);color:var(--mut);font-weight:600;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;padding:9px 14px;border-bottom:1px solid var(--ln);position:sticky;top:0}
+.shell .dt td{padding:8px 14px;border-bottom:1px solid var(--ln2);vertical-align:middle}
+.shell .dt tbody tr:last-child td{border-bottom:0}
+.shell .dt tbody tr:hover{background:var(--su2)}
+.shell .doss{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--mut)}
+.shell .wnm{font-weight:600}.shell .wsub{color:var(--mut);font-size:11px}
+.shell .ex{font-size:10.5px;font-weight:600;color:var(--ink2);background:var(--su3);border:1px solid var(--ln);padding:2px 7px;border-radius:6px}
+.shell .exs{display:flex;flex-wrap:wrap;gap:4px}
+.shell .mini{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.shell .mini.todo{color:var(--todo);background:var(--todob)}.shell .mini.doing{color:var(--doing);background:var(--doingb)}.shell .mini.done{color:var(--done);background:var(--doneb)}
+.shell .lnk{color:var(--acc);font-weight:700;font-size:12px;background:none;border:0}
+.shell .lnk:hover{text-decoration:underline}
+
+/* -- Shell: admin nav items -- */
+.shell .nav a.admin-only{border-left:2px solid var(--done);padding-left:8px}
+
+/* -- Shell: réception -- */
+.shell .recwrap{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start}
+.shell .checkfam .ft{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px}
+.shell .chk{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--ln);border-radius:7px;margin-bottom:5px;background:var(--su2)}
+.shell .chk input{width:15px;height:15px;accent-color:var(--acc)}
+.shell .chk .lb{font-size:12.5px;font-weight:500}
+.shell .chk .pr{margin-left:auto;font-size:12px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums}
+.shell .chk.on{border-color:var(--acc);background:var(--accs)}.shell .chk.on .pr{color:var(--acci)}
+.shell .summary{position:sticky;top:104px}
+.shell .total{display:flex;align-items:baseline;justify-content:space-between;padding:13px;border-top:2px solid var(--ln);margin-top:3px}
+.shell .total .lab{font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.shell .total .val{font-size:24px;font-weight:700;color:var(--acci)}
+
+@media(max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .shell .side{position:static;height:auto}
+  .shell .topbar{top:0}
+  .shell .summary{position:static}
+  .kiosk .tiles{grid-template-columns:repeat(2,1fr)}
+  .kiosk .caisse-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .kiosk .tiles{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="ribbon">MAQUETTE</div>
+
+<!-- BARRE DE CONTRÔLE -->
+<div class="ctrl">
+  <div class="ctrl-in">
+    <span class="lab">Interface</span>
+    <div class="views">
+      <button class="vbtn" aria-pressed="true" onclick="setView('m')">📱 Mobile <small>agents · caisse</small></button>
+      <button class="vbtn" aria-pressed="false" onclick="setView('k')">🖥️ Kiosque <small>admin · tactile</small></button>
+      <button class="vbtn" aria-pressed="false" onclick="setView('d')">💻 Poste Pro <small>ordinateur · dense</small></button>
+    </div>
+    <button class="theme" onclick="toggleTheme()" title="Clair / sombre">🌙</button>
+  </div>
+</div>
+
+<!-- ====================================================
+     A — MOBILE
+     ==================================================== -->
+<div class="view view-m on" id="view-m">
+<div class="phone">
+
+  <header class="appbar">
+    <div class="logo">CB</div>
+    <div class="ttl"><b id="mpt">File du jour</b><span>CPMI · lun. 14 sept.</span></div>
+    <button class="ic" onclick="mNav('mrecherche')">🔎</button>
+    <button class="av" onclick="mNav('mcompte')">AT</button>
+  </header>
+
+  <div class="body">
+
+    <!-- FILE -->
+    <section id="mfile" class="screen on">
+      <div class="kpis">
+        <div class="kc todo"><div class="n tnum">12</div><div class="k">À saisir</div></div>
+        <div class="kc doing"><div class="n tnum">3</div><div class="k">En cours</div></div>
+        <div class="kc done"><div class="n tnum">27</div><div class="k">Rendus</div></div>
+      </div>
+      <div class="chips">
+        <button class="chip" aria-pressed="true">Tous</button>
+        <button class="chip" aria-pressed="false">À saisir</button>
+        <button class="chip" aria-pressed="false">En cours</button>
+        <button class="chip" aria-pressed="false">Prénatal</button>
+      </div>
+      <div class="sec-title"><h2>Patients du jour</h2><span class="c tnum">12</span></div>
+      <div class="pcards" id="mfilecards"></div>
+    </section>
+
+    <!-- PATIENT -->
+    <section id="mpatient" class="screen">
+      <div class="pstrip">
+        <div class="pnm">KOUAKOU AMOIN GRÂCE</div>
+        <div class="pmeta"><span class="mono">N° 0201-0926</span><span>28 ans · F</span><span>Dr Konan</span></div>
+        <span class="ppill">🤰 Bilan prénatal · 20 000 F</span>
+      </div>
+      <div class="sec"><div class="hd"><h3>🩸 NFS</h3><span class="tag">1 à confirmer</span></div><div class="bd"><div class="fg">
+        <div class="f"><label>GB</label><div class="inp"><input value="6.92" inputmode="decimal"><span class="u">10³</span></div></div>
+        <div class="f"><label>GR</label><div class="inp"><input value="4.62" inputmode="decimal"><span class="u">10⁶</span></div></div>
+        <div class="f"><label>Hémoglobine</label><div class="inp lo"><input value="10.9" inputmode="decimal"><span class="u">g/dL ↓</span></div><div class="norm">12 – 16</div></div>
+        <div class="f"><label>Hématocrite</label><div class="inp lo"><input value="35.1" inputmode="decimal"><span class="u">% ↓</span></div><div class="norm">36 – 46</div></div>
+        <div class="f"><label>Plaquettes</label><div class="inp"><input value="228" inputmode="numeric"><span class="u">10³</span></div></div>
+        <div class="f"><label>PNN</label><div class="inp"><input value="55" inputmode="numeric"><span class="u">%</span></div></div>
+      </div></div></div>
+      <div style="position:sticky;bottom:0;padding:12px 0;background:linear-gradient(transparent,var(--su2) 22%)">
+        <button class="bigbtn">💾🖨️ Enregistrer + Imprimer</button>
+        <div class="subact"><button class="b">👁 Aperçu CR</button><button class="b" onclick="mNav('mfile')">✕ Fermer</button></div>
+      </div>
+    </section>
+
+    <!-- RÉCEPTION -->
+    <section id="mreception" class="screen">
+      <div class="sec"><div class="bd"><div class="fg">
+        <div class="f" style="grid-column:1/-1"><label>Nom &amp; prénoms</label><div class="inp"><input placeholder="NOM Prénoms"></div></div>
+        <div class="f"><label>Âge</label><div class="inp"><input value="28" inputmode="numeric"><span class="u">ans</span></div></div>
+        <div class="f"><label>Sexe</label><div class="inp"><input value="F"></div></div>
+        <div class="f"><label>Prescripteur</label><div class="inp"><input value="Dr Konan"></div></div>
+        <div class="f"><label>Service</label><div class="inp"><input value="Maternité"></div></div>
+      </div></div></div>
+      <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin:14px 2px 8px">Bilan prénatal</div>
+      <label style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--acc);border-radius:12px;margin-bottom:8px;background:var(--accs)">
+        <input type="checkbox" checked style="width:22px;height:22px;accent-color:var(--acc)">
+        <span style="font-size:14px;font-weight:500">Bilan prénatal complet</span><span style="margin-left:auto;font-size:13px;font-weight:600;color:var(--acci);font-variant-numeric:tabular-nums">20 000</span>
+      </label>
+      <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin:14px 2px 8px">Hématologie</div>
+      <label style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--ln);border-radius:12px;margin-bottom:8px;background:var(--su)">
+        <input type="checkbox" style="width:22px;height:22px;accent-color:var(--acc)">
+        <span style="font-size:14px;font-weight:500">NFS — Hémogramme</span><span style="margin-left:auto;font-size:13px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums">3 000</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--ln);border-radius:12px;margin-bottom:8px;background:var(--su)">
+        <input type="checkbox" style="width:22px;height:22px;accent-color:var(--acc)">
+        <span style="font-size:14px;font-weight:500">Électrophorèse Hb</span><span style="margin-left:auto;font-size:13px;font-weight:600;color:var(--mut);font-variant-numeric:tabular-nums">6 000</span>
+      </label>
+      <div style="position:sticky;bottom:0;padding:12px 0;background:var(--su2);border-top:1px solid var(--ln)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:600">Total</span>
+          <span style="font-size:26px;font-weight:700;color:var(--acci)">20 000 F</span>
+        </div>
+        <button class="bigbtn">💵 Enregistrer + encaisser</button>
+      </div>
+    </section>
+
+    <!-- COMPTE -->
+    <section id="mcompte" class="screen">
+      <div style="background:linear-gradient(135deg,var(--acci),var(--acc));color:#fff;border-radius:14px;padding:18px;text-align:center;margin-bottom:14px">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:24px;font-weight:700;margin:0 auto 9px">AT</div>
+        <div style="font-size:17px;font-weight:700">Ago Thierry</div>
+        <div style="font-size:12px;opacity:.9;text-transform:uppercase;letter-spacing:.6px;margin-top:1px">Technicien biologiste</div>
+      </div>
+      <div style="background:var(--su);border:1px solid var(--ln);border-radius:14px;overflow:hidden">
+        <button style="display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:15px;border-top:1px solid var(--ln2);color:var(--ink);font-size:14px;font-weight:500;text-align:left;cursor:pointer">
+          <span style="width:22px;text-align:center;font-size:17px">🔑</span>Changer mon mot de passe<span style="margin-left:auto;color:var(--faint)">›</span>
+        </button>
+        <button style="display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:15px;border-top:1px solid var(--ln2);color:var(--ink);font-size:14px;font-weight:500;text-align:left;cursor:pointer">
+          <span style="width:22px;text-align:center;font-size:17px">🌓</span>Mode sombre<span style="margin-left:auto" onclick="toggleTheme()">🌙</span>
+        </button>
+        <button style="display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:15px;border-top:1px solid var(--ln2);color:var(--danger);font-size:14px;font-weight:500;text-align:left;cursor:pointer">
+          <span style="width:22px;text-align:center;font-size:17px">⎋</span>Déconnexion
+        </button>
+      </div>
+    </section>
+
+    <!-- RECHERCHE -->
+    <section id="mrecherche" class="screen">
+      <div style="display:flex;align-items:center;gap:9px;background:var(--su);border:1px solid var(--ln);border-radius:12px;padding:12px 13px;margin-bottom:12px">
+        <span>🔎</span><input style="border:0;background:transparent;font-size:16px;width:100%;color:var(--ink);font-family:var(--sans)" placeholder="Nom, numéro de dossier…">
+      </div>
+      <div style="font-size:12px;color:var(--mut);text-align:center;margin-top:24px">Tapez au moins 2 lettres pour chercher.</div>
+    </section>
+
+  </div><!-- /.body -->
+
+  <nav class="tabbar">
+    <button class="on" onclick="mNav('mfile')"><span class="i">🗂️</span>Dossiers</button>
+    <button onclick="mNav('mreception')"><span class="i fab"><span class="i" style="font-size:24px">➕</span></span>Réception</button>
+    <button onclick="mNav('mpatient')"><span class="i">📋</span>Saisir</button>
+    <button onclick="mNav('mcompte')"><span class="i">👤</span>Compte</button>
+  </nav>
+
+</div><!-- /.phone -->
+</div><!-- /#view-m -->
+
+<!-- ====================================================
+     B — KIOSQUE ADMIN
+     ==================================================== -->
+<div class="view view-k" id="view-k">
+<div class="kiosk">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">CB</div>
+      <div><b>CPMI Grand-Bassam</b><span>Administration · LaboSaisie</span></div>
+    </div>
+    <div class="who">
+      <div><div class="nm">Dr Evi Bedé</div><div class="rl">Administrateur</div></div>
+    </div>
+    <button class="iconbtn" title="Clair / sombre" onclick="toggleTheme()">🌓</button>
+    <button class="iconbtn" title="Déconnexion">⎋</button>
+  </div>
+
+  <div class="tabs">
+    <button class="on" onclick="kNav('kb',this)">🏠 Tableau de bord</button>
+    <button onclick="kNav('kfile',this)">🗂️ File du jour</button>
+    <button onclick="kNav('kcaisse',this)">💰 Caisse</button>
+    <button onclick="kNav('ktarifs',this)">💲 Tarifs</button>
+    <button onclick="kNav('kusers',this)">👥 Utilisateurs</button>
+  </div>
+
+  <!-- TABLEAU DE BORD -->
+  <div id="kb" class="ks on">
+    <div class="khead">
+      <h1>Bonjour Dr Evi Bedé 👋</h1>
+      <p>Lundi 14 septembre 2026 · CPMI Grand-Bassam · Laboratoire</p>
+    </div>
+    <div class="tiles">
+      <button class="tile t1" onclick="kNav('kfile',null)">
+        <span class="badge tnum">42 patients</span>
+        <span class="ic">🗂️</span>
+        <span><b>File du jour</b><span>12 à saisir · 3 en cours · 27 rendus</span></span>
+      </button>
+      <button class="tile t2" onclick="kNav('kcaisse',null)">
+        <span class="badge tnum">127 500 F</span>
+        <span class="ic">💰</span>
+        <span><b>Caisse du jour</b><span>18 encaissements · 2 exonérés</span></span>
+      </button>
+      <button class="tile t3">
+        <span class="badge" style="background:rgba(255,255,255,.18)">Nouveau</span>
+        <span class="ic">📊</span>
+        <span><b>Rapports</b><span>Statistiques et exports du mois</span></span>
+      </button>
+      <button class="tile t4" onclick="kNav('ktarifs',null)">
+        <span class="ic">💲</span>
+        <span><b>Grille tarifaire</b><span>Modifier les prix des examens</span></span>
+      </button>
+      <button class="tile t5" onclick="kNav('kusers',null)">
+        <span class="ic">👥</span>
+        <span><b>Utilisateurs</b><span>4 comptes actifs</span></span>
+      </button>
+      <button class="tile t6">
+        <span class="ic">⚙️</span>
+        <span><b>Paramètres</b><span>Établissement, options</span></span>
+      </button>
+    </div>
+    <div class="kfoot">
+      <div class="s"><b class="tnum" style="color:var(--todo)">12</b><span class="k">À saisir</span></div>
+      <div class="s"><b class="tnum" style="color:var(--doing)">3</b><span class="k">En cours</span></div>
+      <div class="s"><b class="tnum" style="color:var(--done)">27</b><span class="k">Rendus</span></div>
+      <div class="s"><b class="tnum">42</b><span class="k">Total reçus</span></div>
+      <div class="s" style="margin-left:auto"><b class="tnum" style="color:var(--done)">127 500 F</b><span class="k">Encaissé</span></div>
+    </div>
+  </div>
+
+  <!-- FILE DU JOUR (ADMIN) -->
+  <div id="kfile" class="ks">
+    <div class="kpis-bar">
+      <div class="kpi todo"><div class="k">À saisir</div><div class="n tnum">12</div></div>
+      <div class="kpi doing"><div class="k">En cours</div><div class="n tnum">3</div></div>
+      <div class="kpi done"><div class="k">Rendus</div><div class="n tnum">27</div></div>
+      <div class="kpi"><div class="k">Total reçus</div><div class="n tnum">42</div></div>
+    </div>
+    <div class="adminbar">
+      <div class="search-k">🔎<input placeholder="Nom, N° dossier, prescripteur…"></div>
+      <button class="kbtn">Tous</button>
+      <button class="kbtn">Prénatal</button>
+      <button class="kbtn">Hémato</button>
+      <button class="kbtn pri">➕ Nouvelle réception</button>
+    </div>
+    <div class="ktable">
+      <table>
+        <thead>
+          <tr><th>N° Dossier</th><th>Patient</th><th>Âge / Sexe</th><th>Prescripteur</th><th>Examens</th><th>Reçu</th><th>Montant</th><th>Statut</th><th></th></tr>
+        </thead>
+        <tbody id="kfilebody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CAISSE -->
+  <div id="kcaisse" class="ks">
+    <div class="caisse-grid">
+      <div>
+        <div class="caisse-total">
+          <div class="ct-k">Total encaissé — 14 septembre 2026</div>
+          <div class="ct-n tnum">127 500 F</div>
+          <div class="ct-sub">18 encaissements · 2 exonérés · 0 en attente</div>
+        </div>
+        <div class="caisse-list" id="caisserows"></div>
+      </div>
+      <div class="caisse-stat">
+        <div class="cs-row"><span class="cl">Consultations externes</span><span class="cv tnum">82 500 F</span></div>
+        <div class="cs-row"><span class="cl">Maternité</span><span class="cv tnum">30 000 F</span></div>
+        <div class="cs-row"><span class="cl">Hospitalisation</span><span class="cv tnum">15 000 F</span></div>
+        <div class="cs-row"><span class="cl">Exonérés (gratis)</span><span class="cv tnum">0 F</span></div>
+        <div class="cs-row"><span class="cl" style="font-weight:700;color:var(--ink)">Total journée</span><span class="cv tnum" style="color:var(--done)">127 500 F</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARIFS -->
+  <div id="ktarifs" class="ks">
+    <div class="tarifs-wrap">
+      <div class="tarifs-head"><h2>💲 Grille tarifaire</h2><span style="font-size:12px;color:var(--mut)">Modifiez et enregistrez — s'applique immédiatement.</span><button class="save">💾 Enregistrer</button></div>
+      <div class="tarif-fam">
+        <div class="ft">Hématologie</div>
+        <div class="tarif-grid">
+          <div class="tarif-field"><label>NFS</label><input value="3000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Électrophorèse Hb</label><input value="6000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>TS/TC</label><input value="2500"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Goutte épaisse / TDR</label><input value="2000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>GS &amp; Rhésus</label><input value="2000"><span class="cu">F</span></div>
+        </div>
+      </div>
+      <div class="tarif-fam">
+        <div class="ft">Biochimie</div>
+        <div class="tarif-grid">
+          <div class="tarif-field"><label>Glycémie</label><input value="2000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Créatinine</label><input value="2500"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Urée</label><input value="2500"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Transaminases (ASAT)</label><input value="2500"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Transaminases (ALAT)</label><input value="2500"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Bilan lipidique</label><input value="8000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Ionogramme</label><input value="8000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>TSH</label><input value="10000"><span class="cu">F</span></div>
+        </div>
+      </div>
+      <div class="tarif-fam">
+        <div class="ft">Sérologie &amp; Parasitologie</div>
+        <div class="tarif-grid">
+          <div class="tarif-field"><label>CRP</label><input value="3000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Widal</label><input value="3000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>VIH 1+2</label><input value="3000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Ag HBs</label><input value="3500"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>TPHA / VDRL</label><input value="3000"><span class="cu">F</span></div>
+        </div>
+      </div>
+      <div class="tarif-fam">
+        <div class="ft">Forfaits prénatals</div>
+        <div class="tarif-grid">
+          <div class="tarif-field"><label>Bilan prénatal 1er T.</label><input value="20000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Bilan prénatal 2e T.</label><input value="15000"><span class="cu">F</span></div>
+          <div class="tarif-field"><label>Bilan prénatal complet</label><input value="30000"><span class="cu">F</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UTILISATEURS -->
+  <div id="kusers" class="ks">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <h2 style="font-size:16px">Comptes utilisateurs</h2>
+      <button style="margin-left:auto;border:0;border-radius:11px;background:linear-gradient(135deg,#062033,#0087b3);color:#fff;font-weight:700;font-size:13px;padding:9px 16px;cursor:pointer">➕ Ajouter un utilisateur</button>
+    </div>
+    <div class="ktable">
+      <table>
+        <thead><tr><th>Identifiant</th><th>Nom complet</th><th>Rôle</th><th>Dernier accès</th><th>Statut</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="mono">evi.bede</span></td>
+            <td><div style="font-weight:600">Dr Evi Bedé</div><div style="font-size:11px;color:var(--mut)">evi.bede@cpmi-gb.ci</div></td>
+            <td><span style="background:var(--doneb);color:var(--done);font-weight:700;font-size:11px;padding:4px 10px;border-radius:999px">👑 Admin</span></td>
+            <td style="color:var(--mut);font-size:12px">Aujourd'hui 10:42</td>
+            <td><span style="color:var(--done);font-weight:700;font-size:12px">● Actif</span></td>
+            <td><button class="act-lnk">Modifier</button></td>
+          </tr>
+          <tr>
+            <td><span class="mono">ago.thierry</span></td>
+            <td><div style="font-weight:600">Ago Thierry</div><div style="font-size:11px;color:var(--mut)">ago.thierry@cpmi-gb.ci</div></td>
+            <td><span style="background:var(--doingb);color:var(--doing);font-weight:700;font-size:11px;padding:4px 10px;border-radius:999px">🔬 Agent</span></td>
+            <td style="color:var(--mut);font-size:12px">Aujourd'hui 08:15</td>
+            <td><span style="color:var(--done);font-weight:700;font-size:12px">● Actif</span></td>
+            <td><button class="act-lnk">Modifier</button></td>
+          </tr>
+          <tr>
+            <td><span class="mono">caisse1</span></td>
+            <td><div style="font-weight:600">Koné Aminata</div><div style="font-size:11px;color:var(--mut)">koné.aminata@cpmi-gb.ci</div></td>
+            <td><span style="background:var(--todob);color:var(--todo);font-weight:700;font-size:11px;padding:4px 10px;border-radius:999px">💰 Caisse</span></td>
+            <td style="color:var(--mut);font-size:12px">Hier 17:30</td>
+            <td><span style="color:var(--done);font-weight:700;font-size:12px">● Actif</span></td>
+            <td><button class="act-lnk">Modifier</button></td>
+          </tr>
+          <tr>
+            <td><span class="mono">spec.dr.konan</span></td>
+            <td><div style="font-weight:600">Dr Konan Yves</div><div style="font-size:11px;color:var(--mut)">yves.konan@cpmi-gb.ci</div></td>
+            <td><span style="background:var(--su3);color:var(--mut);font-weight:700;font-size:11px;padding:4px 10px;border-radius:999px">👁 Spectateur</span></td>
+            <td style="color:var(--mut);font-size:12px">13/09/2026</td>
+            <td><span style="color:var(--done);font-weight:700;font-size:12px">● Actif</span></td>
+            <td><button class="act-lnk">Modifier</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /.kiosk -->
+</div><!-- /#view-k -->
+
+<!-- ====================================================
+     C — POSTE PRO
+     ==================================================== -->
+<div class="view view-d" id="view-d">
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand"><div class="logo">CB</div><div><b>LaboSaisie</b><span>CPMI Grand-Bassam</span></div></div>
+    <nav class="nav">
+      <span class="grp">Travail du jour</span>
+      <a class="on" onclick="dNav('dfile',this)"><span class="i">🗂️</span>File du jour<span class="cnt tnum">12</span></a>
+      <a onclick="dNav('dserie',this)"><span class="i">📋</span>Saisie en série</a>
+      <a onclick="dNav('dpatient',this)"><span class="i">🧾</span>Saisir un patient</a>
+      <a onclick="dNav('dreception',this)"><span class="i">➕</span>Réception</a>
+      <a onclick="dNav('dfile',this)"><span class="i">🖨️</span>Registre du jour</a>
+      <span class="grp">Administration</span>
+      <a class="admin-only" onclick="dNav('dcaisse',this)"><span class="i">💰</span>Caisse<span class="cnt tnum">127k</span></a>
+      <a class="admin-only" onclick="dNav('dtarifs',this)"><span class="i">💲</span>Tarifs</a>
+      <a class="admin-only" onclick="dNav('dusers',this)"><span class="i">👥</span>Utilisateurs</a>
+      <a onclick="dNav('dfile',this)"><span class="i">📊</span>Statistiques</a>
+    </nav>
+    <div class="side-u">
+      <div class="av">AT</div>
+      <div><div class="nm">Ago Thierry</div><div class="rl">Technicien</div></div>
+      <div class="acts">
+        <button class="mic" title="Changer mot de passe">🔑</button>
+        <button class="mic" title="Clair / sombre" onclick="toggleTheme()">🌓</button>
+        <button class="mic" title="Déconnexion">⎋</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div><h1 id="dpt">File du jour</h1><div class="crumb" id="dpc">Lundi 14 septembre 2026</div></div>
+      <div class="dsearch">🔎<input placeholder="Patient, N° dossier…"></div>
+    </header>
+    <div class="content">
+
+      <!-- FILE -->
+      <section id="dfile" class="ds on">
+        <div class="kpis">
+          <div class="kpi todo"><div class="k">À saisir</div><div class="n tnum">12</div><div class="d">attendus</div></div>
+          <div class="kpi doing"><div class="k">En cours</div><div class="n tnum">3</div><div class="d">à terminer</div></div>
+          <div class="kpi done"><div class="k">Rendus</div><div class="n tnum">27</div><div class="d">imprimés</div></div>
+          <div class="kpi"><div class="k">Total reçus</div><div class="n tnum">42</div><div class="d">depuis 07:00</div></div>
+        </div>
+        <div class="toolbar">
+          <div class="seg">
+            <button aria-pressed="true">Tous</button>
+            <button aria-pressed="false">À saisir</button>
+            <button aria-pressed="false">En cours</button>
+            <button aria-pressed="false">Prénatal</button>
+          </div>
+          <span class="spacer"></span>
+          <button class="dbtn" onclick="dNav('dserie',null)">📋 Série</button>
+          <button class="dbtn pri" onclick="dNav('dreception',null)">➕ Nouveau</button>
+        </div>
+        <div class="card"><div class="tablewrap"><table class="dt">
+          <thead><tr><th>N°</th><th>Patient</th><th>Âge</th><th>Prescripteur</th><th>Examens</th><th>Reçu</th><th>Statut</th><th style="text-align:right">Action</th></tr></thead>
+          <tbody id="dfilebody"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- SÉRIE -->
+      <section id="dserie" class="ds">
+        <div class="card">
+          <div class="panel-h" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--ln2);flex-wrap:wrap">
+            <h2 style="font-size:14px">NFS — Hémogramme</h2>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mut)"><label>Examen</label>
+              <select style="font-size:12.5px;padding:6px 9px;border-radius:7px;border:1px solid var(--ln);background:var(--su2);color:var(--ink)"><option>NFS — Hémogramme</option><option>CRP</option><option>Glycémie</option><option>Électrophorèse Hb</option></select>
+            </div>
+            <span class="spacer"></span>
+            <button class="dbtn go">💾 Enregistrer les cochés (4)</button>
+          </div>
+          <div class="tablewrap"><table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:680px">
+            <thead><tr>
+              <th style="background:var(--su2);text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:9px 12px;border-bottom:1px solid var(--ln)">N° · Patient</th>
+              <th style="background:var(--su2);text-align:center;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:9px 8px;border-bottom:1px solid var(--ln)">GB</th>
+              <th style="background:var(--su2);text-align:center;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:9px 8px;border-bottom:1px solid var(--ln)">GR</th>
+              <th style="background:var(--su2);text-align:center;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:9px 8px;border-bottom:1px solid var(--ln)">Hb</th>
+              <th style="background:var(--su2);text-align:center;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:9px 8px;border-bottom:1px solid var(--ln)">Ht</th>
+              <th style="background:var(--su2);text-align:center;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:9px 8px;border-bottom:1px solid var(--ln)">Plq</th>
+              <th style="background:var(--su2);text-align:center;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;padding:9px 8px;border-bottom:1px solid var(--ln)">PNN%</th>
+            </tr></thead>
+            <tbody id="dserierows"></tbody>
+          </table></div>
+          <div style="display:flex;gap:8px;align-items:center;padding:10px 14px;font-size:12px;color:var(--done);background:var(--doneb);border-top:1px solid var(--ln2)">✅ Liste chargée automatiquement · 4 complets · 1 commencé</div>
+        </div>
+      </section>
+
+      <!-- RÉCEPTION DESKTOP -->
+      <section id="dreception" class="ds">
+        <div class="recwrap">
+          <div>
+            <div class="checkfam"><div class="ft">Bilan prénatal</div>
+              <label class="chk on"><input type="checkbox" checked style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">Bilan prénatal 1er trimestre</span><span class="pr">20 000</span></label>
+            </div>
+            <div class="checkfam"><div class="ft">Hématologie</div>
+              <label class="chk"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">NFS — Hémogramme</span><span class="pr">3 000</span></label>
+              <label class="chk"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">Électrophorèse Hb</span><span class="pr">6 000</span></label>
+              <label class="chk"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">Goutte épaisse / TDR</span><span class="pr">2 000</span></label>
+            </div>
+            <div class="checkfam"><div class="ft">Biochimie</div>
+              <label class="chk"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">Glycémie à jeun</span><span class="pr">2 000</span></label>
+              <label class="chk"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">Créatinine</span><span class="pr">2 500</span></label>
+            </div>
+            <div class="checkfam"><div class="ft">Sérologie</div>
+              <label class="chk"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">CRP</span><span class="pr">3 000</span></label>
+              <label class="chk"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--acc)"><span class="lb">Widal</span><span class="pr">3 000</span></label>
+            </div>
+          </div>
+          <div class="summary">
+            <div style="background:var(--su);border:1px solid var(--ln);border-radius:9px;padding:14px;box-shadow:var(--shsm)">
+              <div style="font-size:13.5px;font-weight:700;margin-bottom:10px">Résumé de la réception</div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px">
+                <div style="display:flex;justify-content:space-between"><span style="color:var(--mut)">Bilan prénatal 1er T.</span><span style="font-weight:600;font-variant-numeric:tabular-nums">20 000 F</span></div>
+              </div>
+              <div class="total"><span class="lab">Total</span><span class="val tnum">20 000 F</span></div>
+              <button class="dbtn go" style="width:100%;justify-content:center;padding:11px;margin-top:4px">💵 Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CAISSE DESKTOP -->
+      <section id="dcaisse" class="ds">
+        <div class="kpis">
+          <div class="kpi done"><div class="k">Total encaissé</div><div class="n tnum">127 500</div><div class="d">FCFA ce jour</div></div>
+          <div class="kpi"><div class="k">Nb encaissements</div><div class="n tnum">18</div><div class="d">transactions</div></div>
+          <div class="kpi todo"><div class="k">Exonérés</div><div class="n tnum">2</div><div class="d">patients</div></div>
+        </div>
+        <div class="card"><div class="tablewrap"><table class="dt">
+          <thead><tr><th>N° Dossier</th><th>Patient</th><th>Examens</th><th>Heure</th><th style="text-align:right">Montant</th><th style="text-align:right">Payé</th></tr></thead>
+          <tbody id="dcaissebody"></tbody>
+        </table></div></div>
+      </section>
+
+      <!-- TARIFS DESKTOP -->
+      <section id="dtarifs" class="ds">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--ln2)">
+            <h2 style="font-size:14px">💲 Grille tarifaire</h2>
+            <span style="font-size:11.5px;color:var(--mut);margin-left:6px">Modifiez directement puis enregistrez.</span>
+            <button class="dbtn go" style="margin-left:auto">💾 Enregistrer</button>
+          </div>
+          <div style="padding:14px">
+            <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px">Hématologie</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:8px 11px;background:var(--su2)"><label style="font-size:12.5px;color:var(--ink2)">NFS</label><input style="border:0;background:transparent;font-size:13px;font-weight:700;width:60px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums" value="3000"><span style="font-size:10.5px;color:var(--mut)">F</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:8px 11px;background:var(--su2)"><label style="font-size:12.5px;color:var(--ink2)">Électrophorèse Hb</label><input style="border:0;background:transparent;font-size:13px;font-weight:700;width:60px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums" value="6000"><span style="font-size:10.5px;color:var(--mut)">F</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:8px 11px;background:var(--su2)"><label style="font-size:12.5px;color:var(--ink2)">Goutte épaisse / TDR</label><input style="border:0;background:transparent;font-size:13px;font-weight:700;width:60px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums" value="2000"><span style="font-size:10.5px;color:var(--mut)">F</span></div>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px">Biochimie</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:8px 11px;background:var(--su2)"><label style="font-size:12.5px;color:var(--ink2)">Glycémie</label><input style="border:0;background:transparent;font-size:13px;font-weight:700;width:60px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums" value="2000"><span style="font-size:10.5px;color:var(--mut)">F</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:8px 11px;background:var(--su2)"><label style="font-size:12.5px;color:var(--ink2)">Créatinine</label><input style="border:0;background:transparent;font-size:13px;font-weight:700;width:60px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums" value="2500"><span style="font-size:10.5px;color:var(--mut)">F</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--ln);border-radius:8px;padding:8px 11px;background:var(--su2)"><label style="font-size:12.5px;color:var(--ink2)">TSH</label><input style="border:0;background:transparent;font-size:13px;font-weight:700;width:60px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums" value="10000"><span style="font-size:10.5px;color:var(--mut)">F</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- UTILISATEURS DESKTOP -->
+      <section id="dusers" class="ds">
+        <div class="toolbar">
+          <h2 style="font-size:15px;font-weight:700">Comptes utilisateurs</h2>
+          <span class="spacer"></span>
+          <button class="dbtn go">➕ Ajouter</button>
+        </div>
+        <div class="card"><div class="tablewrap"><table class="dt">
+          <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Dernier accès</th><th>Statut</th><th style="text-align:right">Action</th></tr></thead>
+          <tbody>
+            <tr><td class="doss">evi.bede</td><td><div class="wnm">Dr Evi Bedé</div><div class="wsub">evi.bede@cpmi-gb.ci</div></td><td><span style="background:var(--doneb);color:var(--done);font-weight:700;font-size:11px;padding:3px 9px;border-radius:999px">👑 Admin</span></td><td style="color:var(--mut);font-size:12px">Aujourd'hui 10:42</td><td><span style="color:var(--done);font-weight:700;font-size:12px">● Actif</span></td><td style="text-align:right"><button class="lnk">Modifier</button></td></tr>
+            <tr><td class="doss">ago.thierry</td><td><div class="wnm">Ago Thierry</div><div class="wsub">ago.thierry@cpmi-gb.ci</div></td><td><span style="background:var(--doingb);color:var(--doing);font-weight:700;font-size:11px;padding:3px 9px;border-radius:999px">🔬 Agent</span></td><td style="color:var(--mut);font-size:12px">Aujourd'hui 08:15</td><td><span style="color:var(--done);font-weight:700;font-size:12px">● Actif</span></td><td style="text-align:right"><button class="lnk">Modifier</button></td></tr>
+            <tr><td class="doss">caisse1</td><td><div class="wnm">Koné Aminata</div><div class="wsub">koné.aminata@cpmi-gb.ci</div></td><td><span style="background:var(--todob);color:var(--todo);font-weight:700;font-size:11px;padding:3px 9px;border-radius:999px">💰 Caisse</span></td><td style="color:var(--mut);font-size:12px">Hier 17:30</td><td><span style="color:var(--done);font-weight:700;font-size:12px">● Actif</span></td><td style="text-align:right"><button class="lnk">Modifier</button></td></tr>
+          </tbody>
+        </table></div></div>
+      </section>
+
+    </div><!-- /.content -->
+  </div><!-- /.main -->
+</div><!-- /.shell -->
+</div><!-- /#view-d -->
+
+<script>
+/* ---- Données de démonstration ---- */
+const PATIENTS = [
+  {d:'0203-0926',n:"N'GUESSAN KOFFI",a:'45 ans · M',ex:['NFS','CRP'],st:'todo',h:'07:30'},
+  {d:'0201-0926',n:'KOUAKOU AMOIN GRÂCE',a:'28 ans · F',ex:['Bilan prénatal'],st:'doing',h:'07:45'},
+  {d:'0199-0926',n:'BAMBA YACOUBA',a:'62 ans · M',ex:['Glycémie','Créatinine','ASAT','ALAT'],st:'done',h:'07:12'},
+  {d:'0198-0926',n:'AKA MARIE-CLAIRE',a:'35 ans · F',ex:['NFS','Électrophorèse Hb'],st:'todo',h:'08:02'},
+  {d:'0197-0926',n:'DIALLO FATOUMATA',a:'24 ans · F',ex:['Bilan prénatal'],st:'todo',h:'08:15'},
+];
+const STATUS = {todo:'todo',doing:'doing',done:'done'};
+const SLBL = {todo:'À saisir',doing:'En cours',done:'Rendu'};
+const CAISSE = [
+  {d:'0199-0926',n:'BAMBA YACOUBA',ex:'Glycémie · Créatinine · ASAT · ALAT',h:'07:12',mt:'9 500',ok:true},
+  {d:'0201-0926',n:'KOUAKOU AMOIN GRÂCE',ex:'Bilan prénatal',h:'07:45',mt:'20 000',ok:true},
+  {d:'0195-0926',n:'TRAORE AMINATA',ex:'NFS · CRP · Widal',h:'06:55',mt:'9 000',ok:true},
+  {d:'0193-0926',n:'OUATTARA IBRAHIM',ex:'Glycémie · Urée',h:'06:40',mt:'4 500',ok:true},
+];
+
+/* ---- Remplissage des tables ---- */
+function fillMobile(){
+  const el = document.getElementById('mfilecards');
+  if(!el) return;
+  el.innerHTML = PATIENTS.map(p => {
+    const exHtml = p.ex.map(e=>`<span class="ex">${e}</span>`).join('');
+    return `<div class="pcard">
+      <span class="mini ${p.st}">${SLBL[p.st]}</span>
+      <div class="nm">${p.n}</div>
+      <div class="meta"><span class="mono">${p.d}</span> · ${p.a}</div>
+      <div class="exs">${exHtml}</div>
+      <button class="cardbtn ${p.st==='done'?'done':''}" onclick="mNav('mpatient')">
+        ${p.st==='done'?'✅ Rendu':'▶ Ouvrir le dossier'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function fillKiosk(){
+  const el = document.getElementById('kfilebody');
+  if(!el) return;
+  el.innerHTML = PATIENTS.map(p => {
+    const exHtml = p.ex.map(e=>`<span style="font-size:11.5px;font-weight:600;color:var(--ink2);background:var(--su3);border:1px solid var(--ln);padding:2px 8px;border-radius:6px">${e}</span>`).join('');
+    return `<tr>
+      <td><span style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--mut)">${p.d}</span></td>
+      <td><div style="font-weight:600;font-size:14px">${p.n}</div></td>
+      <td style="color:var(--mut);font-size:12.5px">${p.a}</td>
+      <td style="color:var(--mut);font-size:12.5px">Dr Konan</td>
+      <td><div style="display:flex;flex-wrap:wrap;gap:4px">${exHtml}</div></td>
+      <td style="color:var(--mut);font-size:12.5px">${p.h}</td>
+      <td><span class="st ${p.st}"><i></i>${SLBL[p.st]}</span></td>
+      <td><button class="act-lnk">Ouvrir</button></td>
+    </tr>`;
+  }).join('');
+
+  const ce = document.getElementById('caisserows');
+  if(ce) ce.innerHTML = CAISSE.map(c=>`
+    <div class="crow">
+      <div class="av">👤</div>
+      <div><div class="nm">${c.n}</div><div class="sub mono">${c.d} · ${c.h}</div></div>
+      <div style="font-size:11.5px;color:var(--mut);margin-left:8px;flex:1">${c.ex}</div>
+      <div><div class="pr">${c.mt} F</div></div>
+    </div>`).join('');
+}
+
+function fillDesktop(){
+  const el = document.getElementById('dfilebody');
+  if(!el) return;
+  el.innerHTML = PATIENTS.map(p => {
+    const exHtml = p.ex.map(e=>`<span class="ex">${e}</span>`).join('');
+    return `<tr>
+      <td class="doss">${p.d}</td>
+      <td><div class="wnm">${p.n}</div></td>
+      <td style="color:var(--mut);font-size:12px">${p.a}</td>
+      <td style="color:var(--mut);font-size:12px">Dr Konan</td>
+      <td><div class="exs">${exHtml}</div></td>
+      <td style="color:var(--mut);font-size:12px">${p.h}</td>
+      <td><span class="mini ${p.st}">${SLBL[p.st]}</span></td>
+      <td style="text-align:right"><button class="lnk" onclick="dNav('dpatient',null)">Ouvrir</button></td>
+    </tr>`;
+  }).join('');
+
+  const se = document.getElementById('dserierows');
+  if(se) se.innerHTML = PATIENTS.slice(0,4).map(p=>`<tr>
+    <td><div style="font-weight:600">${p.n}</div><div class="doss">${p.d}</div></td>
+    <td style="text-align:center"><input style="width:52px;text-align:center;font-size:12.5px;font-weight:600;padding:5px 4px;border:1px solid var(--ln);border-radius:7px;background:var(--su2);color:var(--ink)" value="${(Math.random()*6+4).toFixed(2)}"></td>
+    <td style="text-align:center"><input style="width:52px;text-align:center;font-size:12.5px;font-weight:600;padding:5px 4px;border:1px solid var(--ln);border-radius:7px;background:var(--su2);color:var(--ink)" value="${(Math.random()*1.5+3.8).toFixed(2)}"></td>
+    <td style="text-align:center"><input style="width:52px;text-align:center;font-size:12.5px;font-weight:600;padding:5px 4px;border:1px solid var(--acc);border-radius:7px;background:var(--doingb);color:var(--ink)" value="${(Math.random()*3+10).toFixed(1)}"></td>
+    <td style="text-align:center"><input style="width:52px;text-align:center;font-size:12.5px;font-weight:600;padding:5px 4px;border:1px solid var(--ln);border-radius:7px;background:var(--su2);color:var(--ink)" value="${(Math.random()*5+35).toFixed(1)}"></td>
+    <td style="text-align:center"><input style="width:52px;text-align:center;font-size:12.5px;font-weight:600;padding:5px 4px;border:1px solid var(--ln);border-radius:7px;background:var(--su2);color:var(--ink)" value="${Math.floor(Math.random()*200+150)}"></td>
+    <td style="text-align:center"><input style="width:52px;text-align:center;font-size:12.5px;font-weight:600;padding:5px 4px;border:1px solid var(--ln);border-radius:7px;background:var(--su2);color:var(--ink)" value="${Math.floor(Math.random()*20+50)}"></td>
+  </tr>`).join('');
+
+  const ce = document.getElementById('dcaissebody');
+  if(ce) ce.innerHTML = CAISSE.map(c=>`<tr>
+    <td class="doss">${c.d}</td>
+    <td><div class="wnm">${c.n}</div></td>
+    <td><div class="exs">${c.ex.split(' · ').map(e=>`<span class="ex">${e}</span>`).join('')}</div></td>
+    <td style="color:var(--mut);font-size:12px">${c.h}</td>
+    <td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">${c.mt} F</td>
+    <td style="text-align:right"><span style="color:var(--done);font-weight:700;font-size:12px">✔ Payé</span></td>
+  </tr>`).join('');
+}
+
+/* ---- Navigation ---- */
+function mNav(id){
+  document.querySelectorAll('.phone .screen').forEach(s=>s.classList.remove('on'));
+  const el = document.getElementById(id);
+  if(el) el.classList.add('on');
+  const titles = {mfile:'File du jour',mpatient:'Saisir un patient',mreception:'Nouvelle réception',mcompte:'Mon compte',mrecherche:'Rechercher'};
+  const pt = document.getElementById('mpt');
+  if(pt && titles[id]) pt.textContent = titles[id];
+}
+
+function kNav(id, btn){
+  document.querySelectorAll('.kiosk .ks').forEach(s=>s.classList.remove('on'));
+  const el = document.getElementById(id);
+  if(el) el.classList.add('on');
+  if(btn){
+    document.querySelectorAll('.kiosk .tabs button').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  } else {
+    const map={kb:0,kfile:1,kcaisse:2,ktarifs:3,kusers:4};
+    document.querySelectorAll('.kiosk .tabs button').forEach((b,i)=>b.classList.toggle('on',i===map[id]));
+  }
+}
+
+function dNav(id, btn){
+  document.querySelectorAll('.shell .ds').forEach(s=>s.classList.remove('on'));
+  const el = document.getElementById(id);
+  if(el) el.classList.add('on');
+  if(btn){
+    document.querySelectorAll('.shell .nav a').forEach(a=>a.classList.remove('on'));
+    btn.classList.add('on');
+  }
+  const titles={dfile:'File du jour',dserie:'Saisie en série',dpatient:'Saisir un patient',dreception:'Réception',dcaisse:'Caisse du jour',dtarifs:'Grille tarifaire',dusers:'Utilisateurs'};
+  const pt=document.getElementById('dpt');
+  if(pt && titles[id]) pt.textContent=titles[id];
+}
+
+/* ---- Vue principale ---- */
+function setView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('on'));
+  document.getElementById('view-'+v).classList.add('on');
+  document.querySelectorAll('.vbtn').forEach((b,i)=>{
+    b.setAttribute('aria-pressed', b.onclick.toString().includes("'"+v+"'") ? 'true':'false');
+  });
+  // ciblage plus fiable :
+  document.querySelectorAll('.vbtn').forEach(b=>{
+    b.setAttribute('aria-pressed','false');
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+v+"'")) b.setAttribute('aria-pressed','true');
+  });
+}
+
+/* ---- Thème ---- */
+function toggleTheme(){
+  const r=document.documentElement;
+  if(r.getAttribute('data-theme')==='dark'){r.removeAttribute('data-theme');}
+  else{r.setAttribute('data-theme','dark');}
+}
+
+/* ---- Init ---- */
+fillMobile();
+fillKiosk();
+fillDesktop();
+</script>
+</body>
+</html>

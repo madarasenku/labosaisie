@@ -76,13 +76,16 @@ const GRILLE_EXAMS = {
   // la goutte épaisse, QUE le Widal ou QUE l'urée n'apparaissait pas en série.
   // ✅ v13.157 — GE en série : on saisit la DENSITÉ parasitaire, d'où le résultat
   //   est déduit (densité > 0 → Positif ; = 0 → Négatif). La TDR devient OPTIONNELLE.
+  // ✅ GE et TDR SÉPARÉS : « ge_ » ne matche plus « Paludisme » (sinon un TDR seul
+  //   ferait apparaître les colonnes GE). Un dossier avec le seul TDR n'affiche
+  //   donc que la colonne TDR ; l'ancien libellé fusionné « Goutte épaisse / TDR
+  //   Paludisme » (dossiers historiques) matche les deux, ce qui reste correct.
   ge: {
-    label: 'Goutte épaisse / TDR', type: 'Hématologie', exId: 'ex_ge', coche: /Goutte|TDR|Palud/i,
+    label: 'Goutte épaisse (GE)', type: 'Hématologie', exId: 'ex_ge', coche: /Goutte|\bGE\b/i,
     filled: h => h['GE - Résultat'] || h['GE - Densité parasitaire (/µL)'],
     cols: [
       { k: 'gedens', lab: 'Densité (/µL)', dom: 'ge_densite', kind: 'num' },
       { k: 'geres', lab: 'Résultat GE', dom: 'ge_result', kind: 'sel', opts: _PN_OPTS },
-      { k: 'getdr', lab: 'TDR (opt.)', dom: 'ge_tdr', kind: 'sel', opts: _PN_OPTS, opt: true },
     ],
     // Résultat GE déduit de la densité dans la CELLULE de grille (affichage direct).
     deriv: (id) => {
@@ -92,7 +95,7 @@ const GRILLE_EXAMS = {
       const v = _geResultDeDensite(dens.value);
       if (v) res.value = v; // densité saisie → impose le résultat (sinon choix manuel conservé)
     },
-    // Complet dès que la densité OU le résultat est renseigné (TDR non requise).
+    // Complet dès que la densité OU le résultat est renseigné.
     complet: (c) => (c.gedens !== '' || c.geres !== ''),
     // À l'enregistrement : garantir le résultat déduit côté formulaire.
     postSet: () => {
@@ -100,6 +103,21 @@ const GRILLE_EXAMS = {
       const r = document.getElementById('ge_result');
       if (d && r) { const v = _geResultDeDensite(d.value); if (v) r.value = v; }
     },
+  },
+  tdr: {
+    label: 'TDR Paludisme', type: 'Hématologie', exId: 'ex_tdr', coche: /TDR/i,
+    filled: h => h['GE - TDR'],
+    cols: [
+      { k: 'tdr', lab: 'TDR', dom: 'ge_tdr', kind: 'sel', opts: _PN_OPTS },
+    ],
+  },
+  // VS — orderable seule, absente de la grille jusqu'ici (marquée « non réalisé »).
+  vs: {
+    label: 'VS — Vitesse de sédimentation', type: 'Hématologie', exId: 'ex_vs', coche: /Vitesse de s[ée]dimentation|\bVS\b/i,
+    filled: h => h['VS (1ère heure)'] && h['VS (1ère heure)'].valeur,
+    cols: [
+      { k: 'vs', lab: 'VS (mm/h)', dom: 'v_vs', kind: 'num' },
+    ],
   },
   // ✅ v13.147 — Électrophorèse de l'hémoglobine : absente de la grille série,
   // elle ne pouvait pas être saisie au fil de la sortie machine (signalé sur le
@@ -341,10 +359,78 @@ function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
 // ══════════════════════════════════════════════════════════════
 
 // Ordre d'affichage des examens dans la grille.
-const GRILLE_ORDRE = ['nfs','ge','ephb','gly','uree','crea','ua','transa','coag','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
+const GRILLE_ORDRE = ['nfs','vs','ge','tdr','ephb','gly','uree','crea','ua','transa','coag','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
+
+// ✅ Couverture COMPLÈTE du catalogue en saisie en série.
+//   Historiquement seuls ~20 examens figuraient dans GRILLE_EXAMS ; un dossier
+//   dont AUCUN examen demandé n'y figurait était exclu de la grille (donc « non
+//   réalisé » faute d'endroit où le saisir en série). On complète ici, à partir
+//   des listes canoniques, toutes les entrées manquantes : biochimie (1 examen =
+//   1 ou 2 paramètres → champ v_<id>) et sérologies (sr_/sv_<id>). Les examens
+//   déjà couverts à la main (multi-paramètres, dérivations) sont laissés tels
+//   quels ; la bactériologie et les forfaits restent sur le formulaire complet.
+let _grilleAutoDone = false;
+function _grilleEnsureAuto() {
+  if (_grilleAutoDone) return;
+  if (typeof CATALOGUE_EXAMENS === 'undefined') return; // catalogue pas encore chargé
+  _grilleAutoDone = true;
+  const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // exId déjà servis par une entrée manuelle, + urée (déduite de la créatinine).
+  const dejaEx = new Set(Object.values(GRILLE_EXAMS).map(c => c.exId));
+  dejaEx.add('ex_uree');
+  // Un examen déjà repérable par le `coche` d'une entrée existante ne doit pas
+  // être dupliqué (ex. Triglycérides / HDL couverts par « lipides », TCA par
+  // « coag », Urée par « crea »).
+  const dejaCouvert = label => Object.values(GRILLE_EXAMS).some(c => c.coche.test(label));
+  const bio = {};
+  [typeof BIO_GLUCIDES!=='undefined'?BIO_GLUCIDES:[], typeof BIO_REIN!=='undefined'?BIO_REIN:[],
+   typeof BIO_FOIE!=='undefined'?BIO_FOIE:[], typeof BIO_LIPIDES!=='undefined'?BIO_LIPIDES:[],
+   typeof BIO_IONO!=='undefined'?BIO_IONO:[], typeof BIO_FER!=='undefined'?BIO_FER:[],
+   typeof BIO_CARD!=='undefined'?BIO_CARD:[], typeof BIO_HORM!=='undefined'?BIO_HORM:[],
+   typeof BIO_COAG!=='undefined'?BIO_COAG:[], typeof BIO_AUTRE!=='undefined'?BIO_AUTRE:[]]
+    .forEach(L => L.forEach(p => { bio[p.id] = p; }));
+  const sero = {};
+  (typeof SERO_TESTS !== 'undefined' ? SERO_TESTS : []).forEach(t => { sero[t.id] = t; });
+  const ajoutes = [];
+  CATALOGUE_EXAMENS.forEach(ex => {
+    if (dejaEx.has(ex.id) || dejaCouvert(ex.label)) return;
+    const suffixe = ex.id.replace(/^ex_/, '');
+    const key = 'auto_' + suffixe;
+    const coche = new RegExp('^' + escRe(ex.label) + '$');
+    if (ex.tab === 'bio') {
+      // Un examen = ses paramètres. La plupart : le suffixe de l'id = l'id du
+      // paramètre ; les exceptions (id divergent, ou 2 paramètres) sont listées.
+      const MAP = { ex_bili: ['bili', 'bilid'], ex_hba1c: ['hba'] };
+      let pids = MAP[ex.id] || [suffixe];
+      pids = pids.filter(pid => bio[pid] && pid !== 'ldl'); // LDL calculé (Friedewald)
+      if (!pids.length) return;
+      const noms = pids.map(pid => bio[pid].name);
+      GRILLE_EXAMS[key] = {
+        label: ex.label, type: 'Biochimie', exId: ex.id, coche,
+        filled: b => noms.some(n => b[n] && b[n].valeur),
+        cols: pids.map(pid => ({ k: pid, lab: bio[pid].name, dom: 'v_' + pid, kind: 'num' })),
+      };
+      ajoutes.push(key);
+    } else if (ex.tab === 'sero') {
+      const t = sero[suffixe];
+      if (!t) return;
+      const quant = t.type === 'quant';
+      GRILLE_EXAMS[key] = {
+        label: ex.label, type: 'Immuno-Sérologie', exId: ex.id, coche,
+        filled: s => s[t.name] && (s[t.name].resultat || s[t.name].valeur),
+        cols: [ quant
+          ? { k: t.id, lab: t.name + (t.unit ? ' (' + t.unit + ')' : ''), dom: 'sv_' + t.id, kind: 'num' }
+          : { k: t.id, lab: t.name, dom: 'sr_' + t.id, kind: 'sel', opts: _SERO_OPTS } ],
+      };
+      ajoutes.push(key);
+    }
+  });
+  ajoutes.forEach(k => { if (GRILLE_ORDRE.indexOf(k) < 0) GRILLE_ORDRE.push(k); });
+}
 
 // Examens de la grille réellement demandés pour ce dossier.
 function grilleExamsDuDossier(r) {
+  _grilleEnsureAuto();
   const coches = (r.resultats && r.resultats._examens_coches) || {};
   return GRILLE_ORDRE.filter(k => {
     const cfg = GRILLE_EXAMS[k]; if (!cfg) return false;
@@ -461,6 +547,7 @@ function grilleChangeExam(key) { if (GRILLE_EXAMS[key]) { _grilleKey = key; gril
 function grilleRender() {
   const cont = document.getElementById('grille-serie');
   if (!cont) return;
+  _grilleEnsureAuto();
   _grilleSelForce = {};
   const doss = grilleDossiers();
   const cols = grilleColonnes(doss);

@@ -12,7 +12,10 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_ephb',  label:"Électrophorèse de l'hémoglobine",  groupe:'🩸 Hématologie', tab:'hema', prix:6000, section:'sec-ephb' },
   { id:'ex_vs',    label:'VS — Vitesse de sédimentation',     groupe:'🩸 Hématologie', tab:'hema', prix:2000, section:'sec-nfs' },
   // ── Parasitologie ──
-  { id:'ex_ge',    label:'Goutte épaisse / TDR Paludisme',    groupe:'🦟 Parasitologie', tab:'hema', prix:0, section:'sec-ge' },
+  // ✅ GE et TDR séparés : cocher l'un n'entraîne plus l'autre. En saisie en
+  //    série, la colonne TDR n'apparaît que si le TDR est réellement demandé.
+  { id:'ex_ge',    label:'Goutte épaisse (GE)',               groupe:'🦟 Parasitologie', tab:'hema', prix:0, section:'sec-ge' },
+  { id:'ex_tdr',   label:'TDR Paludisme',                     groupe:'🦟 Parasitologie', tab:'hema', prix:0, section:'sec-ge' },
   { id:'ex_eps',   label:'EPS — Examen parasitologique des selles', groupe:'🦟 Parasitologie', tab:'parasito', prix:3000, section:'sec-eps-title' },
   // ── Groupe sanguin ──
   { id:'ex_gs',    label:'Groupe sanguin ABO / Rhésus',       groupe:'🩸 Groupe sanguin', tab:'gs', prix:2000, section:'sec-gs-standalone' },
@@ -127,6 +130,7 @@ function examExpectedRows(examId) {
     ex_iono:  () => K(BIO_IONO.filter(p=>['na','k','cl'].includes(p.id))),
     ex_ca:    () => K(BIO_IONO.filter(p=>p.id==='ca')),
     ex_ge:    () => [{key:'GE - Résultat',name:'Résultat GE',unit:'',ref:''},{key:'GE - Espèce',name:'Espèce plasmodiale',unit:'',ref:''},{key:'GE - Densité parasitaire (/µL)',name:'Densité parasitaire',unit:'/µL',ref:''}],
+    ex_tdr:   () => [{key:'GE - TDR',name:'TDR Paludisme',unit:'',ref:''}],
     ex_gs:    () => [{key:'GS - ABO',name:'Groupe ABO',unit:'',ref:''},{key:'GS - Rhésus',name:'Rhésus',unit:'',ref:''}],
     ex_rai:   () => [{key:'GS - RAI',name:'RAI',unit:'',ref:''},{key:'GS - Phénotype',name:'Phénotype érythrocytaire',unit:'',ref:''}],
     ex_crp:   () => [{key:'CRP - Valeur',name:'CRP — Protéine C-réactive',unit:'mg/L',ref:'< 6'}],
@@ -252,8 +256,9 @@ function examFieldIds(examId) {
     ex_widal: () => (typeof WIDAL_ANTIGENES!=='undefined'
                      ? WIDAL_ANTIGENES.flatMap(ag => ['widal_'+ag.id,'widal_cin_'+ag.id])
                      : []),
-    ex_ge:    () => ['ge_result','ge_tdr','ge_espece','ge_para',
+    ex_ge:    () => ['ge_result','ge_espece','ge_para',
                      'ge_densite','ge_stade','ge_obs'],
+    ex_tdr:   () => ['ge_tdr'],
     // ── Biochimie ─────────────────────────────────────────────
     ex_gly:   () => ['v_gly'],
     ex_hba1c: () => ['v_hba'],

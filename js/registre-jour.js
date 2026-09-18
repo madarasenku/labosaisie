@@ -64,34 +64,89 @@ function _regExamens(res) {
   return shorts.join(' · ');
 }
 
-// Synthèse courte des résultats — VALEURS SEULES, sans couleur ni flèche.
+// Noms compacts pour le registre (les longs libellés canoniques sont abrégés).
+const _REG_SHORT = {
+  'Globules blancs (GB)': 'GB', 'Globules rouges (GR)': 'GR', 'Hémoglobine (Hb)': 'Hb',
+  'Hématocrite (Ht)': 'Ht', 'VGM ⚙': 'VGM', 'TCMH ⚙': 'TCMH', 'CCMH ⚙': 'CCMH',
+  'Plaquettes': 'Plq', 'Réticulocytes': 'Rét', 'VS (1ère heure)': 'VS',
+  'Polynucléaires neutrophiles (PNN)': 'PNN', 'Polynucléaires éosinophiles (PNE)': 'PNE',
+  'Polynucléaires basophiles (PNB)': 'PNB', 'Lymphocytes': 'Lympho', 'Monocytes': 'Mono',
+  'TPHA / VDRL (Syphilis)': 'TPHA/VDRL', 'ASLO (Antistreptolysines)': 'ASLO',
+  'Latex (Waaler-Rose)': 'Latex', 'Toxoplasmose IgG': 'Toxo IgG', 'Toxoplasmose IgM': 'Toxo IgM',
+};
+function _regNom(name) { return _REG_SHORT[name] || String(name).replace(/\s*⚙\s*$/, ''); }
+
+// Synthèse COMPLÈTE des résultats saisis — toutes les valeurs (NFS, GE, biochimie,
+// sérologies, groupe…), sans couleur ni flèche (le registre est un document N&B).
+// La GE positive affiche directement sa valeur (densité · parasitémie · espèce).
 function _regSynthese(res) {
   if (!res) return '';
   const h = res['Hématologie'] || {}, s = res['Immuno-Sérologie'] || {},
         b = res['Biochimie'] || {}, g = res['Groupe sanguin'] || {};
   const parts = [];
-  const push = (label, x, unit) => { const v = _regVal(x); if (v) parts.push(label + ' ' + v + (unit || '')); };
-  const pushPct = (label, x) => { const p = _regPct(x); if (p !== '') parts.push(label + ' ' + p + '%'); };
 
-  // GE / paludisme
+  // ── GE / paludisme : valeur directe quand POSITIF ──
   const ge = _regVal(h['GE - Résultat']);
-  if (ge) parts.push(/posit/i.test(ge) ? 'GE positif' : 'GE ' + ge.toLowerCase());
-  // NFS : GB · GR · Hb · Ht · PNN · Mono · Lympho
-  push('GB', h['Globules blancs (GB)']);
-  push('GR', h['Globules rouges (GR)']);
-  push('Hb', h['Hémoglobine (Hb)']);
-  push('Ht', h['Hématocrite (Ht)']);
-  pushPct('PNN', h['Polynucléaires neutrophiles (PNN)']);
-  pushPct('Mono', h['Monocytes']);
-  pushPct('Lympho', h['Lymphocytes']);
-  // CRP : valeur directe, négatif → « <6 mg/L »
+  if (ge) {
+    if (/posit/i.test(ge)) {
+      const dens = _regVal(h['GE - Densité parasitaire (/µL)']);
+      const para = _regVal(h['GE - Parasitémie (%)']);
+      const esp  = _regVal(h['GE - Espèce']);
+      const det = [dens ? dens + '/µL' : '', para ? para + '%' : '', esp].filter(Boolean).join(' · ');
+      parts.push('GE POSITIF' + (det ? ' (' + det + ')' : ''));
+    } else parts.push('GE ' + ge.toLowerCase());
+  }
+  const tdr = _regVal(h['GE - TDR']);
+  if (tdr) parts.push('TDR ' + tdr.toLowerCase());
+
+  // ── NFS complète ──
+  (typeof HEMA_PARAMS !== 'undefined' ? HEMA_PARAMS : []).forEach(p => {
+    const v = _regVal(h[p.name]); if (v) parts.push(_regNom(p.name) + ' ' + v);
+  });
+  (typeof HEMA_FL !== 'undefined' ? HEMA_FL : []).forEach(p => {
+    const pct = _regPct(h[p.name]); if (pct !== '') parts.push(_regNom(p.name) + ' ' + pct + '%');
+  });
+  const prof = _regVal(h['Profil Hb']); if (prof) parts.push('Électrophorèse ' + prof);
+
+  // ── Biochimie complète (toutes les familles) ──
+  const bioAll = [].concat(
+    typeof BIO_GLUCIDES !== 'undefined' ? BIO_GLUCIDES : [],
+    typeof BIO_REIN     !== 'undefined' ? BIO_REIN     : [],
+    typeof BIO_FOIE     !== 'undefined' ? BIO_FOIE     : [],
+    typeof BIO_LIPIDES  !== 'undefined' ? BIO_LIPIDES  : [],
+    typeof BIO_IONO     !== 'undefined' ? BIO_IONO     : [],
+    typeof BIO_FER      !== 'undefined' ? BIO_FER      : [],
+    typeof BIO_CARD     !== 'undefined' ? BIO_CARD     : [],
+    typeof BIO_HORM     !== 'undefined' ? BIO_HORM     : [],
+    typeof BIO_COAG     !== 'undefined' ? BIO_COAG     : [],
+    typeof BIO_AUTRE    !== 'undefined' ? BIO_AUTRE    : []);
+  bioAll.forEach(p => {
+    const v = _regVal(b[p.name]); if (v) parts.push(_regNom(p.name) + ' ' + v + (p.unit ? ' ' + p.unit : ''));
+  });
+
+  // ── CRP : valeur directe, négatif → « < 6 mg/L » ──
   const crp = _regVal(s['CRP - Valeur']);
   if (crp) parts.push(/^neg/i.test(crp) ? 'CRP < 6 mg/L' : 'CRP ' + crp + ' mg/L');
-  // Biochimie
-  push('Gly', b['Glycémie à jeun'], ' g/L');
-  push('Créat', b['Créatinine'], ' mg/L');
-  push('Urée', b['Urée'], ' g/L');
-  // Groupe sanguin
+
+  // ── Sérologies (résultat qualitatif ou valeur chiffrée) ──
+  (typeof SERO_TESTS !== 'undefined' ? SERO_TESTS : []).forEach(t => {
+    const x = s[t.name]; if (!x || typeof x !== 'object') return;
+    const val = String(x.resultat || x.valeur || '').trim();
+    if (val) parts.push(_regNom(t.name) + ' ' + val + (x.valeur && x.unite ? ' ' + x.unite : ''));
+  });
+
+  // ── Widal : antigènes significatifs (titre renseigné, hors « Non réalisé ») ──
+  if (typeof WIDAL_ANTIGENES !== 'undefined') {
+    WIDAL_ANTIGENES.forEach(ag => {
+      const w = s['Widal - ' + ag.name];
+      const titre = w && String(w.titre || '').trim();
+      if (titre && titre !== 'Non réalisé' && titre !== 'Négatif') {
+        parts.push('Widal ' + ag.name.replace(/^Salmonella\s+/i, '').replace(/\s*\(.*\)$/, '') + ' ' + titre);
+      }
+    });
+  }
+
+  // ── Groupe sanguin ──
   const abo = _regVal(g['Groupe ABO']);
   if (abo) {
     const rh = _regVal(g['Rhésus']);
@@ -107,6 +162,25 @@ function _regDossiersDuJour(jour) {
   return toutes
     .filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && _recDate(r) === jour)
     .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')));
+}
+
+// Un dossier est-il prescrit par un PRESCRIPTEUR EXTERNE (hors CPMI) ?
+//   Interne = structure CPMI (ou un service CPMI : Maternité…). Externe = tout
+//   autre établissement (hôpital, clinique, cabinet privé) ou le prescripteur
+//   catch-all « EXTERNE ». On rattache le dossier à son prescripteur par id
+//   (sinon par nom), via la liste chargée _prescripteurs.
+function _prescExterne(r) {
+  const p = r.patient || {};
+  if (/^externe$/i.test(String(p.medecin || '').trim())) return true;
+  const list = (typeof _prescripteurs !== 'undefined' && Array.isArray(_prescripteurs)) ? _prescripteurs : [];
+  let presc = null;
+  if (r.prescripteur_id != null) presc = list.find(x => x.id == r.prescripteur_id);
+  if (!presc && p.medecin) presc = list.find(x => String(x.nom).trim().toUpperCase() === String(p.medecin).trim().toUpperCase());
+  if (!presc) return false;                       // prescripteur inconnu → pas de faux positif
+  if (/^externe$/i.test(String(presc.nom || '').trim())) return true;
+  const struct = String(presc.structure || '').trim();
+  if (!struct) return false;                       // structure non renseignée → indéterminé
+  return !/CPMI|MATERNIT/i.test(struct);           // structure hors CPMI → externe
 }
 
 // Ligne de registre à partir d'un dossier (résultats déjà chargés en entier).
@@ -125,6 +199,8 @@ function _regLigne(r) {
     synthese,
     rendu: synthese !== '',
     montant: Number(r.montant) || 0,
+    // ✅ Prescripteur externe (hors CPMI) → ligne colorée dans le registre.
+    externe: _prescExterne(r),
   };
 }
 
@@ -163,9 +239,10 @@ async function renderRegistre() {
   }
 
   const corps = lignes.map(l =>
-    '<tr>'
+    '<tr' + (l.externe ? ' style="background:#fff5e0"' : '') + '>'
     + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
-    + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? ' <span style="color:var(--text-muted);font-size:11px">' + esc(l.meta) + '</span>' : '') + '</td>'
+    + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? ' <span style="color:var(--text-muted);font-size:11px">' + esc(l.meta) + '</span>' : '')
+    + (l.externe ? ' <span style="font-size:10px;font-weight:700;color:#b45309;background:#fde7bf;border-radius:4px;padding:1px 5px">EXTERNE</span>' : '') + '</td>'
     + '<td style="color:var(--text-muted)">' + esc(l.presc) + '</td>'
     + '<td>' + esc(l.examens) + '</td>'
     + '<td style="color:var(--text-muted)">' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
@@ -198,11 +275,14 @@ async function imprimerRegistre() {
   const jourLong = new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  // ✅ Les lignes « externe » sont surlignées (impression : fond gris clair forcé
+  //   via print-color-adjust). Un patient de consultation externe ressort ainsi.
+  const _extStyle = 'background:#e9e9e9;-webkit-print-color-adjust:exact;print-color-adjust:exact';
   const corps = lignes.length
     ? lignes.map(l =>
-        '<tr>'
+        '<tr' + (l.externe ? ' style="' + _extStyle + '"' : '') + '>'
         + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
-        + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? '<div style="font-size:8.5pt;color:#555">' + esc(l.meta) + '</div>' : '') + '</td>'
+        + '<td><strong>' + esc(l.nom) + '</strong>' + (l.externe ? ' <strong>[EXTERNE]</strong>' : '') + (l.meta ? '<div style="font-size:8.5pt;color:#555">' + esc(l.meta) + '</div>' : '') + '</td>'
         + '<td>' + esc(l.presc) + '</td>'
         + '<td>' + esc(l.examens) + '</td>'
         + '<td>' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'

@@ -40,7 +40,11 @@ const A = mk(981, 'PALU POSITIF'), B = mk(982, 'PALU NEGATIF');
     r.section('Colonnes de la GE');
     r.check('cellule densité présente', await page.evaluate(() => !!document.getElementById('g_981_ge_gedens')), true);
     r.check('cellule résultat présente', await page.evaluate(() => !!document.getElementById('g_981_ge_geres')), true);
-    r.check('cellule TDR présente', await page.evaluate(() => !!document.getElementById('g_981_ge_getdr')), true);
+    // ✅ GE et TDR séparés : la GE n'a plus de colonne TDR ; le TDR est un examen
+    //   distinct. L'ancien libellé fusionné (dossier 981) demande les deux, donc
+    //   la colonne TDR autonome (g_..._tdr_tdr) apparaît, mais plus g_..._ge_getdr.
+    r.check('GE sans colonne TDR intégrée', await page.evaluate(() => !document.getElementById('g_981_ge_getdr')), true);
+    r.check('colonne TDR autonome présente (libellé fusionné)', await page.evaluate(() => !!document.getElementById('g_981_tdr_tdr')), true);
 
     r.section('Densité > 0 → Positif (sans TDR), Densité 0 → Négatif');
     await page.evaluate(() => {

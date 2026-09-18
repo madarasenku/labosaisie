@@ -936,14 +936,19 @@ function collectResults(type) {
     });
     data['Profil Hb'] = document.getElementById('ephb_profil')?.value || '';
     data['Commentaire Hb'] = document.getElementById('ephb_commentaire')?.value || '';
-    // GE / Parasitologie
-    data['GE - Résultat'] = document.getElementById('ge_result')?.value || '';
-    data['GE - Espèce'] = document.getElementById('ge_espece')?.value || '';
-    data['GE - Parasitémie (%)'] = document.getElementById('ge_para')?.value || '';
-    data['GE - Densité parasitaire (/µL)'] = document.getElementById('ge_densite')?.value || '';
-    data['GE - Stade'] = document.getElementById('ge_stade')?.value || '';
-    data['GE - TDR'] = document.getElementById('ge_tdr')?.value || '';
-    data['GE - Observation'] = document.getElementById('ge_obs')?.value || '';
+    // GE / Parasitologie — ✅ collectés UNIQUEMENT si la GE ou le TDR est coché.
+    //   Sinon, un « Négatif » laissé dans le champ par le patient précédent (ou
+    //   par la saisie en série) se retrouvait enregistré sur des dossiers qui
+    //   n'avaient pas demandé la goutte épaisse — notamment des bilans prénatals.
+    if (document.getElementById('ex_ge')?.checked || document.getElementById('ex_tdr')?.checked) {
+      data['GE - Résultat'] = document.getElementById('ge_result')?.value || '';
+      data['GE - Espèce'] = document.getElementById('ge_espece')?.value || '';
+      data['GE - Parasitémie (%)'] = document.getElementById('ge_para')?.value || '';
+      data['GE - Densité parasitaire (/µL)'] = document.getElementById('ge_densite')?.value || '';
+      data['GE - Stade'] = document.getElementById('ge_stade')?.value || '';
+      data['GE - TDR'] = document.getElementById('ge_tdr')?.value || '';
+      data['GE - Observation'] = document.getElementById('ge_obs')?.value || '';
+    }
     // ✅ v13.36 — CORRECTIF CONTAMINATION INTER-PATIENTS : CRP / Widal / GS vivent
     // sur le panneau Sérologie et n'étaient jamais vidés après un enregistrement
     // Hématologie. On ne les collecte donc QUE si l'examen correspondant est

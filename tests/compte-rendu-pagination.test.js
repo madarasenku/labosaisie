@@ -23,9 +23,13 @@ const { serve, openApp, createReporter } = require('./helpers');
       const bio = {};
       ['BIO_GLUCIDES','BIO_REIN','BIO_FOIE','BIO_LIPIDES','BIO_IONO','BIO_FER','BIO_CARD','BIO_HORM','BIO_COAG','BIO_AUTRE']
         .map(G).forEach(g => g.forEach((p, i) => { bio[p.name] = { valeur: String(10 + i), unite: p.unit || '', interp: '' }; }));
+      // Toute la biochimie est COMMANDÉE (bilan complet) : le compte rendu
+      // n'imprime que les examens commandés, on les coche donc tous ici.
+      const bioCoches = (typeof CATALOGUE_EXAMENS !== 'undefined' ? CATALOGUE_EXAMENS : [])
+        .filter(e => e.tab === 'bio').map(e => e.label);
       const rec = { id: 1, type: 'Biochimie', montant: 25000,
         patient: { nom: 'PAGINATION TEST', dossier: '0001', sexe: 'M', age: 40, date: '2026-09-10' },
-        resultats: { _types: ['Biochimie'], _examens_coches: { 'Biochimie': ['Glycémie à jeun'] }, 'Biochimie': bio } };
+        resultats: { _types: ['Biochimie'], _examens_coches: { 'Biochimie': bioCoches }, 'Biochimie': bio } };
       const html = await crBuildHTML(rec);
       const div = document.createElement('div'); div.id = 'print-render';
       document.body.appendChild(div); div.innerHTML = html;
