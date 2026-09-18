@@ -82,14 +82,23 @@ const { serve, openApp, createReporter } = require('./helpers');
   }));
   r.check('GE positive affiche la densité', /GE POSITIF \(2400\/µL · P\. falciparum\)/.test(geVal), true);
 
-  // Patient « externe » (consultation externe) → ligne marquée externe.
+  // Prescripteur EXTERNE (hors CPMI) → ligne marquée externe.
   const ext = await page.evaluate(() => {
-    const ln = _regLigne({ patient: { nom: 'X', dossier: '0001-0926', service: 'Consultation externe' }, resultats: {} });
-    const hosp = _regLigne({ patient: { nom: 'Y', dossier: '0002-0926', service: 'Hospitalisation' }, resultats: {} });
-    return { ext: ln.externe, hosp: hosp.externe };
+    // _prescripteurs est une variable module (let), pas une propriété de window.
+    _prescripteurs = [
+      { id: 1, nom: 'DR KONAN PAUL', structure: 'Cabinet privé' },       // externe
+      { id: 2, nom: 'SFDE BAMBA ABIBA', structure: 'CPMI DE GRAND BASSAM' }, // interne
+    ];
+    const parId  = (pid) => _regLigne({ prescripteur_id: pid, patient: { nom: 'X', dossier: '0001-0926' }, resultats: {} }).externe;
+    const catch_ = _regLigne({ patient: { nom: 'Y', dossier: '0002-0926', medecin: 'EXTERNE' }, resultats: {} }).externe;
+    const parNom = _regLigne({ patient: { nom: 'Z', dossier: '0003-0926', medecin: 'DR KONAN PAUL' }, resultats: {} }).externe;
+    return { externeId: parId(1), interneId: parId(2), catchAll: catch_, parNom, inconnu: _regLigne({ patient: { nom: 'W', dossier: '0004-0926', medecin: 'DR INCONNU' }, resultats: {} }).externe };
   });
-  r.check('consultation externe → marqué externe', ext.ext, true);
-  r.check('hospitalisation → non externe', ext.hosp, false);
+  r.check('prescripteur cabinet privé → externe', ext.externeId, true);
+  r.check('prescripteur CPMI → non externe', ext.interneId, false);
+  r.check('médecin « EXTERNE » (catch-all) → externe', ext.catchAll, true);
+  r.check('rattachement par nom → externe', ext.parNom, true);
+  r.check('prescripteur inconnu → non externe (pas de faux positif)', ext.inconnu, false);
 
   // Forfait prénatal regroupé.
   const exBpn = await page.evaluate(() => _regExamens({

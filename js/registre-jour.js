@@ -164,6 +164,25 @@ function _regDossiersDuJour(jour) {
     .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')));
 }
 
+// Un dossier est-il prescrit par un PRESCRIPTEUR EXTERNE (hors CPMI) ?
+//   Interne = structure CPMI (ou un service CPMI : Maternité…). Externe = tout
+//   autre établissement (hôpital, clinique, cabinet privé) ou le prescripteur
+//   catch-all « EXTERNE ». On rattache le dossier à son prescripteur par id
+//   (sinon par nom), via la liste chargée _prescripteurs.
+function _prescExterne(r) {
+  const p = r.patient || {};
+  if (/^externe$/i.test(String(p.medecin || '').trim())) return true;
+  const list = (typeof _prescripteurs !== 'undefined' && Array.isArray(_prescripteurs)) ? _prescripteurs : [];
+  let presc = null;
+  if (r.prescripteur_id != null) presc = list.find(x => x.id == r.prescripteur_id);
+  if (!presc && p.medecin) presc = list.find(x => String(x.nom).trim().toUpperCase() === String(p.medecin).trim().toUpperCase());
+  if (!presc) return false;                       // prescripteur inconnu → pas de faux positif
+  if (/^externe$/i.test(String(presc.nom || '').trim())) return true;
+  const struct = String(presc.structure || '').trim();
+  if (!struct) return false;                       // structure non renseignée → indéterminé
+  return !/CPMI|MATERNIT/i.test(struct);           // structure hors CPMI → externe
+}
+
 // Ligne de registre à partir d'un dossier (résultats déjà chargés en entier).
 function _regLigne(r) {
   const p = r.patient || {};
@@ -180,9 +199,8 @@ function _regLigne(r) {
     synthese,
     rendu: synthese !== '',
     montant: Number(r.montant) || 0,
-    // ✅ Patient « externe » (consultation externe) → ligne colorée dans le registre.
-    externe: /externe/i.test(String(p.service || '')),
-    service: p.service || '',
+    // ✅ Prescripteur externe (hors CPMI) → ligne colorée dans le registre.
+    externe: _prescExterne(r),
   };
 }
 
