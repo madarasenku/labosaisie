@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.179';
-const CACHE = 'cpmi-labo-v152';
+const APP_VERSION = '13.180';
+const CACHE = 'cpmi-labo-v153';
 const v = url => url + '?v=' + APP_VERSION;
 
 /* Pré-cacher les fichiers essentiels à l'installation.

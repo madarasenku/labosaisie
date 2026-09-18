@@ -26,6 +26,7 @@ function showView(v) {
   const caisseUserVisible   = (v === 'caisse' && !caisseComplet);
 
   const allViews = [
+    { id: 'view-accueil',      show: v === 'accueil' },
     { id: 'view-saisie',       show: v === 'saisie' },
     { id: 'view-historique',   show: v === 'historique' },
     { id: 'view-stats',        show: v === 'stats' },
@@ -53,6 +54,7 @@ function showView(v) {
   });
 
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  if (v === 'accueil' && typeof renderAccueil === 'function') renderAccueil();
   if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
   if (v === 'saisie' && typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34
   if (v === 'saisie' && typeof updateBandeauPaiement === 'function') updateBandeauPaiement(); // ✅ v13.35
@@ -79,6 +81,41 @@ function showView(v) {
   // ni surtout le Cahier jaune — le restaurer révélerait la seconde porte.
   if (['saisie','historique','stats','caisse'].includes(v)) {
     try { localStorage.setItem('labo_vue_courante', v); } catch (e) {}
+  }
+}
+
+// ════════ Tableau de bord Kiosque (admin) ════════
+// Salutation, date, et compteurs du jour (dossiers, à saisir, recette).
+function _accueilFill() {
+  const hello = document.getElementById('kio-hello');
+  if (hello) {
+    const nom = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '';
+    hello.textContent = nom ? ('Bonjour ' + nom + ' 👋') : 'Tableau de bord';
+  }
+  const dEl = document.getElementById('kio-date');
+  if (dEl) { try { dEl.textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); } catch (e) {} }
+
+  const today = (typeof _jourLocal === 'function') ? _jourLocal() : new Date().toISOString().slice(0,10);
+  const calcDB = (typeof getCalcDB === 'function' ? getCalcDB() : (typeof _dbCache !== 'undefined' ? _dbCache : [])) || [];
+  const dujour = calcDB.filter(r => (r.patient && r.patient.date || (r.savedAt || '').slice(0,10)) === today);
+  const nbJour  = dujour.length;
+  const recette = dujour.reduce((s, r) => s + (r.montant || 0), 0);
+  const attente = calcDB.filter(r => typeof getStatut === 'function' && getStatut(r.id) === 'attente').length;
+  const money   = (typeof _fcfa === 'function') ? _fcfa(recette) : (recette.toLocaleString('fr-FR') + ' F');
+
+  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+  set('kio-stat-jour', nbJour);
+  set('kio-stat-attente', attente);
+  set('kio-stat-recette', money);
+  set('kio-badge-jour', nbJour + ' dossier' + (nbJour > 1 ? 's' : ''));
+  set('kio-badge-caisse', money);
+}
+function renderAccueil() {
+  _accueilFill();
+  // Le cache peut être vide juste après la connexion : on rafraîchit puis on
+  // recalcule une fois (sans reboucler sur renderAccueil).
+  if (typeof refreshDB === 'function') {
+    refreshDB().then(() => { try { _accueilFill(); } catch (e) {} }).catch(() => {});
   }
 }
 
