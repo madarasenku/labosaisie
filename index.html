@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.181">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.182">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,14 +25,14 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.181"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.181"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.181"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.181"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.181"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.182"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.182"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.182"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.182"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.182"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.181"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.181">
+<script src="./js/qr-generator.js?v=13.182"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.182">
 </head>
 <body>
 <!-- ✅ v13.138 — Badge de version : permet de vérifier d'un coup d'œil quelle
@@ -77,7 +77,7 @@
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.181"></script>
+<script src="./js/pwa-manifest.js?v=13.182"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -221,6 +221,102 @@
 
 <!-- VIEWS -->
 <div id="view-saisie">
+
+<!-- ✅ v13.182 — Poste Pro (étape 1) : mise en page « une page / 2 colonnes »
+     de la saisie patient (mode fill-all). Styles scopés à body.fill-all-mode,
+     aucun champ ni ID modifié. -->
+<style id="poste-pro-saisie-style">
+  /* Bandeau patient (rappel-patient) façon Poste Pro */
+  body.fill-all-mode #zone-saisie #rappel-patient{
+    align-items:center;gap:14px;padding:14px 18px;border-radius:16px;
+    background:var(--card,#fff);border:1px solid var(--border);
+    box-shadow:0 2px 14px rgba(15,23,42,.07);backdrop-filter:none;
+    position:sticky;top:8px;z-index:6;margin-bottom:18px}
+  body.fill-all-mode #zone-saisie #rappel-patient::before{
+    content:"🩺";width:44px;height:44px;flex:none;border-radius:12px;
+    display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(135deg,#065f46,#0891b2);color:#fff}
+  body.fill-all-mode #zone-saisie #rappel-nom{font-size:16px;font-weight:800}
+  /* Mise en page 2 colonnes des sections cochées (une seule → pleine largeur) */
+  body.fill-all-mode #zone-saisie .panel.active{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));
+    gap:16px;align-items:start}
+  body.fill-all-mode #zone-saisie .panel.active > .card{margin-bottom:0}
+  body.fill-all-mode #zone-saisie .panel.active > .card:hover{transform:none}
+  /* Cartes très larges (antibiogramme, bactériologie) : pleine largeur */
+  body.fill-all-mode #zone-saisie #bac-abg-card,
+  body.fill-all-mode #zone-saisie #panel-bacterio .card{grid-column:1/-1}
+  /* Barre d'enregistrement fixe en bas */
+  body.fill-all-mode #zone-saisie #save-all-bar{
+    position:sticky;bottom:0;z-index:6;margin:18px -4px 0;padding:14px 18px;
+    text-align:left;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    background:var(--card,#fff);border:1px solid var(--border);border-radius:16px;
+    box-shadow:0 -3px 16px rgba(15,23,42,.08)}
+  body.fill-all-mode #zone-saisie #save-all-hint{margin-top:0;flex:1;min-width:180px}
+  /* ── Étape 1b : lignes de résultats en BOÎTES denses (comme la maquette) ── */
+  body.fill-all-mode #zone-saisie .result-table thead{display:none}
+  body.fill-all-mode #zone-saisie .result-table,
+  body.fill-all-mode #zone-saisie .result-table tbody,
+  body.fill-all-mode #zone-saisie .result-table tr,
+  body.fill-all-mode #zone-saisie .result-table td{display:block}
+  body.fill-all-mode #zone-saisie .table-wrap{overflow:visible}
+  body.fill-all-mode #zone-saisie .result-table tbody{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px}
+  body.fill-all-mode #zone-saisie .result-table tr{
+    display:flex;flex-direction:column;gap:3px;padding:8px 11px;border-radius:11px;
+    border:1px solid var(--border);background:var(--bg,#f6f9fc)}
+  body.fill-all-mode #zone-saisie .result-table td{padding:0;border:none;background:none}
+  /* 1re cellule = étiquette du paramètre */
+  body.fill-all-mode #zone-saisie .result-table td:first-child{
+    font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+    color:var(--text-muted);line-height:1.25}
+  /* cellule contenant un champ = boîte de saisie */
+  body.fill-all-mode #zone-saisie .result-table td:has(input,select,textarea){
+    border:1px solid var(--border);border-radius:8px;background:var(--card,#fff);
+    padding:5px 8px;display:flex;align-items:center}
+  body.fill-all-mode #zone-saisie .result-table td input,
+  body.fill-all-mode #zone-saisie .result-table td select,
+  body.fill-all-mode #zone-saisie .result-table td textarea{
+    width:100%;border:none;background:transparent;padding:0;font-weight:700;
+    font-size:13px;font-variant-numeric:tabular-nums}
+  body.fill-all-mode #zone-saisie .result-table td input:focus,
+  body.fill-all-mode #zone-saisie .result-table td select:focus{outline:none;box-shadow:none}
+  /* cellules texte restantes (unité, normales, interprétation) = méta discrète */
+  body.fill-all-mode #zone-saisie .result-table td:not(:first-child):not(:has(input,select,textarea)){
+    font-size:9.5px;color:var(--text-muted);opacity:.85;line-height:1.3}
+  /* colonne « valeurs normales » : liseré discret pour la repérer */
+  body.fill-all-mode #zone-saisie .result-table td:last-child:not(:has(input,select,textarea)){
+    color:var(--faint,#9aa7b4)}
+
+  /* ── Surlignage hors-normes sur la boîte (réutilise .val-hi/.val-lo posés
+       par l'app via onParamInputColored — même détection que les rapports) ── */
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi){
+    border-color:#eaa26a !important;background:rgba(245,158,11,.11)}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo){
+    border-color:#7ab0e6 !important;background:rgba(37,99,235,.11)}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi) input{
+    background:transparent !important;color:#c2560a !important}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo) input{
+    background:transparent !important;color:#2563eb !important}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi)::after{
+    content:"▲";color:#b45309;font-size:8.5px;margin-left:5px;flex:none}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo)::after{
+    content:"▼";color:#1d4ed8;font-size:8.5px;margin-left:5px;flex:none}
+
+  /* ── Série (grille) : polish Poste Pro (anneaux de focus + ombrage) ── */
+  #grille-serie #grille-scroll{box-shadow:0 2px 14px rgba(15,23,42,.07)}
+  #grille-serie tbody input:focus,
+  #grille-serie tbody select:focus{
+    outline:none;border-color:var(--cpmi-mid,#0891b2) !important;
+    box-shadow:0 0 0 3px var(--accent-light) !important}
+  #grille-serie tbody tr:hover td[style*="sticky"]{background:var(--accent-light) !important}
+
+  @media (max-width:760px){
+    body.fill-all-mode #zone-saisie .panel.active{grid-template-columns:1fr}
+    body.fill-all-mode #zone-saisie #rappel-patient{position:static}
+  }
+</style>
+
 <!-- ✅ v13.35 — Bandeau paiement non effectué -->
 <div id="bandeau-paiement">
   🔒 Paiement non effectué — la saisie des résultats est bloquée
@@ -1940,7 +2036,7 @@
 
 <div id="view-caisse" style="display:none">
 
-  <!-- ✅ v13.181 — Refonte Kiosque de la caisse : styles scopés + réorganisation
+  <!-- ✅ v13.182 — Refonte Kiosque de la caisse : styles scopés + réorganisation
        par ordre flexbox (aucun déplacement DOM, tous les IDs/handlers conservés). -->
   <style id="caisse-kiosque-style">
     #view-caisse, #view-caisse-user { display:flex; flex-direction:column; }
@@ -2151,7 +2247,7 @@
 <!-- ✅ v13.33 — Vue Caisse simplifiée (utilisateurs non-admin) -->
 <div id="view-caisse-user" style="display:none">
 
-  <!-- ✅ v13.181 — En-tête Kiosque (styles partagés avec #view-caisse) -->
+  <!-- ✅ v13.182 — En-tête Kiosque (styles partagés avec #view-caisse) -->
   <div class="ckiosk-hero">
     <div>
       <div class="ckiosk-hero-title">💰 Ma caisse</div>
@@ -2263,18 +2359,18 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.181"></script>
-<script src="./js/donnees-analyses.js?v=13.181"></script>
-<script src="./js/navigation.js?v=13.181"></script>
-<script src="./js/supabase-db.js?v=13.181"></script>
-<script src="./js/historique.js?v=13.181"></script>
-<script src="./js/export-excel.js?v=13.181"></script>
-<script src="./js/prescripteurs.js?v=13.181"></script>
-<script src="./js/saisie.js?v=13.181"></script>
-<script src="./js/completude.js?v=13.181"></script>
-<script src="./js/grille.js?v=13.181"></script>
-<script src="./js/ui-auth.js?v=13.181"></script>
-<script src="./js/session-pwa.js?v=13.181"></script>
+<script src="./js/periode-nav.js?v=13.182"></script>
+<script src="./js/donnees-analyses.js?v=13.182"></script>
+<script src="./js/navigation.js?v=13.182"></script>
+<script src="./js/supabase-db.js?v=13.182"></script>
+<script src="./js/historique.js?v=13.182"></script>
+<script src="./js/export-excel.js?v=13.182"></script>
+<script src="./js/prescripteurs.js?v=13.182"></script>
+<script src="./js/saisie.js?v=13.182"></script>
+<script src="./js/completude.js?v=13.182"></script>
+<script src="./js/grille.js?v=13.182"></script>
+<script src="./js/ui-auth.js?v=13.182"></script>
+<script src="./js/session-pwa.js?v=13.182"></script>
 
 </div><!-- /#app-root -->
 
@@ -2378,16 +2474,16 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.181"></script>
-<script src="./js/compte-rendu.js?v=13.181"></script>
-<script src="./js/impression.js?v=13.181"></script>
-<script src="./js/export-pdf.js?v=13.181"></script>
-<script src="./js/sauvegarde.js?v=13.181"></script>
-<script src="./js/cloture-caisse.js?v=13.181"></script>
-<script src="./js/registre-jour.js?v=13.181"></script>
-<script src="./js/electrophorese.js?v=13.181"></script>
-<script src="./js/coffre.js?v=13.181"></script>
-<script src="./js/cahier-jaune.js?v=13.181"></script>
+<script src="./js/stats.js?v=13.182"></script>
+<script src="./js/compte-rendu.js?v=13.182"></script>
+<script src="./js/impression.js?v=13.182"></script>
+<script src="./js/export-pdf.js?v=13.182"></script>
+<script src="./js/sauvegarde.js?v=13.182"></script>
+<script src="./js/cloture-caisse.js?v=13.182"></script>
+<script src="./js/registre-jour.js?v=13.182"></script>
+<script src="./js/electrophorese.js?v=13.182"></script>
+<script src="./js/coffre.js?v=13.182"></script>
+<script src="./js/cahier-jaune.js?v=13.182"></script>
 
 <script>
 /* ── Navigation rapide dans les tables de résultats (v13.95) ──────────────
