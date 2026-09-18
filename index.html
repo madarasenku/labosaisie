@@ -288,6 +288,14 @@
   body.fill-all-mode #zone-saisie .result-table td:last-child:not(:has(input,select,textarea)){
     color:var(--faint,#9aa7b4)}
 
+  /* ── Série (grille) : polish Poste Pro (anneaux de focus + ombrage) ── */
+  #grille-serie #grille-scroll{box-shadow:0 2px 14px rgba(15,23,42,.07)}
+  #grille-serie tbody input:focus,
+  #grille-serie tbody select:focus{
+    outline:none;border-color:var(--cpmi-mid,#0891b2) !important;
+    box-shadow:0 0 0 3px var(--accent-light) !important}
+  #grille-serie tbody tr:hover td[style*="sticky"]{background:var(--accent-light) !important}
+
   @media (max-width:760px){
     body.fill-all-mode #zone-saisie .panel.active{grid-template-columns:1fr}
     body.fill-all-mode #zone-saisie #rappel-patient{position:static}

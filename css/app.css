@@ -1643,3 +1643,42 @@ select {
   transition:background .15s;
 }
 .btn-payer:hover { background:#fee2e2; }
+
+/* ═══════════════════════════════════════════════════════════════
+   POSTE PRO — Shell desktop : l'en-tête devient une SIDEBAR à gauche
+   (≥ 960px). Sur mobile/tablette, l'en-tête reste une barre en haut
+   (règles @media max-width plus haut). Aucun bouton ni handler modifié :
+   seul le placement change (position:fixed + décalage de <main>).
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width: 960px) {
+  #app-root > header {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 226px; height: 100vh; min-height: 100vh;
+    flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding: 16px 13px; gap: 9px; row-gap: 9px;
+    border-bottom: none; border-right: 3px solid #00b4d8;
+    box-shadow: 2px 0 18px rgba(11,37,69,.22);
+    overflow-y: auto; overflow-x: hidden; z-index: 200;
+  }
+  #app-root > header::after { display: none; }
+  #app-root > header .logo {
+    padding: 2px 4px 11px; border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  #app-root > header #user-badge {
+    margin: auto 0 4px; order: 3; text-align: center; align-self: stretch;
+  }
+  #app-root > header nav {
+    flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+    gap: 3px; width: 100%; order: 2;
+  }
+  #app-root > header nav .nav-btn {
+    width: 100%; justify-content: flex-start; text-align: left;
+    padding: 9px 12px; font-size: 13px;
+  }
+  #app-root > main {
+    margin-left: 226px; max-width: none; padding: 26px 30px 64px;
+  }
+  #app-root > #offline-banner,
+  #app-root > #sync-banner { margin-left: 226px; }
+}
