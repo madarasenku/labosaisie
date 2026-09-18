@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.180">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.181">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,14 +25,14 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.180"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.180"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.180"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.180"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.180"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.181"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.181"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.181"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.181"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.181"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.180"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.180">
+<script src="./js/qr-generator.js?v=13.181"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.181">
 </head>
 <body>
 <!-- ✅ v13.138 — Badge de version : permet de vérifier d'un coup d'œil quelle
@@ -77,7 +77,7 @@
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.180"></script>
+<script src="./js/pwa-manifest.js?v=13.181"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -1940,20 +1940,47 @@
 
 <div id="view-caisse" style="display:none">
 
-  <!-- ✅ v13.37 — Enregistrer un nouveau patient depuis la caisse -->
-  <div class="card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+  <!-- ✅ v13.181 — Refonte Kiosque de la caisse : styles scopés + réorganisation
+       par ordre flexbox (aucun déplacement DOM, tous les IDs/handlers conservés). -->
+  <style id="caisse-kiosque-style">
+    #view-caisse, #view-caisse-user { display:flex; flex-direction:column; }
+    .ckiosk-hero{order:0;display:flex;align-items:center;justify-content:space-between;gap:16px;
+      flex-wrap:wrap;background:linear-gradient(135deg,#065f46 0%,#0891b2 100%);color:#fff;
+      border-radius:18px;padding:20px 24px;margin-bottom:18px;box-shadow:0 8px 24px rgba(6,95,70,.22)}
+    .ckiosk-hero-title{font-size:22px;font-weight:800;letter-spacing:.3px;line-height:1.15}
+    .ckiosk-hero-sub{font-size:12.5px;opacity:.92;margin-top:4px;max-width:520px}
+    .ckiosk-hero .btn{background:#fff;color:#065f46;border:none;font-weight:800;
+      box-shadow:0 3px 10px rgba(0,0,0,.18);transition:transform .12s ease}
+    .ckiosk-hero .btn:hover{transform:translateY(-2px)}
+    .ckiosk-label{display:flex;align-items:center;gap:9px;margin:8px 4px 10px;
+      font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--cpmi-mid,#0891b2)}
+    .ckiosk-label::after{content:"";flex:1;height:1px;background:var(--border)}
+    #view-caisse .card, #view-caisse-user .card{border-radius:16px;box-shadow:0 2px 12px rgba(15,23,42,.06)}
+    #view-caisse .stats-kpi, #view-caisse-user .stats-kpi{border-radius:14px;
+      box-shadow:0 2px 12px rgba(15,23,42,.07)}
+    @media (max-width:640px){ .ckiosk-hero{padding:16px 18px}.ckiosk-hero-title{font-size:19px} }
+  </style>
+
+  <!-- En-tête Kiosque + action principale -->
+  <div class="ckiosk-hero">
     <div>
-      <div style="font-weight:800;color:var(--cpmi-deep);font-size:15px">👤 Nouveau patient</div>
-      <div style="font-size:12px;color:var(--text-muted)">Enregistrer un patient (infos + examens + montant) puis l'encaisser.</div>
+      <div class="ckiosk-hero-title">💰 Caisse</div>
+      <div class="ckiosk-hero-sub">Encaissements, monnaie, clôture &amp; registre du jour, analyse et ristournes.</div>
     </div>
-    <button class="btn btn-primary" onclick="caisseNouveauPatient()" style="padding:9px 20px;font-size:14px">➕ Enregistrer un patient</button>
+    <button class="btn" onclick="caisseNouveauPatient()" style="padding:12px 24px;font-size:14.5px">➕ Enregistrer un patient</button>
   </div>
+
+  <!-- Étiquettes de section (positionnées par flexbox order) -->
+  <div class="ckiosk-label" style="order:2">🔔 Opérations du jour</div>
+  <div class="ckiosk-label" style="order:5">🧾 Documents de caisse</div>
+  <div class="ckiosk-label" style="order:8">📊 Analyse par période</div>
+  <div class="ckiosk-label" style="order:12">💊 Ristournes prescripteurs</div>
 
   <!-- ✅ v13.84 — Clôture de caisse : état de fin de journée, signé par le
        caissier et le responsable. Les dossiers verrouillés sont présentés
        HORS recette : ils sont exclus de tous les calculs de l'application,
        les inclure ici ferait signer un chiffre introuvable ailleurs. -->
-  <div class="card" id="cloture-card" style="margin-bottom:16px">
+  <div class="card" id="cloture-card" style="margin-bottom:16px;order:6">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span>🧾 Clôture de caisse</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1969,7 +1996,7 @@
   <!-- ✅ v13.169 — Registre du jour : document clinique/opérationnel (une ligne
        par patient avec examens, résultat et prix), distinct de la clôture qui
        est financière. Imprimable en A4 noir & blanc. -->
-  <div class="card" id="registre-card" style="margin-bottom:16px">
+  <div class="card" id="registre-card" style="margin-bottom:16px;order:7">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span>📋 Registre du jour</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1983,8 +2010,8 @@
   </div>
 
   <!-- Sélecteur de période -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">💰 Caisse — Sélection de période</div>
+  <div class="card" style="margin-bottom:16px;order:9">
+    <div class="card-title">🗓 Sélection de période</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-outline" id="caisse-btn-jour" onclick="setCaissePeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
       <button class="btn btn-outline" id="caisse-btn-semaine" onclick="setCaissePeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
@@ -2035,7 +2062,7 @@
   </div>
 
   <!-- KPI -->
-  <div class="stats-kpi-row" id="caisse-kpi-row">
+  <div class="stats-kpi-row" id="caisse-kpi-row" style="order:1">
     <div class="stats-kpi" style="border-left:3px solid #15803d"><div class="kpi-val" id="caisse-kpi-total" style="color:#15803d">—</div><div class="kpi-label">Total encaissé (FCFA)</div></div>
     <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-nb">—</div><div class="kpi-label">Nombre de dossiers</div></div>
     <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-moy">—</div><div class="kpi-label">Moyenne / dossier (FCFA)</div></div>
@@ -2043,7 +2070,7 @@
   </div>
 
   <!-- ✅ v13.35 — Dossiers à encaisser -->
-  <div class="card" style="margin-bottom:16px" id="caisse-a-encaisser-card">
+  <div class="card" style="margin-bottom:16px;order:3" id="caisse-a-encaisser-card">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span>🔒 Dossiers à encaisser</span>
       <span id="caisse-encaisser-count" style="font-size:12px;color:var(--warning);font-weight:700"></span>
@@ -2054,7 +2081,7 @@
   </div>
 
   <!-- ✅ v13.36 — Monnaie à rendre (patients qui n'ont pas repris leur monnaie) -->
-  <div class="card" style="margin-bottom:16px;display:none" id="caisse-monnaie-card">
+  <div class="card" style="margin-bottom:16px;display:none;order:4" id="caisse-monnaie-card">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span>💵 Monnaie à rendre</span>
       <span id="caisse-monnaie-count" style="font-size:12px;color:#b45309;font-weight:700"></span>
@@ -2064,12 +2091,12 @@
   </div>
 
   <!-- Graphique recettes par jour -->
-  <div class="card" style="margin-bottom:16px">
+  <div class="card" style="margin-bottom:16px;order:10">
     <div class="card-title">📊 Recettes par jour (période sélectionnée)</div>
     <div style="position:relative;height:240px"><canvas id="caisse-chart-jour"></canvas></div>
   </div>
 
-  <div class="stats-grid">
+  <div class="stats-grid" style="order:11">
     <!-- Répartition par type d'examen -->
     <div class="card stats-card">
       <div class="card-title">🔬 Répartition par type d'analyse</div>
@@ -2093,7 +2120,7 @@
   </div>
 
   <!-- ✅ v13.28 — Ristournes prescripteurs (Feature 6) : calcul mensuel + export PDF/Excel -->
-  <div class="card" style="margin-top:16px" id="caisse-ristournes-card">
+  <div class="card" style="margin-top:16px;order:13" id="caisse-ristournes-card">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span>💊 Ristournes prescripteurs</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -2123,9 +2150,18 @@
 
 <!-- ✅ v13.33 — Vue Caisse simplifiée (utilisateurs non-admin) -->
 <div id="view-caisse-user" style="display:none">
-  <div class="card" style="margin-bottom:16px">
+
+  <!-- ✅ v13.181 — En-tête Kiosque (styles partagés avec #view-caisse) -->
+  <div class="ckiosk-hero">
+    <div>
+      <div class="ckiosk-hero-title">💰 Ma caisse</div>
+      <div class="ckiosk-hero-sub">Votre activité, vos recettes et vos ristournes sur la période choisie.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;order:2">
     <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span>💰 Mon activité</span>
+      <span>🗓 Période</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-outline active" id="ucaisse-btn-jour" onclick="setUCaissePeriode('jour')" style="padding:5px 12px;font-size:12px">Aujourd'hui</button>
         <button class="btn btn-outline" id="ucaisse-btn-semaine" onclick="setUCaissePeriode('semaine')" style="padding:5px 12px;font-size:12px">Cette semaine</button>
@@ -2164,7 +2200,7 @@
   </div>
 
   <!-- KPI Cards -->
-  <div class="stats-kpi-row" style="margin-bottom:16px">
+  <div class="stats-kpi-row" style="margin-bottom:16px;order:1">
     <div class="stats-kpi" style="border-left:3px solid #15803d">
       <div class="kpi-val" id="ucaisse-kpi-total" style="color:#15803d">—</div>
       <div class="kpi-label">Total encaissé (FCFA)</div>
@@ -2184,13 +2220,13 @@
   </div>
 
   <!-- Graphique recettes par jour -->
-  <div class="card" style="margin-bottom:16px">
+  <div class="card" style="margin-bottom:16px;order:3">
     <div class="card-title">📊 Recettes par jour (période sélectionnée)</div>
     <div style="position:relative;height:220px"><canvas id="ucaisse-chart-jour"></canvas></div>
   </div>
 
   <!-- Répartition type + Ristournes côte à côte -->
-  <div class="stats-grid" style="margin-bottom:16px">
+  <div class="stats-grid" style="margin-bottom:16px;order:4">
     <!-- Répartition par type -->
     <div class="card stats-card">
       <div class="card-title">🔬 Répartition par type d'analyse</div>
@@ -2227,18 +2263,18 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.180"></script>
-<script src="./js/donnees-analyses.js?v=13.180"></script>
-<script src="./js/navigation.js?v=13.180"></script>
-<script src="./js/supabase-db.js?v=13.180"></script>
-<script src="./js/historique.js?v=13.180"></script>
-<script src="./js/export-excel.js?v=13.180"></script>
-<script src="./js/prescripteurs.js?v=13.180"></script>
-<script src="./js/saisie.js?v=13.180"></script>
-<script src="./js/completude.js?v=13.180"></script>
-<script src="./js/grille.js?v=13.180"></script>
-<script src="./js/ui-auth.js?v=13.180"></script>
-<script src="./js/session-pwa.js?v=13.180"></script>
+<script src="./js/periode-nav.js?v=13.181"></script>
+<script src="./js/donnees-analyses.js?v=13.181"></script>
+<script src="./js/navigation.js?v=13.181"></script>
+<script src="./js/supabase-db.js?v=13.181"></script>
+<script src="./js/historique.js?v=13.181"></script>
+<script src="./js/export-excel.js?v=13.181"></script>
+<script src="./js/prescripteurs.js?v=13.181"></script>
+<script src="./js/saisie.js?v=13.181"></script>
+<script src="./js/completude.js?v=13.181"></script>
+<script src="./js/grille.js?v=13.181"></script>
+<script src="./js/ui-auth.js?v=13.181"></script>
+<script src="./js/session-pwa.js?v=13.181"></script>
 
 </div><!-- /#app-root -->
 
@@ -2342,16 +2378,16 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.180"></script>
-<script src="./js/compte-rendu.js?v=13.180"></script>
-<script src="./js/impression.js?v=13.180"></script>
-<script src="./js/export-pdf.js?v=13.180"></script>
-<script src="./js/sauvegarde.js?v=13.180"></script>
-<script src="./js/cloture-caisse.js?v=13.180"></script>
-<script src="./js/registre-jour.js?v=13.180"></script>
-<script src="./js/electrophorese.js?v=13.180"></script>
-<script src="./js/coffre.js?v=13.180"></script>
-<script src="./js/cahier-jaune.js?v=13.180"></script>
+<script src="./js/stats.js?v=13.181"></script>
+<script src="./js/compte-rendu.js?v=13.181"></script>
+<script src="./js/impression.js?v=13.181"></script>
+<script src="./js/export-pdf.js?v=13.181"></script>
+<script src="./js/sauvegarde.js?v=13.181"></script>
+<script src="./js/cloture-caisse.js?v=13.181"></script>
+<script src="./js/registre-jour.js?v=13.181"></script>
+<script src="./js/electrophorese.js?v=13.181"></script>
+<script src="./js/coffre.js?v=13.181"></script>
+<script src="./js/cahier-jaune.js?v=13.181"></script>
 
 <script>
 /* ── Navigation rapide dans les tables de résultats (v13.95) ──────────────
