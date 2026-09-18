@@ -288,6 +288,21 @@
   body.fill-all-mode #zone-saisie .result-table td:last-child:not(:has(input,select,textarea)){
     color:var(--faint,#9aa7b4)}
 
+  /* ── Surlignage hors-normes sur la boîte (réutilise .val-hi/.val-lo posés
+       par l'app via onParamInputColored — même détection que les rapports) ── */
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi){
+    border-color:#eaa26a !important;background:rgba(245,158,11,.11)}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo){
+    border-color:#7ab0e6 !important;background:rgba(37,99,235,.11)}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi) input{
+    background:transparent !important;color:#c2560a !important}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo) input{
+    background:transparent !important;color:#2563eb !important}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi)::after{
+    content:"▲";color:#b45309;font-size:8.5px;margin-left:5px;flex:none}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo)::after{
+    content:"▼";color:#1d4ed8;font-size:8.5px;margin-left:5px;flex:none}
+
   /* ── Série (grille) : polish Poste Pro (anneaux de focus + ombrage) ── */
   #grille-serie #grille-scroll{box-shadow:0 2px 14px rgba(15,23,42,.07)}
   #grille-serie tbody input:focus,
