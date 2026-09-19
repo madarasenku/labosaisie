@@ -13,9 +13,9 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.190">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.191">
 <!-- ✅ v13.69 — bibliothèque hébergée localement (voir vendor/ et le commentaire d'index.html) -->
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.190"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.191"></script>
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -54,7 +54,9 @@ body {
 ══════════════════════════ */
 .panel-brand {
   flex: 0 0 42%;
-  background: #0b2545;
+  /* Dégradé signature de l'app (135deg navy → bleu médical), navy tenu plus
+     longtemps pour garder le texte lisible. Harmonise avec la sidebar. */
+  background: linear-gradient(135deg, #0b2545 0%, #0b2545 35%, #0a5586 82%, #0096c7 108%);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -395,7 +397,8 @@ body {
   width: 100%;
   min-height: 52px;
   padding: 14px 24px;
-  background: #0b2545;
+  /* Bouton primaire de l'app : dégradé 135deg navy → bleu médical + balayage. */
+  background: linear-gradient(135deg, #0b2545, #0096c7);
   border: none;
   border-radius: 10px;
   color: #fff;
@@ -407,25 +410,26 @@ body {
   text-transform: uppercase;
   position: relative;
   overflow: hidden;
-  transition: background .2s, transform .15s, box-shadow .2s;
-  box-shadow: 0 4px 24px rgba(11,37,69,.25);
+  transition: filter .2s, transform .15s, box-shadow .2s;
+  box-shadow: 0 3px 12px rgba(11,37,69,.28);
   margin-top: 10px;
 }
+/* Balayage lumineux au survol — identique à .btn-primary de l'app */
 .btn-login::after {
   content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(0,180,216,.22) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity .3s;
+  position: absolute; top: 0; left: -55%;
+  width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.25), transparent);
+  transform: skewX(-18deg);
+  transition: left .55s cubic-bezier(.4,0,.2,1);
   pointer-events: none;
 }
 .btn-login:hover:not(:disabled) {
-  background: #0d2d56;
-  box-shadow: 0 6px 32px rgba(11,37,69,.35);
+  filter: brightness(1.06);
+  box-shadow: 0 6px 20px rgba(11,37,69,.36);
   transform: translateY(-1px);
 }
-.btn-login:hover:not(:disabled)::after { opacity: 1; }
+.btn-login:hover:not(:disabled)::after { left: 115%; }
 .btn-login:active { transform: translateY(0) scale(.99); }
 .btn-login:disabled { opacity: .6; cursor: not-allowed; }
 .btn-login:focus-visible { outline: 2px solid #00b4d8; outline-offset: 3px; }
