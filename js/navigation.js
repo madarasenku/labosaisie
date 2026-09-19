@@ -54,6 +54,16 @@ function showView(v) {
   });
 
   document.querySelectorAll('header .nav-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  // ✅ v13.186 — Barre d'onglets mobile : visibilité par rôle + onglet actif.
+  try {
+    const _mtb = document.getElementById('mobile-tabbar');
+    if (_mtb) {
+      const _noSaisie = (typeof isCaissier === 'function' && isCaissier())
+                     || (typeof isSpectateur === 'function' && isSpectateur());
+      _mtb.querySelectorAll('[data-view="saisie"], .mtb-fab').forEach(b => b.style.display = _noSaisie ? 'none' : '');
+      _mtb.querySelectorAll('button[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+    }
+  } catch (e) {}
   if (v === 'accueil' && typeof renderAccueil === 'function') renderAccueil();
   if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
   if (v === 'saisie' && typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34
