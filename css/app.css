@@ -1682,3 +1682,31 @@ select {
   #app-root > #offline-banner,
   #app-root > #sync-banner { margin-left: 226px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   POSTE PRO — DENSITÉ COMPACTE (v13.189)
+   Objectif : moins d'espaces perdus / moins de défilement pour l'équipe,
+   au plus proche de la densité de la maquette. Réduit paddings & marges
+   sans toucher aux tailles de champ (zones tactiles conservées).
+   ═══════════════════════════════════════════════════════════════ */
+#app-root > main { padding: 16px 18px 60px !important; }
+@media (min-width: 960px) { #app-root > main { padding: 18px 22px 56px !important; } }
+.card { padding: 14px 16px !important; margin-bottom: 12px !important; }
+.card-title { margin-bottom: 11px !important; padding-bottom: 8px !important; }
+.form-grid { gap: 10px 12px !important; }
+.stats-kpi { padding: 11px 15px !important; }
+.kpi-val { font-size: 30px !important; }
+.result-table th, .result-table td { padding: 5px 8px !important; }
+.section-label { margin-top: 12px !important; margin-bottom: 6px !important; }
+#dashboard-cards { gap: 8px !important; margin-bottom: 10px !important; }
+.stats-kpi-row { gap: 10px !important; margin-bottom: 12px !important; }
+.ckiosk-hero, .pp-file-kpis { margin-bottom: 12px !important; }
+.ckiosk-hero { padding: 16px 20px !important; }
+/* Saisie « une page » : boîtes de champ plus denses + 3 colonnes */
+body.fill-all-mode #zone-saisie .result-table tbody {
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)) !important; gap: 8px !important; }
+body.fill-all-mode #zone-saisie .result-table tr { padding: 6px 9px !important; gap: 2px !important; }
+body.fill-all-mode #zone-saisie .result-table td:has(input, select, textarea) { padding: 4px 7px !important; }
+body.fill-all-mode #zone-saisie .panel.active { gap: 10px !important; }
+body.fill-all-mode #zone-saisie .result-table td:first-child {
+  white-space: normal !important; overflow: visible !important; word-break: normal; }
