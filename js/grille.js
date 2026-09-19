@@ -290,6 +290,7 @@ let _grilleInclureSaisis = false;       // ✅ v13.133 — inclure les paramètr
 let _grilleInclureMasquees = false;     // ✅ v13.148 — inclure les fiches masquées pour y saisir des résultats
 let _grilleDernierLot = [];             // ✅ v13.133 — ids du dernier lot enregistré (pour impression)
 let _grilleSelForce = {};               // ✅ v13.134 — override manuel de la coche « terminé » par dossier
+let _grilleFocusId = null;              // ✅ Modification d'un résultat : série centrée sur UN seul dossier
 
 // Date d'un dossier : date de la fiche patient, sinon date d'enregistrement.
 function _dateDossier(r) {
@@ -470,6 +471,13 @@ function grilleSourceDB() {
 // de la grille à saisir (sauf si « déjà saisis » est coché).
 function grilleDossiers() {
   let db = grilleSourceDB();
+  // ✅ Modification ciblée : quand on entre par « Modifier » sur un dossier, la
+  //   grille ne montre QUE ce dossier (tous ses examens, déjà saisis compris).
+  if (_grilleFocusId != null) {
+    return db.filter(r => r.id === _grilleFocusId
+      && isDossierRecord(r) && !r.deletedAt && !r._hardDeleted
+      && grilleExamsDuDossier(r).length);
+  }
   return db.filter(r => {
     if (!isDossierRecord(r) || r.deletedAt || r._hardDeleted) return false;
     if (!_grilleInclureReception && r.resultats && r.resultats._reception_seule) return false;
@@ -505,6 +513,7 @@ function _grilleJourLocal() {
 
 async function ouvrirGrille(key) {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
+  _grilleFocusId = null;   // entrée normale : liste complète (pas de dossier ciblé)
   if (key && GRILLE_EXAMS[key]) _grilleKey = key;
   if (_grilleDate === null) {
     try { _grilleDate = _grilleJourLocal(); } catch (e) { _grilleDate = ''; }
@@ -531,7 +540,33 @@ async function ouvrirGrille(key) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function ouvrirGrilleNFS() { ouvrirGrille('nfs'); }
+
+// ✅ MODIFIER UN RÉSULTAT — passe TOUJOURS par la saisie en série (choix « série
+//   uniquement » : on évite la page un-patient qui plantait). On ouvre la grille
+//   centrée sur ce seul dossier, avec « déjà saisis » activé pour rouvrir et
+//   corriger les valeurs existantes. Aucun handler ni id de saisie n'est modifié.
+async function ouvrirGrilleDossier(id) {
+  if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
+  let rec = null; try { rec = getDB().find(r => r.id === id) || null; } catch (e) {}
+  _grilleFocusId = id;
+  _grilleInclureSaisis = true;            // rouvrir les valeurs déjà enregistrées
+  _grilleInclureReception = true;         // ne pas exclure un dossier « réception seule »
+  _grilleDate = '';                       // le focus rend le filtre date inutile
+  // Si la fiche est masquée/restreinte, l'inclure pour pouvoir la corriger.
+  if (rec && rec.restrictedBy) _grilleInclureMasquees = true;
+  // Choisir un examen présent pour la vue mobile « un examen à la fois ».
+  try {
+    const exs = rec ? grilleExamsDuDossier(rec) : [];
+    if (exs.length) { _grilleKey = exs[0]; _grilleMobileExam = exs[0]; }
+  } catch (e) {}
+  // La série vit dans la vue « saisie » : s'y rendre d'abord si besoin.
+  try { if (typeof showView === 'function') showView('saisie'); } catch (e) {}
+  await ouvrirGrille(_grilleKey);
+  _grilleFocusId = id;                     // ouvrirGrille l'a remis à null : on le repose
+  grilleRender();
+}
 function fermerGrille() {
+  _grilleFocusId = null;
   const cont = document.getElementById('grille-serie');
   if (cont) cont.style.display = 'none';
   const fiche = document.getElementById('fiche-identification');
@@ -543,6 +578,36 @@ function grilleToggleSaisis(on) { _grilleInclureSaisis = !!on; grilleRender(); }
 function grilleToggleMasquees(on) { _grilleInclureMasquees = !!on; grilleRender(); } // ✅ v13.148
 function grilleChangeExam(key) { if (GRILLE_EXAMS[key]) { _grilleKey = key; grilleRender(); } }
 
+// ✅ Saisie en série sur MOBILE — comme la maquette : au lieu du grand tableau
+//   « tous les examens côte à côte » (illisible sur un téléphone), on choisit UN
+//   seul examen dans une déroulante en haut, puis on remplit et on coche. Le
+//   tableau complet reste tel quel sur desktop (≥ 641 px). Purement visuel :
+//   aucune valeur, aucun id de champ, aucun handler n'est modifié — on ne fait
+//   que masquer les colonnes des autres examens.
+let _grilleMobileExam = '';
+let _grilleMobileHooked = false;
+function grilleMobileExam(k) { _grilleMobileExam = k || ''; _grilleApplyMobileExam(); }
+function _grilleMobileActif() {
+  try { return window.matchMedia('(max-width:640px)').matches; }
+  catch (e) { return (window.innerWidth || 9999) <= 640; }
+}
+function _grilleApplyMobileExam() {
+  const cont = document.getElementById('grille-serie');
+  if (!cont) return;
+  const mono = _grilleMobileActif() && _grilleMobileExam;
+  cont.querySelectorAll('[data-exam]').forEach(el => {
+    el.style.display = (mono && el.getAttribute('data-exam') !== _grilleMobileExam) ? 'none' : '';
+  });
+  // Reflète le passage mobile ⇄ desktop (rotation / redimensionnement).
+  if (!_grilleMobileHooked) {
+    _grilleMobileHooked = true;
+    window.addEventListener('resize', () => {
+      const c = document.getElementById('grille-serie');
+      if (c && c.style.display !== 'none') _grilleApplyMobileExam();
+    });
+  }
+}
+
 // ── Rendu ───────────────────────────────────────────────────
 function grilleRender() {
   const cont = document.getElementById('grille-serie');
@@ -551,6 +616,29 @@ function grilleRender() {
   _grilleSelForce = {};
   const doss = grilleDossiers();
   const cols = grilleColonnes(doss);
+  // Examen choisi pour la vue mobile « un examen à la fois » (déroulante en haut).
+  if (!_grilleMobileExam || cols.indexOf(_grilleMobileExam) === -1) _grilleMobileExam = cols[0] || '';
+  const monoPick = cols.length
+    ? '<div class="grille-mob-pick"><label for="grille-mob-exam">🔎 Examen à saisir</label>'
+      + '<select id="grille-mob-exam" onchange="grilleMobileExam(this.value)">'
+      + cols.map(k => '<option value="' + k + '"' + (k === _grilleMobileExam ? ' selected' : '') + '>' + esc(GRILLE_EXAMS[k].label) + '</option>').join('')
+      + '</select></div>'
+    : '';
+
+  // Bandeau « Modification d'un résultat » quand on est centré sur un seul dossier.
+  let focusBanner = '';
+  if (_grilleFocusId != null) {
+    let recF = null; try { recF = getDB().find(r => r.id === _grilleFocusId) || null; } catch (e) {}
+    const nomF = esc((recF && recF.patient && recF.patient.nom) || '—');
+    const dosF = esc((recF && recF.patient && recF.patient.dossier) || '');
+    focusBanner = '<div class="grille-focus-banner" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;'
+      + 'margin:0 0 12px;padding:9px 13px;border:1px solid #bfdbfe;border-left:4px solid var(--cpmi-mid,#0891b2);'
+      + 'border-radius:10px;background:#eff6ff;font-size:13px;color:var(--cpmi-deep,#0b2545)">'
+      + '<span style="font-weight:800">✏️ Modification — ' + nomF + '</span>'
+      + (dosF ? '<span style="color:var(--text-muted)">N° ' + dosF + '</span>' : '')
+      + '<span style="margin-left:auto"><button class="btn btn-outline" style="font-size:12px;padding:5px 10px" '
+      + 'onclick="fermerGrille()">← Terminer</button></span></div>';
+  }
 
   const filtres = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted)">'
     + '<label style="display:flex;align-items:center;gap:5px">📅 Date '
@@ -580,10 +668,14 @@ function grilleRender() {
     + '</div></div><div style="margin-bottom:12px">' + filtres + '</div>';
 
   if (!doss.length) {
-    cont.innerHTML = entete
+    const videMsg = _grilleFocusId != null
+      ? 'Ce dossier n\'a pas d\'examen modifiable en saisie en série.<br>'
+        + '<span style="font-size:12px">Les examens à saisie libre (cultures, comptes rendus texte…) ne sont pas gérés ici.</span>'
+      : 'Aucun patient à saisir ' + (_grilleDate ? 'pour le ' + esc(_grilleDate) : '(toutes dates)') + '.<br>'
+        + '<span style="font-size:12px">Change la date, choisis « Toutes les dates », ou coche « déjà saisis » pour corriger.</span>';
+    cont.innerHTML = entete + focusBanner
       + '<div style="padding:24px;text-align:center;color:var(--text-muted);background:rgba(255,255,255,.7);border:1px dashed var(--border);border-radius:var(--radius)">'
-      + 'Aucun patient à saisir ' + (_grilleDate ? 'pour le ' + esc(_grilleDate) : '(toutes dates)') + '.<br>'
-      + '<span style="font-size:12px">Change la date, choisis « Toutes les dates », ou coche « déjà saisis » pour corriger.</span></div>';
+      + videMsg + '</div>';
     grilleUpdateSelCount();
     return;
   }
@@ -600,20 +692,20 @@ function grilleRender() {
   let h2 = '';
   cols.forEach(k => {
     const cfg = GRILLE_EXAMS[k];
-    h1 += '<th colspan="' + cfg.cols.length + '" class="gr-h1" style="position:sticky;top:0;z-index:4;' + HD + ';font-weight:800;border-left:2px solid rgba(255,255,255,.35)">' + esc(cfg.label) + '</th>';
+    h1 += '<th data-exam="' + k + '" colspan="' + cfg.cols.length + '" class="gr-h1" style="position:sticky;top:0;z-index:4;' + HD + ';font-weight:800;border-left:2px solid rgba(255,255,255,.35)">' + esc(cfg.label) + '</th>';
     cfg.cols.forEach((c, i) => {
-      h2 += '<th class="gr-h2" style="position:sticky;z-index:4;' + HD + ';font-weight:600;opacity:.92' + (i === 0 ? ';border-left:2px solid rgba(255,255,255,.35)' : '') + '">' + esc(c.lab) + '</th>';
+      h2 += '<th data-exam="' + k + '" class="gr-h2" style="position:sticky;z-index:4;' + HD + ';font-weight:600;opacity:.92' + (i === 0 ? ';border-left:2px solid rgba(255,255,255,.35)' : '') + '">' + esc(c.lab) + '</th>';
     });
   });
 
   const cellHtml = (id, k, c) => {
     const base = 'padding:5px 4px;border:1px solid var(--border);border-radius:6px;font-size:12.5px';
     if (c.kind === 'sel') {
-      return '<td style="padding:3px 4px"><select id="g_' + id + '_' + k + '_' + c.k + '" '
+      return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px"><select id="g_' + id + '_' + k + '_' + c.k + '" '
         + 'onchange="grilleCellChange(' + id + ')" style="min-width:118px;' + base + '">'
         + (c.opts || []).map(o => '<option value="' + o[0] + '">' + esc(o[1]) + '</option>').join('') + '</select></td>';
     }
-    return '<td style="padding:3px 4px"><input type="number" step="any" inputmode="decimal" '
+    return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px"><input type="number" step="any" inputmode="decimal" '
       + 'id="g_' + id + '_' + k + '_' + c.k + '" oninput="grilleCellChange(' + id + ')" '
       + 'style="width:76px;text-align:center;' + base + '"></td>';
   };
@@ -625,11 +717,11 @@ function grilleRender() {
     cols.forEach(k => {
       const cfg = GRILLE_EXAMS[k];
       if (!demandes.has(k)) {
-        tds += '<td colspan="' + cfg.cols.length + '" style="background:#f1f3f5;color:#adb5bd;text-align:center;font-size:11px;border-left:2px solid var(--border)">—</td>';
+        tds += '<td data-exam="' + k + '" colspan="' + cfg.cols.length + '" style="background:#f1f3f5;color:#adb5bd;text-align:center;font-size:11px;border-left:2px solid var(--border)">—</td>';
         return;
       }
       if (faits.has(k) && !_grilleInclureSaisis) {
-        tds += '<td colspan="' + cfg.cols.length + '" style="background:#e7f5ec;color:#15803d;text-align:center;font-size:11px;font-weight:600;border-left:2px solid var(--border)">✓ saisi</td>';
+        tds += '<td data-exam="' + k + '" colspan="' + cfg.cols.length + '" style="background:#e7f5ec;color:#15803d;text-align:center;font-size:11px;font-weight:600;border-left:2px solid var(--border)">✓ saisi</td>';
         return;
       }
       cfg.cols.forEach(c => { tds += cellHtml(r.id, k, c); });
@@ -645,6 +737,8 @@ function grilleRender() {
   }).join('');
 
   cont.innerHTML = entete
+    + focusBanner
+    + monoPick
     + '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px">'
     + 'Chaque ligne = un patient, avec tous ses examens demandés. Les cases « — » ne le concernent pas. '
     + 'La coche se met d\'elle-même quand tout est rempli.</div>'
@@ -666,6 +760,8 @@ function grilleRender() {
       trs[1].querySelectorAll('th').forEach(th => { th.style.top = h1h + 'px'; });
     }
   } catch (e) {}
+  // Sur mobile : n'afficher que l'examen choisi dans la déroulante du haut.
+  _grilleApplyMobileExam();
   // ✅ v13.154 — En mode correction (« déjà saisis »), pré-remplir les cases avec
   //   les valeurs DÉJÀ enregistrées, pour les voir et les corriger sans tout
   //   re-saisir. Sans ça les cases s'affichaient vides et la fiche semblait
