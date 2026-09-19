@@ -31,7 +31,7 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.183';
+const APP_VERSION = '13.184';
 const CACHE = 'cpmi-labo-v153';
 const v = url => url + '?v=' + APP_VERSION;
 
