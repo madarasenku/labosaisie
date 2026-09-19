@@ -1337,12 +1337,16 @@ function showEditUnifie(id) {
   //   forcé), ce qui rouvrait une seule analyse à la fois — d'où « tous les champs
   //   ne viennent pas sur la même page ».
   const _libAnalyses = (types.length ? types.join('  ·  ') : 'Analyse');
-  // ✅ v13.141 — Ouvre directement la fiche complète (toutes les analyses sur
-  //   une page). La paillasse a été supprimée.
-  const _openFn = (typeof fillAllResults === 'function') ? `fillAllResults(${id})` : `editRecord(${id})`;
+  // ✅ MODIFIER UN RÉSULTAT = TOUJOURS via la SAISIE EN SÉRIE (« série uniquement »).
+  //   On ouvre la grille centrée sur ce dossier (déjà saisis activés) au lieu de la
+  //   page un-patient qui plantait. Repli sur fillAllResults seulement si la série
+  //   est indisponible (fichier non chargé).
+  const _openFn = (typeof ouvrirGrilleDossier === 'function')
+    ? `ouvrirGrilleDossier(${id})`
+    : ((typeof fillAllResults === 'function') ? `fillAllResults(${id})` : `editRecord(${id})`);
   const typesChoix = `<button class="btn" onclick="document.getElementById('edit-unifie-modal').remove();${_openFn}"
         style="width:100%;padding:11px 14px;text-align:left;margin-bottom:6px;background:var(--surface-1);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer">
-        🧫 Compléter / modifier — <strong>${esc(_libAnalyses)}</strong></button>`;
+        🧫 Saisir / modifier les résultats — <strong>${esc(_libAnalyses)}</strong></button>`;
 
   bd.innerHTML = `
     <div style="background:var(--surface-2);border-radius:16px;padding:24px 26px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
