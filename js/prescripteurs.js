@@ -203,7 +203,7 @@ async function submitPrescModal() {
 // FILTRES TEMPORELS DES STATS
 // ============================================================
 
-let _statsPeriode = 'mois'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
+let _statsPeriode = 'jour'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
 
 // ✅ v13.73 — décalage temporel des Statistiques (voir js/periode-nav.js)
 let _statsDecalage = 0;

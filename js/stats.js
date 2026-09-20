@@ -175,7 +175,11 @@ async function exportAllExcel() {
 // ============================================================
 
 const TYPES_ANALYSES = ['Hématologie','Biochimie','Bactériologie','Immuno-Sérologie','Parasitologie','Groupe sanguin','Bilan prénatal'];
-const TYPE_COLORS = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#DC2626','#EA580C'];
+// Palette catégorielle validée (contraste CVD OK, contrôlée par le validateur
+// dataviz) — menée par le bleu, cohérente avec la charte CPMI. UTILISÉE PARTOUT
+// pour l'identité d'un type d'analyse (barres ET donut ET camembert agents),
+// pour qu'un même type ait toujours la même couleur.
+const TYPE_COLORS = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7'];
 
 async function renderStats() {
   ['kpi-total','kpi-month','kpi-agents','kpi-recettes-month','kpi-recettes-total'].forEach(id => {
@@ -267,7 +271,7 @@ async function renderStats() {
   });
   const agentEntries = Object.entries(byAgent).sort((a,b) => b[1]-a[1]);
   const maxAgent = Math.max(...agentEntries.map(e => e[1]), 1);
-  const agentColors = ['#2563EB','#7C3AED','#DB2777','#D97706','#059669','#0891B2','#DC2626'];
+  const agentColors = TYPE_COLORS;   // même palette validée pour l'identité
 
   // SVG camembert
   let svgPaths = '';
@@ -355,7 +359,7 @@ async function renderStats() {
       ${recMonths.map(m => `
         <div class="monthly-col">
           <div class="monthly-count" style="font-size:9px">${m.montant ? (m.montant/1000).toFixed(0)+'k' : ''}</div>
-          <div class="monthly-bar" style="height:${Math.max(Math.round(m.montant/maxRecMonth*110),2)}px;background:#15803d"></div>
+          <div class="monthly-bar" style="height:${Math.max(Math.round(m.montant/maxRecMonth*110),2)}px;background:#059669"></div>
           <div class="monthly-month">${m.label}</div>
         </div>
       `).join('')}
@@ -372,7 +376,9 @@ async function renderStats() {
   // ── Graphiques Chart.js ──────────────────────────────────────
   if (window._charts) { Object.values(window._charts).forEach(ch => { try { ch.destroy(); } catch(e){} }); }
   window._charts = {};
-  const CHART_COLORS = {'Hématologie':'#b91c1c','Biochimie':'#854d0e','Bactériologie':'#166534','Immuno-Sérologie':'#5b21b6','Parasitologie':'#9d174d','Groupe sanguin':'#9a3412','Bilan prénatal':'#155e75'};
+  // Donut = MÊMES couleurs que les barres « par type » (par index) : un type
+  // d'analyse garde partout la même teinte.
+  const CHART_COLORS = {}; TYPES_ANALYSES.forEach((t, i) => { CHART_COLORS[t] = TYPE_COLORS[i]; });
   const donutEl = document.getElementById('chartjs-donut');
   if (donutEl && typeof Chart !== 'undefined') {
     const dL=TYPES_ANALYSES.filter(t=>byType[t]>0), dD=dL.map(t=>byType[t]), dC=dL.map(t=>CHART_COLORS[t]||'#6b7280'), dT=dD.reduce((a,b)=>a+b,0);
@@ -382,7 +388,7 @@ async function renderStats() {
   if (barRecEl && typeof Chart !== 'undefined') {
     const bL=[],bD=[];
     for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');bL.push(d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}));bD.push(db.filter(r=>(r.patient?.date||r.savedAt||'').startsWith(k)).reduce((s,r)=>s+(r.montant||0),0));}
-    window._charts.barRec = new Chart(barRecEl,{type:'bar',data:{labels:bL,datasets:[{label:'FCFA',data:bD,backgroundColor:'rgba(30,58,138,.75)',borderColor:'#1e3a8a',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.raw.toLocaleString('fr-FR')+' FCFA'}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}},x:{ticks:{font:{size:10}}}}}});
+    window._charts.barRec = new Chart(barRecEl,{type:'bar',data:{labels:bL,datasets:[{label:'FCFA',data:bD,backgroundColor:'rgba(5,150,105,.78)',borderColor:'#059669',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.raw.toLocaleString('fr-FR')+' FCFA'}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}},x:{ticks:{font:{size:10}}}}}});
   }
   const lineEl = document.getElementById('chartjs-line-evolution');
   if (lineEl && typeof Chart !== 'undefined') {
@@ -392,7 +398,7 @@ async function renderStats() {
     const lD2 = [];
     for(let i=11;i>=0;i--){const d=new Date(now.getFullYear()-1,now.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');lD2.push(db.filter(r=>(r.patient?.date||r.savedAt||'').startsWith(k)).length);}
     window._charts.line = new Chart(lineEl,{type:'line',data:{labels:lL,datasets:[
-      {label:'Cette année',data:lD,borderColor:'#059669',backgroundColor:'rgba(5,150,105,.08)',borderWidth:2,tension:.35,pointRadius:4,fill:true},
+      {label:'Cette année',data:lD,borderColor:'#2a78d6',backgroundColor:'rgba(42,120,214,.08)',borderWidth:2,tension:.35,pointRadius:4,fill:true},
       {label:'An passé',data:lD2,borderColor:'#94a3b8',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],tension:.35,pointRadius:3,fill:false}
     ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:14}}},scales:{y:{beginAtZero:true,ticks:{font:{size:10},stepSize:1}},x:{ticks:{font:{size:10}}}}}});
   }

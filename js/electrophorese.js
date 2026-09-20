@@ -67,8 +67,10 @@ async function _elecDossiers(ref) {
   const b = _elecBornes(ref);
   const toutes = (typeof _dbCache !== 'undefined' ? _dbCache : []) || [];
   // Pré-filtre sur le cache léger : semaine + (électro cochée OU bilan prénatal).
+  // ✅ On INCLUT les fiches masquées (restreintes) : une électrophorèse à faire
+  //   reste à faire même si la fiche est masquée. On les repère par un 🔒.
   const candidats = toutes.filter(r =>
-    !r.deletedAt && !r._hardDeleted && !r.restrictedBy
+    !r.deletedAt && !r._hardDeleted
     && _recDate(r) >= b.du && _recDate(r) <= b.au
     && (_elecCochee(r.resultats) || r.est_bpn));
   if (typeof ensureFull === 'function') {
@@ -86,6 +88,7 @@ function _elecLigne(r) {
     dossier: p.dossier || p.ancien_dossier || '—',
     nom: p.nom || '—',
     groupe: _elecGroupe(r.resultats),
+    masque: !!r.restrictedBy,
   };
 }
 
@@ -118,7 +121,8 @@ async function renderElectro() {
   }
   const corps = lignes.map(l =>
     '<tr><td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
-    + '<td><strong>' + esc(l.nom) + '</strong></td>'
+    + '<td><strong>' + esc(l.nom) + '</strong>'
+    + (l.masque ? ' <span title="Fiche masquée" style="font-size:11px">🔒</span>' : '') + '</td>'
     + '<td style="text-align:center">' + (l.groupe ? esc(l.groupe) : '<span style="color:var(--text-muted)">—</span>') + '</td></tr>').join('');
   zone.innerHTML =
     '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px"><strong style="color:var(--text-label);font-size:15px">'
