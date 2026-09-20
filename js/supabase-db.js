@@ -93,11 +93,15 @@ function getDB() {
   // Admin/Caissier : fiches actives (sans soft-delete ni hard-delete ni masquées)
   if (isAdmin() || isCaissier())
     return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
-  // Agent : ses fiches actives uniquement
+  // ✅ Agent : voit le travail de l'ÉQUIPE sur les journées NON verrouillées
+  //   (le serveur ne lui envoie que celles-là) — fiches non masquées, plus ses
+  //   propres fiches même masquées. Après verrouillage par l'admin, la journée
+  //   sort de sa vue. Les calculs (Caisse/Stats) restent personnels : voir
+  //   getCalcDB, qui garde le filtre par créateur.
   const uid = _currentUser?.username;
   if (!uid) return [];
-  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy
-                              && r.createdBy === uid);
+  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted
+                              && (!r.restrictedBy || r.createdBy === uid));
 }
 
 // ✅ v13.150 — Retrouve un dossier pour l'IMPRESSION / EXPORT, y compris s'il est
