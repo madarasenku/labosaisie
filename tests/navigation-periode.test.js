@@ -14,6 +14,10 @@ const compteMois = prefixe => FICHES.filter(f => f[1].startsWith(prefixe)).lengt
 
   await page.evaluate(() => showView('historique'));
   await page.waitForTimeout(1500);
+  // ✅ La navigation fine (flèches, saut de mois, bouton « Actuel ») vit
+  //   désormais dans le panneau « Filtres » replié par défaut : on l'ouvre.
+  await page.evaluate(() => { const p = document.getElementById('hist-filtres-avances'); if (p) p.style.display = ''; });
+  await page.waitForTimeout(100);
 
   const label = () => page.evaluate(() =>
     document.getElementById('hist-nav-label')?.textContent || '');

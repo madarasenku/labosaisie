@@ -598,6 +598,16 @@ function _grilleApplyMobileExam() {
   cont.querySelectorAll('[data-exam]').forEach(el => {
     el.style.display = (mono && el.getAttribute('data-exam') !== _grilleMobileExam) ? 'none' : '';
   });
+  // En vue « un examen à la fois », on NE MONTRE PAS les patients qui ne font pas
+  //   l'examen choisi : leur carte « — » ne sert à rien (comme la maquette, qui ne
+  //   liste que les patients concernés).
+  cont.querySelectorAll('tr[data-doss]').forEach(tr => {
+    if (!mono) { tr.style.display = ''; return; }
+    const cell = tr.querySelector('td[data-exam="' + _grilleMobileExam + '"]');
+    // « non concerné » = cellule fusionnée « — » (pas de champ de saisie).
+    const nonConcerne = cell && cell.hasAttribute('colspan') && cell.textContent.trim() === '—';
+    tr.style.display = nonConcerne ? 'none' : '';
+  });
   // Reflète le passage mobile ⇄ desktop (rotation / redimensionnement).
   if (!_grilleMobileHooked) {
     _grilleMobileHooked = true;

@@ -35,7 +35,21 @@ function clearSearchFilters() {
 }
 
 // ── Raccourcis de période pour l'Historique (même logique que Statistiques) ──
-let _histPeriode = 'mois'; // 'jour'|'semaine'|'mois'|'tout'|'custom'
+let _histPeriode = 'jour'; // 'jour'|'semaine'|'mois'|'tout'|'custom' — par défaut : aujourd'hui
+
+// Replie/déplie le panneau des filtres avancés (type, statut, tri, navigation
+// dans le temps, dates précises, agent, service). Masqué par défaut pour ne pas
+// surcharger : la barre principale montre juste la recherche + la période rapide.
+function toggleFiltresAvances() {
+  const panel = document.getElementById('hist-filtres-avances');
+  const chev  = document.getElementById('filtres-avances-chevron');
+  const btn   = document.getElementById('btn-filtres-avances');
+  if (!panel) return;
+  const open = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = open ? '' : 'none';
+  if (chev) chev.textContent = open ? '▴' : '▾';
+  if (btn) btn.classList.toggle('active', open);
+}
 
 // ✅ v13.72 — NAVIGATION DANS LE TEMPS
 //   Décalage par rapport à la période courante : 0 = aujourd'hui / cette
@@ -230,13 +244,17 @@ async function renderHistory(forceRefresh) {
   // ✅ v13.183 — Poste Pro « File du jour » : compteurs par statut sur les
   // dossiers filtrés (réutilise getStatut, aucune nouvelle règle).
   try {
-    let nAtt = 0, nUrg = 0, nRen = 0;
+    let nAtt = 0, nEnc = 0, nUrg = 0, nRen = 0;
     filtered.forEach(r => {
       const s = getStatut(r.id);
-      if (s === 'rendu') nRen++; else if (s === 'urgent') nUrg++; else nAtt++;
+      if (s === 'rendu') nRen++;
+      else if (s === 'urgent') nUrg++;
+      else if (s === 'en cours') nEnc++;
+      else nAtt++;
     });
     const setK = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setK('hist-kpi-attente', nAtt); setK('hist-kpi-urgent', nUrg);
+    setK('hist-kpi-attente', nAtt); setK('hist-kpi-encours', nEnc);
+    setK('hist-kpi-urgent', nUrg);
     setK('hist-kpi-rendu', nRen);   setK('hist-kpi-total', filtered.length);
   } catch (e) {}
 
@@ -455,7 +473,7 @@ async function renderHistory(forceRefresh) {
     // patients) dans l'attribut HTML. On passe seulement l'id (numérique) et
     // showPreview() retrouve le dossier dans le cache. Empêche un nom de patient
     // du type '"><img src=x onerror=...> d'exécuter du code dans l'historique.
-    return '<tr id="row-' + r.id + '" class="hist-row-' + getStatut(r.id) + '"'
+    return '<tr id="row-' + r.id + '" class="hist-row-' + getStatut(r.id).replace(/\s+/g, '-') + '"'
       + ' onmousemove="showPreview(event,' + r.id + ')" onmouseleave="hidePreview()">'
       + '<td style="text-align:center;padding:4px;vertical-align:middle"><input type="checkbox" class="bulk-chk" data-id="' + r.id + '" '
         + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
@@ -503,8 +521,7 @@ async function renderHistory(forceRefresh) {
         // PDF. exportPDF/exportRecord restent définis pour un usage éventuel.
         + '<button class="btn btn-success" style="padding:4px 8px;font-size:11px;margin-left:3px" onclick="printRecord(' + r.id + ')" title="Imprimer le compte rendu">🖨 Imprimer</button>'
         + ((isCaissier() || isSpectateur()) ? ''
-            : '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" onclick="dupliquerDossier(' + r.id + ')" title="Dupliquer ce patient">⎘</button>'
-              + dossierMulti
+            : dossierMulti
               + (isAdmin() && isDossierRecord(r) && getRecordTypes(r).length > 0
                   ? getRecordTypes(r).map(t =>
                       '<button class="btn btn-danger" style="padding:3px 7px;font-size:10px;margin-left:2px;opacity:.75" title="Supprimer ' + t + '" onclick="deleteAnalyseFromDossier(' + r.id + ',\'' + t.replace(/'/g,"\\'") + '\')">✕ ' + t.substring(0,4) + '</button>'
@@ -516,7 +533,6 @@ async function renderHistory(forceRefresh) {
         // même titre que la duplication. Seul le spectateur en reste exclu, et
         // c'est softDeleteBtn qui le décide — un seul endroit qui tranche.
         + softDeleteBtn(r)
-        + '<button class="btn" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#f0fdf4;color:#166534;border:1px solid #86efac" onclick="choisirSignataireRecu(' + r.id + ')" title="Imprimer le reçu">🧾</button>'
         + '<button class=\'btn btn-action-menu\' style=\'display:none;padding:4px 10px;font-size:15px;margin-left:3px;line-height:1\' onclick=\'toggleActionMenu(this)\' title=\'Actions\' aria-label=\'Actions\'>⋯</button>'
       + '</td></tr>';
   }).join('');

@@ -44,7 +44,8 @@ const identique = liste => new Set(liste.split(',')).size === 1;
     const e = await etat(page);
     r.check('même période partout',  identique(e.per), true);
     r.check('même bouton actif',     identique(e.boutons), true);
-    r.check('c\'est « mois »',       e.per, 'mois,mois,mois');
+    // ✅ Défaut désormais « aujourd'hui » partout (file du jour / caisse du jour).
+    r.check('c\'est « jour »',       e.per, 'jour,jour,jour');
   }
 
   // ── Changer dans l'Historique se répercute partout ───────────────

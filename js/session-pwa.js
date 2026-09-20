@@ -723,8 +723,9 @@ function renderCaisseAEncaisser() {
 
 function cycleStatut(id) {
   if (blockIfSpectateur()) return;
-  const order = ['attente','rendu','urgent'];
-  const next = order[(order.indexOf(getStatut(id))+1) % order.length];
+  const order = ['attente','en cours','rendu','urgent'];
+  const cur = order.indexOf(getStatut(id));
+  const next = order[(cur < 0 ? 0 : cur + 1) % order.length];
   setStatut(id, next);
 }
 
@@ -740,9 +741,9 @@ function paiementBadge(id) {
 }
 function statutBadge(id) {
   const s = getStatut(id);
-  const labels = {rendu:'✅ Rendu', attente:'⏳ Attente', urgent:'🔴 Urgent'};
-  const cls    = {rendu:'badge-rendu', attente:'badge-attente', urgent:'badge-urgent'};
-  return `<span class="${cls[s]}" onclick="event.stopPropagation();cycleStatut(${id})" title="Cliquer pour changer">${labels[s]}</span>`;
+  const labels = {rendu:'✅ Rendu', 'en cours':'🔵 En cours', attente:'⏳ Rien saisi', urgent:'🔴 Urgent'};
+  const cls    = {rendu:'badge-rendu', 'en cours':'badge-encours', attente:'badge-attente', urgent:'badge-urgent'};
+  return `<span class="${cls[s] || 'badge-attente'}" onclick="event.stopPropagation();cycleStatut(${id})" title="Cliquer pour changer">${labels[s] || labels.attente}</span>`;
 }
 
 // ── Aperçu rapide au survol ──
@@ -1296,7 +1297,7 @@ async function submitChangerMdp() {
 // ── FEATURE 5 : tableau de bord Caisse ────────────────────────────
 // ✅ v13.108 — Défaut aligné sur les autres vues (« ce mois ») : la période
 // est désormais commune à l'Historique, la Caisse et les Statistiques.
-let _caissePeriode = 'mois';
+let _caissePeriode = 'jour';
 let _caisseChart = null;
 // ✅ v13.73 — décalage temporel de la Caisse (voir js/periode-nav.js)
 let _caisseDecalage = 0;
