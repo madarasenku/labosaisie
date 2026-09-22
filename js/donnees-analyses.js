@@ -623,7 +623,7 @@ function makeParamRow(p, tbody) {
   const readonly = p.calc ? 'readonly title="Calculé automatiquement"' : '';
   tr.innerHTML = `
     <td style="font-size:13px;white-space:nowrap">${p.name}</td>
-    <td><input type="number" id="v_${p.id}" step="any" style="${inputStyle}" ${readonly} oninput="onParamInput('${p.id}')"></td>
+    <td><input type="text" inputmode="decimal" id="v_${p.id}" step="any" style="${inputStyle}" ${readonly} oninput="onParamInput('${p.id}')"></td>
     <td><span class="unit" id="unit_${p.id}">${getUnit(p.id, p.unit)}</span></td>
     <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
     <td><span class="interp interp-?" id="i_${p.id}">—</span></td>
@@ -645,7 +645,7 @@ function makeParamRowColored(p, tbody) {
   const readonly = p.calc ? 'readonly title="Calculé automatiquement"' : '';
   tr.innerHTML = `
     <td style="font-size:13px;white-space:nowrap">${p.name}</td>
-    <td><input type="number" id="v_${p.id}" step="any" style="${inputStyle}" ${readonly} oninput="onParamInputColored('${p.id}')"></td>
+    <td><input type="text" inputmode="decimal" id="v_${p.id}" step="any" style="${inputStyle}" ${readonly} oninput="onParamInputColored('${p.id}')"></td>
     <td><span class="unit" id="unit_${p.id}">${getUnit(p.id, p.unit)}</span></td>
     <td><span class="ref-range" id="ref_${p.id}">${refDisplay}</span></td>
   `;
@@ -896,7 +896,7 @@ function buildBpnSero2() {
     const refTxt = t.ref || (t.type === 'qual' ? 'Négatif attendu' : '');
     tr.innerHTML = `<td style="font-size:13px">${t.name}</td>
       <td><select id="sr_${t.id}_r"><option value="">—</option><option>Positif</option><option>Négatif</option><option>Non réalisé</option></select></td>
-      <td><input type="number" id="sv_${t.id}" step="any" style="width:80px" placeholder="${t.unit||''}"></td>
+      <td><input type="text" inputmode="decimal" id="sv_${t.id}" step="any" style="width:80px" placeholder="${t.unit||''}"></td>
       <td><span class="ref-range">${refTxt}</span></td>`;
     b.appendChild(tr);
   });
@@ -924,7 +924,7 @@ function buildBpnNfs() {
       const dynRef  = getRef(p.id, profile) || { ref: p.ref };
       tr.innerHTML = `
         <td style="font-size:13px">${p.name}</td>
-        <td><input type="number" id="v_${p.id}" step="any" min="0" max="100" style="width:75px"
+        <td><input type="text" inputmode="decimal" id="v_${p.id}" step="any" min="0" max="100" style="width:75px"
             oninput="onParamInputColored('${p.id}'); calcBpnFLAbsolues()"></td>
         <td>
           <span class="unit">%</span>
@@ -1137,7 +1137,7 @@ function buildHema() {
     const _ro = _auto ? ' readonly title="Calculé automatiquement" style="width:75px;background:#f1f3f5;color:#555"' : ' style="width:75px"';
     tr.innerHTML = `
       <td style="font-size:13px">${p.name}${_auto ? ' <span style="font-size:9px;color:#94a3b8">(auto)</span>' : ''}</td>
-      <td><input type="number" id="v_${p.id}" step="any" min="0" max="100"${_ro}
+      <td><input type="text" inputmode="decimal" id="v_${p.id}" step="any" min="0" max="100"${_ro}
           oninput="onFLParamInput('${p.id}')"></td>
       <td>
         <span class="unit">%</span>
@@ -1158,7 +1158,7 @@ function buildHema() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="font-size:13px">${p.name}</td>
-        <td><input type="number" id="${p.id}" step="0.1" min="0" max="100" style="width:80px"
+        <td><input type="text" inputmode="decimal" id="${p.id}" step="0.1" min="0" max="100" style="width:80px"
             oninput="checkEphbTotal()"></td>
         <td><span class="ref-range" id="ref_${p.id}">${refDisp}</span></td>
         <td><span class="interp" id="i_${p.id}">—</span></td>`;
@@ -1551,7 +1551,7 @@ function buildSero() {
       <td><select id="sr_${t.id}" style="width:130px"><option value="">—</option><option>Positif</option><option>Négatif</option><option>Douteux</option></select></td>
       <td>
         <span id="sqwrap_${t.id}">
-          <input type="number" id="sv_${t.id}" step="any" style="width:90px"
+          <input type="text" inputmode="decimal" id="sv_${t.id}" step="any" style="width:90px"
                  placeholder="valeur" oninput="onSeroQuantInput('${t.id}')">
           <span class="unit" id="sero_unit_${t.id}">${unitText}</span>
           <span class="interp" id="sero_interp_${t.id}" style="margin-left:6px"></span>

@@ -1137,7 +1137,7 @@ function checkCriticalLive() {
   const box = document.getElementById('critical-alert-box');
   if (!box) return;
   const alerts = [];
-  document.querySelectorAll('#zone-saisie input[type="number"]').forEach(inp => {
+  document.querySelectorAll('#zone-saisie input[inputmode="decimal"]').forEach(inp => {
     const num = parseFloat((inp.value || '').replace(',', '.'));
     if (isNaN(num)) return;
     const label = (inp.closest('tr')?.cells?.[0]?.textContent || '').toLowerCase().trim();
@@ -1165,7 +1165,7 @@ function checkCriticalLive() {
 }
 // Écoute déléguée : toute saisie numérique dans la zone de saisie déclenche le contrôle
 document.addEventListener('input', e => {
-  if (e.target && e.target.matches && e.target.matches('#zone-saisie input[type="number"]')) checkCriticalLive();
+  if (e.target && e.target.matches && e.target.matches('#zone-saisie input[inputmode="decimal"]')) checkCriticalLive();
 });
 
 // ── FEATURE 10 : notifications + badge de navigation ──────────────
