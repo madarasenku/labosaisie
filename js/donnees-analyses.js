@@ -18,8 +18,9 @@
 const TRANCHES = {
   NN:        { label: 'Nouveau-né',  min: 0,   max: 0.08  }, // < 1 mois
   NOURR:     { label: 'Nourrisson',  min: 0.08, max: 2    }, // 1 mois – 2 ans
-  ENFANT:    { label: 'Enfant',      min: 2,    max: 15   },
-  ADULTE:    { label: 'Adulte',      min: 15,   max: 60   },
+  ENFANT:    { label: 'Enfant',      min: 2,    max: 12   }, // 2 – 12 ans
+  ADO:       { label: 'Adolescent',  min: 12,   max: 18   }, // 12 – 18 ans
+  ADULTE:    { label: 'Adulte',      min: 18,   max: 60   },
   SENIOR:    { label: 'Senior',      min: 60,   max: 999  },
 };
 
@@ -65,7 +66,8 @@ function getPatientProfile() {
   if (known) {
     if (age < 0.08) tranche = 'NN';
     else if (age < 2)  tranche = 'NOURR';
-    else if (age < 15) tranche = 'ENFANT';
+    else if (age < 12) tranche = 'ENFANT';
+    else if (age < 18) tranche = 'ADO';
     else if (age < 60) tranche = 'ADULTE';
     else tranche = 'SENIOR';
   }
@@ -82,7 +84,8 @@ function profileFromPatient(pat) {
   if (age !== null) {
     if (age < 0.08)      tranche = 'NN';
     else if (age < 2)    tranche = 'NOURR';
-    else if (age < 15)   tranche = 'ENFANT';
+    else if (age < 12)   tranche = 'ENFANT';
+    else if (age < 18)   tranche = 'ADO';
     else if (age < 60)   tranche = 'ADULTE';
     else                 tranche = 'SENIOR';
   }
@@ -112,126 +115,255 @@ function refDisplayFor(p, profile) {
 
 // Table de références par paramètre, tranche, sexe
 // Format : { ref, lo, hi }  — lo/hi pour l'interprétation auto
+// ✅ v13.195 — Valeurs de référence alignées sur le référentiel CPMI
+// (fichier « refs_valeurs_reference.json »), stratifiées par 6 groupes :
+// nouveau-né → NN, nourrisson → NOURR, enfant → ENFANT, ado → ADO,
+// homme/femme adulte → ADULTE (repris tel quel pour SENIOR, faute de
+// référentiel gériatrique séparé). Les unités correspondent EXACTEMENT à
+// celles de la saisie/impression (mêmes listes BIO_*/HEMA_* ci-dessous) :
+// Ca/Phos/Mg sont désormais en mg/L (et non plus en mmol/L — ancien bug qui
+// signalait toute valeur comme anormale).
 const NORM = {
-  // ── Hémoglobine ──
+  // ── Hémoglobine (g/dL) ──
   hb: {
-    NN:     { M:'14–22', F:'14–22', lo:14, hi:22 },
-    NOURR:  { M:'9–14',  F:'9–14',  lo:9,  hi:14 },
-    ENFANT: { M:'11–15', F:'11–15', lo:11, hi:15 },
+    NN:     { M:'13.5–21',   F:'13.5–21',   lo:13.5, hi:21 },
+    NOURR:  { M:'10.5–13.5', F:'10.5–13.5', lo:10.5, hi:13.5 },
+    ENFANT: { M:'11.5–15.5', F:'11.5–15.5', lo:11.5, hi:15.5 },
+    ADO:    { M:'12–16',     F:'12–16',     lo:12,   hi:16 },
     ADULTE: { M:'13–17', F:'12–16', loM:13, hiM:17, loF:12, hiF:16 },
-    SENIOR: { M:'11–17', F:'11–16', loM:11, hiM:17, loF:11, hiF:16 },
+    SENIOR: { M:'13–17', F:'12–16', loM:13, hiM:17, loF:12, hiF:16 },
   },
   ht: {
-    NN:     { M:'44–64', F:'44–64', lo:44, hi:64 },
-    NOURR:  { M:'28–42', F:'28–42', lo:28, hi:42 },
-    ENFANT: { M:'33–44', F:'33–44', lo:33, hi:44 },
-    ADULTE: { M:'40–54', F:'37–47', loM:40, hiM:54, loF:37, hiF:47 },
-    SENIOR: { M:'37–52', F:'36–46', loM:37, hiM:52, loF:36, hiF:46 },
+    NN:     { M:'42–65', F:'42–65', lo:42, hi:65 },
+    NOURR:  { M:'33–39', F:'33–39', lo:33, hi:39 },
+    ENFANT: { M:'34–46', F:'34–46', lo:34, hi:46 },
+    ADO:    { M:'36–46', F:'36–46', lo:36, hi:46 },
+    ADULTE: { M:'40–52', F:'36–46', loM:40, hiM:52, loF:36, hiF:46 },
+    SENIOR: { M:'40–52', F:'36–46', loM:40, hiM:52, loF:36, hiF:46 },
   },
   gbc: {
     NN:     { M:'9–30',   F:'9–30',   lo:9,   hi:30  },
-    NOURR:  { M:'5–18',   F:'5–18',   lo:5,   hi:18  },
-    ENFANT: { M:'5–14',   F:'5–14',   lo:5,   hi:14  },
+    NOURR:  { M:'6–17',   F:'6–17',   lo:6,   hi:17  },
+    ENFANT: { M:'5–15',   F:'5–15',   lo:5,   hi:15  },
+    ADO:    { M:'4.5–13', F:'4.5–13', lo:4.5, hi:13  },
     ADULTE: { M:'4–10',   F:'4–10',   lo:4,   hi:10  },
-    SENIOR: { M:'4–11',   F:'4–11',   lo:4,   hi:11  },
+    SENIOR: { M:'4–10',   F:'4–10',   lo:4,   hi:10  },
   },
   gr: {
-    NN:     { M:'4.0–6.5', F:'4.0–6.5', lo:4.0, hi:6.5 },
-    NOURR:  { M:'3.0–5.2', F:'3.0–5.2', lo:3.0, hi:5.2 },
-    ENFANT: { M:'3.7–5.3', F:'3.7–5.3', lo:3.7, hi:5.3 },
-    ADULTE: { M:'4.5–5.5', F:'4.0–5.0', loM:4.5, hiM:5.5, loF:4.0, hiF:5.0 },
-    SENIOR: { M:'4.0–5.5', F:'3.8–5.0', loM:4.0, hiM:5.5, loF:3.8, hiF:5.0 },
+    NN:     { M:'4.1–6.1', F:'4.1–6.1', lo:4.1, hi:6.1 },
+    NOURR:  { M:'3.7–5.3', F:'3.7–5.3', lo:3.7, hi:5.3 },
+    ENFANT: { M:'4.0–5.2', F:'4.0–5.2', lo:4.0, hi:5.2 },
+    ADO:    { M:'4.1–5.5', F:'4.1–5.5', lo:4.1, hi:5.5 },
+    ADULTE: { M:'4.5–5.9', F:'4.0–5.2', loM:4.5, hiM:5.9, loF:4.0, hiF:5.2 },
+    SENIOR: { M:'4.5–5.9', F:'4.0–5.2', loM:4.5, hiM:5.9, loF:4.0, hiF:5.2 },
   },
   plt: {
-    NN:     { M:'150–350', F:'150–350', lo:150, hi:350 },
-    NOURR:  { M:'200–500', F:'200–500', lo:200, hi:500 },
+    NN:     { M:'150–450', F:'150–450', lo:150, hi:450 },
+    NOURR:  { M:'150–450', F:'150–450', lo:150, hi:450 },
     ENFANT: { M:'150–450', F:'150–450', lo:150, hi:450 },
+    ADO:    { M:'150–400', F:'150–400', lo:150, hi:400 },
     ADULTE: { M:'150–400', F:'150–400', lo:150, hi:400 },
     SENIOR: { M:'150–400', F:'150–400', lo:150, hi:400 },
   },
-  vgm:  { _all: { ref:'80–100', lo:80, hi:100 } },
-  tcmh: { _all: { ref:'27–32',  lo:27, hi:32  } },
-  ccmh: { _all: { ref:'32–36',  lo:32, hi:36  } },
-  ret:  { _all: { ref:'0.5–1.5', lo:0.5, hi:1.5 } },
-  vs: {
-    NN:     { M:'< 2',  F:'< 2',  lo:0, hiM:2,  hiF:2  },
-    NOURR:  { M:'< 10', F:'< 10', lo:0, hiM:10, hiF:10 },
-    ENFANT: { M:'< 10', F:'< 12', lo:0, hiM:10, hiF:12 },
-    ADULTE: { M:'< 15', F:'< 20', lo:0, hiM:15, hiF:20 },
-    SENIOR: { M:'< 20', F:'< 30', lo:0, hiM:20, hiF:30 },
+  vgm: {
+    NN:      { ref:'95–120', lo:95, hi:120 },
+    NOURR:   { ref:'70–86',  lo:70, hi:86 },
+    ENFANT:  { ref:'75–87',  lo:75, hi:87 },
+    ADO:     { ref:'78–95',  lo:78, hi:95 },
+    _default:{ ref:'80–100', lo:80, hi:100 },
   },
-  // Formule leucocytaire — identiques quel que soit le profil chez adulte
-  pnn:  { _all: { ref:'50–70', lo:50, hi:70 } },
-  pne:  { _all: { ref:'1–5',   lo:1,  hi:5  } },
-  pnb:  { _all: { ref:'0–1',   lo:0,  hi:1  } },
+  tcmh: {
+    NN:      { ref:'31–37', lo:31, hi:37 },
+    NOURR:   { ref:'24–30', lo:24, hi:30 },
+    ENFANT:  { ref:'25–33', lo:25, hi:33 },
+    ADO:     { ref:'26–34', lo:26, hi:34 },
+    _default:{ ref:'27–34', lo:27, hi:34 },
+  },
+  ccmh: {
+    NN:      { ref:'30–36', lo:30, hi:36 },
+    _default:{ ref:'32–36', lo:32, hi:36 },
+  },
+  ret: {
+    NN:      { ref:'2–6',     lo:2,   hi:6 },
+    _default:{ ref:'0.5–2.5', lo:0.5, hi:2.5 },
+  },
+  vs: {
+    NN:     { M:'< 4',  F:'< 4',  lo:0, hiM:4,  hiF:4  },
+    NOURR:  { M:'< 10', F:'< 10', lo:0, hiM:10, hiF:10 },
+    ENFANT: { M:'< 10', F:'< 10', lo:0, hiM:10, hiF:10 },
+    ADO:    { M:'< 15', F:'< 15', lo:0, hiM:15, hiF:15 },
+    ADULTE: { M:'< 15', F:'< 20', lo:0, hiM:15, hiF:20 },
+    SENIOR: { M:'< 15', F:'< 20', lo:0, hiM:15, hiF:20 },
+  },
+  // Formule leucocytaire (%)
+  pnn: {
+    NN:      { ref:'40–70', lo:40, hi:70 },
+    NOURR:   { ref:'20–45', lo:20, hi:45 },
+    ENFANT:  { ref:'30–60', lo:30, hi:60 },
+    ADO:     { ref:'40–70', lo:40, hi:70 },
+    _default:{ ref:'40–75', lo:40, hi:75 },
+  },
+  pne:  { _all: { ref:'1–6', lo:1, hi:6 } },
+  pnb:  { _all: { ref:'0–1', lo:0, hi:1 } },
   lymp: {
-    NN:     { M:'20–40', F:'20–40', lo:20, hi:40 },
-    NOURR:  { M:'40–70', F:'40–70', lo:40, hi:70 },
-    ENFANT: { M:'25–50', F:'25–50', lo:25, hi:50 },
-    ADULTE: { M:'20–40', F:'20–40', lo:20, hi:40 },
-    SENIOR: { M:'20–40', F:'20–40', lo:20, hi:40 },
+    NN:      { ref:'25–40', lo:25, hi:40 },
+    NOURR:   { ref:'45–75', lo:45, hi:75 },
+    ENFANT:  { ref:'30–60', lo:30, hi:60 },
+    ADO:     { ref:'25–45', lo:25, hi:45 },
+    _default:{ ref:'20–40', lo:20, hi:40 },
   },
   mono: { _all: { ref:'2–10', lo:2, hi:10 } },
 
   // ── Biochimie ──
   gly: {
-    NN:     { M:'0.40–0.80', F:'0.40–0.80', lo:0.40, hi:0.80 },
-    NOURR:  { M:'0.60–1.00', F:'0.60–1.00', lo:0.60, hi:1.00 },
-    ENFANT: { M:'0.70–1.00', F:'0.70–1.00', lo:0.70, hi:1.00 },
-    ADULTE: { M:'0.70–1.10', F:'0.70–1.10', lo:0.60, hi:1.10 },
-    SENIOR: { M:'0.70–1.26', F:'0.70–1.26', lo:0.70, hi:1.26 },
+    NN:      { ref:'0.40–0.90', lo:0.40, hi:0.90 },
+    NOURR:   { ref:'0.40–0.90', lo:0.40, hi:0.90 },
+    ENFANT:  { ref:'0.60–1.00', lo:0.60, hi:1.00 },
+    ADO:     { ref:'0.70–1.10', lo:0.70, hi:1.10 },
+    _default:{ ref:'0.70–1.10', lo:0.70, hi:1.10 },
   },
-  hba:  { _all: { ref:'< 6.0', lo:0, hi:6.0 } },
-  // ✅ v13.143 — Ces bornes étaient exprimées en µmol/L alors que la saisie et
-  // l'impression sont en mg/L (liste canonique BIO_REIN : 4–16 mg/L). Toute
-  // créatinine était donc signalée anormale et la référence imprimée était
-  // fausse. On s'aligne sur la liste canonique.
-  crea: { _all: { ref:'4–16', lo:4, hi:16 } },
-  // ✅ v13.143 — Bornes en g/L (liste canonique BIO_REIN : 0.15–0.45 g/L).
-  // ⚠ Références NON modifiées (demande explicite) : seul le RÉSULTAT de l'urée
-  //   est déduit de la créatinine (créat / 44), pas les valeurs normales.
-  uree: { _all: { ref:'0.15–0.45', lo:0.15, hi:0.45 } },
-  // ✅ v13.145 — Bornes en µmol/L alors que la saisie et l'impression sont en
-  // mg/L (liste canonique BIO_REIN : 25–70 mg/L). Tout acide urique était
-  // signalé anormal et la référence imprimée était fausse.
-  ua: { _all: { ref:'25–70', lo:25, hi:70 } },
-  asat: { _all: { ref:'< 40', lo:0, hi:40 } },
+  hba:  { _all: { ref:'< 5.7', lo:0, hi:5.7 } },
+  // Créatinine en mg/L (liste canonique BIO_REIN). Stratifiée par âge + sexe.
+  crea: {
+    NN:     { M:'3–10', F:'3–10', lo:3, hi:10 },
+    NOURR:  { M:'3–7',  F:'3–7',  lo:3, hi:7 },
+    ENFANT: { M:'3–8',  F:'3–8',  lo:3, hi:8 },
+    ADO:    { M:'5–10', F:'5–10', lo:5, hi:10 },
+    ADULTE: { M:'7–13', F:'6–11', loM:7, hiM:13, loF:6, hiF:11 },
+    SENIOR: { M:'7–13', F:'6–11', loM:7, hiM:13, loF:6, hiF:11 },
+  },
+  // Urée en g/L (liste canonique BIO_REIN).
+  uree: {
+    NN:      { ref:'0.10–0.40', lo:0.10, hi:0.40 },
+    NOURR:   { ref:'0.10–0.35', lo:0.10, hi:0.35 },
+    ENFANT:  { ref:'0.15–0.40', lo:0.15, hi:0.40 },
+    _default:{ ref:'0.15–0.45', lo:0.15, hi:0.45 },
+  },
+  // Acide urique en mg/L (liste canonique BIO_REIN).
+  ua: {
+    NN:     { M:'20–50', F:'20–50', lo:20, hi:50 },
+    NOURR:  { M:'20–50', F:'20–50', lo:20, hi:50 },
+    ENFANT: { M:'20–50', F:'20–50', lo:20, hi:50 },
+    ADO:    { M:'25–65', F:'25–65', lo:25, hi:65 },
+    ADULTE: { M:'35–70', F:'25–60', loM:35, hiM:70, loF:25, hiF:60 },
+    SENIOR: { M:'35–70', F:'25–60', loM:35, hiM:70, loF:25, hiF:60 },
+  },
+  asat: {
+    NN:      { ref:'< 75', lo:0, hi:75 },
+    NOURR:   { ref:'< 55', lo:0, hi:55 },
+    ENFANT:  { ref:'< 50', lo:0, hi:50 },
+    ADO:     { ref:'< 45', lo:0, hi:45 },
+    _default:{ ref:'< 40', lo:0, hi:40 },
+  },
   alat: {
-    ADULTE: { M:'< 45', F:'< 35', lo:0, hiM:45, hiF:35 },
-    _default: { ref:'< 40', lo:0, hi:40 },
+    NN:      { ref:'< 55', lo:0, hi:55 },
+    NOURR:   { ref:'< 50', lo:0, hi:50 },
+    ENFANT:  { ref:'< 40', lo:0, hi:40 },
+    ADO:     { ref:'< 40', lo:0, hi:40 },
+    ADULTE:  { M:'< 41', F:'< 33', lo:0, hiM:41, hiF:33 },
+    SENIOR:  { M:'< 41', F:'< 33', lo:0, hiM:41, hiF:33 },
   },
   ggt: {
-    ADULTE: { M:'< 55', F:'< 38', lo:0, hiM:55, hiF:38 },
-    _default: { ref:'< 55', lo:0, hi:55 },
+    NN:      { ref:'< 200', lo:0, hi:200 },
+    NOURR:   { ref:'< 30',  lo:0, hi:30 },
+    ENFANT:  { ref:'< 25',  lo:0, hi:25 },
+    ADO:     { ref:'< 40',  lo:0, hi:40 },
+    ADULTE:  { M:'< 55', F:'< 38', lo:0, hiM:55, hiF:38 },
+    SENIOR:  { M:'< 55', F:'< 38', lo:0, hiM:55, hiF:38 },
   },
   pal: {
-    ENFANT: { M:'100–350', F:'100–350', lo:100, hi:350 },
-    ADULTE: { M:'40–130',  F:'35–105',  loM:40, hiM:130, loF:35, hiF:105 },
-    SENIOR: { M:'40–150',  F:'40–130',  loM:40, hiM:150, loF:40, hiF:130 },
-    _default: { ref:'40–130', lo:40, hi:130 },
+    NN:      { ref:'90–350',  lo:90,  hi:350 },
+    NOURR:   { ref:'110–400', lo:110, hi:400 },
+    ENFANT:  { ref:'110–400', lo:110, hi:400 },
+    ADO:     { ref:'50–400',  lo:50,  hi:400 },
+    _default:{ ref:'40–130',  lo:40,  hi:130 },
   },
-  bili:  { _all: { ref:'< 20',   lo:0, hi:20  } },
-  bilid: { _all: { ref:'< 5',    lo:0, hi:5   } },
-  prot:  { _all: { ref:'65–80',  lo:65, hi:80 } },
-  alb:   { _all: { ref:'35–50',  lo:35, hi:50 } },
-  chol:  { _all: { ref:'< 2.0',  lo:0,  hi:2.0  } },
-  trig:  { _all: { ref:'< 1.5',  lo:0,  hi:1.5  } },
+  bili:  { _all: { ref:'3–12', lo:0, hi:12 } },
+  bilid: {
+    NN:      { ref:'< 5', lo:0, hi:5 },
+    NOURR:   { ref:'< 5', lo:0, hi:5 },
+    _default:{ ref:'< 3', lo:0, hi:3 },
+  },
+  prot: {
+    NN:      { ref:'46–70', lo:46, hi:70 },
+    NOURR:   { ref:'51–73', lo:51, hi:73 },
+    ENFANT:  { ref:'57–80', lo:57, hi:80 },
+    ADO:     { ref:'60–83', lo:60, hi:83 },
+    _default:{ ref:'64–83', lo:64, hi:83 },
+  },
+  alb: {
+    NN:      { ref:'28–44', lo:28, hi:44 },
+    NOURR:   { ref:'35–50', lo:35, hi:50 },
+    ENFANT:  { ref:'38–54', lo:38, hi:54 },
+    _default:{ ref:'35–52', lo:35, hi:52 },
+  },
+  chol: {
+    NN:      { ref:'< 1.50', lo:0, hi:1.50 },
+    NOURR:   { ref:'< 1.70', lo:0, hi:1.70 },
+    ENFANT:  { ref:'< 1.70', lo:0, hi:1.70 },
+    ADO:     { ref:'< 1.90', lo:0, hi:1.90 },
+    _default:{ ref:'< 2.00', lo:0, hi:2.00 },
+  },
+  trig: {
+    NN:      { ref:'< 1.50', lo:0, hi:1.50 },
+    NOURR:   { ref:'< 1.00', lo:0, hi:1.00 },
+    ENFANT:  { ref:'< 1.00', lo:0, hi:1.00 },
+    ADO:     { ref:'< 1.30', lo:0, hi:1.30 },
+    _default:{ ref:'< 1.50', lo:0, hi:1.50 },
+  },
   hdl: {
-    ADULTE: { M:'> 0.40', F:'> 0.50', lo:0.40, hi:99, loM:0.40, loF:0.50 },
-    _default: { ref:'> 0.40', lo:0.40, hi:99 },
+    NN:      { ref:'> 0.30', lo:0.30, hi:99 },
+    NOURR:   { ref:'> 0.45', lo:0.45, hi:99 },
+    ENFANT:  { ref:'> 0.45', lo:0.45, hi:99 },
+    ADO:     { ref:'> 0.45', lo:0.45, hi:99 },
+    ADULTE:  { M:'> 0.40', F:'> 0.50', loM:0.40, loF:0.50, hi:99 },
+    SENIOR:  { M:'> 0.40', F:'> 0.50', loM:0.40, loF:0.50, hi:99 },
   },
-  ldl:   { _all: { ref:'< 1.60', lo:0, hi:1.60 } },
-  na:    { _all: { ref:'136–145', lo:136, hi:145 } },
-  k:     { _all: { ref:'3.5–5.0', lo:3.5, hi:5.0 } },
-  cl:    { _all: { ref:'98–107',  lo:98,  hi:107 } },
-  ca:    { _all: { ref:'2.2–2.6', lo:2.2, hi:2.6 } },
+  ldl: {
+    NN:      { ref:'< 1.00', lo:0, hi:1.00 },
+    NOURR:   { ref:'< 1.10', lo:0, hi:1.10 },
+    ENFANT:  { ref:'< 1.10', lo:0, hi:1.10 },
+    ADO:     { ref:'< 1.30', lo:0, hi:1.30 },
+    _default:{ ref:'< 1.60', lo:0, hi:1.60 },
+  },
+  na: {
+    NN:      { ref:'133–146', lo:133, hi:146 },
+    _default:{ ref:'135–145', lo:135, hi:145 },
+  },
+  k: {
+    NN:      { ref:'3.7–5.9', lo:3.7, hi:5.9 },
+    NOURR:   { ref:'3.5–5.5', lo:3.5, hi:5.5 },
+    ENFANT:  { ref:'3.5–5.3', lo:3.5, hi:5.3 },
+    _default:{ ref:'3.5–5.1', lo:3.5, hi:5.1 },
+  },
+  cl: {
+    NN:      { ref:'98–110', lo:98, hi:110 },
+    _default:{ ref:'98–107', lo:98, hi:107 },
+  },
+  // Ca/Phos/Mg en mg/L (correctif du bug mmol/L : toute valeur était anormale).
+  ca: {
+    NN:      { ref:'75–110', lo:75, hi:110 },
+    NOURR:   { ref:'75–110', lo:75, hi:110 },
+    ENFANT:  { ref:'90–107', lo:90, hi:107 },
+    _default:{ ref:'88–105', lo:88, hi:105 },
+  },
   phos: {
-    ENFANT: { M:'1.3–2.3', F:'1.3–2.3', lo:1.3, hi:2.3 },
-    ADULTE: { M:'0.8–1.5', F:'0.8–1.5', lo:0.8, hi:1.5 },
-    _default: { ref:'0.8–1.5', lo:0.8, hi:1.5 },
+    NN:      { ref:'45–95', lo:45, hi:95 },
+    NOURR:   { ref:'45–85', lo:45, hi:85 },
+    ENFANT:  { ref:'40–65', lo:40, hi:65 },
+    ADO:     { ref:'30–50', lo:30, hi:50 },
+    _default:{ ref:'25–45', lo:25, hi:45 },
   },
-  mg:    { _all: { ref:'0.75–1.0', lo:0.75, hi:1.0 } },
-  bic:   { _all: { ref:'22–28',    lo:22,   hi:28  } },
+  mg: {
+    NN:      { ref:'15–25', lo:15, hi:25 },
+    _default:{ ref:'17–25', lo:17, hi:25 },
+  },
+  bic: {
+    NN:      { ref:'17–24', lo:17, hi:24 },
+    NOURR:   { ref:'20–26', lo:20, hi:26 },
+    ENFANT:  { ref:'22–28', lo:22, hi:28 },
+    _default:{ ref:'22–29', lo:22, hi:29 },
+  },
 
   // BPN NFS
   bpn_hb:   { _all: { ref:'≥ 11.0', lo:11.0, hi:16.0 } },
@@ -245,10 +377,25 @@ const NORM = {
   bpn_crea: { _all: { ref:'35–90',  lo:35,   hi:90   } },
   bpn_uree: { _all: { ref:'2.0–6.5',lo:2.0,  hi:6.5  } },
 
-  // ── Électrophorèse de l'hémoglobine ──
-  ephb_a:  { _all: { ref:'95–97',   lo:95,  hi:97  } },
-  ephb_a2: { _all: { ref:'1.5–3.5', lo:1.5, hi:3.5 } },
-  ephb_f:  { _all: { ref:'< 2',     lo:0,   hi:2   } },
+  // ── Électrophorèse de l'hémoglobine (%) ──
+  ephb_a: {
+    NN:      { ref:'> 20', lo:20, hi:100 },
+    NOURR:   { ref:'> 95', lo:95, hi:100 },
+    ENFANT:  { ref:'> 96', lo:96, hi:100 },
+    ADO:     { ref:'> 96', lo:96, hi:100 },
+    _default:{ ref:'96.5–98.5', lo:96.5, hi:98.5 },
+  },
+  ephb_a2: {
+    NN:      { ref:'< 1',     lo:0,   hi:1   },
+    NOURR:   { ref:'1.5–3.5', lo:1.5, hi:3.5 },
+    _default:{ ref:'2–3.5',   lo:2,   hi:3.5 },
+  },
+  ephb_f: {
+    NN:      { ref:'50–85', lo:50, hi:85 },
+    NOURR:   { ref:'< 15',  lo:0,  hi:15 },
+    ENFANT:  { ref:'< 2',   lo:0,  hi:2  },
+    _default:{ ref:'< 1',   lo:0,  hi:1  },
+  },
   ephb_s:  { _all: { ref:'0',       lo:0,   hi:0   } },
   ephb_c:  { _all: { ref:'0',       lo:0,   hi:0   } },
   ephb_d:  { _all: { ref:'0',       lo:0,   hi:0   } },
@@ -442,14 +589,14 @@ function updateMontant(type) {
 
 const HEMA_PARAMS = [
   { id:'gbc',  name:'Globules blancs (GB)',    unit:'10³/µL',refM:'4–10',    refF:'4–10',    lo:4,   hi:10  },
-  { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL',refM:'4.5–5.5', refF:'4.0–5.0', lo:4.0, hi:5.5 },
+  { id:'gr',   name:'Globules rouges (GR)',    unit:'10⁶/µL',refM:'4.5–5.9', refF:'4.0–5.2', lo:4.0, hi:5.9 },
   { id:'hb',   name:'Hémoglobine (Hb)',        unit:'g/dL',  refM:'13–17',   refF:'12–16',   lo:12,  hi:17  },
-  { id:'ht',   name:'Hématocrite (Ht)',         unit:'%',     refM:'40–54',   refF:'37–47',   lo:37,  hi:54  },
+  { id:'ht',   name:'Hématocrite (Ht)',         unit:'%',     refM:'40–52',   refF:'36–46',   lo:36,  hi:52  },
   { id:'vgm',  name:'VGM ⚙',                  unit:'fL',    refM:'80–100',  refF:'80–100',  lo:80,  hi:100, calc:true },
-  { id:'tcmh', name:'TCMH ⚙',                 unit:'pg',    refM:'27–32',   refF:'27–32',   lo:27,  hi:32,  calc:true },
+  { id:'tcmh', name:'TCMH ⚙',                 unit:'pg',    refM:'27–34',   refF:'27–34',   lo:27,  hi:34,  calc:true },
   { id:'ccmh', name:'CCMH ⚙',                unit:'g/dL',  refM:'32–36',   refF:'32–36',   lo:32,  hi:36,  calc:true },
   { id:'plt',  name:'Plaquettes',              unit:'10³/µL',refM:'150–400', refF:'150–400', lo:150, hi:400 },
-  { id:'ret',  name:'Réticulocytes',           unit:'%',     refM:'0.5–1.5', refF:'0.5–1.5', lo:0.5, hi:1.5 },
+  { id:'ret',  name:'Réticulocytes',           unit:'%',     refM:'0.5–2.5', refF:'0.5–2.5', lo:0.5, hi:2.5 },
   { id:'vs',   name:'VS (1ère heure)',         unit:'mm/h',  refM:'< 15',    refF:'< 20',    lo:0,   hiM:15, hiF:20 },
 ];
 
@@ -463,9 +610,9 @@ const HEMA_FL = [
 
 // Électrophorèse de l'hémoglobine
 const EPHB_FRACTIONS = [
-  { id:'ephb_a',   name:'Hb A',   unit:'%',  ref:'95–97', lo:95,  hi:97  },
-  { id:'ephb_a2',  name:'Hb A2',  unit:'%',  ref:'1.5–3.5', lo:1.5, hi:3.5 },
-  { id:'ephb_f',   name:'Hb F',   unit:'%',  ref:'< 2',   lo:0,   hi:2   },
+  { id:'ephb_a',   name:'Hb A',   unit:'%',  ref:'96.5–98.5', lo:96.5, hi:98.5 },
+  { id:'ephb_a2',  name:'Hb A2',  unit:'%',  ref:'2–3.5', lo:2, hi:3.5 },
+  { id:'ephb_f',   name:'Hb F',   unit:'%',  ref:'< 1',   lo:0,   hi:1   },
   { id:'ephb_s',   name:'Hb S',   unit:'%',  ref:'0',     lo:0,   hi:0   },
   { id:'ephb_c',   name:'Hb C',   unit:'%',  ref:'0',     lo:0,   hi:0   },
   { id:'ephb_d',   name:'Hb D',   unit:'%',  ref:'0',     lo:0,   hi:0   },
@@ -474,60 +621,60 @@ const EPHB_FRACTIONS = [
 
 
 const BIO_GLUCIDES = [
-  { id:'gly',  name:'Glycémie à jeun',           unit:'g/L',    ref:'0.60–1.10',  lo:0.60, hi:1.10 },
-  { id:'hba',  name:'HbA1c',                     unit:'%',      ref:'< 6.0',      lo:0,    hi:6.0  },
+  { id:'gly',  name:'Glycémie à jeun',           unit:'g/L',    ref:'0.70–1.10',  lo:0.70, hi:1.10 },
+  { id:'hba',  name:'HbA1c',                     unit:'%',      ref:'< 5.7',      lo:0,    hi:5.7  },
 ];
 const BIO_REIN = [
   { id:'crea', name:'Créatinine',                unit:'mg/L',   ref:'4–16',       lo:4,    hi:16   },
   { id:'uree', name:'Urée',                      unit:'g/L',    ref:'0.15–0.45',  lo:0.15, hi:0.45 },
   { id:'ua',   name:'Acide urique',              unit:'mg/L',   ref:'25–70',      lo:25,   hi:70   },
-  { id:'malb', name:'Microalbuminurie',          unit:'mg/24h', ref:'30–300',     lo:30,   hi:300  },
+  { id:'malb', name:'Microalbuminurie',          unit:'mg/24h', ref:'< 30',       lo:0,    hi:30   },
   { id:'dfg',  name:'Clairance créatinine (DFG)',unit:'mL/min/1.73m²',ref:'> 90', lo:90,   hi:999  },
 ];
 const BIO_FOIE = [
   { id:'asat', name:'ASAT (TGO)',                unit:'UI/L',   ref:'< 40',       lo:0,    hi:40   },
   { id:'alat', name:'ALAT (TGP)',                unit:'UI/L',   ref:'< 40',       lo:0,    hi:40   },
   { id:'ggt',  name:'Gamma GT',                  unit:'UI/L',   ref:'< 55',       lo:0,    hi:55   },
-  { id:'pal',  name:'Phosphatases alcalines',    unit:'UI/L',   ref:'44–147',     lo:44,   hi:147  },
-  { id:'bili', name:'Bilirubine totale',         unit:'mg/L',   ref:'< 10',       lo:0,    hi:10   },
+  { id:'pal',  name:'Phosphatases alcalines',    unit:'UI/L',   ref:'40–130',     lo:40,   hi:130  },
+  { id:'bili', name:'Bilirubine totale',         unit:'mg/L',   ref:'3–12',       lo:0,    hi:12   },
   { id:'bilid',name:'Bilirubine directe',        unit:'mg/L',   ref:'< 3',        lo:0,    hi:3    },
-  { id:'prot', name:'Protéines totales',         unit:'g/L',    ref:'60–80',      lo:60,   hi:80   },
-  { id:'alb',  name:'Albumine',                  unit:'g/L',    ref:'35–50',      lo:35,   hi:50   },
-  { id:'ldh',  name:'LDH (Lactate déshydrogénase)',unit:'UI/L', ref:'100–200',    lo:100,  hi:200  },
-  { id:'amy',  name:'Amylase',                   unit:'UI/L',   ref:'10–90',      lo:10,   hi:90   },
-  { id:'lip',  name:'Lipase',                    unit:'UI/L',   ref:'< 60',       lo:0,    hi:60   },
+  { id:'prot', name:'Protéines totales',         unit:'g/L',    ref:'64–83',      lo:64,   hi:83   },
+  { id:'alb',  name:'Albumine',                  unit:'g/L',    ref:'35–52',      lo:35,   hi:52   },
+  { id:'ldh',  name:'LDH (Lactate déshydrogénase)',unit:'UI/L', ref:'135–225',    lo:135,  hi:225  },
+  { id:'amy',  name:'Amylase',                   unit:'UI/L',   ref:'28–100',     lo:28,   hi:100  },
+  { id:'lip',  name:'Lipase',                    unit:'UI/L',   ref:'13–60',      lo:13,   hi:60   },
 ];
 const BIO_LIPIDES = [
   { id:'chol', name:'Cholestérol total',         unit:'g/L',    ref:'< 2.0',      lo:0,    hi:2.0  },
-  { id:'trig', name:'Triglycérides',             unit:'g/L',    ref:'< 1.7',      lo:0,    hi:1.7  },
-  { id:'hdl',  name:'HDL-cholestérol',           unit:'g/L',    ref:'> 0.50',     lo:0.50, hi:99   },
-  { id:'ldl',  name:'LDL-cholestérol ⚙',         unit:'g/L',    ref:'< 1.30',     lo:0,    hi:1.30, calc:true },
+  { id:'trig', name:'Triglycérides',             unit:'g/L',    ref:'< 1.50',     lo:0,    hi:1.50 },
+  { id:'hdl',  name:'HDL-cholestérol',           unit:'g/L',    ref:'> 0.40',     lo:0.40, hi:99   },
+  { id:'ldl',  name:'LDL-cholestérol ⚙',         unit:'g/L',    ref:'< 1.60',     lo:0,    hi:1.60, calc:true },
 ];
 const BIO_IONO = [
   { id:'na',   name:'Sodium (Na⁺)',              unit:'mmol/L', ref:'135–145',    lo:135,  hi:145  },
-  { id:'k',    name:'Potassium (K⁺)',            unit:'mmol/L', ref:'3.5–5.0',    lo:3.5,  hi:5.0  },
+  { id:'k',    name:'Potassium (K⁺)',            unit:'mmol/L', ref:'3.5–5.1',    lo:3.5,  hi:5.1  },
   { id:'cl',   name:'Chlore (Cl⁻)',              unit:'mmol/L', ref:'98–107',     lo:98,   hi:107  },
-  { id:'ca',   name:'Calcium (Ca²⁺)',            unit:'mg/L',   ref:'88–104',     lo:88,   hi:104  },
+  { id:'ca',   name:'Calcium (Ca²⁺)',            unit:'mg/L',   ref:'88–105',     lo:88,   hi:105  },
   { id:'phos', name:'Phosphore',                 unit:'mg/L',   ref:'25–45',      lo:25,   hi:45   },
-  { id:'mg',   name:'Magnésium (Mg²⁺)',          unit:'mg/L',   ref:'17–24',      lo:17,   hi:24   },
-  { id:'bic',  name:'Bicarbonates (HCO₃⁻)',     unit:'mmol/L', ref:'22–28',      lo:22,   hi:28   },
-  { id:'zinc', name:'Zinc',                      unit:'µmol/L', ref:'11–22',      lo:11,   hi:22   },
+  { id:'mg',   name:'Magnésium (Mg²⁺)',          unit:'mg/L',   ref:'17–25',      lo:17,   hi:25   },
+  { id:'bic',  name:'Bicarbonates (HCO₃⁻)',     unit:'mmol/L', ref:'22–29',      lo:22,   hi:29   },
+  { id:'zinc', name:'Zinc',                      unit:'µmol/L', ref:'11–18',      lo:11,   hi:18   },
   { id:'cuiv', name:'Cuivre',                    unit:'µmol/L', ref:'11–22',      lo:11,   hi:22   },
 ];
 const BIO_FER = [
-  { id:'fer',  name:'Fer sérique',               unit:'µmol/L', ref:'10–30',      lo:10,   hi:30   },
-  { id:'ferr', name:'Ferritine',                 unit:'µg/L',   ref:'20–300',     lo:20,   hi:300  },
+  { id:'fer',  name:'Fer sérique',               unit:'µmol/L', ref:'7–28',       lo:7,    hi:28   },
+  { id:'ferr', name:'Ferritine',                 unit:'µg/L',   ref:'15–400',     lo:15,   hi:400  },
   { id:'ddim', name:'D-Dimères',                 unit:'µg/L',   ref:'< 500',      lo:0,    hi:500  },
 ];
 const BIO_CARD = [
   { id:'trop', name:'Troponine I/T',             unit:'ng/L',   ref:'< 14',       lo:0,    hi:14   },
   { id:'bnp',  name:'BNP / NT-proBNP',          unit:'pg/mL',  ref:'< 125',      lo:0,    hi:125  },
-  { id:'ck',   name:'CK (Créatine kinase)',      unit:'UI/L',   ref:'< 170',      lo:0,    hi:170  },
+  { id:'ck',   name:'CK (Créatine kinase)',      unit:'UI/L',   ref:'26–308',     lo:26,   hi:308  },
   { id:'ckmb', name:'CK-MB',                     unit:'UI/L',   ref:'< 25',       lo:0,    hi:25   },
-  { id:'myog', name:'Myoglobine',                unit:'µg/L',   ref:'< 90',       lo:0,    hi:90   },
+  { id:'myog', name:'Myoglobine',                unit:'µg/L',   ref:'25–72',      lo:25,   hi:72   },
 ];
 const BIO_HORM = [
-  { id:'cort', name:'Cortisol (8h)',             unit:'nmol/L', ref:'170–550',    lo:170,  hi:550  },
+  { id:'cort', name:'Cortisol (8h)',             unit:'nmol/L', ref:'170–540',    lo:170,  hi:540  },
   { id:'acth', name:'ACTH',                      unit:'pg/mL',  ref:'10–60',      lo:10,   hi:60   },
   { id:'lh',   name:'LH',                        unit:'UI/L',   ref:'',           lo:0,    hi:999  },
   { id:'fsh',  name:'FSH',                       unit:'UI/L',   ref:'',           lo:0,    hi:999  },
@@ -535,20 +682,20 @@ const BIO_HORM = [
   { id:'prog', name:'Progestérone',              unit:'ng/mL',  ref:'',           lo:0,    hi:999  },
   { id:'test', name:'Testostérone',              unit:'ng/mL',  ref:'',           lo:0,    hi:999  },
   { id:'prl',  name:'Prolactine',                unit:'mUI/L',  ref:'< 500',      lo:0,    hi:500  },
-  { id:'amh',  name:'AMH',                       unit:'ng/mL',  ref:'1–7',        lo:1,    hi:7    },
+  { id:'amh',  name:'AMH',                       unit:'ng/mL',  ref:'1–4',        lo:1,    hi:4    },
   { id:'vitd', name:'Vitamine D (25-OH)',        unit:'ng/mL',  ref:'30–100',     lo:30,   hi:100  },
-  { id:'b12',  name:'Vitamine B12',              unit:'pg/mL',  ref:'200–950',    lo:200,  hi:950  },
-  { id:'fol',  name:'Folates (B9)',              unit:'ng/mL',  ref:'5–20',       lo:5,    hi:20   },
+  { id:'b12',  name:'Vitamine B12',              unit:'pg/mL',  ref:'200–900',    lo:200,  hi:900  },
+  { id:'fol',  name:'Folates (B9)',              unit:'ng/mL',  ref:'3–17',       lo:3,    hi:17   },
   { id:'pth',  name:'PTH (parathormone)',        unit:'ng/L',   ref:'15–65',      lo:15,   hi:65   },
 ];
 const BIO_COAG = [
   { id:'tp',   name:'TP / INR',                  unit:'%',      ref:'70–100',     lo:70,   hi:100  },
-  { id:'tca',  name:'TCA',                       unit:'s',      ref:'28–38',      lo:28,   hi:38   },
+  { id:'tca',  name:'TCA',                       unit:'s',      ref:'26–36',      lo:26,   hi:36   },
   { id:'fibr', name:'Fibrinogène',               unit:'g/L',    ref:'2.0–4.0',    lo:2.0,  hi:4.0  },
   { id:'ddim2',name:'D-Dimères',                 unit:'µg/L',   ref:'< 500',      lo:0,    hi:500  },
 ];
 const BIO_AUTRE = [
-  { id:'pct',  name:'Procalcitonine (PCT)',      unit:'µg/L',   ref:'< 0.1',      lo:0,    hi:0.1  },
+  { id:'pct',  name:'Procalcitonine (PCT)',      unit:'µg/L',   ref:'< 0.5',      lo:0,    hi:0.5  },
   { id:'bhcg', name:'Beta-HCG',                 unit:'UI/L',   ref:'< 5',        lo:0,    hi:5    },
 ];
 
