@@ -632,7 +632,11 @@ const BIO_REIN = [
   { id:'uree', name:'Urée',                      unit:'g/L',    ref:'0.15–0.45',  lo:0.15, hi:0.45 },
   { id:'ua',   name:'Acide urique',              unit:'mg/L',   ref:'25–70',      lo:25,   hi:70   },
   { id:'malb', name:'Microalbuminurie',          unit:'mg/24h', ref:'< 30',       lo:0,    hi:30   },
-  { id:'dfg',  name:'Clairance créatinine (DFG)',unit:'mL/min/1.73m²',ref:'> 90', lo:90,   hi:999, calc:true },
+  // ✅ v13.198 — Le DFG est rendu en DEUX lignes distinctes : les deux techniques
+  // n'ont ni la même unité ni la même interprétation (l'une est indexée à la
+  // surface corporelle, l'autre non), donc chacune a sa propre case/référence.
+  { id:'dfg',   name:'DFG estimé — CKD-EPI 2021',            unit:'mL/min/1.73m²', ref:'≥ 90', lo:90, hi:999, calc:true },
+  { id:'dfgcg', name:'Clairance créatinine — Cockcroft-Gault', unit:'mL/min',       ref:'≥ 90', lo:90, hi:999, calc:true },
 ];
 const BIO_FOIE = [
   { id:'asat', name:'ASAT (TGO)',                unit:'UI/L',   ref:'< 40',       lo:0,    hi:40   },
@@ -768,6 +772,9 @@ function makeParamRow(p, tbody) {
   // direct. La valeur stockée reste dans un champ caché v_dfg (texte des deux
   // techniques), lu par l'enregistrement et l'impression comme avant.
   if (p.id === 'dfg') { makeDfgCardRow(tbody); return; }
+  // dfgcg (Cockcroft) : pas de ligne de saisie à l'écran — la carte DFG couvre
+  // les deux techniques ; la valeur est stockée dans un champ caché (v_dfgcg).
+  if (p.id === 'dfgcg') return;
   const tr = document.createElement('tr');
   const profile = getPatientProfile();
   const dynRef = getRef(p.id, profile);
@@ -831,7 +838,8 @@ function makeDfgCardRow(tbody) {
           <span id="dfg_cock" style="font-weight:700;color:var(--text-muted)">—</span>
         </div>
       </div>
-      <input type="hidden" id="v_dfg">
+      <input type="hidden" id="v_dfg"><span id="i_dfg" style="display:none"></span>
+      <input type="hidden" id="v_dfgcg"><span id="i_dfgcg" style="display:none"></span>
     </div>
   `;
   tr.appendChild(td);

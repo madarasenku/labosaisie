@@ -21,7 +21,7 @@ const _OPT_IDS = new Set([
   'para_coloration', 'para_indice', 'para_parasitemie',
   'gs_obs',
   'v_vgm', 'v_tcmh', 'v_ccmh', 'v_ret', 'ret',   // indices auto-calculés
-  'v_ldl', 'v_dfg',                              // valeurs calculées
+  'v_ldl', 'v_dfg', 'v_dfgcg',                   // valeurs calculées
 ]);
 function _champOptionnel(id) { return _OPT_RX.test(id) || _OPT_IDS.has(id); }
 

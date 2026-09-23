@@ -49,14 +49,15 @@ const { serve, openApp, createReporter } = require('./helpers');
         ckd: (document.getElementById('dfg_ckd') || {}).textContent || '',
         cock: (document.getElementById('dfg_cock') || {}).textContent || '',
         hidden: (document.getElementById('v_dfg') || {}).value || '',
+        hiddenCg: (document.getElementById('v_dfgcg') || {}).value || '',
         mirroirCrea: (document.getElementById('dfg_crea') || {}).value || '',
         mirroirPoids: (document.getElementById('dfg_poids') || {}).value || '',
       };
     });
     r.check('CKD-EPI = 76 + stade G2', /76 mL\/min\/1,73 m² — .*G2/.test(res.ckd), true);
     r.check('Cockcroft = 77,1 + stade G2', /77,1 mL\/min — .*G2/.test(res.cock), true);
-    r.check('valeur enregistrée (v_dfg) contient les 2 techniques',
-            /CKD-EPI 2021 : 76 .*Cockcroft-Gault : 77,1/.test(res.hidden), true);
+    r.check('case CKD-EPI stockée (v_dfg=76)', res.hidden, '76');
+    r.check('case Cockcroft stockée (v_dfgcg=77,1)', res.hiddenCg, '77,1');
     r.check('la carte reflète la créatinine du tableau rénal', res.mirroirCrea, '12');
     r.check('la carte reflète le poids de la fiche', res.mirroirPoids, '70');
     if (!/76/.test(res.ckd)) console.log('   CKD obtenu =', res.ckd);
@@ -127,7 +128,7 @@ const { serve, openApp, createReporter } = require('./helpers');
     });
     r.check('DFG calculé malgré le champ créatinine verrouillé', /76 mL\/min/.test(verrou.ckd), true);
     r.check('Cockcroft calculé (=77,1)', /77,1 mL\/min/.test(verrou.cock), true);
-    r.check('valeur DFG enregistrable (v_dfg rempli)', /CKD-EPI 2021 : 76/.test(verrou.hidden), true);
+    r.check('valeur DFG enregistrable (v_dfg rempli)', verrou.hidden, '76');
 
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 5));

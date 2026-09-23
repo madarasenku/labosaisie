@@ -175,8 +175,15 @@ function recalcDFG() {
   const unite = (typeof getUnit === 'function') ? getUnit('crea', 'mg/L') : 'mg/L';
 
   const ckdEl = g('dfg_ckd'), cockEl = g('dfg_cock');
+  const cgHidden = g('v_dfgcg');
+  const iCkd = g('i_dfg'), iCg = g('i_dfgcg');
+  // Chaque technique a sa PROPRE case stockée (v_dfg = CKD-EPI, v_dfgcg =
+  // Cockcroft) et sa propre interprétation (≥ 90 = normal), car les deux
+  // n'ont ni la même unité ni la même valeur normale.
+  const interpDFG = v => (v == null ? '' : (typeof interprete === 'function' ? interprete(v, 90, 999) : ''));
   const vide = () => {
-    hidden.value = '';
+    hidden.value = ''; if (cgHidden) cgHidden.value = '';
+    if (iCkd) iCkd.textContent = ''; if (iCg) iCg.textContent = '';
     if (ckdEl) { ckdEl.textContent = '—'; ckdEl.style.color = 'var(--text-muted)'; }
     if (cockEl) { cockEl.textContent = '—'; cockEl.style.color = 'var(--text-muted)'; }
   };
@@ -188,7 +195,12 @@ function recalcDFG() {
   });
   if (r.erreur) { vide(); return; }
 
-  hidden.value = dfgTexte(r);
+  // Valeurs stockées (une par technique) + interprétations.
+  hidden.value = r.ckd_epi_2021 != null ? dfgNum(r.ckd_epi_2021) : '';
+  if (cgHidden) cgHidden.value = r.cockcroft_gault != null ? dfgNum(r.cockcroft_gault) : '';
+  if (iCkd) iCkd.textContent = interpDFG(r.ckd_epi_2021);
+  if (iCg) iCg.textContent = interpDFG(r.cockcroft_gault);
+
   if (ckdEl) {
     ckdEl.textContent = r.ckd_epi_2021 != null
       ? `${dfgNum(r.ckd_epi_2021)} mL/min/1,73 m² — ${r.ckd_epi_stade}`
