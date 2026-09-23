@@ -244,7 +244,6 @@ async function renderRegistre() {
     + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? ' <span style="color:var(--text-muted);font-size:11px">' + esc(l.meta) + '</span>' : '')
     + (l.externe ? ' <span style="font-size:10px;font-weight:700;color:#b45309;background:#fde7bf;border-radius:4px;padding:1px 5px">EXTERNE</span>' : '') + '</td>'
     + '<td style="color:var(--text-muted)">' + esc(l.presc) + '</td>'
-    + '<td>' + esc(l.examens) + '</td>'
     + '<td style="color:var(--text-muted)">' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
     + '<td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">' + _regMontant(l.montant) + '</td>'
     + '</tr>').join('');
@@ -256,7 +255,7 @@ async function renderRegistre() {
     + '<span><strong style="color:var(--text-label);font-size:15px">' + _regMontant(recette) + '</strong> F</span>'
     + '</div>'
     + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12px">'
-    + '<thead><tr><th>N°</th><th>Patient</th><th>Prescripteur</th><th>Examens</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
+    + '<thead><tr><th>N°</th><th>Patient</th><th>Prescripteur</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
     + '<tbody>' + corps + '</tbody></table></div>';
 }
 
@@ -284,14 +283,17 @@ async function imprimerRegistre() {
         + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
         + '<td><strong>' + esc(l.nom) + '</strong>' + (l.externe ? ' <strong>[EXTERNE]</strong>' : '') + (l.meta ? '<div style="font-size:8.5pt;color:#555">' + esc(l.meta) + '</div>' : '') + '</td>'
         + '<td>' + esc(l.presc) + '</td>'
-        + '<td>' + esc(l.examens) + '</td>'
         + '<td>' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
         + '<td style="text-align:right;white-space:nowrap">' + _regMontant(l.montant) + '</td>'
         + '</tr>').join('')
-    : '<tr><td colspan="6" style="font-style:italic;text-align:center">Aucun dossier ce jour.</td></tr>';
+    : '<tr><td colspan="5" style="font-style:italic;text-align:center">Aucun dossier ce jour.</td></tr>';
 
   const html =
-    '<div class="print-header-bar"></div>'
+    // ✅ v13.200 — Registre du jour imprimé en PAYSAGE (plus de largeur pour la
+    //   colonne Résultat). @page ne cible qu'ici : le compte-rendu, qui remplace
+    //   ensuite #print-render, retrouve le portrait par défaut (css/app.css).
+    '<style>@media print{@page{size:A4 landscape}}</style>'
+    + '<div class="print-header-bar"></div>'
     + '<div style="text-align:center;padding:10px 0 4px">'
     + '<div style="font-size:17pt;font-weight:900">CPMI DE GRAND-BASSAM</div>'
     + '<div style="font-size:10pt;color:#444">Laboratoire d\'analyses médicales</div>'
@@ -306,9 +308,9 @@ async function imprimerRegistre() {
     + '<table class="print-table" style="margin-top:12px;font-size:9.5pt">'
     + '<thead><tr>'
     + '<th>N° dossier</th><th>Patient</th><th>Prescripteur</th>'
-    + '<th>Examens</th><th>Résultat</th><th style="text-align:right">Prix</th>'
+    + '<th>Résultat</th><th style="text-align:right">Prix</th>'
     + '</tr></thead><tbody>' + corps + '</tbody>'
-    + '<tfoot><tr><td colspan="5" style="text-align:right;font-weight:800">TOTAL</td>'
+    + '<tfoot><tr><td colspan="4" style="text-align:right;font-weight:800">TOTAL</td>'
     + '<td style="text-align:right;font-weight:800">' + _fcfa(recette) + '</td></tr></tfoot>'
     + '</table>'
 
