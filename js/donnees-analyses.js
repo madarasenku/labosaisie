@@ -879,6 +879,11 @@ function onParamInput(id, skipMontant) {
     deduireUreeDeCrea(); onParamInput('uree', true);
     if (typeof recalcDFG === 'function') recalcDFG(); // DFG dépend de la créat
   }
+  // ✅ v13.197 — Ionogramme : le sodium n'est PAS attendu à la saisie, il est
+  // toujours déduit du chlore (Na = Cl / 0.72). Saisir le chlore recalcule Na.
+  if (id === 'cl') {
+    deduireSodiumDeChlore(); onParamInput('na', true);
+  }
 }
 
 // ✅ v13.151 — Urée (g/L) = créatinine (mg/L) / 44. Source unique de la règle,
@@ -889,6 +894,17 @@ function deduireUreeDeCrea() {
   if (!u) return;
   const c = parseFloat(document.getElementById('v_crea')?.value);
   u.value = isNaN(c) ? '' : (c / 44).toFixed(2);
+}
+
+// ✅ v13.197 — Sodium (mmol/L) déduit du chlore : Na = Cl / 0.72. Règle du labo :
+// on n'attend pas la valeur du sodium, on la calcule toujours à partir du chlore.
+// Source unique, partagée par le formulaire et la saisie en série. Chlore vidé →
+// sodium vidé (pas de valeur périmée).
+function deduireSodiumDeChlore() {
+  const n = document.getElementById('v_na');
+  if (!n) return;
+  const c = parseFloat(document.getElementById('v_cl')?.value);
+  n.value = isNaN(c) ? '' : Math.round(c / 0.72).toString();
 }
 
 // Variante NFS : colore directement la case input selon l'interprétation,

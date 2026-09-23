@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.196">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.197">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -25,14 +25,14 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.196"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.196"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.196"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.196"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.196"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.197"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.197"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.197"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.197"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.197"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.196"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.196">
+<script src="./js/qr-generator.js?v=13.197"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.197">
 </head>
 <body>
 <!-- ✅ v13.138 — Badge de version : permet de vérifier d'un coup d'œil quelle
@@ -77,7 +77,7 @@
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.196"></script>
+<script src="./js/pwa-manifest.js?v=13.197"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -129,7 +129,7 @@
   </div>
   <!-- Badge utilisateur hors de la nav pour éviter qu'il scrolle sur mobile -->
   <span id="user-badge" style="font-size:12px;opacity:.85;margin-right:6px;white-space:nowrap"></span>
-  <!-- ✅ v13.196 — Bouton menu (mobile) : ouvre la nav complète en panneau
+  <!-- ✅ v13.197 — Bouton menu (mobile) : ouvre la nav complète en panneau
        déroulant. Sur téléphone, la nav primaire vit dans la barre d'onglets. -->
   <button id="mobile-menu-btn" onclick="toggleMobileMenu(this)" aria-label="Menu" aria-expanded="false">⋯</button>
   <nav>
@@ -225,7 +225,7 @@
 <!-- VIEWS -->
 <div id="view-saisie">
 
-<!-- ✅ v13.196 — Poste Pro (étape 1) : mise en page « une page / 2 colonnes »
+<!-- ✅ v13.197 — Poste Pro (étape 1) : mise en page « une page / 2 colonnes »
      de la saisie patient (mode fill-all). Styles scopés à body.fill-all-mode,
      aucun champ ni ID modifié. -->
 <style id="poste-pro-saisie-style">
@@ -363,7 +363,7 @@
   <!-- ═══════════════════════════════════════════════════
        FICHE D'IDENTIFICATION PATIENT & PRESCRIPTION
        ═══════════════════════════════════════════════════ -->
-  <!-- ✅ v13.196 — Poste Pro « Réception » : polish scopé de la fiche
+  <!-- ✅ v13.197 — Poste Pro « Réception » : polish scopé de la fiche
        (champs en boîtes, libellés maquette, récapitulatif/total collant). -->
   <style id="poste-pro-reception-style">
     #fiche-identification .form-group > label{font-size:10px;font-weight:700;
@@ -374,7 +374,7 @@
     /* Récapitulatif / total : collant en bas comme la maquette */
     #fiche-identification .fiche-total-bar{position:sticky;bottom:10px;z-index:4;
       box-shadow:0 6px 18px rgba(11,37,69,.14)}
-    /* ✅ v13.196 — Registre du jour : look « document » bordé de la maquette */
+    /* ✅ v13.197 — Registre du jour : look « document » bordé de la maquette */
     #registre-apercu .result-table{border:1px solid var(--border);border-collapse:collapse;width:100%}
     #registre-apercu .result-table thead th{background:var(--bg);text-transform:uppercase;
       font-size:10px;letter-spacing:.4px;color:var(--text-muted);
@@ -436,7 +436,7 @@
           <option value="F">Féminin</option>
         </select>
       </div>
-      <!-- ✅ v13.196 — Le poids se saisit dans la carte DFG (calcul de clairance),
+      <!-- ✅ v13.197 — Le poids se saisit dans la carte DFG (calcul de clairance),
            avec les autres données du calcul. Champ conservé ici, masqué, pour la
            persistance (patient.poids) et le pré-remplissage des dossiers. -->
       <input type="hidden" id="p_poids">
@@ -1247,7 +1247,7 @@
 <!-- HISTORIQUE -->
 <div id="view-historique" style="display:none">
 
-  <!-- ✅ v13.196 — Poste Pro « File du jour » : bandeau de compteurs par statut
+  <!-- ✅ v13.197 — Poste Pro « File du jour » : bandeau de compteurs par statut
        (peuplé par renderHistory sur les dossiers filtrés). Styles scopés. -->
   <style id="poste-pro-file-style">
     #view-historique .pp-file-kpis{display:flex;flex-wrap:wrap;border:1px solid var(--border);
@@ -1498,7 +1498,7 @@
 
 <div id="view-stats" style="display:none">
 
-<!-- ✅ v13.196 — Harmonisation Poste Pro des écrans internes (Statistiques,
+<!-- ✅ v13.197 — Harmonisation Poste Pro des écrans internes (Statistiques,
      Comptes & réglages, Cahier jaune) : cartes arrondies, tuiles KPI, en-têtes
      de tableau majuscules, onglets admin en segments. 100 % CSS scopée. -->
 <style id="poste-pro-internes-style">
@@ -2135,7 +2135,7 @@
 
 <div id="view-caisse" style="display:none">
 
-  <!-- ✅ v13.196 — Refonte Kiosque de la caisse : styles scopés + réorganisation
+  <!-- ✅ v13.197 — Refonte Kiosque de la caisse : styles scopés + réorganisation
        par ordre flexbox (aucun déplacement DOM, tous les IDs/handlers conservés). -->
   <style id="caisse-kiosque-style">
     #view-caisse, #view-caisse-user { display:flex; flex-direction:column; }
@@ -2346,7 +2346,7 @@
 <!-- ✅ v13.33 — Vue Caisse simplifiée (utilisateurs non-admin) -->
 <div id="view-caisse-user" style="display:none">
 
-  <!-- ✅ v13.196 — En-tête Kiosque (styles partagés avec #view-caisse) -->
+  <!-- ✅ v13.197 — En-tête Kiosque (styles partagés avec #view-caisse) -->
   <div class="ckiosk-hero">
     <div>
       <div class="ckiosk-hero-title">💰 Ma caisse</div>
@@ -2458,22 +2458,22 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.196"></script>
-<script src="./js/donnees-analyses.js?v=13.196"></script>
-<script src="./js/dfg.js?v=13.196"></script>
-<script src="./js/navigation.js?v=13.196"></script>
-<script src="./js/supabase-db.js?v=13.196"></script>
-<script src="./js/historique.js?v=13.196"></script>
-<script src="./js/export-excel.js?v=13.196"></script>
-<script src="./js/prescripteurs.js?v=13.196"></script>
-<script src="./js/saisie.js?v=13.196"></script>
-<script src="./js/completude.js?v=13.196"></script>
-<script src="./js/grille.js?v=13.196"></script>
-<script src="./js/ui-auth.js?v=13.196"></script>
-<script src="./js/session-pwa.js?v=13.196"></script>
-<script src="./js/saisie-mobile.js?v=13.196"></script>
+<script src="./js/periode-nav.js?v=13.197"></script>
+<script src="./js/donnees-analyses.js?v=13.197"></script>
+<script src="./js/dfg.js?v=13.197"></script>
+<script src="./js/navigation.js?v=13.197"></script>
+<script src="./js/supabase-db.js?v=13.197"></script>
+<script src="./js/historique.js?v=13.197"></script>
+<script src="./js/export-excel.js?v=13.197"></script>
+<script src="./js/prescripteurs.js?v=13.197"></script>
+<script src="./js/saisie.js?v=13.197"></script>
+<script src="./js/completude.js?v=13.197"></script>
+<script src="./js/grille.js?v=13.197"></script>
+<script src="./js/ui-auth.js?v=13.197"></script>
+<script src="./js/session-pwa.js?v=13.197"></script>
+<script src="./js/saisie-mobile.js?v=13.197"></script>
 
-<!-- ✅ v13.196 — Barre d'onglets mobile (paradigme maquette mobile). Affichée
+<!-- ✅ v13.197 — Barre d'onglets mobile (paradigme maquette mobile). Affichée
      uniquement sur téléphone (≤ 640px). Réutilise showView ; visibilité/actif
      synchronisés par showView. -->
 <style id="poste-pro-mobile-style">
@@ -2684,16 +2684,16 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.196"></script>
-<script src="./js/compte-rendu.js?v=13.196"></script>
-<script src="./js/impression.js?v=13.196"></script>
-<script src="./js/export-pdf.js?v=13.196"></script>
-<script src="./js/sauvegarde.js?v=13.196"></script>
-<script src="./js/cloture-caisse.js?v=13.196"></script>
-<script src="./js/registre-jour.js?v=13.196"></script>
-<script src="./js/electrophorese.js?v=13.196"></script>
-<script src="./js/coffre.js?v=13.196"></script>
-<script src="./js/cahier-jaune.js?v=13.196"></script>
+<script src="./js/stats.js?v=13.197"></script>
+<script src="./js/compte-rendu.js?v=13.197"></script>
+<script src="./js/impression.js?v=13.197"></script>
+<script src="./js/export-pdf.js?v=13.197"></script>
+<script src="./js/sauvegarde.js?v=13.197"></script>
+<script src="./js/cloture-caisse.js?v=13.197"></script>
+<script src="./js/registre-jour.js?v=13.197"></script>
+<script src="./js/electrophorese.js?v=13.197"></script>
+<script src="./js/coffre.js?v=13.197"></script>
+<script src="./js/cahier-jaune.js?v=13.197"></script>
 
 <script>
 /* ── Navigation rapide dans les tables de résultats (v13.95) ──────────────

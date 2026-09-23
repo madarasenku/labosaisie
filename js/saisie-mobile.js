@@ -38,6 +38,7 @@
   var tactile = false;
   try {
     tactile = ('ontouchstart' in window) ||
+      (navigator.maxTouchPoints > 0) ||
       (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   } catch (_) { tactile = false; }
   if (!tactile) return;
@@ -52,9 +53,9 @@
     bar.setAttribute('role', 'toolbar');
     bar.setAttribute('aria-label', 'Insérer un signe');
     bar.style.cssText = [
-      'position:fixed', 'left:0', 'right:0', 'bottom:0', 'z-index:4000',
-      'display:none', 'gap:6px', 'padding:6px 8px calc(6px + env(safe-area-inset-bottom,0))',
-      'background:#0b2545', 'box-shadow:0 -3px 12px rgba(0,0,0,.28)',
+      'position:fixed', 'left:0', 'right:0', 'top:auto', 'bottom:0', 'z-index:4000',
+      'display:none', 'gap:6px', 'padding:6px 8px',
+      'background:#0b2545', 'box-shadow:0 3px 14px rgba(0,0,0,.32)',
       'justify-content:center', 'align-items:center'
     ].join(';');
     var html = SIGNES.map(function (s) {
@@ -81,13 +82,25 @@
     return bar;
   }
 
+  // ✅ v13.197 — La barre s'ancre JUSTE AU-DESSUS du champ en cours de saisie
+  //   (et non au bas de l'écran, où le clavier iOS la masquait). iOS garde le
+  //   champ focalisé visible au-dessus du clavier : une barre collée au champ est
+  //   donc toujours à l'écran. Repli au-dessous du champ s'il n'y a pas la place,
+  //   ou en bas d'écran si le champ n'a pas de position mesurable.
   function positionner() {
-    if (!bar) return;
-    var vv = window.visualViewport;
-    if (vv) {
-      var bas = Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
-      bar.style.bottom = bas + 'px';
+    if (!bar || !actif) return;
+    var h = bar.offsetHeight || 48;
+    var r = null;
+    try { r = actif.getBoundingClientRect(); } catch (_) { r = null; }
+    if (r && r.height) {
+      var vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      var top = r.top - h - 6;                 // au-dessus du champ
+      if (top < 6) top = r.bottom + 6;         // pas de place → juste au-dessous
+      if (top + h > vh - 6) top = Math.max(6, vh - h - 6);
+      bar.style.bottom = 'auto';
+      bar.style.top = Math.round(top) + 'px';
     } else {
+      bar.style.top = 'auto';
       bar.style.bottom = '0px';
     }
   }
@@ -97,6 +110,11 @@
     actif = el;
     bar.style.display = 'flex';
     positionner();
+    // Le clavier iOS s'ouvre et fait défiler le champ APRÈS le focus : on
+    // repositionne quelques fois pendant l'animation pour rester collé au champ.
+    setTimeout(positionner, 60);
+    setTimeout(positionner, 250);
+    setTimeout(positionner, 500);
   }
   function cacher() {
     if (bar) bar.style.display = 'none';
@@ -133,4 +151,6 @@
     window.visualViewport.addEventListener('resize', function () { if (actif) positionner(); });
     window.visualViewport.addEventListener('scroll', function () { if (actif) positionner(); });
   }
+  // La barre est ancrée au champ : suivre aussi le défilement de la page.
+  window.addEventListener('scroll', function () { if (actif) positionner(); }, true);
 })();
