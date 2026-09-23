@@ -386,6 +386,10 @@ function getPatient() {
     age:          (typeof ageSaisi === 'function' ? ageSaisi() : document.getElementById('p_age').value),
       telephone:    (document.getElementById('p_telephone')?.value || '').trim(),
     sexe:         document.getElementById('p_sexe').value,
+    poids:        (function () {
+      const p = parseFloat(String(document.getElementById('p_poids')?.value || '').replace(',', '.'));
+      return isFinite(p) && p > 0 ? p : '';   // jsonb, persistant (aucune migration)
+    })(),
     medecin:      document.getElementById('p_medecin').value.trim().toUpperCase(),
     service:      document.getElementById('p_service').value,
     clinique:     document.getElementById('p_clinique').value.trim(),

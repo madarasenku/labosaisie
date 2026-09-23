@@ -715,7 +715,7 @@ function grilleRender() {
         + 'onchange="grilleCellChange(' + id + ')" style="min-width:118px;' + base + '">'
         + (c.opts || []).map(o => '<option value="' + o[0] + '">' + esc(o[1]) + '</option>').join('') + '</select></td>';
     }
-    return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px"><input type="number" step="any" inputmode="decimal" '
+    return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px"><input type="text" step="any" inputmode="decimal" '
       + 'id="g_' + id + '_' + k + '_' + c.k + '" oninput="grilleCellChange(' + id + ')" '
       + 'style="width:76px;text-align:center;' + base + '"></td>';
   };

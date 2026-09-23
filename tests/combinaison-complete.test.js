@@ -144,8 +144,9 @@ const doss = {
     r.check('Ag HBs quantitatif imprimé', /Ag HBs \(antigène de surface\)[\s\S]{0,80}3\.2 UI\/L/.test(txt), true);
     r.check('Ac anti-HBs quantitatif imprimé', /125 UI\/L/.test(txt), true);
     r.check('Ac anti-HBc qualitatif imprimé', /Ac anti-HBc total \(contact viral\)[\s\S]{0,60}Positif/.test(txt), true);
-    // Acide urique : bornes en mg/L, 45 est normal → ne doit PAS être signalé.
-    r.check('acide urique référence mg/L', /Acide urique[\s\S]{0,80}25–70/.test(txt), true);
+    // Acide urique : bornes en mg/L (réf. homme adulte 35–70 alignée sur le
+    // référentiel CPMI), 45 est normal → ne doit PAS être signalé.
+    r.check('acide urique référence mg/L', /Acide urique[\s\S]{0,80}35–70/.test(txt), true);
     r.check('acide urique NON signalé anormal', /cr-val cr-ano">45/.test(h), false);
     r.check('interprétation VHB cohérente', /Infection par le virus de l'hépatite B/.test(txt), true);
 

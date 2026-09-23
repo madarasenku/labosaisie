@@ -15,6 +15,7 @@ function dupliquerFiche(id) {
   setV('p_nom',     p.nom);
   setV('p_age',     p.age);
   setV('p_sexe',    p.sexe);
+  setV('p_poids',   p.poids);
   setV('p_medecin', p.medecin);
   setV('p_service', p.service);
   setV('p_clinique',p.clinique);
