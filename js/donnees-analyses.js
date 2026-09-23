@@ -527,6 +527,9 @@ function updateAllRefs() {
   } else if (trancheEl) {
     trancheEl.textContent = '';
   }
+  // ✅ v13.196 — Le DFG dépend de l'âge et du sexe : recalculer après toute
+  // mise à jour du profil (âge/sexe changés passent tous par updateAllRefs).
+  if (typeof recalcDFG === 'function') recalcDFG();
 }
 
 // ============================================================
@@ -629,7 +632,7 @@ const BIO_REIN = [
   { id:'uree', name:'Urée',                      unit:'g/L',    ref:'0.15–0.45',  lo:0.15, hi:0.45 },
   { id:'ua',   name:'Acide urique',              unit:'mg/L',   ref:'25–70',      lo:25,   hi:70   },
   { id:'malb', name:'Microalbuminurie',          unit:'mg/24h', ref:'< 30',       lo:0,    hi:30   },
-  { id:'dfg',  name:'Clairance créatinine (DFG)',unit:'mL/min/1.73m²',ref:'> 90', lo:90,   hi:999  },
+  { id:'dfg',  name:'Clairance créatinine (DFG)',unit:'mL/min/1.73m²',ref:'> 90', lo:90,   hi:999, calc:true },
 ];
 const BIO_FOIE = [
   { id:'asat', name:'ASAT (TGO)',                unit:'UI/L',   ref:'< 40',       lo:0,    hi:40   },
@@ -759,6 +762,12 @@ const PARA_EPS = [
 // ============================================================
 
 function makeParamRow(p, tbody) {
+  // ✅ v13.196 — Le DFG n'est pas une simple case : c'est un calcul. On affiche
+  // une carte dédiée montrant les DONNÉES nécessaires (créatinine, âge, sexe,
+  // poids) et les DEUX techniques (CKD-EPI 2021, Cockcroft-Gault) calculées en
+  // direct. La valeur stockée reste dans un champ caché v_dfg (texte des deux
+  // techniques), lu par l'enregistrement et l'impression comme avant.
+  if (p.id === 'dfg') { makeDfgCardRow(tbody); return; }
   const tr = document.createElement('tr');
   const profile = getPatientProfile();
   const dynRef = getRef(p.id, profile);
@@ -776,6 +785,58 @@ function makeParamRow(p, tbody) {
     <td><span class="interp interp-?" id="i_${p.id}">—</span></td>
   `;
   tbody.appendChild(tr);
+}
+
+// ✅ v13.196 — Carte de calcul du DFG (clairance de la créatinine).
+// Regroupe DANS la saisie du DFG toutes les données nécessaires au calcul
+// (créatinine, âge, sexe, poids) et affiche les DEUX techniques calculées en
+// direct. Les cases sont des relais des champs réels : « créatinine » ↔ v_crea
+// (tableau rénal), « âge/sexe/poids » ↔ la fiche patient (p_age/p_sexe/p_poids).
+// Ainsi rien n'est saisi en double et la persistance ne change pas.
+function makeDfgCardRow(tbody) {
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = 5;
+  td.style.padding = '10px 4px';
+  const champStyle = 'width:96px;padding:6px 8px;border:1.5px solid var(--border);'
+    + 'border-radius:7px;font-size:13px;box-sizing:border-box';
+  const labStyle = 'display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--text-muted)';
+  td.innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:10px;background:var(--accent-light);padding:12px 14px">
+      <div style="font-weight:700;color:var(--accent);font-size:13px">Clairance créatinine (DFG) — calcul automatique</div>
+      <div style="font-size:11px;color:var(--text-muted);margin:2px 0 11px">
+        Renseignez les cases ci-dessous ; le DFG est calculé automatiquement selon deux techniques.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px 14px;margin-bottom:12px">
+        <label style="${labStyle}">Créatinine (mg/L)
+          <input id="dfg_crea" inputmode="decimal" style="${champStyle}" oninput="dfgFromCard('crea')"></label>
+        <label style="${labStyle}">Âge (ans)
+          <input id="dfg_age" inputmode="decimal" style="${champStyle}" oninput="dfgFromCard('age')"></label>
+        <label style="${labStyle}">Sexe
+          <select id="dfg_sexe" style="${champStyle}" onchange="dfgFromCard('sexe')">
+            <option value="">—</option><option value="M">Masculin</option><option value="F">Féminin</option>
+          </select></label>
+        <label style="${labStyle}">Poids (kg)
+          <input id="dfg_poids" inputmode="decimal" style="${champStyle}" oninput="dfgFromCard('poids')"></label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px">
+          <b>CKD-EPI 2021</b>
+          <span style="color:var(--text-muted);font-size:11px">(âge · sexe · créatinine — recommandé, sans poids)</span><br>
+          <span id="dfg_ckd" style="font-weight:700;color:var(--text-muted)">—</span>
+        </div>
+        <div style="font-size:13px">
+          <b>Cockcroft-Gault</b>
+          <span style="color:var(--text-muted);font-size:11px">(âge · sexe · créatinine · poids)</span><br>
+          <span id="dfg_cock" style="font-weight:700;color:var(--text-muted)">—</span>
+        </div>
+      </div>
+      <input type="hidden" id="v_dfg">
+    </div>
+  `;
+  tr.appendChild(td);
+  tbody.appendChild(tr);
+  if (typeof recalcDFG === 'function') recalcDFG(); // état initial (mirroir + calcul)
 }
 
 // Variante NFS : pas de colonne Interprétation — la case Valeur elle-même
@@ -814,7 +875,10 @@ function onParamInput(id, skipMontant) {
   if (!skipMontant) updateMontantCurrent();
   // ✅ v13.151 — Urée déduite de la créatinine (résultat, pas la référence).
   // Le montant a déjà été mis à jour ci-dessus → on l'évite pour l'urée.
-  if (id === 'crea') { deduireUreeDeCrea(); onParamInput('uree', true); }
+  if (id === 'crea') {
+    deduireUreeDeCrea(); onParamInput('uree', true);
+    if (typeof recalcDFG === 'function') recalcDFG(); // DFG dépend de la créat
+  }
 }
 
 // ✅ v13.151 — Urée (g/L) = créatinine (mg/L) / 44. Source unique de la règle,

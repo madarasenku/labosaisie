@@ -1190,10 +1190,12 @@ function _fillPatient(p) {
   const setV = (id, v) => { const el = document.getElementById(id); if (el && v != null && String(v) !== '') el.value = v; };
   setV('p_age',      p.age);
   setV('p_sexe',     p.sexe);
+  setV('p_poids',    p.poids);
   setV('p_medecin',  p.medecin);
   setV('p_service',  p.service);
   setV('p_clinique', p.clinique);
   if (p.sexe || p.age) updateAllRefs();
+  if (typeof recalcDFG === 'function') recalcDFG();
   toast('Patient reconnu — informations pré-remplies ✓', 'ok');
 }
 
@@ -1719,6 +1721,7 @@ async function fillAllResults(id) {
   setVal('p_dossier', p.dossier); setVal('p_date', p.date); setVal('p_nom', p.nom);
   setVal('p_age', p.age); setVal('p_sexe', p.sexe); setVal('p_medecin', p.medecin);
   setVal('p_service', p.service); setVal('p_clinique', p.clinique);
+  setVal('p_poids', p.poids != null ? p.poids : '');
   if (p.sexe || p.age) updateAllRefs();
   const prescEl = document.getElementById('p_prescripteur_id');
   if (prescEl && record.prescripteur_id) prescEl.value = record.prescripteur_id;
@@ -1732,6 +1735,8 @@ async function fillAllResults(id) {
   await new Promise(r => setTimeout(r, 100));
   types.forEach(t => { const rr = getRecordResultats(record, t); if (rr) loadResultsIntoForm(t, rr); });
   types.forEach(t => { try { ensureInterpFresh(t); } catch (e) {} });
+  // ✅ v13.196 — Créatinine et poids maintenant chargés : recalculer le DFG.
+  if (typeof recalcDFG === 'function') recalcDFG();
 
   // Montant gelé (comme en édition simple)
   const montantOriginal = record.montant || 0;
