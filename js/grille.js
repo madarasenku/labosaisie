@@ -165,15 +165,19 @@ const GRILLE_EXAMS = {
     cols: [{ k: 'gly', lab: 'Glycémie (g/L)', dom: 'v_gly', kind: 'num' }],
   },
   crea: {
-    label: 'Créatinine (+ urée auto)', type: 'Biochimie', exId: 'ex_crea', coche: /Créat|Creat|^Urée$|Uree/i,
+    label: 'Créatinine (+ urée, DFG auto)', type: 'Biochimie', exId: 'ex_crea', coche: /Créat|Creat|^Urée$|Uree/i,
     filled: b => b['Créatinine'] && b['Créatinine'].valeur,
     cols: [{ k: 'crea', lab: 'Créatinine (mg/L)', dom: 'v_crea', kind: 'num' }],
     // ✅ v13.151 — L'urée est déduite de la créatinine : urée (g/L) = créat / 44.
     //   Règle centralisée dans deduireUreeDeCrea() ; onParamInput('uree') rafraîchit
     //   l'interprétation (même chemin que le formulaire, sans double traitement).
+    // ✅ v13.197 — Le DFG (CKD-EPI, à partir de l'âge/sexe/créatinine) est aussi
+    //   calculé en série. Le poids n'existe pas en série → Cockcroft indisponible,
+    //   mais la clairance CKD-EPI est produite comme dans le formulaire.
     postSet: () => {
       if (typeof deduireUreeDeCrea === 'function') deduireUreeDeCrea();
       if (typeof onParamInput === 'function') { try { onParamInput('uree'); } catch (e) {} }
+      if (typeof recalcDFG === 'function') { try { recalcDFG(); } catch (e) {} }
     },
   },
   transa: {
@@ -257,14 +261,20 @@ const GRILLE_EXAMS = {
       { k: 'trig', lab: 'TG (g/L)', dom: 'v_trig', kind: 'num' },
     ],
   },
+  // ✅ v13.197 — Ionogramme : on ne saisit plus le sodium. Règle du labo : le Na
+  //   est toujours déduit du chlore (Na = Cl / 0.72). On saisit donc K et Cl ; le
+  //   sodium est calculé (postSet), comme l'urée l'est depuis la créatinine.
   iono: {
-    label: 'Ionogramme (Na / K / Cl)', type: 'Biochimie', exId: 'ex_iono', coche: /Ionogramme|Na, K, Cl/i,
-    filled: b => b['Sodium (Na⁺)'] && b['Sodium (Na⁺)'].valeur,
+    label: 'Ionogramme (K / Cl → Na auto)', type: 'Biochimie', exId: 'ex_iono', coche: /Ionogramme|Na, K, Cl/i,
+    filled: b => b['Chlore (Cl⁻)'] && b['Chlore (Cl⁻)'].valeur,
     cols: [
-      { k: 'na', lab: 'Na⁺', dom: 'v_na', kind: 'num' },
       { k: 'k',  lab: 'K⁺',  dom: 'v_k',  kind: 'num' },
       { k: 'cl', lab: 'Cl⁻', dom: 'v_cl', kind: 'num' },
     ],
+    postSet: () => {
+      if (typeof deduireSodiumDeChlore === 'function') deduireSodiumDeChlore();
+      if (typeof onParamInput === 'function') { try { onParamInput('na'); } catch (e) {} }
+    },
   },
   ua: {
     label: 'Acide urique', type: 'Biochimie', exId: 'ex_ua', coche: /Acide urique/i,

@@ -81,7 +81,7 @@ const doss = {
       o.ge = sel('ge_result', 'Négatif'); o.tdr = sel('ge_tdr', 'Négatif');
       // Biochimie
       [['gly','0.95'],['uree','0.30'],['crea','11'],['ua','45'],['asat','28'],['alat','31'],
-       ['chol','1.85'],['hdl','0.55'],['trig','1.20'],['na','140'],['k','4.2'],['cl','102']]
+       ['chol','1.85'],['hdl','0.55'],['trig','1.20'],['k','4.2'],['cl','102']]
         .forEach(([k, v]) => { o['v_' + k] = num('v_' + k, v); });
       // CRP + Widal
       o.crp = sel('crp_valeur', '24');
@@ -113,7 +113,9 @@ const doss = {
     r.check('Acide urique', R['Biochimie'] && R['Biochimie']['Acide urique'].valeur, '45');
     r.check('Cholestérol', R['Biochimie'] && R['Biochimie']['Cholestérol total'].valeur, '1.85');
     r.check('LDL calculé', !!(R['Biochimie'] && R['Biochimie']['LDL-cholestérol ⚙'] && R['Biochimie']['LDL-cholestérol ⚙'].valeur), true);
-    r.check('Sodium', R['Biochimie'] && R['Biochimie']['Sodium (Na⁺)'].valeur, '140');
+    // ✅ v13.197 — Le sodium n'est plus saisi : il est déduit du chlore
+    // (Na = Cl / 0.72). Cl = 102 → Na = round(102 / 0.72) = 142.
+    r.check('Sodium déduit du chlore (102/0.72≈142)', R['Biochimie'] && R['Biochimie']['Sodium (Na⁺)'].valeur, '142');
     r.check('CRP', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['CRP - Valeur'], '24');
     r.check('VIH qualitatif', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['VIH 1 & 2'].resultat, 'Négatif');
     r.check('Toxo IgG QUALITATIF', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Toxoplasmose IgG'].resultat, 'Positif');
