@@ -119,6 +119,8 @@ function examExpectedRows(examId) {
     ex_uree:  () => K(BIO_REIN.filter(p=>p.id==='uree')),
     ex_crea:  () => K(BIO_REIN.filter(p=>p.id==='crea')),
     ex_ua:    () => K(BIO_REIN.filter(p=>p.id==='ua')),
+    // ✅ v13.199 — La clairance produit DEUX lignes (CKD-EPI + Cockcroft-Gault).
+    ex_dfg:   () => K(BIO_REIN.filter(p=>['dfg','dfgcg'].includes(p.id))),
     ex_asat:  () => K(BIO_FOIE.filter(p=>['asat','alat'].includes(p.id))),
     ex_ggt:   () => K(BIO_FOIE.filter(p=>p.id==='ggt')),
     ex_pal:   () => K(BIO_FOIE.filter(p=>p.id==='pal')),
@@ -283,7 +285,7 @@ function examFieldIds(examId) {
     ex_zinc:  () => ['v_zinc'],
     ex_cuiv:  () => ['v_cuiv'],
     ex_malb:  () => ['v_malb'],
-    ex_dfg:   () => ['v_dfg'],
+    ex_dfg:   () => ['v_dfg', 'v_dfgcg'],
     ex_ldh:   () => ['v_ldh'],
     ex_amy:   () => ['v_amy'],
     ex_lip:   () => ['v_lip'],

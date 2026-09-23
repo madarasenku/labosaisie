@@ -133,77 +133,117 @@ function calculerDFGDepuisDossier(resultats, patient, poidsKg) {
 //   • dfg_ckd / dfg_cock  (résultat + stade lisibles à l'écran)
 //   • v_dfg (caché)       (texte des deux techniques, enregistré/imprimé)
 // ──────────────────────────────────────────────────────────────
+// ✅ v13.198 — La carte DFG est AUTONOME : ses propres cases (dfg_crea/dfg_age/
+// dfg_sexe/dfg_poids) sont la source du calcul. Auparavant la créatinine passait
+// par le champ du tableau rénal (v_crea) ; or ce champ est VERROUILLÉ et VIDÉ
+// quand l'examen créatinine n'est pas coché/payé, si bien que le DFG ne se
+// calculait jamais (« on n'arrive pas à rentrer les données »). Désormais le
+// dossier ne sert qu'à PRÉ-REMPLIR les cases vides de la carte ; le calcul lit
+// toujours les cases de la carte.
 function recalcDFG() {
   const hidden = document.getElementById('v_dfg');
   if (!hidden) return;                       // la carte DFG n'est pas à l'écran
   const g = id => document.getElementById(id);
   const active = document.activeElement;
 
-  // Créatinine : le tableau rénal (v_crea) fait foi ; à défaut, la carte.
-  const creaGlobal = g('v_crea');
-  const creaVal = creaGlobal ? creaGlobal.value : ((g('dfg_crea') || {}).value || '');
-  const profile = (typeof getPatientProfile === 'function')
-    ? getPatientProfile() : { age: null, sexe: '' };
-  const poidsEl = g('p_poids');
-  const poidsKg = poidsEl ? parseFloat(String(poidsEl.value).replace(',', '.')) : NaN;
+  // Pré-remplissage confort : remplir une case VIDE de la carte depuis le champ
+  // correspondant du dossier — sans écraser une valeur déjà saisie ni la case
+  // en cours de frappe.
+  const prefill = (cardId, srcId) => {
+    const c = g(cardId), s = g(srcId);
+    if (c && c !== active && (c.value === '' || c.value == null) && s && String(s.value) !== '') c.value = s.value;
+  };
+  prefill('dfg_crea', 'v_crea');
+  prefill('dfg_age', 'p_age');
+  const sxEl = g('dfg_sexe');
+  if (sxEl && sxEl !== active && !sxEl.value) { const ps = g('p_sexe'); if (ps && ps.value) sxEl.value = ps.value; }
+  prefill('dfg_poids', 'p_poids');
+
+  // Source du calcul = les cases de la carte (repli sur le dossier si vide).
+  const cardVal = (id, alt) => {
+    const el = g(id); if (el && String(el.value).trim() !== '') return el.value;
+    const a = g(alt); return a ? a.value : '';
+  };
+  const creaVal = cardVal('dfg_crea', 'v_crea');
+  const ageVal  = cardVal('dfg_age', 'p_age');
+  const ageAns  = ageVal !== '' ? parseFloat(String(ageVal).replace(',', '.'))
+    : (typeof getPatientProfile === 'function' ? getPatientProfile().age : null);
+  const sexeVal = (g('dfg_sexe') && g('dfg_sexe').value) ? g('dfg_sexe').value
+    : (typeof getPatientProfile === 'function' ? getPatientProfile().sexe : '');
+  const poidsVal = cardVal('dfg_poids', 'p_poids');
+  const poidsKg = parseFloat(String(poidsVal).replace(',', '.'));
   const unite = (typeof getUnit === 'function') ? getUnit('crea', 'mg/L') : 'mg/L';
 
-  // Refléter les valeurs dans la carte (jamais la case qu'on est en train de saisir).
-  const mirror = (id, val) => { const el = g(id); if (el && el !== active) el.value = (val == null ? '' : val); };
-  mirror('dfg_crea', creaVal);
-  mirror('dfg_age', (g('p_age') || {}).value);
-  const sxEl = g('dfg_sexe'); if (sxEl && sxEl !== active) sxEl.value = ((g('p_sexe') || {}).value) || '';
-  mirror('dfg_poids', poidsEl ? poidsEl.value : '');
-
   const ckdEl = g('dfg_ckd'), cockEl = g('dfg_cock');
+  const cgHidden = g('v_dfgcg');
+  const iCkd = g('i_dfg'), iCg = g('i_dfgcg');
+  // Chaque technique a sa PROPRE case stockée (v_dfg = CKD-EPI, v_dfgcg =
+  // Cockcroft) et sa propre interprétation (≥ 90 = normal), car les deux
+  // n'ont ni la même unité ni la même valeur normale.
+  const interpDFG = v => (v == null ? '' : (typeof interprete === 'function' ? interprete(v, 90, 999) : ''));
   const vide = () => {
-    hidden.value = '';
+    hidden.value = ''; if (cgHidden) cgHidden.value = '';
+    if (iCkd) iCkd.textContent = ''; if (iCg) iCg.textContent = '';
     if (ckdEl) { ckdEl.textContent = '—'; ckdEl.style.color = 'var(--text-muted)'; }
     if (cockEl) { cockEl.textContent = '—'; cockEl.style.color = 'var(--text-muted)'; }
   };
 
   if (creaVal === '' || creaVal == null) { vide(); return; }
   const r = calculerDFG({
-    creat: creaVal, unite, age: profile.age, sexe: profile.sexe,
+    creat: creaVal, unite, age: (ageAns == null || isNaN(ageAns) ? null : ageAns), sexe: sexeVal,
     poidsKg: isFinite(poidsKg) && poidsKg > 0 ? poidsKg : null,
   });
   if (r.erreur) { vide(); return; }
 
-  hidden.value = dfgTexte(r);
+  // Valeurs stockées (une par technique) + interprétations.
+  hidden.value = r.ckd_epi_2021 != null ? dfgNum(r.ckd_epi_2021) : '';
+  if (cgHidden) cgHidden.value = r.cockcroft_gault != null ? dfgNum(r.cockcroft_gault) : '';
+  if (iCkd) iCkd.textContent = interpDFG(r.ckd_epi_2021);
+  if (iCg) iCg.textContent = interpDFG(r.cockcroft_gault);
+
   if (ckdEl) {
     ckdEl.textContent = r.ckd_epi_2021 != null
-      ? `${dfgNum(r.ckd_epi_2021)} mL/min/1,73 m² — ${r.ckd_epi_stade}` : '—';
-    ckdEl.style.color = (r.ckd_epi_2021 != null && r.ckd_epi_2021 < 90) ? '#b91c1c' : 'var(--accent)';
+      ? `${dfgNum(r.ckd_epi_2021)} mL/min/1,73 m² — ${r.ckd_epi_stade}`
+      : 'Âge et sexe requis pour cette technique';
+    ckdEl.style.color = (r.ckd_epi_2021 == null) ? 'var(--text-muted)'
+      : (r.ckd_epi_2021 < 90 ? '#b91c1c' : 'var(--accent)');
   }
   if (cockEl) {
     cockEl.textContent = r.cockcroft_gault != null
       ? `${dfgNum(r.cockcroft_gault)} mL/min — ${r.cockcroft_stade}`
-      : 'Poids requis pour cette technique';
+      : 'Âge et poids requis pour cette technique';
     cockEl.style.color = (r.cockcroft_gault == null) ? 'var(--text-muted)'
       : (r.cockcroft_gault < 90 ? '#b91c1c' : 'var(--accent)');
   }
 }
 
-// Saisie depuis la carte DFG → on écrit dans le champ réel correspondant puis
-// on relance le calcul (via le circuit habituel, qui rappelle recalcDFG).
+// Saisie depuis la carte DFG. La carte est autonome : on recalcule directement.
+// On répercute AUSSI vers les champs du dossier quand ils existent ET sont
+// éditables (pour garder la cohérence), mais on ne DÉPEND jamais d'eux — un champ
+// verrouillé (examen non coché) n'empêche donc plus la saisie du DFG.
 function dfgFromCard(champ) {
   const g = id => document.getElementById(id);
-  const val = el => (el ? String(el.value).replace(',', '.') : '');
+  const editable = el => el && !el.disabled && !el.readOnly;
+  const cardv = id => { const el = g(id); return el ? String(el.value).replace(',', '.') : ''; };
   if (champ === 'crea') {
     const vc = g('v_crea');
-    if (vc) { vc.value = val(g('dfg_crea')); if (typeof onParamInput === 'function') { onParamInput('crea'); return; } }
-    recalcDFG();
+    if (editable(vc)) { vc.value = cardv('dfg_crea'); if (typeof onParamInput === 'function') { try { onParamInput('crea'); } catch (e) {} } }
   } else if (champ === 'age') {
-    const pa = g('p_age'); if (pa) pa.value = (g('dfg_age') || {}).value || '';
-    const pu = g('p_age_unit'); if (pu) pu.value = 'ans';
-    if (typeof onAgeInput === 'function') onAgeInput(); else recalcDFG();
+    const pa = g('p_age');
+    if (editable(pa)) {
+      pa.value = (g('dfg_age') || {}).value || '';
+      const pu = g('p_age_unit'); if (pu) pu.value = 'ans';
+      if (typeof onAgeInput === 'function') { try { onAgeInput(); } catch (e) {} }
+    }
   } else if (champ === 'sexe') {
-    const ps = g('p_sexe'); if (ps) ps.value = (g('dfg_sexe') || {}).value || '';
-    if (typeof updateAllRefs === 'function') updateAllRefs();
-    if (typeof updateMontantCurrent === 'function') updateMontantCurrent();
-    recalcDFG();
+    const ps = g('p_sexe');
+    if (editable(ps)) {
+      ps.value = (g('dfg_sexe') || {}).value || '';
+      if (typeof updateAllRefs === 'function') { try { updateAllRefs(); } catch (e) {} }
+      if (typeof updateMontantCurrent === 'function') { try { updateMontantCurrent(); } catch (e) {} }
+    }
   } else if (champ === 'poids') {
-    const pp = g('p_poids'); if (pp) pp.value = val(g('dfg_poids'));
-    recalcDFG();
+    const pp = g('p_poids'); if (pp) pp.value = cardv('dfg_poids');   // caché, jamais verrouillé
   }
+  recalcDFG();
 }

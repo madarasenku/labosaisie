@@ -52,12 +52,12 @@ const { serve, openApp, createReporter } = require('./helpers');
       // Reproduit ce que fait la série après avoir posé la créatinine.
       try { GRILLE_EXAMS.crea.postSet(); } catch (e) { return { err: e.message }; }
       return {
-        dfg: (document.getElementById('v_dfg') || {}).value || '',
+        dfg: (document.getElementById('dfg_ckd') || {}).textContent || '',
         uree: (document.getElementById('v_uree') || {}).value || '',
       };
     });
     r.check('urée déduite (12/44≈0.27)', dfgSerie.uree, '0.27');
-    r.check('DFG CKD-EPI calculé en série (=76)', /CKD-EPI 2021 : 76/.test(dfgSerie.dfg), true);
+    r.check('DFG CKD-EPI calculé en série (=76)', /76 mL\/min/.test(dfgSerie.dfg), true);
 
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 5));
