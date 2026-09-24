@@ -38,6 +38,64 @@ function appliquerTriHistorique() {
   renderHistory();
 }
 
+// ── v13.204 — ADMIN : changer l'auteur d'un dossier ─────────────────
+// La visibilité des spectateurs dépend de l'AUTEUR (créateur) du dossier :
+// tout est visible sauf les dossiers de « nadia » et « admin ». Réattribuer un
+// dossier à un compte visible le rend donc visible des spectateurs (et
+// inversement). Réservé à l'administrateur ; appliqué côté serveur.
+let _auteurCibleId = null;
+function changerAuteurDossier(id) {
+  if (typeof blockIfSpectateur === 'function' && blockIfSpectateur()) return;
+  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  const r = _dbCache.find(x => x.id === id);
+  if (!r) return;
+  _auteurCibleId = id;
+  // Candidats : auteurs déjà présents dans les dossiers, triés. L'admin choisit
+  // un compte visible (pas Nadia/admin) pour rendre le dossier public.
+  const caches = ['nadia', 'admin'];
+  const auteurs = [...new Set(_dbCache.map(x => x.createdBy).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  const sel = document.getElementById('ca_author');
+  if (sel) sel.innerHTML = auteurs.map(a => {
+    const cache = caches.includes(String(a).trim().toLowerCase());
+    return '<option value="' + esc(a) + '"' + (a === r.createdBy ? ' selected' : '') + '>'
+         + esc(a) + (cache ? ' — caché des spectateurs' : ' — visible des spectateurs') + '</option>';
+  }).join('');
+  const info = document.getElementById('ca-info');
+  if (info) info.innerHTML = 'Dossier : <strong>' + esc(r.patient?.nom || '?') + '</strong> ('
+    + esc(r.patient?.dossier || '?') + ')<br>Auteur actuel : <strong>' + esc(r.createdBy || '?') + '</strong>';
+  const err = document.getElementById('ca-error'); if (err) err.textContent = '';
+  const modal = document.getElementById('change-author-modal');
+  if (modal) modal.style.display = 'flex';
+}
+function fermerChangerAuteur() {
+  const modal = document.getElementById('change-author-modal');
+  if (modal) modal.style.display = 'none';
+  _auteurCibleId = null;
+}
+async function submitChangerAuteur() {
+  if (_auteurCibleId == null) return;
+  const sel = document.getElementById('ca_author');
+  const errEl = document.getElementById('ca-error');
+  const nouvel = (sel && sel.value) || '';
+  if (!nouvel) { if (errEl) errEl.textContent = 'Choisissez un auteur.'; return; }
+  const btn = document.getElementById('ca-submit'); if (btn) btn.disabled = true;
+  try {
+    const { data, error } = await _sb.rpc('changer_auteur_dossier',
+      { p_token: TK(), p_id: _auteurCibleId, p_nouvel_auteur: nouvel });
+    if (error || (data && data.erreur)) {
+      if (errEl) errEl.textContent = (data && data.erreur) || (error && error.message) || 'Échec du changement.';
+      return;
+    }
+    const r = _dbCache.find(x => x.id === _auteurCibleId); if (r) r.createdBy = nouvel;
+    fermerChangerAuteur();
+    toast('Auteur changé → ' + nouvel, 'ok');
+    if (typeof renderHistory === 'function') renderHistory();
+  } catch (e) {
+    if (errEl) errEl.textContent = 'Erreur : ' + (e.message || 'inconnue');
+  } finally { if (btn) btn.disabled = false; }
+}
+
 function clearSearchFilters() {
   ['search-input','filter-date-from','filter-date-to'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -552,6 +610,11 @@ async function renderHistory(forceRefresh) {
                     ? '<button class="btn btn-action-secondary" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditUnifie(' + r.id + ')" title="Modifier" aria-label="Modifier">✏️ Modifier</button>'
                     : '';
                 })()
+              // ✅ v13.204 — ADMIN : changer l'auteur d'un dossier. Réattribuer à un
+              //   compte visible (pas Nadia/admin) le rend visible des spectateurs.
+              + (isAdmin()
+                  ? '<button class="btn btn-action-secondary" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#075985;border:1px solid #7dd3fc" onclick="changerAuteurDossier(' + r.id + ')" title="Changer l\'auteur (visibilité spectateurs)" aria-label="Changer l\'auteur">👤 Auteur</button>'
+                  : '')
           )
         // ✅ v13.158 — Sortie du compte rendu via le rendu HTML (printRecord) :
         // modèle validé en nuances de gris, sans signature imprimée (apposée à la
@@ -717,6 +780,9 @@ function updateBulkToolbar() {
     const peutCahier = isAdmin() || (typeof isCaissier === 'function' && isCaissier());
     cahierBtn.style.display = (peutCahier && !_filterCorbeille) ? '' : 'none';
   }
+  // ✅ v13.205 — Cahier noir : ADMIN seulement, hors corbeille.
+  const cahierNoirBtn = document.getElementById('bulk-cahier-noir-btn');
+  if (cahierNoirBtn) cahierNoirBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
   // État de la case "tout sélectionner"
   if (selectAll) {
     const total = document.querySelectorAll('.bulk-chk').length;
@@ -1145,6 +1211,74 @@ async function bulkCahierJaune() {
   hideLoading();
   clearBulkSelection();
   toast(ok + ' porté(s) au cahier jaune'
+    + (deja ? ' · ' + deja + ' déjà présent(s)' : '')
+    + (err ? ' · ' + err + ' erreur(s)' + (errMsg ? ' (' + errMsg + ')' : '') : ''),
+    err ? 'err' : 'ok');
+}
+
+// ── v13.205 — Porter au CAHIER NOIR (admin) : colonne au choix ──────
+// Contrairement au jaune (classement BPN automatique), l'admin choisit UNE
+// colonne du cahier noir ; chaque dossier coché y est porté pour son montant
+// exact (dédup par dossier côté serveur).
+let _cnReportPlan = null;
+async function bulkCahierNoir() {
+  if (blockIfSpectateur()) return;
+  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  const plan = ids.map(id => _dbCache.find(x => x.id === id)).filter(Boolean)
+    .map(r => ({ r, montant: Number(r.montant) || 0 }));
+  const aPorter = plan.filter(p => p.montant > 0);
+  const sansMontant = plan.length - aPorter.length;
+  if (!aPorter.length) { toast('Aucun dossier avec un montant à porter', 'err'); return; }
+  showLoading('Cahier noir…');
+  const mois = new Date().toISOString().slice(0, 7);
+  const { data, error } = await _sb.rpc('get_cahier_noir', { p_token: TK(), p_mois: mois });
+  hideLoading();
+  if (error || !data || data.erreur) {
+    toast('Cahier noir indisponible' + (data && data.erreur ? ' (' + data.erreur + ')' : '')
+      + ' — ouvre le coffre.', 'err'); return;
+  }
+  const cols = (data.colonnes || []).filter(c => !c.archivee);
+  if (!cols.length) { toast('Crée d\'abord une colonne dans le cahier noir', 'err'); return; }
+  _cnReportPlan = { aPorter, sansMontant };
+  const sel = document.getElementById('cn-report-colonne');
+  if (sel) sel.innerHTML = cols.map(c => '<option value="' + esc(c.libelle) + '">' + esc(c.libelle) + '</option>').join('');
+  const info = document.getElementById('cn-report-info');
+  if (info) info.innerHTML = aPorter.length + ' dossier(s) à porter'
+    + (sansMontant ? ' · ' + sansMontant + ' sans montant ignoré(s)' : '')
+    + '.<br>Montant = montant exact du dossier ; un dossier déjà porté n\'est pas dupliqué.';
+  const err2 = document.getElementById('cn-report-error'); if (err2) err2.textContent = '';
+  const modal = document.getElementById('cahier-noir-report-modal');
+  if (modal) modal.style.display = 'flex';
+}
+function fermerReportNoir() {
+  const m = document.getElementById('cahier-noir-report-modal'); if (m) m.style.display = 'none';
+  _cnReportPlan = null;
+}
+async function submitReportNoir() {
+  if (!_cnReportPlan) return;
+  const libelle = document.getElementById('cn-report-colonne')?.value || '';
+  const errEl = document.getElementById('cn-report-error');
+  if (!libelle) { if (errEl) errEl.textContent = 'Choisissez une colonne.'; return; }
+  const btn = document.getElementById('cn-report-submit'); if (btn) btn.disabled = true;
+  showLoading('Report au cahier noir…');
+  let ok = 0, deja = 0, err = 0, errMsg = '';
+  for (const p of _cnReportPlan.aPorter) {
+    const r = p.r;
+    const jour = (r.patient && r.patient.date) || String(r.savedAt || '').slice(0, 10);
+    const expl = (r.patient && r.patient.nom ? r.patient.nom : '?')
+      + ' (' + (r.patient && r.patient.dossier ? r.patient.dossier : '?') + ')';
+    const { data, error } = await _sb.rpc('porter_au_cahier_noir', {
+      p_token: TK(), p_resultat_id: r.id, p_libelle_colonne: libelle,
+      p_montant: p.montant, p_jour: jour, p_explication: expl });
+    if (error || (data && data.erreur)) { err++; errMsg = (data && data.erreur) || (error && error.message) || ''; }
+    else if (data && data.deja) deja++;
+    else ok++;
+  }
+  hideLoading(); if (btn) btn.disabled = false;
+  fermerReportNoir(); clearBulkSelection();
+  toast(ok + ' porté(s) au cahier noir'
     + (deja ? ' · ' + deja + ' déjà présent(s)' : '')
     + (err ? ' · ' + err + ' erreur(s)' + (errMsg ? ' (' + errMsg + ')' : '') : ''),
     err ? 'err' : 'ok');

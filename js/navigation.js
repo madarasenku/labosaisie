@@ -91,7 +91,13 @@ function showView(v) {
     if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
   if (v === 'caisse') renderCaisse();
-  if (v === 'cahier' && typeof chargerCahierJaune === 'function') chargerCahierJaune();
+  if (v === 'cahier') {
+    // ✅ v13.205 — Vue partagée entre cahier JAUNE et NOIR : on rafraîchit
+    // l'entête (titre/onglet) et les cartes admin selon le cahier actif.
+    if (typeof _majEnteteCahier === 'function') _majEnteteCahier();
+    if (typeof _majCartesCahier === 'function') _majCartesCahier();
+    if (typeof chargerCahierJaune === 'function') chargerCahierJaune();
+  }
 
   // ✅ v13.109 — Mémoriser l'onglet courant pour y revenir après un
   // rechargement, au lieu de toujours retomber sur « Nouveau patient ».

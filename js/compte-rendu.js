@@ -212,7 +212,7 @@ function crGroupesBio() {
   add(typeof BIO_FER      !== 'undefined' ? BIO_FER      : null, 'Biochimie — Bilan martial');
   add(typeof BIO_CARD     !== 'undefined' ? BIO_CARD     : null, 'Biochimie — Marqueurs cardiaques');
   add(typeof BIO_HORM     !== 'undefined' ? BIO_HORM     : null, 'Biochimie — Hormonologie');
-  add(typeof BIO_COAG     !== 'undefined' ? BIO_COAG     : null, 'Biochimie — Coagulation');
+  add(typeof BIO_COAG     !== 'undefined' ? BIO_COAG     : null, 'Hématologie — Hémostase (coagulation)');
   add(typeof BIO_AUTRE    !== 'undefined' ? BIO_AUTRE    : null, 'Biochimie — Autres paramètres');
   return g;
 }
@@ -339,6 +339,10 @@ const CR_STYLE = `
   /* Impression de LOT : pas de pied fixe (un par patient via le tfoot). */
   #print-render.cr-lot .cr-foot-fixed { display:none; }
   #print-render.cr-lot .cr-doc > tfoot .cr-foot { visibility:visible; }
+  /* ✅ v13.207 — iOS Safari : idem, on abandonne le pied fixe (qui se superpose
+     au contenu sur iPhone/iPad) au profit du pied en flux du <tfoot>. */
+  #print-render.cr-ios .cr-foot-fixed { display:none; }
+  #print-render.cr-ios .cr-doc > tfoot .cr-foot { visibility:visible; }
   .cr-foot { padding-top:4px; font-size:7.5pt; border-top:1.4px solid #333; }
   .cr-foot-grid { display:flex; align-items:flex-start; gap:14px; }
   .cr-foot-l { flex:1; } .cr-foot-c { flex:1.2; text-align:center; } .cr-foot-r { text-align:right; }

@@ -67,6 +67,17 @@ function _jourDossierVerrouille(r) {
   return (typeof jourVerrouille === 'function') && jourVerrouille(_jourDeDossier(r));
 }
 
+// ✅ v13.204 — Auteurs dont les dossiers restent PRIVÉS vis-à-vis des SPECTATEURS
+// (mais restent visibles des agents, du caissier et de l'admin). Figé : « nadia »
+// et « admin ». L'admin peut rendre un dossier visible aux spectateurs en
+// changeant son auteur (voir changerAuteurDossier). Comparaison insensible à la
+// casse et aux espaces. Cette règle est AUSSI appliquée côté serveur
+// (get_resultats_light) : le client ne fait que la refléter.
+const _AUTEURS_CACHES_SPECTATEUR = ['nadia', 'admin'];
+function _auteurCacheSpectateur(r) {
+  return _AUTEURS_CACHES_SPECTATEUR.includes(String(r && r.createdBy || '').trim().toLowerCase());
+}
+
 function getDB() {
   // ✅ v13.33 — Corbeille : admin voit soft+hard deleted, agent voit ses soft-delete
   if (_filterCorbeille) {
@@ -87,9 +98,12 @@ function getDB() {
   // caissier ne pouvait plus encaisser la patiente. Un dossier qu'on ne voit
   // pas est un dossier qu'on ne peut pas traiter.
   //
-  // ✅ v13.128 — Le SPECTATEUR ne voit QUE les journées verrouillées.
+  // ✅ v13.204 — Le SPECTATEUR voit IMMÉDIATEMENT le travail de l'équipe
+  //   (dossiers non masqués, non supprimés), SAUF ceux créés par Nadia ou par
+  //   l'admin. La clôture de journée ne gate plus sa vue : le flux est en temps
+  //   réel. (Avant v13.204 : uniquement les journées verrouillées.)
   if (isSpectateur())
-    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && _jourDossierVerrouille(r));
+    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && !_auteurCacheSpectateur(r));
   // Admin/Caissier : fiches actives (sans soft-delete ni hard-delete ni masquées)
   if (isAdmin() || isCaissier())
     return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
@@ -246,8 +260,9 @@ function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
   // Une seule règle décide de l'exclusion : isExcludedFromCalc.
   const vivante = r => !r.deletedAt && !r._hardDeleted && !isExcludedFromCalc(r);
-  // ✅ v13.128 — Le spectateur ne calcule que sur les journées verrouillées.
-  if (isSpectateur()) return _dbCache.filter(r => vivante(r) && _jourDossierVerrouille(r));
+  // ✅ v13.204 — Le spectateur calcule sur le même flux qu'il voit : équipe,
+  //   sauf Nadia et admin (cohérent avec getDB). Plus de gate « journée verrouillée ».
+  if (isSpectateur()) return _dbCache.filter(r => vivante(r) && !_auteurCacheSpectateur(r));
   if (isAdmin() || isCaissier()) return _dbCache.filter(vivante);
   const uid = _currentUser?.username;
   if (!uid) return [];
