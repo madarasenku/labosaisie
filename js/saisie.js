@@ -33,7 +33,7 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_tpha',  label:'TPHA / VDRL (Syphilis)',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:7000, section:'sec-sero' },
   { id:'ex_toxo',  label:'Toxoplasmose IgG / IgM',           groupe:'💉 Immuno-Sérologie', tab:'sero', prix:6000, section:'sec-sero' },
   { id:'ex_rube',  label:'Rubéole IgG / IgM',                groupe:'💉 Immuno-Sérologie', tab:'sero', prix:6000, section:'sec-sero' },
-  { id:'ex_aso',   label:'ASLO (Antistreptolysines)',         groupe:'💉 Immuno-Sérologie', tab:'sero', prix:5000, section:'sec-sero' },
+  { id:'ex_aso',   label:'ASLO (Antistreptolysines)',         groupe:'💉 Immuno-Sérologie', tab:'sero', prix:8000, section:'sec-sero' },
   { id:'ex_latex', label:'Latex (Waaler-Rose)',               groupe:'💉 Immuno-Sérologie', tab:'sero', prix:2500, section:'sec-sero' },
   { id:'ex_tsh',   label:'TSH',                              groupe:'💉 Immuno-Sérologie', tab:'sero', prix:15000, section:'sec-sero' },
   { id:'ex_ft4',   label:'T4 libre (FT4)',                   groupe:'💉 Immuno-Sérologie', tab:'sero', prix:15000, section:'sec-sero' },
@@ -68,10 +68,13 @@ const CATALOGUE_EXAMENS = [
   { id:'ex_cuiv',  label:'Cuivre',                            groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-iono-wrap' },
   { id:'ex_fer',   label:'Fer sérique',                       groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-fer-wrap' },
   { id:'ex_ferr',  label:'Ferritine',                         groupe:'🧪 Biochimie', tab:'bio', prix:10000, section:'sec-bio-fer-wrap' },
-  { id:'ex_ddim',  label:'D-Dimères',                         groupe:'🧪 Biochimie', tab:'bio', prix:15000, section:'sec-bio-fer-wrap' },
-  { id:'ex_tp',    label:'TP / INR',                          groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
-  { id:'ex_tca',   label:'TCA',                               groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
-  { id:'ex_fibr',  label:'Fibrinogène',                       groupe:'🧪 Biochimie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  // ✅ v13.206 — Hémostase (coagulation) : classée en Hématologie (les champs de
+  //   saisie restent dans le formulaire Biochimie, mais le classement affiché —
+  //   liste de sélection et compte rendu — est bien l'Hématologie).
+  { id:'ex_ddim',  label:'D-Dimères',                         groupe:'🩸 Hématologie', tab:'bio', prix:15000, section:'sec-bio-fer-wrap' },
+  { id:'ex_tp',    label:'TP / INR',                          groupe:'🩸 Hématologie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_tca',   label:'TCA',                               groupe:'🩸 Hématologie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
+  { id:'ex_fibr',  label:'Fibrinogène',                       groupe:'🩸 Hématologie', tab:'bio', prix:3000, section:'sec-bio-fer-wrap' },
   { id:'ex_trop',  label:'Troponine I/T',                     groupe:'🧪 Biochimie', tab:'bio', prix:25000, section:'sec-bio-card-wrap' },
   { id:'ex_bnp',   label:'BNP / NT-proBNP',                  groupe:'🧪 Biochimie', tab:'bio', prix:25000, section:'sec-bio-card-wrap' },
   { id:'ex_ck',    label:'CK (Créatine kinase)',              groupe:'🧪 Biochimie', tab:'bio', prix:25000, section:'sec-bio-card-wrap' },
