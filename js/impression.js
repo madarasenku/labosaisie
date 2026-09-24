@@ -528,6 +528,13 @@ async function _injectAndPrint(html) {
   //   possible par feuille) se superposerait pour tous les patients. On bascule
   //   alors sur le pied du <tfoot> (un par patient, en bas du contenu de chacun).
   printDiv.classList.toggle('cr-lot', printDiv.querySelectorAll('.cr-doc').length > 1);
+  // ✅ v13.207 — iOS Safari : le pied « fixe » (position:fixed) se superpose au
+  //   contenu à l'impression — iOS ne place pas le fixe à la hauteur réservée par
+  //   le <tfoot>. On bascule donc iOS sur le pied du <tfoot> EN FLUX (comme le lot),
+  //   qui réserve sa hauteur et ne chevauche jamais.
+  const _iOSprint = /iP(hone|ad|od)/.test(navigator.userAgent)
+                 || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  printDiv.classList.toggle('cr-ios', _iOSprint);
   const imgs = Array.from(printDiv.querySelectorAll('img'));
   await Promise.all(imgs.map(img => {
     if (img.complete && img.naturalWidth) return Promise.resolve();
