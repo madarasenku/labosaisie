@@ -672,6 +672,12 @@ function updateBulkToolbar() {
     const b = document.getElementById(idBtn);
     if (b) b.style.display = peutMasquer ? '' : 'none';
   });
+  // ✅ v13.201 — Cahier jaune : admin ou caissier, hors corbeille.
+  const cahierBtn = document.getElementById('bulk-cahier-btn');
+  if (cahierBtn) {
+    const peutCahier = isAdmin() || (typeof isCaissier === 'function' && isCaissier());
+    cahierBtn.style.display = (peutCahier && !_filterCorbeille) ? '' : 'none';
+  }
   // État de la case "tout sélectionner"
   if (selectAll) {
     const total = document.querySelectorAll('.bulk-chk').length;
@@ -1043,6 +1049,66 @@ async function bulkSetStatut(statut) {
     hideLoading();
     toast('Échec : ' + (e.message || e), 'err');
   }
+}
+
+// ✅ v13.201 — Report MANUEL au cahier jaune depuis l'historique (sélection par
+// cases, comme le masquage). Le report AUTOMATIQUE (trigger BPN) est retiré :
+// l'admin/caissier choisit les dossiers à porter, et l'app les CLASSE :
+//   • BPN (prénatal) + prescripteur du centre → colonne SFPMI
+//   • BPN (prénatal) + prescripteur externe    → colonne SFHG
+//   • ni l'un ni l'autre                        → colonne EXTERNE
+// Le montant porté est le montant EXACT du dossier ; un dossier déjà porté n'est
+// pas dupliqué (déduplication par resultat_id côté serveur).
+function _cahierLibellePour(r) {
+  const bpn = (typeof estDossierBPN === 'function') && estDossierBPN(r);
+  if (!bpn) return 'EXTERNE';
+  const externe = (typeof _prescExterne === 'function') && _prescExterne(r);
+  return externe ? 'SFHG' : 'SFPMI';
+}
+
+async function bulkCahierJaune() {
+  if (blockIfSpectateur()) return;
+  const autorise = isAdmin() || (typeof isCaissier === 'function' && isCaissier());
+  if (!autorise) { toast('Réservé à la caisse / l\'administrateur', 'err'); return; }
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  const plan = ids.map(id => _dbCache.find(x => x.id === id)).filter(Boolean)
+    .map(r => ({ r, libelle: _cahierLibellePour(r), montant: Number(r.montant) || 0 }));
+  const aPorter = plan.filter(p => p.montant > 0);
+  const sansMontant = plan.length - aPorter.length;
+  if (!aPorter.length) { toast('Aucun dossier avec un montant à porter', 'err'); return; }
+  const parCol = {};
+  aPorter.forEach(p => { parCol[p.libelle] = (parCol[p.libelle] || 0) + 1; });
+  const recap = ['SFPMI', 'SFHG', 'EXTERNE'].filter(k => parCol[k])
+    .map(k => parCol[k] + ' → ' + k).join(' · ');
+  if (!await showConfirmModal({
+    icon: '📒',
+    title: 'Porter ' + aPorter.length + ' dossier(s) au cahier jaune ?',
+    message: 'Classement automatique : ' + recap
+      + (sansMontant ? '<br>' + sansMontant + ' sans montant — ignoré(s).' : '')
+      + '<br>Montant = montant exact du dossier. Un dossier déjà porté n\'est pas dupliqué.',
+    confirmText: 'Porter au cahier', cancelText: 'Annuler'
+  })) return;
+  showLoading('Report au cahier jaune…');
+  let ok = 0, deja = 0, err = 0, errMsg = '';
+  for (const p of aPorter) {
+    const r = p.r;
+    const jour = (r.patient && r.patient.date) || String(r.savedAt || '').slice(0, 10);
+    const expl = (r.patient && r.patient.nom ? r.patient.nom : '?')
+      + ' (' + (r.patient && r.patient.dossier ? r.patient.dossier : '?') + ')';
+    const { data, error } = await _sb.rpc('porter_au_cahier', {
+      p_token: TK(), p_resultat_id: r.id, p_libelle_colonne: p.libelle,
+      p_montant: p.montant, p_jour: jour, p_explication: expl });
+    if (error || (data && data.erreur)) { err++; errMsg = (data && data.erreur) || (error && error.message) || ''; }
+    else if (data && data.deja) deja++;
+    else ok++;
+  }
+  hideLoading();
+  clearBulkSelection();
+  toast(ok + ' porté(s) au cahier jaune'
+    + (deja ? ' · ' + deja + ' déjà présent(s)' : '')
+    + (err ? ' · ' + err + ' erreur(s)' + (errMsg ? ' (' + errMsg + ')' : '') : ''),
+    err ? 'err' : 'ok');
 }
 
 async function bulkLock() {
