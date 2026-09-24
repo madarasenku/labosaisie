@@ -258,6 +258,9 @@ function updateUserBadge() {
   // C'est chargerAccesCahier() qui, et lui seul, les fait apparaître.
   const cahierNavBtn = document.getElementById('btn-nav-cahier');
   if (cahierNavBtn) cahierNavBtn.style.display = 'none';
+  // ✅ v13.205 — même précaution pour l'onglet du cahier noir.
+  const cahierNoirBtn = document.getElementById('btn-nav-cahier-noir');
+  if (cahierNoirBtn) cahierNoirBtn.style.display = 'none';
   const cahierColBtn = document.getElementById('cahier-colonnes-card');
   if (cahierColBtn) cahierColBtn.style.display = 'none';
   if (typeof chargerAccesCahier === 'function') chargerAccesCahier();

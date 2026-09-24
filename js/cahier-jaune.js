@@ -24,7 +24,54 @@
 
 let _cahierMois = null;      // 'AAAA-MM'
 let _cahierData = null;      // dernière réponse du serveur
-let _cahierAcces = null;     // droits de l'utilisateur courant sur le cahier
+let _cahierAcces = null;     // droits de l'utilisateur courant sur le cahier actif
+
+// ✅ v13.205 — Deux cahiers partagent CE module : le JAUNE (report BPN depuis
+// l'historique, saisie admin/caissier) et le NOIR (réservé à l'admin en
+// écriture, partage optionnel en lecture). _cahierActif choisit lequel on
+// affiche ; _cjR() résout le nom de la RPC correspondante. Le jaune ne change
+// EN RIEN : ses RPC et ses tables gardent leurs noms.
+let _cahierActif = 'jaune';               // 'jaune' | 'noir'
+const _cahierAccesParType = { jaune: null, noir: null };
+const _CAHIER_RPC = {
+  jaune: { acces: 'mon_acces_cahier',      get: 'get_cahier_jaune', colonne: 'gerer_colonne_cahier',
+           ajouter: 'ajouter_ecriture_cahier', modifier: 'modifier_ecriture_cahier',
+           supprimer: 'supprimer_ecriture_cahier', partage: 'definir_partage_cahier' },
+  noir:  { acces: 'mon_acces_cahier_noir', get: 'get_cahier_noir',  colonne: 'gerer_colonne_cahier_noir',
+           ajouter: 'ajouter_ecriture_noir', modifier: 'modifier_ecriture_noir',
+           supprimer: 'supprimer_ecriture_noir', partage: 'definir_partage_cahier_noir' },
+};
+function _cjR(k) { return _CAHIER_RPC[_cahierActif][k]; }
+function _cahierEstNoir() { return _cahierActif === 'noir'; }
+
+// Bascule d'onglet : choisit le cahier puis (re)charge la vue partagée.
+function ouvrirCahier(type) {
+  _cahierActif = (type === 'noir') ? 'noir' : 'jaune';
+  _cahierData = null;
+  _cahierAcces = _cahierAccesParType[_cahierActif] || null;
+  showView('cahier');   // le handler de showView met à jour l'entête + charge
+}
+
+function _majEnteteCahier() {
+  const noir = _cahierEstNoir();
+  const t = document.getElementById('cahier-titre');
+  if (t) t.textContent = noir ? '📓 Cahier noir' : '📒 Cahier jaune';
+  const v = document.getElementById('view-cahier');
+  if (v) v.setAttribute('data-cahier', _cahierActif);
+  const intro = document.getElementById('cahier-intro-jaune');
+  if (intro) intro.style.display = noir ? 'none' : '';
+  const bj = document.getElementById('btn-nav-cahier');      if (bj) bj.classList.toggle('active', !noir);
+  const bn = document.getElementById('btn-nav-cahier-noir'); if (bn) bn.classList.toggle('active', noir);
+}
+
+function _majCartesCahier() {
+  const a = _cahierAccesParType[_cahierActif] || {};
+  const carte = document.getElementById('cahier-colonnes-card');
+  if (carte) carte.style.display = a.admin ? '' : 'none';
+  const partage = document.getElementById('cahier-partage-card');
+  if (partage) partage.style.display = a.admin ? '' : 'none';
+  if (a.admin) { _cahierAcces = a; remplirFormulairePartage(); }
+}
 
 function _cjMoisCourant() {
   const d = new Date();
@@ -62,19 +109,20 @@ function _cjSemaines(mois) {
  */
 async function chargerAccesCahier() {
   if (typeof _sb === 'undefined' || !_sb || !TK()) return null;
-  try {
-    const { data, error } = await _sb.rpc('mon_acces_cahier', { p_token: TK() });
-    if (error || !data || data.erreur) return null;
-    _cahierAcces = data;
-  } catch (e) { return null; }
-
-  const btn = document.getElementById('btn-nav-cahier');
-  if (btn) btn.style.display = _cahierAcces.autorise ? '' : 'none';
-  const carte = document.getElementById('cahier-colonnes-card');
-  if (carte) carte.style.display = _cahierAcces.admin ? '' : 'none';
-  const partage = document.getElementById('cahier-partage-card');
-  if (partage) partage.style.display = _cahierAcces.admin ? '' : 'none';
-  if (_cahierAcces.admin) remplirFormulairePartage();
+  // ✅ v13.205 — On interroge l'accès aux DEUX cahiers pour afficher/masquer
+  // chaque onglet indépendamment (l'un peut être ouvert, l'autre non).
+  for (const [type, btnId] of [['jaune', 'btn-nav-cahier'], ['noir', 'btn-nav-cahier-noir']]) {
+    let acces = { autorise: false, admin: false };
+    try {
+      const { data, error } = await _sb.rpc(_CAHIER_RPC[type].acces, { p_token: TK() });
+      if (!error && data && !data.erreur) acces = data;
+    } catch (e) {}
+    _cahierAccesParType[type] = acces;
+    const btn = document.getElementById(btnId);
+    if (btn) btn.style.display = acces.autorise ? '' : 'none';
+  }
+  _cahierAcces = _cahierAccesParType[_cahierActif];
+  _majCartesCahier();
   return _cahierAcces;
 }
 
@@ -107,7 +155,7 @@ async function enregistrerPartageCahier() {
   if (actif && !roles.length) { toast('Choisissez au moins un profil', 'err'); return; }
 
   try {
-    const { data, error } = await _sb.rpc('definir_partage_cahier', {
+    const { data, error } = await _sb.rpc(_cjR('partage'), {
       p_token: TK(), p_actif: actif, p_roles: roles, p_debut: debut, p_fin: fin,
     });
     if (error || !data || data.erreur) {
@@ -127,18 +175,18 @@ async function chargerCahierJaune(mois) {
 
   try {
     showLoading('Chargement du cahier…');
-    const { data, error } = await _sb.rpc('get_cahier_jaune',
+    const { data, error } = await _sb.rpc(_cjR('get'),
       { p_token: TK(), p_mois: _cahierMois });
     hideLoading();
     if (error || !data || data.erreur) {
       const z = document.getElementById('cahier-tableau');
       if (z) z.innerHTML = '<div style="color:#b91c1c">'
         + (data?.erreur === 'forbidden'
-            ? 'Le cahier jaune ne vous est pas ouvert.'
+            ? 'Ce cahier ne vous est pas ouvert.'
             : data?.erreur === 'coffre_ferme'
             // Même phrase que pour un refus ordinaire : dire « coffre fermé »
             // annoncerait qu'il existe une autre façon d'entrer.
-            ? 'Le cahier jaune ne vous est pas ouvert.'
+            ? 'Ce cahier ne vous est pas ouvert.'
             : 'Cahier indisponible' + (data?.erreur ? ' (' + data.erreur + ')' : ''))
         + '</div>';
       return;
@@ -272,8 +320,9 @@ function renderCahierJaune() {
     + '<td style="text-align:right;font-size:14px">' + _cjFcfa(totalMois) + '</td><td></td>'
     + '</tr></tfoot></table></div>'
     + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">'
-    + 'Les montants négatifs sont des sorties. Survolez une cellule pour en voir le détail. '
-    + 'Les bilans prénatals internes y sont reportés automatiquement.</div>';
+    + 'Les montants négatifs sont des sorties. Survolez une cellule pour en voir le détail.'
+    + (_cahierEstNoir() ? '' : ' Les bilans prénatals internes y sont reportés automatiquement.')
+    + '</div>';
 }
 
 /**
@@ -342,7 +391,7 @@ async function supprimerEcritureCahier(id) {
   });
   if (!ok) return;
   try {
-    const { data, error } = await _sb.rpc('supprimer_ecriture_cahier', { p_token: TK(), p_id: id });
+    const { data, error } = await _sb.rpc(_cjR('supprimer'), { p_token: TK(), p_id: id });
     if (error || !data || data.erreur) {
       toast('Refusé : ' + (error?.message || data?.erreur || '?'), 'err'); return;
     }
@@ -367,11 +416,11 @@ async function enregistrerEcritureCahier(jour, idEcriture) {
 
   try {
     const { data, error } = idEcriture
-      ? await _sb.rpc('modifier_ecriture_cahier', {
+      ? await _sb.rpc(_cjR('modifier'), {
           p_token: TK(), p_id: idEcriture, p_jour: jour, p_colonne_id: colonne,
           p_montant: montant, p_explication: expl || null,
         })
-      : await _sb.rpc('ajouter_ecriture_cahier', {
+      : await _sb.rpc(_cjR('ajouter'), {
       p_token: TK(), p_jour: jour, p_colonne_id: colonne,
       p_montant: montant, p_explication: expl || null,
     });
@@ -391,7 +440,7 @@ async function ajouterColonneCahier() {
   if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
   const libelle = (document.getElementById('cahier-nouvelle-colonne')?.value || '').trim();
   if (!libelle) { toast('Indiquez un nom de colonne', 'err'); return; }
-  const { data, error } = await _sb.rpc('gerer_colonne_cahier',
+  const { data, error } = await _sb.rpc(_cjR('colonne'),
     { p_token: TK(), p_action: 'ajouter', p_libelle: libelle, p_id: null });
   if (error || !data || data.erreur) {
     toast('Refusé : ' + (error?.message || data?.erreur || '?'), 'err'); return;
