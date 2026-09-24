@@ -7,11 +7,34 @@
    ═══════════════════════════════════════════════════════════════ */
 
 let _sortCol = 'date';
+// ✅ v13.203 — Sens du tri (source de vérité, partagée par le menu « Tri » et
+// les en-têtes de colonnes cliquables). Le menu encode « colonne-sens »
+// (ex. « nom-asc ») pour offrir l'ordre alphabétique A→Z / Z→A.
+let _sortDir = 'desc';
 
+// Clic sur un en-tête de colonne (Date / Patient / Montant).
 function setSortCol(col) {
+  if (_sortCol === col) { _sortDir = _sortDir === 'desc' ? 'asc' : 'desc'; }
+  // Nom : premier clic en A→Z ; date/montant : du plus grand au plus petit.
+  else { _sortCol = col; _sortDir = (col === 'nom') ? 'asc' : 'desc'; }
+  _syncTriSelect();
+  renderHistory();
+}
+
+// Reflète l'état du tri dans le menu déroulant (si une option correspond).
+function _syncTriSelect() {
   const sel = document.getElementById('filter-sort');
-  if (_sortCol === col) { sel.value = sel.value === 'desc' ? 'asc' : 'desc'; }
-  else { _sortCol = col; }
+  if (!sel) return;
+  const want = _sortCol + '-' + _sortDir;
+  if ([...sel.options].some(o => o.value === want)) sel.value = want;
+}
+
+// Menu « Tri » : pilote à la fois la colonne et le sens (dont l'alphabétique).
+function appliquerTriHistorique() {
+  const v = document.getElementById('filter-sort')?.value || 'date-desc';
+  const i = v.lastIndexOf('-');
+  _sortCol = i > 0 ? v.slice(0, i) : 'date';
+  _sortDir = i > 0 ? v.slice(i + 1) : 'desc';
   renderHistory();
 }
 
@@ -22,8 +45,9 @@ function clearSearchFilters() {
   ['filter-type','filter-agent','filter-statut','filter-service'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  const fs = document.getElementById('filter-sort'); if (fs) fs.value = 'desc';
+  const fs = document.getElementById('filter-sort'); if (fs) fs.value = 'date-desc';
   _sortCol = 'date';
+  _sortDir = 'desc';
   _filterMasquees    = false; // kept for compatibility
   _filterVerrouillees = false; // ✅ v13.32
   // ✅ v13.202 — « Réinitialiser » revient à la vue du JOUR (défaut journalier),
@@ -207,7 +231,7 @@ async function renderHistory(forceRefresh) {
   const fsv       =  document.getElementById('filter-service')?.value || '';
   const dateFrom  =  document.getElementById('filter-date-from')?.value || '';
   const dateTo    =  document.getElementById('filter-date-to')?.value   || '';
-  const sortDir   =  document.getElementById('filter-sort')?.value    || 'desc';
+  const sortDir   =  _sortDir;   // ✅ v13.203 — source de vérité (menu « Tri » + en-têtes)
 
   // ✅ v13.34 — Peupler la liste des services à partir des fiches présentes
   const svcSel = document.getElementById('filter-service');
