@@ -38,6 +38,64 @@ function appliquerTriHistorique() {
   renderHistory();
 }
 
+// ── v13.204 — ADMIN : changer l'auteur d'un dossier ─────────────────
+// La visibilité des spectateurs dépend de l'AUTEUR (créateur) du dossier :
+// tout est visible sauf les dossiers de « nadia » et « admin ». Réattribuer un
+// dossier à un compte visible le rend donc visible des spectateurs (et
+// inversement). Réservé à l'administrateur ; appliqué côté serveur.
+let _auteurCibleId = null;
+function changerAuteurDossier(id) {
+  if (typeof blockIfSpectateur === 'function' && blockIfSpectateur()) return;
+  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  const r = _dbCache.find(x => x.id === id);
+  if (!r) return;
+  _auteurCibleId = id;
+  // Candidats : auteurs déjà présents dans les dossiers, triés. L'admin choisit
+  // un compte visible (pas Nadia/admin) pour rendre le dossier public.
+  const caches = ['nadia', 'admin'];
+  const auteurs = [...new Set(_dbCache.map(x => x.createdBy).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  const sel = document.getElementById('ca_author');
+  if (sel) sel.innerHTML = auteurs.map(a => {
+    const cache = caches.includes(String(a).trim().toLowerCase());
+    return '<option value="' + esc(a) + '"' + (a === r.createdBy ? ' selected' : '') + '>'
+         + esc(a) + (cache ? ' — caché des spectateurs' : ' — visible des spectateurs') + '</option>';
+  }).join('');
+  const info = document.getElementById('ca-info');
+  if (info) info.innerHTML = 'Dossier : <strong>' + esc(r.patient?.nom || '?') + '</strong> ('
+    + esc(r.patient?.dossier || '?') + ')<br>Auteur actuel : <strong>' + esc(r.createdBy || '?') + '</strong>';
+  const err = document.getElementById('ca-error'); if (err) err.textContent = '';
+  const modal = document.getElementById('change-author-modal');
+  if (modal) modal.style.display = 'flex';
+}
+function fermerChangerAuteur() {
+  const modal = document.getElementById('change-author-modal');
+  if (modal) modal.style.display = 'none';
+  _auteurCibleId = null;
+}
+async function submitChangerAuteur() {
+  if (_auteurCibleId == null) return;
+  const sel = document.getElementById('ca_author');
+  const errEl = document.getElementById('ca-error');
+  const nouvel = (sel && sel.value) || '';
+  if (!nouvel) { if (errEl) errEl.textContent = 'Choisissez un auteur.'; return; }
+  const btn = document.getElementById('ca-submit'); if (btn) btn.disabled = true;
+  try {
+    const { data, error } = await _sb.rpc('changer_auteur_dossier',
+      { p_token: TK(), p_id: _auteurCibleId, p_nouvel_auteur: nouvel });
+    if (error || (data && data.erreur)) {
+      if (errEl) errEl.textContent = (data && data.erreur) || (error && error.message) || 'Échec du changement.';
+      return;
+    }
+    const r = _dbCache.find(x => x.id === _auteurCibleId); if (r) r.createdBy = nouvel;
+    fermerChangerAuteur();
+    toast('Auteur changé → ' + nouvel, 'ok');
+    if (typeof renderHistory === 'function') renderHistory();
+  } catch (e) {
+    if (errEl) errEl.textContent = 'Erreur : ' + (e.message || 'inconnue');
+  } finally { if (btn) btn.disabled = false; }
+}
+
 function clearSearchFilters() {
   ['search-input','filter-date-from','filter-date-to'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -552,6 +610,11 @@ async function renderHistory(forceRefresh) {
                     ? '<button class="btn btn-action-secondary" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd" onclick="showEditUnifie(' + r.id + ')" title="Modifier" aria-label="Modifier">✏️ Modifier</button>'
                     : '';
                 })()
+              // ✅ v13.204 — ADMIN : changer l'auteur d'un dossier. Réattribuer à un
+              //   compte visible (pas Nadia/admin) le rend visible des spectateurs.
+              + (isAdmin()
+                  ? '<button class="btn btn-action-secondary" style="padding:4px 8px;font-size:11px;margin-left:3px;background:#e0f2fe;color:#075985;border:1px solid #7dd3fc" onclick="changerAuteurDossier(' + r.id + ')" title="Changer l\'auteur (visibilité spectateurs)" aria-label="Changer l\'auteur">👤 Auteur</button>'
+                  : '')
           )
         // ✅ v13.158 — Sortie du compte rendu via le rendu HTML (printRecord) :
         // modèle validé en nuances de gris, sans signature imprimée (apposée à la

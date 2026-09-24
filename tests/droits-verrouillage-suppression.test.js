@@ -221,12 +221,13 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await page.waitForTimeout(1000);
     await page.evaluate(() => setHistPeriode('tout'));
     await page.waitForTimeout(800);
-    // ✅ v13.128 — Le spectateur ne voit QUE les journées verrouillées ; ici
-    // aucune n'est verrouillée → aucune ligne. (Lecture seule inchangée.)
-    r.check('spectateur : aucune ligne (aucun jour verrouillé)', await page.evaluate(() => {
+    // ✅ v13.204 — Le spectateur voit désormais le travail de l'équipe en temps
+    // réel (auteurs agent1/agent2, ni nadia ni admin). La lecture seule reste
+    // vérifiée juste après (aucune écriture, aucun bouton de suppression).
+    r.check('spectateur voit le travail de l\'équipe (temps réel)', await page.evaluate(() => {
       const b = document.getElementById('history-body');
       return b ? [...b.querySelectorAll('tr')].filter(tr => tr.querySelectorAll('td').length > 1).length : 0;
-    }), 0);
+    }) > 0, true);
     await page.evaluate((id) => softDeleteDossier(id), A_MOI);
     await page.evaluate((id) => toggleRestriction(id), A_MOI);
     await page.waitForTimeout(800);
@@ -321,9 +322,10 @@ const A_MOI = 101, A_UN_AUTRE = 104;
         calculees: (getCalcDB() || []).map(x => x.patient?.dossier),
       }));
       if (role === 'spectateur') {
-        // ✅ v13.128 — Le spectateur ne voit QUE les journées verrouillées.
-        // Aucune journée n'est verrouillée ici → il ne voit rien.
-        r.check('spectateur ne voit rien (aucun jour verrouillé)', vu.affichees.length, 0);
+        // ✅ v13.204 — Le spectateur voit le travail de l'équipe en temps réel
+        // (auteur agent1, ni nadia ni admin) : mêmes dossiers que les autres.
+        r.check('spectateur voit le dossier ordinaire (X1)', vu.affichees.includes('X1'), true);
+        r.check('spectateur voit le BPN interne (X2)', vu.affichees.includes('X2'), true);
       } else {
         r.check('le dossier ordinaire reste visible', vu.affichees.includes('X1'), true);
         r.check('BPN interne visible à l\'écran', vu.affichees.includes('X2'), true);

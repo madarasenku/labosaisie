@@ -1,18 +1,25 @@
-// ✅ v13.128 — Le spectateur ne voit que les journées verrouillées ;
-// verrouillage en masse jusqu'à une date.
+// ✅ v13.204 — Le spectateur voit le travail de l'équipe EN TEMPS RÉEL
+// (indépendamment de la clôture), SAUF les dossiers de « nadia » et « admin ».
+// (Avant v13.128→203 : il ne voyait que les journées verrouillées.)
+// La seconde partie vérifie le verrouillage en masse par l'admin (inchangé).
 const { serve, openApp, createReporter } = require('./helpers');
 
 const LOCKED = '2026-08-20';
 const OPEN = '2026-08-22';
-const mk = (id, nom, date) => ({
+const mk = (id, nom, date, by = 'agent1') => ({
   id, type: 'Dossier', montant: 3000, created_at: date + 'T09:00:00Z',
   patient: { nom, dossier: '0' + id + '-0826', sexe: 'F', age: 30, date },
   resultats: { _types: ['Hématologie'], _examens_coches: { 'Hématologie': ['NFS — Numération Formule Sanguine'] } },
-  created_by: 'agent1', prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null });
-const DOSS = [mk(980, 'JOUR VERROUILLE', LOCKED), mk(981, 'JOUR OUVERT', OPEN)];
+  created_by: by, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null });
+const DOSS = [
+  mk(980, 'JOUR VERROUILLE', LOCKED),          // agent visible, jour verrouillé
+  mk(981, 'JOUR OUVERT', OPEN),                // agent visible, jour ouvert
+  mk(982, 'DOSSIER NADIA', OPEN, 'nadia'),     // caché du spectateur
+  mk(983, 'DOSSIER ADMIN', OPEN, 'admin'),     // caché du spectateur
+];
 
 (async () => {
-  const r = createReporter('SPECTATEUR — JOURNÉES VERROUILLÉES');
+  const r = createReporter('SPECTATEUR — VISIBILITÉ TEMPS RÉEL PAR AUTEUR');
   const srv = await serve(8120);
   let ctx;
   try {
@@ -32,19 +39,21 @@ const DOSS = [mk(980, 'JOUR VERROUILLE', LOCKED), mk(981, 'JOUR OUVERT', OPEN)];
     await page.evaluate(() => refreshDB(true));
     await page.waitForTimeout(300);
 
-    r.section('Spectateur : uniquement le jour verrouillé');
+    r.section('Spectateur : équipe visible (verrouillé OU ouvert), sauf nadia/admin');
     const vu = await page.evaluate(() => ({
       db: (getDB() || []).map(x => x.patient?.dossier).sort(),
       calc: (getCalcDB() || []).map(x => x.patient?.dossier).sort(),
     }));
-    r.check('voit le dossier du jour verrouillé', vu.db.includes('0980-0826'), true);
-    r.check('ne voit PAS le jour ouvert', vu.db.includes('0981-0826'), false);
-    r.check('caisse spectateur = jour verrouillé seulement', vu.calc.join(','), '0980-0826');
+    r.check('voit le jour verrouillé (0980)', vu.db.includes('0980-0826'), true);
+    r.check('voit AUSSI le jour ouvert (0981)', vu.db.includes('0981-0826'), true);
+    r.check('ne voit PAS le dossier de nadia (0982)', vu.db.includes('0982-0826'), false);
+    r.check('ne voit PAS le dossier de admin (0983)', vu.db.includes('0983-0826'), false);
+    r.check('caisse spectateur = les 2 dossiers de l\'équipe', vu.calc.join(','), '0980-0826,0981-0826');
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 4));
     await ctx.close();
 
-    // ── Admin : verrouiller en masse ──
+    // ── Admin : verrouiller en masse (inchangé) ──
     const app2 = await openApp({ role: 'admin', port: 8120 });
     const p2 = app2.page; const ctx2 = app2.ctx;
     await p2.evaluate(() => {
