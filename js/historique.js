@@ -24,18 +24,23 @@ function clearSearchFilters() {
   });
   const fs = document.getElementById('filter-sort'); if (fs) fs.value = 'desc';
   _sortCol = 'date';
-  _histPeriode = 'mois';
   _filterMasquees    = false; // kept for compatibility
   _filterVerrouillees = false; // ✅ v13.32
-  ['jour','semaine','mois','tout'].forEach(p => {
-    const btn = document.getElementById('hist-btn-' + p);
-    if (btn) btn.classList.toggle('active', p === 'tout');
-  });
+  // ✅ v13.202 — « Réinitialiser » revient à la vue du JOUR (défaut journalier),
+  // au lieu du mois avec le bouton « Tout » allumé. La période est commune aux
+  // trois vues : appliquerPeriodePartout aligne aussi Statistiques et Caisse et
+  // rallume le bon bouton (« Aujourd'hui »).
+  _histToutParRecherche = false;
+  appliquerPeriodePartout('jour', 0);
   renderHistory(true);
 }
 
 // ── Raccourcis de période pour l'Historique (même logique que Statistiques) ──
 let _histPeriode = 'jour'; // 'jour'|'semaine'|'mois'|'tout'|'custom' — par défaut : aujourd'hui
+// ✅ v13.202 — Vrai quand une recherche texte a fait basculer la vue sur « Tout »
+// (pour balayer tout l'historique). En vidant la recherche, on défait cette
+// bascule et on revient à la vue du jour ; un choix manuel de période l'annule.
+let _histToutParRecherche = false;
 
 // Replie/déplie le panneau des filtres avancés (type, statut, tri, navigation
 // dans le temps, dates précises, agent, service). Masqué par défaut pour ne pas
@@ -86,6 +91,9 @@ function allerAuMois() {
 }
 
 function setHistPeriode(periode, garderDecalage) {
+  // ✅ v13.202 — Un choix manuel de période annule la bascule auto « Tout »
+  // déclenchée par la recherche : vider la recherche ensuite ne le défera pas.
+  _histToutParRecherche = false;
   // ✅ v13.108 — La période est désormais commune aux trois vues. Le cas
   // « custom » relit les champs de dates de l'Historique (ce sont EUX qui
   // déclenchent cet appel via leur onchange) : sans cette relecture, la
@@ -151,6 +159,7 @@ function renderHistoryDebounced() {
   // pour ne pas manquer des fiches hors de la période affichée
   if (q && _histPeriode !== 'tout') {
     _histDebounce = setTimeout(() => {
+      _histToutParRecherche = true; // ✅ v13.202 — bascule AUTO, à défaire en vidant la recherche
       _histPeriode = 'tout';
       ['jour','semaine','mois','tout'].forEach(p => {
         const btn = document.getElementById('hist-btn-' + p);
@@ -162,6 +171,12 @@ function renderHistoryDebounced() {
       showLoading();
       refreshDB(true).then(() => { hideLoading(); renderHistory(); });
     }, 400);
+  } else if (!q && _histToutParRecherche) {
+    // ✅ v13.202 — Recherche vidée : on ne reste pas bloqué sur « Tout ». On
+    // revient à la vue du jour (défaut journalier) ; appliquerPeriodePartout
+    // réaligne les trois vues et rallume le bouton « Aujourd'hui ».
+    _histToutParRecherche = false;
+    _histDebounce = setTimeout(() => { appliquerPeriodePartout('jour', 0); renderHistory(); }, 220);
   } else {
     _histDebounce = setTimeout(renderHistory, 220);
   }
