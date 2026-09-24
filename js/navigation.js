@@ -69,6 +69,14 @@ function showView(v) {
   if (v === 'saisie' && typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34
   if (v === 'saisie' && typeof updateBandeauPaiement === 'function') updateBandeauPaiement(); // ✅ v13.35
   if (v === 'historique') {
+    // ✅ v13.203 — À l'ouverture, APPLIQUER réellement la période active (par
+    // défaut « jour »). Le filtrage lit les champs de dates ; or ils restaient
+    // vides au premier affichage, si bien que la liste montrait TOUT alors que
+    // le bouton « Aujourd'hui » était allumé. On remplit donc les champs à la
+    // période courante (sauf « custom » : ce sont les champs qui font foi).
+    if (_histPeriode !== 'custom' && typeof appliquerPeriodePartout === 'function') {
+      appliquerPeriodePartout(_histPeriode, _histDecalage);
+    }
     // ✅ v13.72 — le bandeau de navigation doit refléter la période active
     // dès l'ouverture de l'onglet, sinon le libellé reste vide.
     if (typeof majNavPeriode === 'function') majNavPeriode();
