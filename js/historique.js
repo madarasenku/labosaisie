@@ -24,18 +24,23 @@ function clearSearchFilters() {
   });
   const fs = document.getElementById('filter-sort'); if (fs) fs.value = 'desc';
   _sortCol = 'date';
-  _histPeriode = 'mois';
   _filterMasquees    = false; // kept for compatibility
   _filterVerrouillees = false; // ✅ v13.32
-  ['jour','semaine','mois','tout'].forEach(p => {
-    const btn = document.getElementById('hist-btn-' + p);
-    if (btn) btn.classList.toggle('active', p === 'tout');
-  });
+  // ✅ v13.202 — « Réinitialiser » revient à la vue du JOUR (défaut journalier),
+  // au lieu du mois avec le bouton « Tout » allumé. La période est commune aux
+  // trois vues : appliquerPeriodePartout aligne aussi Statistiques et Caisse et
+  // rallume le bon bouton (« Aujourd'hui »).
+  _histToutParRecherche = false;
+  appliquerPeriodePartout('jour', 0);
   renderHistory(true);
 }
 
 // ── Raccourcis de période pour l'Historique (même logique que Statistiques) ──
 let _histPeriode = 'jour'; // 'jour'|'semaine'|'mois'|'tout'|'custom' — par défaut : aujourd'hui
+// ✅ v13.202 — Vrai quand une recherche texte a fait basculer la vue sur « Tout »
+// (pour balayer tout l'historique). En vidant la recherche, on défait cette
+// bascule et on revient à la vue du jour ; un choix manuel de période l'annule.
+let _histToutParRecherche = false;
 
 // Replie/déplie le panneau des filtres avancés (type, statut, tri, navigation
 // dans le temps, dates précises, agent, service). Masqué par défaut pour ne pas
@@ -86,6 +91,9 @@ function allerAuMois() {
 }
 
 function setHistPeriode(periode, garderDecalage) {
+  // ✅ v13.202 — Un choix manuel de période annule la bascule auto « Tout »
+  // déclenchée par la recherche : vider la recherche ensuite ne le défera pas.
+  _histToutParRecherche = false;
   // ✅ v13.108 — La période est désormais commune aux trois vues. Le cas
   // « custom » relit les champs de dates de l'Historique (ce sont EUX qui
   // déclenchent cet appel via leur onchange) : sans cette relecture, la
@@ -151,6 +159,7 @@ function renderHistoryDebounced() {
   // pour ne pas manquer des fiches hors de la période affichée
   if (q && _histPeriode !== 'tout') {
     _histDebounce = setTimeout(() => {
+      _histToutParRecherche = true; // ✅ v13.202 — bascule AUTO, à défaire en vidant la recherche
       _histPeriode = 'tout';
       ['jour','semaine','mois','tout'].forEach(p => {
         const btn = document.getElementById('hist-btn-' + p);
@@ -162,6 +171,12 @@ function renderHistoryDebounced() {
       showLoading();
       refreshDB(true).then(() => { hideLoading(); renderHistory(); });
     }, 400);
+  } else if (!q && _histToutParRecherche) {
+    // ✅ v13.202 — Recherche vidée : on ne reste pas bloqué sur « Tout ». On
+    // revient à la vue du jour (défaut journalier) ; appliquerPeriodePartout
+    // réaligne les trois vues et rallume le bouton « Aujourd'hui ».
+    _histToutParRecherche = false;
+    _histDebounce = setTimeout(() => { appliquerPeriodePartout('jour', 0); renderHistory(); }, 220);
   } else {
     _histDebounce = setTimeout(renderHistory, 220);
   }
@@ -672,6 +687,12 @@ function updateBulkToolbar() {
     const b = document.getElementById(idBtn);
     if (b) b.style.display = peutMasquer ? '' : 'none';
   });
+  // ✅ v13.201 — Cahier jaune : admin ou caissier, hors corbeille.
+  const cahierBtn = document.getElementById('bulk-cahier-btn');
+  if (cahierBtn) {
+    const peutCahier = isAdmin() || (typeof isCaissier === 'function' && isCaissier());
+    cahierBtn.style.display = (peutCahier && !_filterCorbeille) ? '' : 'none';
+  }
   // État de la case "tout sélectionner"
   if (selectAll) {
     const total = document.querySelectorAll('.bulk-chk').length;
@@ -1043,6 +1064,66 @@ async function bulkSetStatut(statut) {
     hideLoading();
     toast('Échec : ' + (e.message || e), 'err');
   }
+}
+
+// ✅ v13.201 — Report MANUEL au cahier jaune depuis l'historique (sélection par
+// cases, comme le masquage). Le report AUTOMATIQUE (trigger BPN) est retiré :
+// l'admin/caissier choisit les dossiers à porter, et l'app les CLASSE :
+//   • BPN (prénatal) + prescripteur du centre → colonne SFPMI
+//   • BPN (prénatal) + prescripteur externe    → colonne SFHG
+//   • ni l'un ni l'autre                        → colonne EXTERNE
+// Le montant porté est le montant EXACT du dossier ; un dossier déjà porté n'est
+// pas dupliqué (déduplication par resultat_id côté serveur).
+function _cahierLibellePour(r) {
+  const bpn = (typeof estDossierBPN === 'function') && estDossierBPN(r);
+  if (!bpn) return 'EXTERNE';
+  const externe = (typeof _prescExterne === 'function') && _prescExterne(r);
+  return externe ? 'SFHG' : 'SFPMI';
+}
+
+async function bulkCahierJaune() {
+  if (blockIfSpectateur()) return;
+  const autorise = isAdmin() || (typeof isCaissier === 'function' && isCaissier());
+  if (!autorise) { toast('Réservé à la caisse / l\'administrateur', 'err'); return; }
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  const plan = ids.map(id => _dbCache.find(x => x.id === id)).filter(Boolean)
+    .map(r => ({ r, libelle: _cahierLibellePour(r), montant: Number(r.montant) || 0 }));
+  const aPorter = plan.filter(p => p.montant > 0);
+  const sansMontant = plan.length - aPorter.length;
+  if (!aPorter.length) { toast('Aucun dossier avec un montant à porter', 'err'); return; }
+  const parCol = {};
+  aPorter.forEach(p => { parCol[p.libelle] = (parCol[p.libelle] || 0) + 1; });
+  const recap = ['SFPMI', 'SFHG', 'EXTERNE'].filter(k => parCol[k])
+    .map(k => parCol[k] + ' → ' + k).join(' · ');
+  if (!await showConfirmModal({
+    icon: '📒',
+    title: 'Porter ' + aPorter.length + ' dossier(s) au cahier jaune ?',
+    message: 'Classement automatique : ' + recap
+      + (sansMontant ? '<br>' + sansMontant + ' sans montant — ignoré(s).' : '')
+      + '<br>Montant = montant exact du dossier. Un dossier déjà porté n\'est pas dupliqué.',
+    confirmText: 'Porter au cahier', cancelText: 'Annuler'
+  })) return;
+  showLoading('Report au cahier jaune…');
+  let ok = 0, deja = 0, err = 0, errMsg = '';
+  for (const p of aPorter) {
+    const r = p.r;
+    const jour = (r.patient && r.patient.date) || String(r.savedAt || '').slice(0, 10);
+    const expl = (r.patient && r.patient.nom ? r.patient.nom : '?')
+      + ' (' + (r.patient && r.patient.dossier ? r.patient.dossier : '?') + ')';
+    const { data, error } = await _sb.rpc('porter_au_cahier', {
+      p_token: TK(), p_resultat_id: r.id, p_libelle_colonne: p.libelle,
+      p_montant: p.montant, p_jour: jour, p_explication: expl });
+    if (error || (data && data.erreur)) { err++; errMsg = (data && data.erreur) || (error && error.message) || ''; }
+    else if (data && data.deja) deja++;
+    else ok++;
+  }
+  hideLoading();
+  clearBulkSelection();
+  toast(ok + ' porté(s) au cahier jaune'
+    + (deja ? ' · ' + deja + ' déjà présent(s)' : '')
+    + (err ? ' · ' + err + ' erreur(s)' + (errMsg ? ' (' + errMsg + ')' : '') : ''),
+    err ? 'err' : 'ok');
 }
 
 async function bulkLock() {
