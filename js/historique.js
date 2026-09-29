@@ -96,6 +96,59 @@ async function submitChangerAuteur() {
   } finally { if (btn) btn.disabled = false; }
 }
 
+// ── v13.208 — ADMIN : changer le PROPRIÉTAIRE en LOT (cases cochées) ─
+// Même règle que le bouton par ligne (RPC changer_auteur_dossier), mais sur
+// plusieurs dossiers d'un coup : réattribuer à un compte visible (≠ Nadia/admin)
+// les rend visibles des spectateurs, et inversement.
+function bulkChangerAuteur() {
+  if (typeof blockIfSpectateur === 'function' && blockIfSpectateur()) return;
+  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  const caches = ['nadia', 'admin'];
+  const auteurs = [...new Set(_dbCache.map(x => x.createdBy).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  const sel = document.getElementById('ba_author');
+  if (sel) sel.innerHTML = auteurs.map(a => {
+    const cache = caches.includes(String(a).trim().toLowerCase());
+    // YERIGUE présélectionné : c'est le compte « visible » de référence.
+    return '<option value="' + esc(a) + '"' + (a === 'YERIGUE' ? ' selected' : '') + '>'
+         + esc(a) + (cache ? ' — caché des spectateurs' : ' — visible des spectateurs') + '</option>';
+  }).join('');
+  const info = document.getElementById('ba-info');
+  if (info) info.innerHTML = '<strong>' + ids.length + '</strong> dossier(s) sélectionné(s). '
+    + 'Le nouvel auteur sera appliqué à tous.';
+  const err = document.getElementById('ba-error'); if (err) err.textContent = '';
+  const modal = document.getElementById('bulk-author-modal');
+  if (modal) modal.style.display = 'flex';
+}
+function fermerBulkAuteur() {
+  const m = document.getElementById('bulk-author-modal'); if (m) m.style.display = 'none';
+}
+async function submitBulkAuteur() {
+  const sel = document.getElementById('ba_author');
+  const errEl = document.getElementById('ba-error');
+  const nouvel = (sel && sel.value) || '';
+  if (!nouvel) { if (errEl) errEl.textContent = 'Choisissez un auteur.'; return; }
+  const ids = [..._selectedIds];
+  if (!ids.length) { fermerBulkAuteur(); return; }
+  const btn = document.getElementById('ba-submit'); if (btn) btn.disabled = true;
+  showLoading('Changement de propriétaire…');
+  let ok = 0, err = 0, errMsg = '';
+  for (const id of ids) {
+    try {
+      const { data, error } = await _sb.rpc('changer_auteur_dossier',
+        { p_token: TK(), p_id: id, p_nouvel_auteur: nouvel });
+      if (error || (data && data.erreur)) { err++; errMsg = (data && data.erreur) || (error && error.message) || ''; }
+      else { const r = _dbCache.find(x => x.id === id); if (r) r.createdBy = nouvel; ok++; }
+    } catch (e) { err++; errMsg = e.message || ''; }
+  }
+  hideLoading(); if (btn) btn.disabled = false;
+  fermerBulkAuteur(); clearBulkSelection();
+  toast(ok + ' dossier(s) → ' + nouvel + (err ? ' · ' + err + ' erreur(s)' + (errMsg ? ' (' + errMsg + ')' : '') : ''), err ? 'err' : 'ok');
+  if (typeof renderHistory === 'function') renderHistory();
+}
+
 function clearSearchFilters() {
   ['search-input','filter-date-from','filter-date-to'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -783,6 +836,9 @@ function updateBulkToolbar() {
   // ✅ v13.205 — Cahier noir : ADMIN seulement, hors corbeille.
   const cahierNoirBtn = document.getElementById('bulk-cahier-noir-btn');
   if (cahierNoirBtn) cahierNoirBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
+  // ✅ v13.208 — Changer le propriétaire en lot : ADMIN, hors corbeille.
+  const auteurBtn = document.getElementById('bulk-auteur-btn');
+  if (auteurBtn) auteurBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
   // État de la case "tout sélectionner"
   if (selectAll) {
     const total = document.querySelectorAll('.bulk-chk').length;
