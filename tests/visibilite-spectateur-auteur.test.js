@@ -61,12 +61,22 @@ const idsVus = (page, jeu) => page.evaluate(d => { _dbCache = d; return getDB().
     await ctx.close();
   }
 
-  // ── Agent : voit aussi nadia/admin (+ ses propres masqués) ────────
+  // ── Agent : voit nadia/admin en vue normale, SANS les masqués ────
+  // ✅ v13.213 — Un dossier masqué (#4) sort de l'historique courant pour tous
+  //   les agents ; il n'est plus visible qu'en vue « Masqués ».
   {
     const { ctx, page, errors } = await openApp({ role: 'agent', username: 'YERIGUE' });
-    const vus = await idsVus(page, JEU());
-    r.section('Agent YERIGUE : voit nadia/admin et son propre masqué');
-    r.check('voit 1,2,3,4,6 (pas le supprimé #5)', vus.join(','), '1,2,3,4,6');
+    const vues = await page.evaluate(d => {
+      _dbCache = d; _filterVerrouillees = false; _filterCorbeille = false;
+      const normal = getDB().map(r => r.id).sort((a, b) => a - b);
+      _filterVerrouillees = true;
+      const masques = getDB().map(r => r.id).sort((a, b) => a - b);
+      _filterVerrouillees = false;
+      return { normal, masques };
+    }, JEU());
+    r.section('Agent YERIGUE : vue normale sans masqués, vue Masqués les retrouve');
+    r.check('vue normale 1,2,3,6 (ni masqué #4 ni supprimé #5)', vues.normal.join(','), '1,2,3,6');
+    r.check('vue Masqués : retrouve #4', vues.masques.join(','), '4');
     r.check('aucune erreur JS', errors.length, 0);
     await ctx.close();
   }

@@ -29,7 +29,7 @@ const { serve, openApp, createReporter } = require('./helpers');
   r.check('statut rendu → terminé', res.rendu, 'termine');
 
   r.section('Libellés des badges');
-  r.check('badge « Pas commencé »', /Pas commencé/.test(res.bReception), true);
+  r.check('badge « Aucun résultat »', /Aucun résultat/.test(res.bReception), true);
   r.check('badge « En cours »', /En cours/.test(res.bEncours), true);
   r.check('badge « Terminé »', /Terminé/.test(res.bRendu), true);
 

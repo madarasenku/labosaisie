@@ -48,7 +48,10 @@ const DOSS = [
     r.check('voit AUSSI le jour ouvert (0981)', vu.db.includes('0981-0826'), true);
     r.check('ne voit PAS le dossier de nadia (0982)', vu.db.includes('0982-0826'), false);
     r.check('ne voit PAS le dossier de admin (0983)', vu.db.includes('0983-0826'), false);
-    r.check('caisse spectateur = les 2 dossiers de l\'équipe', vu.calc.join(','), '0980-0826,0981-0826');
+    // ✅ v13.209 — Le « point du mois » du spectateur = celui de l'admin : la
+    //   caisse (getCalcDB) inclut TOUS les dossiers vivants, nadia/admin compris,
+    //   même si l'historique (getDB) les cache. Les totaux restent cohérents.
+    r.check('caisse spectateur = total complet (comme admin)', vu.calc.join(','), '0980-0826,0981-0826,0982-0826,0983-0826');
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 4));
     await ctx.close();

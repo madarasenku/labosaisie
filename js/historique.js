@@ -427,8 +427,8 @@ async function renderHistory(forceRefresh) {
       const corbWho = isAdmin() ? 'dans la corbeille (tous utilisateurs)' : 'supprimée' + (filtered.length>1?'s':'') + ' par vous';
       countEl.textContent = '🗑️ ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' ' + corbWho;
     } else if (_filterVerrouillees) {
-      const who = isAdmin() ? 'au total' : 'masquée' + (filtered.length>1?'s par vous':'e par vous');
-      countEl.textContent = '🔒 ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' ' + who;
+      // ✅ v13.213 — Vue commune : le compte est le total des masqués de l'équipe.
+      countEl.textContent = '🔒 ' + filtered.length + ' fiche' + (filtered.length>1?'s':'') + ' masquée' + (filtered.length>1?'s':'') + ' au total';
     } else {
       const isFull = filtered.length === db.length;
       countEl.textContent = isFull
@@ -531,10 +531,14 @@ async function renderHistory(forceRefresh) {
   const hl = q ? (s => highlight(s, q)) : esc;
 
   b.innerHTML = filtered.map(r => {
-    // ✅ v13.32 — En mode Fiches verrouillées (admin), afficher qui a verrouillé + bouton déverrouiller
-    if (_filterVerrouillees && isAdmin()) {
+    // ✅ v13.32/213 — Vue « Masqués » : afficher qui a masqué. Démasquer est
+    //   réservé à l'AUTEUR du masquage et à l'ADMIN ; les autres agents voient
+    //   le dossier (il n'est pas perdu) mais ne peuvent pas le démasquer.
+    if (_filterVerrouillees) {
       const lockedBy  = r.restrictedBy || '?';
       const montantStr2 = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
+      const _uidM = _currentUser && _currentUser.username;
+      const peutDemasquer = isAdmin() || r.restrictedBy === _uidM;
       return '<tr style="background:#fffbeb;border-left:3px solid #fbbf24">'
         // ✅ v13.90 — La case était désactivée : l'admin ne pouvait donc rien
         // faire en masse sur les fiches verrouillées, alors que c'est
@@ -557,10 +561,14 @@ async function renderHistory(forceRefresh) {
         + '<td data-label="Montant" style="font-weight:700;color:#92400e;white-space:nowrap">' + montantStr2 + '</td>'
         + '<td data-label="Statut">—</td>'
         + '<td data-label="Actions">'
-          + '<button class="btn" style="padding:4px 9px;font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;margin-right:4px" '
-            + 'title="Déverrouiller ce dossier" onclick="toggleRestriction(' + r.id + ')">🔓 Déverrouiller</button>'
-          + '<button class="btn" style="padding:4px 8px;font-size:11px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" '
-            + 'onclick="showEditPatientModal(' + r.id + ')" title="Modifier patient">👤</button>'
+          + (peutDemasquer
+              ? '<button class="btn" style="padding:4px 9px;font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;margin-right:4px" '
+                + 'title="Démasquer ce dossier" onclick="toggleRestriction(' + r.id + ')">🔓 Démasquer</button>'
+              : '<span style="font-size:11px;color:var(--text-muted);font-style:italic">Masqué par ' + esc(lockedBy) + '</span>')
+          + (isAdmin()
+              ? '<button class="btn" style="padding:4px 8px;font-size:11px;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc" '
+                + 'onclick="showEditPatientModal(' + r.id + ')" title="Modifier patient">👤</button>'
+              : '')
         + '</td></tr>';
     }
 
@@ -862,13 +870,12 @@ function updateMasqueesBtn() {
   const btn   = document.getElementById('btn-masquees');
   const badge = document.getElementById('masquees-badge');
   if (!btn) return;
-  // ✅ v13.52 — L'admin voit toutes les fiches masquées ; un autre profil ne
-  //   voit que celles qu'il a masquées lui-même. Caissier/spectateur/agent
-  //   qui n'ont rien masqué ne voient rien.
-  const uid = _currentUser?.username;
-  const count = isAdmin()
-    ? _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy).length
-    : _dbCache.filter(r => !r.deletedAt && r.restrictedBy === uid).length;
+  // ✅ v13.213 — La vue « Masqués » est commune à l'équipe : tout non-spectateur
+  //   (admin, caissier, agents) voit le nombre total de dossiers masqués et peut
+  //   y accéder. Le spectateur, lui, n'a jamais accès aux masqués.
+  const spect = (typeof isSpectateur === 'function') && isSpectateur();
+  const count = spect ? 0
+    : _dbCache.filter(r => !r.deletedAt && !!r.restrictedBy).length;
   // ✅ v13.105 — Aucun indice en session ordinaire. Le cadenas de la v13.104
   // disait à qui regardait l'écran qu'il existait quelque chose derrière ;
   // c'est précisément ce que la seconde porte évite.

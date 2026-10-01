@@ -215,11 +215,22 @@ async function _regChargerJour(jour) {
 
 // ✅ v13.210 — Impression du registre depuis le bouton en haut de l'historique.
 //   Utilise le jour choisi dans le petit sélecteur (ou aujourd'hui par défaut).
-function imprimerRegistreDepuisHistorique() {
-  const d = document.getElementById('hist-registre-date');
-  if (d && !d.value) d.value = _jourLocal();
-  const jour = (d && d.value) || _jourLocal();
-  if (typeof imprimerRegistre === 'function') imprimerRegistre(jour);
+// ✅ v13.212 — Robuste : on charge d'abord les dossiers si le cache est vide, et
+//   toute erreur est signalée (plus d'échec silencieux « rien ne se passe »).
+async function imprimerRegistreDepuisHistorique() {
+  try {
+    const d = document.getElementById('hist-registre-date');
+    const jour = (d && d.value) || _jourLocal();
+    if (d && !d.value) d.value = jour;
+    if ((typeof _dbCache === 'undefined' || !Array.isArray(_dbCache) || !_dbCache.length)
+        && typeof refreshDB === 'function') {
+      try { await refreshDB(); } catch (e) {}
+    }
+    if (typeof imprimerRegistre !== 'function') { if (typeof toast === 'function') toast('Impression indisponible', 'err'); return; }
+    await imprimerRegistre(jour);
+  } catch (e) {
+    if (typeof toast === 'function') toast('Impression du registre impossible : ' + (e && e.message || e), 'err');
+  }
 }
 
 /** Aperçu à l'écran, avant impression. */
