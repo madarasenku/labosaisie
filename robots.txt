@@ -1,0 +1,3 @@
+# Application médicale interne (données patients) — NE PAS indexer.
+User-agent: *
+Disallow: /
