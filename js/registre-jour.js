@@ -213,6 +213,15 @@ async function _regChargerJour(jour) {
   return recs;
 }
 
+// ✅ v13.210 — Impression du registre depuis le bouton en haut de l'historique.
+//   Utilise le jour choisi dans le petit sélecteur (ou aujourd'hui par défaut).
+function imprimerRegistreDepuisHistorique() {
+  const d = document.getElementById('hist-registre-date');
+  if (d && !d.value) d.value = _jourLocal();
+  const jour = (d && d.value) || _jourLocal();
+  if (typeof imprimerRegistre === 'function') imprimerRegistre(jour);
+}
+
 /** Aperçu à l'écran, avant impression. */
 async function renderRegistre() {
   const zone = document.getElementById('registre-apercu');
@@ -259,10 +268,14 @@ async function renderRegistre() {
     + '<tbody>' + corps + '</tbody></table></div>';
 }
 
-/** Construit le registre imprimable (A4, noir & blanc) et lance l'impression. */
-async function imprimerRegistre() {
+/** Construit le registre imprimable (A4, noir & blanc) et lance l'impression.
+ *  ✅ v13.210 — Accepte un jour explicite (bouton « Imprimer le registre » en
+ *  haut de l'historique) ; à défaut, le champ de la carte registre ou aujourd'hui. */
+async function imprimerRegistre(jourArg) {
   const champ = document.getElementById('registre-date');
-  const jour = (champ && champ.value) || _jourLocal();
+  const jour = (typeof jourArg === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(jourArg))
+    ? jourArg
+    : ((champ && champ.value) || _jourLocal());
   showLoading('Préparation du registre…');
   const recs = await _regChargerJour(jour);
   hideLoading();

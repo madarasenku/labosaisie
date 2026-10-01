@@ -1037,33 +1037,33 @@ function collectBpnCompo() {
 // Sérologies incluses dans le bilan prénatal (toujours qualitatives).
 const BPN_SERO_IDS = ['vih1', 'hbsag', 'syphil', 'toxo', 'toxoig', 'rubig'];
 
+// Examens inclus par défaut dans le forfait prénatal (dont l'électrophorèse).
+// ✅ v13.147 — VIH et ECBU retirés du défaut (rarement demandés en prénatal).
+const BPN_EXAM_IDS = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_hbs','ex_tpha','ex_toxo','ex_rube'];
+
+// ✅ v13.210 — MAINTENANCE du forfait (prix + sérologies), SANS re-cocher les
+// examens. Appelée à chaque recalcul (calcFicheTotal). Avant, elle re-cochait de
+// force les examens du BPN : décocher l'électrophorèse (ou tout autre examen que
+// le patient ne fait pas) était aussitôt annulé. Le cochage par DÉFAUT se fait
+// désormais une seule fois, à l'activation du forfait (initBpnComposition).
 function applyBpnSections() {
   const on = !!document.getElementById('ex_bpn')?.checked;
-  // ✅ v13.147 — VIH et ECBU RETIRÉS de la composition par défaut du forfait :
-  // ils sont rarement demandés en prénatal ici. Ils restent cochables au cas par
-  // cas (ex_vih / ex_ecbu sur leurs onglets), mais ne sont plus inclus d'office.
-  const bpnExamIds = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_hbs','ex_tpha','ex_toxo','ex_rube'];
-  bpnExamIds.forEach(id => {
+  BPN_EXAM_IDS.forEach(id => {
     const chk = document.getElementById(id);
-    if (chk && on && !chk.checked) {
-      chk.checked = true;
-      if (typeof syncExamRowState === 'function') syncExamRowState(id);
-    }
+    const coche = !!(chk && chk.checked);
     const px = document.getElementById('px_' + id);
-    if (px) {
-      if (on) {
-        if (px.value !== '0' && px.dataset.prevPrix === undefined) px.dataset.prevPrix = px.value;
-        px.value = '0';
-        px.readOnly = true;
-        px.style.opacity = '0.5';
-      } else if (px.dataset.prevPrix !== undefined) {
-        px.value = px.dataset.prevPrix;
-        delete px.dataset.prevPrix;
-        px.readOnly = false;
-        px.style.opacity = '';
-      }
+    if (!px) return;
+    if (on && coche) {
+      // Examen du forfait réellement coché → prix à 0 (compris dans les 20 000).
+      if (px.value !== '0' && px.dataset.prevPrix === undefined) px.dataset.prevPrix = px.value;
+      px.value = '0'; px.readOnly = true; px.style.opacity = '0.5';
+    } else if (px.dataset.prevPrix !== undefined) {
+      // Forfait décoché OU examen décoché → on restitue le tarif.
+      px.value = px.dataset.prevPrix; delete px.dataset.prevPrix;
+      px.readOnly = false; px.style.opacity = '';
     }
   });
+
   if (typeof applyExamLocks === 'function') applyExamLocks();
   // ✅ v13.145 — Les sérologies du bilan prénatal sont TOUJOURS qualitatives.
   // ⚠ APRÈS applyExamLocks : celui-ci déverrouille les champs de tout examen
@@ -1084,6 +1084,25 @@ function applyBpnSections() {
     }
     if (typeof toggleSeroMode === 'function') { try { toggleSeroMode(sid); } catch (e) {} }
   });
+}
+
+// ✅ v13.210 — Coche la composition PAR DÉFAUT du bilan prénatal. Appelée
+// UNIQUEMENT quand l'utilisateur ACTIVE le forfait (case ex_bpn), pas à chaque
+// recalcul : ainsi il peut ensuite décocher un examen non réalisé (électrophorèse,
+// ECBU…) sans qu'il soit re-coché. Au décochage du forfait, on ne touche à rien
+// (les tarifs sont restaurés par applyBpnSections).
+function initBpnComposition() {
+  const on = !!document.getElementById('ex_bpn')?.checked;
+  if (on) {
+    BPN_EXAM_IDS.forEach(id => {
+      const chk = document.getElementById(id);
+      if (chk && !chk.checked) {
+        chk.checked = true;
+        if (typeof syncExamRowState === 'function') syncExamRowState(id);
+      }
+    });
+  }
+  if (typeof calcFicheTotal === 'function') calcFicheTotal();
 }
 
 

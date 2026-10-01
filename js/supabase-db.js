@@ -260,9 +260,10 @@ function getCalcDB() {
   // Base de calcul : Caisse, Statistiques, Ristournes, rapport PDF.
   // Une seule règle décide de l'exclusion : isExcludedFromCalc.
   const vivante = r => !r.deletedAt && !r._hardDeleted && !isExcludedFromCalc(r);
-  // ✅ v13.204 — Le spectateur calcule sur le même flux qu'il voit : équipe,
-  //   sauf Nadia et admin (cohérent avec getDB). Plus de gate « journée verrouillée ».
-  if (isSpectateur()) return _dbCache.filter(r => vivante(r) && !_auteurCacheSpectateur(r));
+  // ✅ v13.209 — Le spectateur partage le même total que l'admin (caisse/stats).
+  //   Les dossiers nadia/admin restent cachés dans l'historique (getDB) mais comptent
+  //   dans les calculs financiers pour cohérence du « point du mois ».
+  if (isSpectateur()) return _dbCache.filter(vivante);
   if (isAdmin() || isCaissier()) return _dbCache.filter(vivante);
   const uid = _currentUser?.username;
   if (!uid) return [];
@@ -1606,6 +1607,72 @@ function ensureInterpFresh(type) {
   });
 }
 
+// ✅ v13.210 — VERROU D'ENCAISSEMENT (anti-substitution).
+//   Une fois la fiche encaissée (et donc imprimée/remise), ses résultats et ses
+//   informations patient ne doivent plus pouvoir être modifiés : sinon un agent
+//   pourrait remplacer un résultat déjà payé par celui d'un autre. Le verrou
+//   s'applique à tous SAUF l'administrateur, qui reste seul habilité à corriger
+//   une fiche encaissée (erreur réelle, résultat externe revenu après coup).
+function dossierEncaisseVerrou(record) {
+  if (typeof isAdmin === 'function' && isAdmin()) return false;
+  const paye = (record && record.patient && record.patient.paiement_status === 'paye')
+            || (typeof getPaiementStatus === 'function' && record && getPaiementStatus(record.id) === 'paye');
+  return !!paye;
+}
+// ✅ v13.210 (option B) — Verrou FIN sur une fiche encaissée : on ouvre la fiche
+//   mais on désactive l'identité du patient et les résultats DÉJÀ saisis ; les
+//   examens encore vides restent remplissables (ex. résultat de sous-traitance
+//   revenu après l'encaissement). Appelé après le chargement du formulaire.
+function appliquerVerrouEncaissement(record) {
+  const actif = dossierEncaisseVerrou(record);
+  const idFields = ['p_nom', 'p_dossier', 'p_date', 'p_age', 'p_sexe', 'p_medecin',
+                    'p_service', 'p_clinique', 'p_prescripteur_id', 'p_poids'];
+  const zone = document.getElementById('zone-saisie');
+  const deverrou = el => {
+    el.disabled = false; el.classList.remove('champ-verrouille-enc');
+    el.style.removeProperty('background'); el.style.removeProperty('cursor');
+    if (el.title === 'Fiche encaissée — champ verrouillé') el.title = '';
+  };
+  // Toujours repartir d'un état propre (une édition précédente a pu verrouiller).
+  if (zone) zone.querySelectorAll('.champ-verrouille-enc').forEach(deverrou);
+  idFields.forEach(id => { const e = document.getElementById(id); if (e && e.dataset.encLock) { deverrou(e); delete e.dataset.encLock; } });
+  const vieilleNote = document.getElementById('enc-lock-note'); if (vieilleNote) vieilleNote.remove();
+  if (!actif) return;
+
+  const verrou = el => {
+    el.disabled = true; el.classList.add('champ-verrouille-enc');
+    el.style.background = '#f1f5f9'; el.style.cursor = 'not-allowed';
+    el.title = 'Fiche encaissée — champ verrouillé';
+  };
+  // Identité patient : verrouillée après encaissement.
+  idFields.forEach(id => { const e = document.getElementById(id); if (e) { verrou(e); e.dataset.encLock = '1'; } });
+  // Résultats DÉJÀ saisis : verrouillés ; les cases vides restent éditables.
+  if (zone) {
+    zone.querySelectorAll('input, select, textarea').forEach(el => {
+      if (el.type === 'button' || el.type === 'submit' || el.type === 'hidden') return;
+      const rempli = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : String(el.value || '').trim() !== '';
+      if (rempli) verrou(el);
+    });
+    // Groupes de boutons radio : si l'un est renseigné, on verrouille tout le groupe
+    // (sinon on pourrait changer la réponse via une autre option du même groupe).
+    zone.querySelectorAll('input[type=radio]:checked').forEach(cr => {
+      if (!cr.name) return;
+      zone.querySelectorAll('input[type=radio]').forEach(rb => { if (rb.name === cr.name) verrou(rb); });
+    });
+  }
+  // Mention explicite dans le bandeau d'édition.
+  const banner = document.getElementById('edit-mode-banner');
+  if (banner && !document.getElementById('enc-lock-note')) {
+    const n = document.createElement('div');
+    n.id = 'enc-lock-note';
+    n.style.cssText = 'background:#ecfccb;border:1.5px solid #65a30d;color:#3f6212;padding:8px 14px;'
+      + 'border-radius:var(--radius);margin-bottom:14px;font-size:12.5px;font-weight:600';
+    n.textContent = '🔒 Fiche encaissée : les résultats déjà saisis et l\'identité du patient sont '
+      + 'verrouillés. Vous pouvez seulement compléter les examens encore vides.';
+    banner.parentNode.insertBefore(n, banner.nextSibling);
+  }
+}
+
 async function editRecord(id, typeOverride) {
   if (isCaissier() || isSpectateur()) { toast('Accès lecture seule — modification impossible', 'err'); return; }
   let record = getDB().find(x => x.id === id);
@@ -1706,6 +1773,9 @@ async function editRecord(id, typeOverride) {
   const rappelDoss = document.getElementById('rappel-dossier');
   if (rappelNom)  rappelNom.textContent  = (p.nom||'').toUpperCase();
   if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
+
+  // ✅ v13.210 (option B) — verrou fin si la fiche est encaissée.
+  appliquerVerrouEncaissement(record);
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
   toast('Fiche chargée pour modification (' + type + ')', 'ok');
@@ -1822,6 +1892,9 @@ async function fillAllResults(id) {
   const rappelDoss = document.getElementById('rappel-dossier');
   if (rappelNom)  rappelNom.textContent  = (p.nom || '').toUpperCase();
   if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
+
+  // ✅ v13.210 (option B) — verrou fin si la fiche est encaissée.
+  appliquerVerrouEncaissement(record);
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
   toast('Fiche chargée — remplissez tous les examens puis « Enregistrer les résultats »', 'ok');
