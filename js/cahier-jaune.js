@@ -55,7 +55,7 @@ function ouvrirCahier(type) {
 function _majEnteteCahier() {
   const noir = _cahierEstNoir();
   const t = document.getElementById('cahier-titre');
-  if (t) t.textContent = noir ? '📓 Cahier noir' : '📒 Cahier jaune';
+  if (t) t.textContent = noir ? '📓 Caisse noire' : '📒 Cahier jaune';
   const v = document.getElementById('view-cahier');
   if (v) v.setAttribute('data-cahier', _cahierActif);
   const intro = document.getElementById('cahier-intro-jaune');
@@ -66,11 +66,14 @@ function _majEnteteCahier() {
 
 function _majCartesCahier() {
   const a = _cahierAccesParType[_cahierActif] || {};
+  // v13.210 — Le cahier noir est ouvert à tous : chaque agent (hors spectateur)
+  // peut gérer les colonnes. Le partage n'a plus de sens pour le noir (il n'est
+  // plus réservé), on masque donc sa carte. Le jaune reste inchangé.
   const carte = document.getElementById('cahier-colonnes-card');
   if (carte) carte.style.display = a.admin ? '' : 'none';
   const partage = document.getElementById('cahier-partage-card');
-  if (partage) partage.style.display = a.admin ? '' : 'none';
-  if (a.admin) { _cahierAcces = a; remplirFormulairePartage(); }
+  if (partage) partage.style.display = (a.admin && !_cahierEstNoir()) ? '' : 'none';
+  if (a.admin) { _cahierAcces = a; if (!_cahierEstNoir()) remplirFormulairePartage(); }
 }
 
 function _cjMoisCourant() {
@@ -253,14 +256,21 @@ function renderCahierJaune() {
     // qu'on ne peut que remplir et vider oblige à supprimer puis ressaisir,
     // ce qui casse le lien avec le dossier et la numérotation.
     const modifiable = !isSpectateur() && !_cahierData?.lecture_seule;
+    const estST = _cjEstSousTraitance(c);
     const corps = d.lignes.map(l => {
       const v = Number(l.montant) || 0;
+      // v13.210 — Pour une sous-traitance, on montre si la somme a été retirée.
+      const badge = estST
+        ? (l.retire === true
+            ? ' <span style="font-size:10px;color:#15803d;font-weight:700">✓ retirée</span>'
+            : ' <span style="font-size:10px;color:#b45309;font-weight:700">⏳ non retirée</span>')
+        : '';
       return '<div style="white-space:nowrap;color:' + (v < 0 ? '#b91c1c' : '#0b2545')
         + (modifiable ? ';cursor:pointer" title="Cliquer pour modifier"'
                         + ' onclick="ouvrirSaisieCahier(\'' + j + '\',' + l.id + ')"' : '"') + '>'
         + '<span style="color:var(--text-muted);font-weight:400">' + numeros[l.id] + '.</span> '
         + '<span style="font-weight:400">' + esc(nomDeLigne(l)) + '</span> '
-        + '<strong>' + _cjFcfa(v) + '</strong></div>';
+        + '<strong>' + _cjFcfa(v) + '</strong>' + badge + '</div>';
     }).join('');
     // Le sous-total de la cellule n'apparaît que s'il y a plusieurs écritures :
     // le répéter sous un montant unique n'apprend rien et alourdit la page.
@@ -355,14 +365,22 @@ async function ouvrirSaisieCahier(jour, idEcriture) {
               + 'Écriture reportée automatiquement depuis un bilan prénatal. La corriger ici '
               + 'ne change pas le montant du dossier.</div>' : '')
     + '<label style="font-size:12px;font-weight:600">Colonne</label>'
-    + '<select id="cj-colonne" style="width:100%;margin-bottom:10px">'
+    + '<select id="cj-colonne" style="width:100%;margin-bottom:10px" onchange="_cjMajModaleColonne()">'
     + colonnes.map(c => '<option value="' + c.id + '"'
+        + (_cjEstSousTraitance(c) ? ' data-st="1"' : '')
         + (existante && existante.colonne_id === c.id ? ' selected' : '')
         + '>' + esc(c.libelle) + '</option>').join('')
     + '</select>'
-    + '<label style="font-size:12px;font-weight:600">Montant (négatif pour une sortie)</label>'
+    + '<label id="cj-montant-label" style="font-size:12px;font-weight:600">Montant (négatif pour une sortie)</label>'
     + '<input type="number" id="cj-montant" style="width:100%;margin-bottom:10px" placeholder="10000 ou -5000"'
     + (existante ? ' value="' + Number(existante.montant) + '"' : '') + '>'
+    // v13.210 — Sous-traitance : on demande si la somme a déjà été retirée.
+    + '<div id="cj-retire-row" style="display:none;margin-bottom:10px">'
+    + '<label style="font-size:12px;font-weight:600">La somme a-t-elle été retirée ?</label>'
+    + '<select id="cj-retire" style="width:100%">'
+    + '<option value="non"' + (existante && existante.retire === false ? ' selected' : '') + '>Non — pas encore retirée</option>'
+    + '<option value="oui"' + (existante && existante.retire === true ? ' selected' : '') + '>Oui — déjà retirée</option>'
+    + '</select></div>'
     + '<label style="font-size:12px;font-weight:600">Explication '
     + '<span style="font-weight:400;color:var(--text-muted)">(obligatoire pour une sortie)</span></label>'
     + '<input type="text" id="cj-explication" style="width:100%;margin-bottom:6px" placeholder="MR NGUESSAN"'
@@ -378,7 +396,33 @@ async function ouvrirSaisieCahier(jour, idEcriture) {
     + jour + '\'' + (existante ? ',' + existante.id : '') + ')">Enregistrer</button>'
     + '</span></div></div>';
   document.body.appendChild(bd);
+  _cjMajModaleColonne();
   setTimeout(() => document.getElementById('cj-montant')?.focus(), 50);
+}
+
+// La colonne sélectionnée est-elle « SOUS TRAITANCE » ?
+function _cjEstSousTraitance(c) {
+  return (c && (c.libelle || '')).toUpperCase() === 'SOUS TRAITANCE';
+}
+
+// v13.210 — Adapte la fenêtre à la colonne : la sous-traitance n'accepte que
+// des sorties (montant négatif) et demande si la somme a déjà été retirée.
+function _cjMajModaleColonne() {
+  const sel = document.getElementById('cj-colonne');
+  const opt = sel?.options[sel.selectedIndex];
+  const estST = opt?.getAttribute('data-st') === '1';
+  const row = document.getElementById('cj-retire-row');
+  if (row) row.style.display = estST ? '' : 'none';
+  const lbl = document.getElementById('cj-montant-label');
+  const inp = document.getElementById('cj-montant');
+  if (estST) {
+    if (lbl) lbl.textContent = 'Montant de la sous-traitance (sortie, sera négatif)';
+    if (inp && inp.value) { const v = Math.abs(Number(inp.value) || 0); inp.value = v ? -v : ''; }
+    if (inp) inp.placeholder = '-5000';
+  } else {
+    if (lbl) lbl.textContent = 'Montant (négatif pour une sortie)';
+    if (inp) inp.placeholder = '10000 ou -5000';
+  }
 }
 
 async function supprimerEcritureCahier(id) {
@@ -403,26 +447,39 @@ async function supprimerEcritureCahier(id) {
 
 async function enregistrerEcritureCahier(jour, idEcriture) {
   const err = document.getElementById('cj-err');
-  const colonne = Number(document.getElementById('cj-colonne')?.value);
-  const montant = Number(document.getElementById('cj-montant')?.value);
+  const colSel = document.getElementById('cj-colonne');
+  const colonne = Number(colSel?.value);
+  const estST = colSel?.options[colSel.selectedIndex]?.getAttribute('data-st') === '1';
+  let montant = Number(document.getElementById('cj-montant')?.value);
   const expl = (document.getElementById('cj-explication')?.value || '').trim();
   if (err) err.textContent = '';
   if (!montant) { if (err) err.textContent = 'Indiquez un montant différent de zéro.'; return; }
+  // v13.210 — La sous-traitance est toujours une sortie : on force le négatif.
+  if (estST && montant > 0) montant = -montant;
+  if (estST && montant >= 0) { if (err) err.textContent = 'La sous-traitance doit être une sortie (montant négatif).'; return; }
   // Contrôle côté écran ET côté serveur : sans explication, une sortie de
   // caisse devient inexplicable un mois plus tard.
   if (montant < 0 && !expl) {
     if (err) err.textContent = 'Une sortie doit être expliquée.'; return;
   }
+  // v13.210 — « somme retirée ? » n'a de sens que pour la sous-traitance.
+  const retire = estST
+    ? (document.getElementById('cj-retire')?.value === 'oui')
+    : null;
+
+  // Seul le cahier noir connaît le paramètre p_retire : ne jamais l'envoyer
+  // à la RPC du jaune (sa signature ne l'accepte pas).
+  const extra = _cahierEstNoir() ? { p_retire: retire } : {};
 
   try {
     const { data, error } = idEcriture
       ? await _sb.rpc(_cjR('modifier'), {
           p_token: TK(), p_id: idEcriture, p_jour: jour, p_colonne_id: colonne,
-          p_montant: montant, p_explication: expl || null,
+          p_montant: montant, p_explication: expl || null, ...extra,
         })
       : await _sb.rpc(_cjR('ajouter'), {
       p_token: TK(), p_jour: jour, p_colonne_id: colonne,
-      p_montant: montant, p_explication: expl || null,
+      p_montant: montant, p_explication: expl || null, ...extra,
     });
     if (error || !data || data.erreur) {
       if (err) err.textContent = 'Refusé : ' + (error?.message || data?.erreur || '?');
@@ -437,7 +494,11 @@ async function enregistrerEcritureCahier(jour, idEcriture) {
 }
 
 async function ajouterColonneCahier() {
-  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  // v13.210 — Pour le cahier noir, tout agent (hors spectateur) gère les colonnes ;
+  // pour le jaune, cela reste réservé à l'administrateur. On lit le droit « admin »
+  // renvoyé par la RPC d'accès du cahier actif plutôt que le rôle global.
+  const a = _cahierAccesParType[_cahierActif] || {};
+  if (!a.admin) { toast('Action non autorisée', 'err'); return; }
   const libelle = (document.getElementById('cahier-nouvelle-colonne')?.value || '').trim();
   if (!libelle) { toast('Indiquez un nom de colonne', 'err'); return; }
   const { data, error } = await _sb.rpc(_cjR('colonne'),

@@ -35,7 +35,8 @@ function showView(v) {
     { id: 'view-caisse-user',  show: caisseUserVisible },
     // ✅ v13.86 — Le cahier jaune est un document de caisse : il ne concerne
     // ni les agents ni la saisie. Même cloisonnement que la caisse complète.
-    { id: 'view-cahier',       show: (v === 'cahier' && (isAdmin() || isCaissier() || isSpectateur())) },
+    // ✅ v13.211 — nadia (agent) a accès à la vue cahier pour SA caisse noire.
+    { id: 'view-cahier',       show: (v === 'cahier' && (isAdmin() || isCaissier() || isSpectateur() || estCompteNadia())) },
   ];
 
   allViews.forEach(({ id, show }) => {
@@ -80,6 +81,9 @@ function showView(v) {
     // ✅ v13.72 — le bandeau de navigation doit refléter la période active
     // dès l'ouverture de l'onglet, sinon le libellé reste vide.
     if (typeof majNavPeriode === 'function') majNavPeriode();
+    // ✅ v13.210 — Préremplir la date du bouton « Imprimer le registre » (aujourd'hui).
+    const _hrd = document.getElementById('hist-registre-date');
+    if (_hrd && !_hrd.value && typeof _jourLocal === 'function') _hrd.value = _jourLocal();
     renderHistory(true);
     // ✅ v13.171 — Liste des électrophorèses de la semaine : réservée à l'ADMIN.
     const _ec = document.getElementById('electro-card');

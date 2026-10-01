@@ -746,6 +746,29 @@ function statutBadge(id) {
   return `<span class="${cls[s] || 'badge-attente'}" onclick="event.stopPropagation();cycleStatut(${id})" title="Cliquer pour changer">${labels[s] || labels.attente}</span>`;
 }
 
+// ✅ v13.210 — Statut de SAISIE, déduit AUTOMATIQUEMENT de l'état du dossier
+//   (indépendant du marqueur manuel). Trois états lisibles pour la liste des
+//   patients : pas commencé (résultats non saisis), en cours (saisie entamée,
+//   pas encore rendue), terminé (résultat disponible / rendu).
+function saisieStatutAuto(r) {
+  if (!r) return 'pas_commence';
+  if (getStatut(r.id) === 'rendu') return 'termine';
+  const res = r.resultats || {};
+  // _facture_seule / _reception_seule : la fiche existe mais aucun résultat saisi.
+  if (res._reception_seule || res._facture_seule) return 'pas_commence';
+  return 'en_cours';
+}
+function saisieStatutBadge(r) {
+  const conf = {
+    pas_commence: ['⚪ Pas commencé', '#f1f5f9', '#475569', '#cbd5e1'],
+    en_cours:     ['🟡 En cours',     '#fef9c3', '#854d0e', '#fde047'],
+    termine:      ['🟢 Terminé',      '#dcfce7', '#166534', '#86efac'],
+  }[saisieStatutAuto(r)];
+  return '<span title="Avancement de la saisie" style="background:' + conf[1] + ';color:' + conf[2]
+    + ';border:1px solid ' + conf[3] + ';padding:2px 7px;border-radius:20px;font-size:10px;'
+    + 'font-weight:700;white-space:nowrap">' + conf[0] + '</span>';
+}
+
 // ── Aperçu rapide au survol ──
 let _previewTimer = null;
 function showPreview(e, recordOrId) {
@@ -1348,9 +1371,28 @@ function getCaisseRange() {
   if (_caissePeriode === 'tout') return { from: '', to: '' };
   return calcPlagePeriode(_caissePeriode || 'mois', _caisseDecalage);
 }
+// ✅ v13.210 — Déplace l'unique carte « Registre du jour » dans la vue caisse
+// active (complète ou simplifiée) pour que tous les agents y aient accès, sans
+// dupliquer d'identifiant. order:7 la place en bas via le flex de chaque vue.
+function _placerCarteRegistre(viewId) {
+  const carte = document.getElementById('registre-card');
+  const cible = document.getElementById(viewId);
+  if (!carte || !cible) return;
+  if (carte.parentElement !== cible) cible.appendChild(carte);
+  carte.style.display = '';
+  carte.style.order = '7';
+}
+
 async function renderCaisse() {
   await refreshDB();
   updateVerrouilleeBtn(); // ✅ v13.32 — bouton admin fiches verrouillées
+  // ✅ v13.210 — La caissière a une vue MINIMALE : pas d'analyse ni de ristournes.
+  //   (L'admin et l'agent qui tient la caisse gardent la vue complète.)
+  try {
+    const _minimal = (typeof isCaissier === 'function' && isCaissier())
+                  && !(typeof isAdmin === 'function' && isAdmin());
+    document.body.classList.toggle('caisse-min', _minimal);
+  } catch (e) {}
   // ✅ v13.33 — Brancher selon le rôle : agent → vue simplifiée, admin/caissier → caisse complète
   // ✅ v13.122 — Sauf si l'agent fait la caisse (aucun caissier) → caisse complète.
   if (!isAdmin() && !isCaissier() && !isSpectateur() && !(typeof peutEncaisser === 'function' && peutEncaisser())) {
@@ -1358,14 +1400,18 @@ async function renderCaisse() {
     // vue simplifiée d'un agent, qui ne tient pas le tiroir.
     const carte = document.getElementById('cloture-card');
     if (carte) carte.style.display = 'none';
-    // ✅ v13.169 — Le registre du jour vit à côté de la clôture (document de
-    // caisse) : il disparaît aussi de la vue simplifiée de l'agent.
-    const carteReg = document.getElementById('registre-card');
-    if (carteReg) carteReg.style.display = 'none';
+    // ✅ v13.210 — Le registre du jour est désormais ouvert à TOUS les agents.
+    // La carte registre vit dans #view-caisse (masquée pour l'agent) ; on la
+    // déplace dans la vue simplifiée pour que l'agent y accède (aperçu +
+    // impression). Une seule carte existe : pas de doublon d'identifiant.
+    _placerCarteRegistre('view-caisse-user');
+    if (typeof renderRegistre === 'function') renderRegistre();
     renderUserCaisse(); return;
   }
   // ✅ v13.84 — Aperçu de la clôture du jour, recalculé à chaque ouverture.
   if (typeof renderCloture === 'function') renderCloture();
+  // ✅ v13.210 — Caisse complète : la carte registre revient à sa place d'origine.
+  _placerCarteRegistre('view-caisse');
   // ✅ v13.169 — Aperçu du registre du jour (document clinique).
   if (typeof renderRegistre === 'function') renderRegistre();
   const db = getCalcDB(); // exclut les fiches verrouillées selon le choix admin

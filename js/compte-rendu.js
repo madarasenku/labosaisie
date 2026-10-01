@@ -339,10 +339,14 @@ const CR_STYLE = `
   /* Impression de LOT : pas de pied fixe (un par patient via le tfoot). */
   #print-render.cr-lot .cr-foot-fixed { display:none; }
   #print-render.cr-lot .cr-doc > tfoot .cr-foot { visibility:visible; }
-  /* ✅ v13.207 — iOS Safari : idem, on abandonne le pied fixe (qui se superpose
-     au contenu sur iPhone/iPad) au profit du pied en flux du <tfoot>. */
-  #print-render.cr-ios .cr-foot-fixed { display:none; }
-  #print-render.cr-ios .cr-doc > tfoot .cr-foot { visibility:visible; }
+  /* ✅ v13.210 — iOS Safari & BPN sur 2 feuilles : on GARDE le pied FIXE (seul
+     moyen de le coller EN BAS de chaque feuille, y compris la dernière, courte).
+     Le pied du <tfoot> en « visibility:hidden » ne réservait PAS sa hauteur sur
+     iPhone/iPad (d'où le chevauchement de v13.206) ET, rendu « visible » en flux
+     (v13.207), il se posait juste après le dernier examen au lieu du bas de page.
+     On le rend donc TRANSPARENT (opacity:0) : iOS réserve bien sa hauteur (pas de
+     chevauchement) sans rien afficher, et le pied VISIBLE reste le pied fixe. */
+  #print-render.cr-ios .cr-doc > tfoot .cr-foot { visibility:visible; opacity:0; }
   .cr-foot { padding-top:4px; font-size:7.5pt; border-top:1.4px solid #333; }
   .cr-foot-grid { display:flex; align-items:flex-start; gap:14px; }
   .cr-foot-l { flex:1; } .cr-foot-c { flex:1.2; text-align:center; } .cr-foot-r { text-align:right; }

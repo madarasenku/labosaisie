@@ -107,6 +107,17 @@ function isCaissier() {
 function isSpectateur() {
   return !!_currentUser && _currentUser.role === 'spectateur';
 }
+// ✅ v13.211 — La CAISSE NOIRE est réservée au seul compte « nadia » (identifié
+// par son nom d'utilisateur, pas par un rôle). Aucun autre agent, caissier,
+// spectateur ni même l'administrateur n'y a accès.
+function estCompteNadia() {
+  return !!_currentUser && String(_currentUser.username || '').toLowerCase() === 'nadia';
+}
+// ✅ v13.211 — Accès à la CAISSE NOIRE : le compte nadia OU l'administrateur
+// (qui voit tout). Personne d'autre (agents, caissier, spectateur).
+function accesCaisseNoire() {
+  return estCompteNadia() || isAdmin();
+}
 // Lecture seule stricte (spectateur) : bloque toute action. Retourne true si bloqué.
 function blockIfSpectateur() {
   if (isSpectateur()) { toast('👁 Compte spectateur — lecture seule, aucune action possible', 'err'); return true; }

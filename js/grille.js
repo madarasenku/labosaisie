@@ -986,6 +986,28 @@ async function grilleImprimerLot() {
     hideLoading();
     if (!records.length) { toast(nonCharges ? 'Impression impossible hors-ligne' : 'Dossiers introuvables', 'err'); return; }
     if (nonCharges) toast('⚠️ ' + nonCharges + ' fiche(s) ignorée(s) (hors-ligne)', 'err');
+
+    // ✅ v13.210 — VERROU : pas d'impression EN SÉRIE sans encaissement.
+    //   Imprimer le lot juste après la saisie, sans passer par la caisse, était
+    //   une faille (résultat remis sans paiement). On n'imprime donc en série que
+    //   les dossiers ENCAISSÉS. L'administrateur garde la main (réimpression,
+    //   corrections) et imprime tout, mais en est informé.
+    const _estPaye = r => (typeof getPaiementStatus === 'function' && getPaiementStatus(r.id) === 'paye')
+                       || !!(r.patient && r.patient.paiement_status === 'paye');
+    const _admin = typeof isAdmin === 'function' && isAdmin();
+    if (!_admin) {
+      const payes = records.filter(_estPaye);
+      const exclus = records.length - payes.length;
+      if (!payes.length) {
+        toast('🔒 Impression en série bloquée : encaissez d\'abord les dossiers (caisse).', 'err');
+        return;
+      }
+      if (exclus) toast('🔒 ' + exclus + ' dossier(s) non encaissé(s) exclu(s) — seuls les encaissés sont imprimés.', 'err');
+      await printLot(payes);
+      return;
+    }
+    const exclusAdmin = records.filter(r => !_estPaye(r)).length;
+    if (exclusAdmin) toast('ℹ️ ' + exclusAdmin + ' dossier(s) non encaissé(s) inclus (administrateur).', 'ok');
     await printLot(records);
   } catch (e) { hideLoading(); toast('Erreur d\'impression', 'err'); }
 }

@@ -22,6 +22,30 @@
 // Semaine affichée : une date QUELCONQUE dans la semaine voulue (null = courante).
 let _electroRef = null;
 
+// ✅ v13.210 — Profils d'électrophorèse (mêmes libellés que le formulaire de saisie).
+const _ELEC_PROFILS = [
+  'Profil AA (Normal)', 'Profil AS (Drépanocytose trait)', 'Profil SS (Drépanocytose homozygote)',
+  'Profil AC (Trait HbC)', 'Profil SC (Drépanocytose SC)', 'Profil CC (HbC homozygote)',
+  'β-Thalassémie mineure', 'β-Thalassémie majeure', 'Profil AF (Hb fœtale élevée)',
+];
+
+// « Envoyé au labo externe » : mémorisé localement par dossier (persistant).
+const _ELEC_ENVOYE_KEY = 'labosaisie_electro_envoye_v1';
+function _elecEnvoyes() { try { return JSON.parse(localStorage.getItem(_ELEC_ENVOYE_KEY) || '{}'); } catch (e) { return {}; } }
+function _elecEstEnvoye(id) { return !!_elecEnvoyes()[id]; }
+function toggleElectroEnvoye(id, val) {
+  const e = _elecEnvoyes();
+  if (val) e[id] = true; else delete e[id];
+  try { localStorage.setItem(_ELEC_ENVOYE_KEY, JSON.stringify(e)); } catch (ex) {}
+}
+
+// Sélection pour l'impression : par défaut TOUT est coché ; on mémorise les
+// lignes DÉcochées (en mémoire, le temps de la session de la liste).
+let _elecHorsImpression = new Set();
+function toggleElectroImprimer(id, val) {
+  if (val) _elecHorsImpression.delete(id); else _elecHorsImpression.add(String(id));
+}
+
 function _elecP(n) { return String(n).padStart(2, '0'); }
 function _elecJourLocal(d) { return d.getFullYear() + '-' + _elecP(d.getMonth() + 1) + '-' + _elecP(d.getDate()); }
 
@@ -85,11 +109,36 @@ async function _elecDossiers(ref) {
 function _elecLigne(r) {
   const p = r.patient || {};
   return {
+    id: r.id,
     dossier: p.dossier || p.ancien_dossier || '—',
     nom: p.nom || '—',
     groupe: _elecGroupe(r.resultats),
     masque: !!r.restrictedBy,
   };
+}
+
+// ✅ v13.210 — Enregistre le profil d'électrophorèse (« Profil Hb ») directement
+//   depuis la liste. Il est écrit dans le dossier (Hématologie → Profil Hb), ce
+//   qui remplit la case correspondante dans l'application ; le patient sort alors
+//   de la liste « à faire » (profil rendu).
+async function enregistrerElectroResultat(id) {
+  const rec = (typeof _dbCache !== 'undefined' ? _dbCache : []).find(r => r.id === id);
+  if (!rec) { toast('Dossier introuvable', 'err'); return; }
+  const sel = document.getElementById('elec-prof-' + id);
+  const val = sel ? sel.value : '';
+  if (!val) { toast('Choisissez un profil', 'err'); return; }
+  showLoading('Enregistrement de l\'électrophorèse…');
+  try { if (typeof ensureFull === 'function') await ensureFull(rec); } catch (e) {}
+  if (rec._light) { hideLoading(); toast('Impossible hors-ligne — réessayez connecté', 'err'); return; }
+  rec.resultats = rec.resultats || {};
+  rec.resultats['Hématologie'] = Object.assign({}, rec.resultats['Hématologie'] || {}, { 'Profil Hb': val });
+  const updated = await updateRecordRemote(id, rec, { onlyResultats: true });
+  hideLoading();
+  if (updated) {
+    toggleElectroEnvoye(id, false);           // c'est fait : on retire le marqueur « envoyé »
+    toast('Électrophorèse enregistrée ✓ (' + val + ')', 'ok');
+    renderElectro();
+  }
 }
 
 function decalerElectro(n) {
@@ -119,16 +168,42 @@ async function renderElectro() {
     zone.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:8px">Aucune électrophorèse à faire cette semaine.</p>';
     return;
   }
-  const corps = lignes.map(l =>
-    '<tr><td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
-    + '<td><strong>' + esc(l.nom) + '</strong>'
-    + (l.masque ? ' <span title="Fiche masquée" style="font-size:11px">🔒</span>' : '') + '</td>'
-    + '<td style="text-align:center">' + (l.groupe ? esc(l.groupe) : '<span style="color:var(--text-muted)">—</span>') + '</td></tr>').join('');
+  const opt = sel => '<option value="">— Profil —</option>'
+    + _ELEC_PROFILS.map(p => '<option value="' + esc(p) + '">' + esc(p) + '</option>').join('');
+  const corps = lignes.map(l => {
+    const envoye = _elecEstEnvoye(l.id);
+    const imprimer = !_elecHorsImpression.has(String(l.id));
+    return '<tr>'
+      // Envoyé au labo externe
+      + '<td style="text-align:center"><input type="checkbox" ' + (envoye ? 'checked' : '')
+        + ' onchange="toggleElectroEnvoye(' + l.id + ',this.checked)" title="Marquer comme envoyé au labo externe" '
+        + 'style="width:16px;height:16px;cursor:pointer"></td>'
+      + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
+      + '<td><strong>' + esc(l.nom) + '</strong>'
+        + (l.masque ? ' <span title="Fiche masquée" style="font-size:11px">🔒</span>' : '')
+        + (envoye ? ' <span style="font-size:10px;font-weight:700;color:#6d28d9;background:#ede9fe;border-radius:4px;padding:1px 5px">✈ envoyé</span>' : '') + '</td>'
+      + '<td style="text-align:center">' + (l.groupe ? esc(l.groupe) : '<span style="color:var(--text-muted)">—</span>') + '</td>'
+      // Saisie du résultat → remplit la case du dossier
+      + '<td style="white-space:nowrap">'
+        + '<select id="elec-prof-' + l.id + '" style="font-size:12px;padding:3px 6px;max-width:210px">' + opt() + '</select> '
+        + '<button class="btn btn-success" style="padding:3px 9px;font-size:11px" '
+          + 'onclick="enregistrerElectroResultat(' + l.id + ')" title="Enregistrer le résultat dans le dossier">✓ Enregistrer</button>'
+      + '</td>'
+      // Sélection pour l'impression
+      + '<td style="text-align:center"><input type="checkbox" ' + (imprimer ? 'checked' : '')
+        + ' onchange="toggleElectroImprimer(' + l.id + ',this.checked)" title="Inclure dans l\'impression" '
+        + 'style="width:16px;height:16px;cursor:pointer"></td>'
+      + '</tr>';
+  }).join('');
   zone.innerHTML =
     '<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px"><strong style="color:var(--text-label);font-size:15px">'
-    + lignes.length + '</strong> électrophorèse(s) à faire</div>'
+    + lignes.length + '</strong> électrophorèse(s) à faire · '
+    + 'cochez « Envoyé » pour le labo externe, saisissez le profil pour remplir le dossier, '
+    + 'décochez « Imprimer » pour exclure une ligne.</div>'
     + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12.5px">'
-    + '<thead><tr><th>N° dossier</th><th>Nom</th><th style="text-align:center">Groupe</th></tr></thead>'
+    + '<thead><tr><th style="text-align:center">Envoyé</th><th>N° dossier</th><th>Nom</th>'
+    + '<th style="text-align:center">Groupe</th><th>Résultat (profil)</th>'
+    + '<th style="text-align:center">Imprimer</th></tr></thead>'
     + '<tbody>' + corps + '</tbody></table></div>';
 }
 
@@ -138,15 +213,16 @@ async function imprimerElectro() {
   showLoading('Préparation de la liste…');
   const recs = await _elecDossiers(_electroRef);
   hideLoading();
-  const lignes = recs.map(_elecLigne);
+  // ✅ v13.210 — On n'imprime que les lignes cochées « Imprimer ».
+  const lignes = recs.map(_elecLigne).filter(l => !_elecHorsImpression.has(String(l.id)));
 
   const corps = lignes.length
     ? lignes.map(l =>
         '<tr><td class="el-no">' + esc(l.dossier) + '</td>'
-        + '<td class="el-nom">' + esc(l.nom) + '</td>'
+        + '<td class="el-nom">' + esc(l.nom) + (_elecEstEnvoye(l.id) ? ' (envoyé)' : '') + '</td>'
         + '<td class="el-grp">' + esc(l.groupe) + '</td>'
         + '<td class="el-el"></td></tr>').join('')
-    : '<tr><td colspan="4" style="text-align:center;font-style:italic">Aucune électrophorèse à faire cette semaine.</td></tr>';
+    : '<tr><td colspan="4" style="text-align:center;font-style:italic">Aucune électrophorèse sélectionnée.</td></tr>';
 
   const html =
     '<style>'

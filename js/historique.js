@@ -649,7 +649,7 @@ async function renderHistory(forceRefresh) {
         }).join('') + '</td>'
       + '<td data-label="Saisi par">' + hl(r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
-      + '<td data-label="Statut">' + statutBadge(r.id) + ' ' + paiementBadge(r.id) + '</td>'
+      + '<td data-label="Statut">' + saisieStatutBadge(r) + ' ' + statutBadge(r.id) + ' ' + paiementBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
         // ✅ v13.33 — Caissier : lecture seule (export/impression uniquement, pas de modification)
         // ✅ v13.37 — Spectateur : idem, lecture seule stricte
@@ -833,9 +833,9 @@ function updateBulkToolbar() {
     const peutCahier = isAdmin() || (typeof isCaissier === 'function' && isCaissier());
     cahierBtn.style.display = (peutCahier && !_filterCorbeille) ? '' : 'none';
   }
-  // ✅ v13.205 — Cahier noir : ADMIN seulement, hors corbeille.
+  // ✅ v13.211 — Caisse noire : nadia OU administrateur, hors corbeille.
   const cahierNoirBtn = document.getElementById('bulk-cahier-noir-btn');
-  if (cahierNoirBtn) cahierNoirBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
+  if (cahierNoirBtn) cahierNoirBtn.style.display = (accesCaisseNoire() && !_filterCorbeille) ? '' : 'none';
   // ✅ v13.208 — Changer le propriétaire en lot : ADMIN, hors corbeille.
   const auteurBtn = document.getElementById('bulk-auteur-btn');
   if (auteurBtn) auteurBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
@@ -1279,7 +1279,7 @@ async function bulkCahierJaune() {
 let _cnReportPlan = null;
 async function bulkCahierNoir() {
   if (blockIfSpectateur()) return;
-  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  if (!accesCaisseNoire()) { toast('🔒 Caisse noire — réservée à nadia et à l\'administrateur', 'err'); return; }
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const plan = ids.map(id => _dbCache.find(x => x.id === id)).filter(Boolean)
@@ -1287,16 +1287,15 @@ async function bulkCahierNoir() {
   const aPorter = plan.filter(p => p.montant > 0);
   const sansMontant = plan.length - aPorter.length;
   if (!aPorter.length) { toast('Aucun dossier avec un montant à porter', 'err'); return; }
-  showLoading('Cahier noir…');
+  showLoading('Caisse noire…');
   const mois = new Date().toISOString().slice(0, 7);
   const { data, error } = await _sb.rpc('get_cahier_noir', { p_token: TK(), p_mois: mois });
   hideLoading();
   if (error || !data || data.erreur) {
-    toast('Cahier noir indisponible' + (data && data.erreur ? ' (' + data.erreur + ')' : '')
-      + ' — ouvre le coffre.', 'err'); return;
+    toast('Caisse noire indisponible' + (data && data.erreur ? ' (' + data.erreur + ')' : ''), 'err'); return;
   }
   const cols = (data.colonnes || []).filter(c => !c.archivee);
-  if (!cols.length) { toast('Crée d\'abord une colonne dans le cahier noir', 'err'); return; }
+  if (!cols.length) { toast('Crée d\'abord une colonne dans la caisse noire', 'err'); return; }
   _cnReportPlan = { aPorter, sansMontant };
   const sel = document.getElementById('cn-report-colonne');
   if (sel) sel.innerHTML = cols.map(c => '<option value="' + esc(c.libelle) + '">' + esc(c.libelle) + '</option>').join('');
@@ -1318,7 +1317,7 @@ async function submitReportNoir() {
   const errEl = document.getElementById('cn-report-error');
   if (!libelle) { if (errEl) errEl.textContent = 'Choisissez une colonne.'; return; }
   const btn = document.getElementById('cn-report-submit'); if (btn) btn.disabled = true;
-  showLoading('Report au cahier noir…');
+  showLoading('Report à la caisse noire…');
   let ok = 0, deja = 0, err = 0, errMsg = '';
   for (const p of _cnReportPlan.aPorter) {
     const r = p.r;
@@ -1334,7 +1333,7 @@ async function submitReportNoir() {
   }
   hideLoading(); if (btn) btn.disabled = false;
   fermerReportNoir(); clearBulkSelection();
-  toast(ok + ' porté(s) au cahier noir'
+  toast(ok + ' porté(s) à la caisse noire'
     + (deja ? ' · ' + deja + ' déjà présent(s)' : '')
     + (err ? ' · ' + err + ' erreur(s)' + (errMsg ? ' (' + errMsg + ')' : '') : ''),
     err ? 'err' : 'ok');

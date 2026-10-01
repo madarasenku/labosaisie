@@ -585,7 +585,7 @@ function buildFicheExamens() {
       <div id="${gid}" style="display:${ouvert ? 'block' : 'none'}">
         ${examens.map(ex => `
         <div class="exam-row" id="row_${ex.id}" onclick="toggleExamRow(event,'${ex.id}')">
-          <input type="checkbox" id="${ex.id}" onchange="calcFicheTotal();syncExamRowState('${ex.id}')" onclick="event.stopPropagation()">
+          <input type="checkbox" id="${ex.id}" onchange="${ex.id === 'ex_bpn' ? 'initBpnComposition();' : 'calcFicheTotal();'}syncExamRowState('${ex.id}')" onclick="event.stopPropagation()">
           <label for="${ex.id}" onclick="event.stopPropagation()">
             ${ex.label}${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
             ${ex.custom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
@@ -617,7 +617,10 @@ function toggleExamRow(evt, exId) {
   const chk = document.getElementById(exId);
   if (!chk) return;
   chk.checked = !chk.checked;
-  calcFicheTotal();
+  // ✅ v13.210 — Activer le forfait prénatal coche sa composition par défaut
+  // (une seule fois) ; les autres examens se contentent du recalcul.
+  if (exId === 'ex_bpn' && typeof initBpnComposition === 'function') initBpnComposition();
+  else calcFicheTotal();
   syncExamRowState(exId);
 }
 
