@@ -85,13 +85,13 @@ function getDB() {
     if (isAdmin()) return _dbCache.filter(r => !!r.deletedAt || !!r._hardDeleted);
     return _dbCache.filter(r => !!r.deletedAt && !r._hardDeleted && r.deletedBy === uid);
   }
-  // ✅ v13.52 — Un dossier masqué disparaît de TOUS les comptes (propriétaire,
-  //   caissier, spectateur, autres agents). Seuls L'ADMIN et CELUI QUI A MASQUÉ
-  //   le voient dans cette section, pour pouvoir le réafficher.
+  // ✅ v13.213 — Vue « Masqués » : un dossier masqué sort de l'historique courant
+  //   mais reste RETROUVABLE ici par TOUTE l'équipe (admin, caissier et tous les
+  //   agents), pas seulement par celui qui l'a masqué. Seul le SPECTATEUR n'y a
+  //   pas accès. Démasquer reste réservé à l'auteur du masquage et à l'admin.
   if (_filterVerrouillees) {
-    const uid = _currentUser?.username;
-    if (isAdmin()) return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy);
-    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && r.restrictedBy === uid);
+    if (isSpectateur()) return [];
+    return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !!r.restrictedBy);
   }
   // ✅ v13.91 — Les bilans prénatals internes redeviennent visibles de tous.
   // Les avoir masqués (v13.89) les sortait aussi de « À encaisser » : le
@@ -108,14 +108,14 @@ function getDB() {
   if (isAdmin() || isCaissier())
     return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
   // ✅ Agent : voit le travail de l'ÉQUIPE sur les journées NON verrouillées
-  //   (le serveur ne lui envoie que celles-là) — fiches non masquées, plus ses
-  //   propres fiches même masquées. Après verrouillage par l'admin, la journée
-  //   sort de sa vue. Les calculs (Caisse/Stats) restent personnels : voir
-  //   getCalcDB, qui garde le filtre par créateur.
+  //   (le serveur ne lui envoie que celles-là). Les calculs (Caisse/Stats)
+  //   restent personnels : voir getCalcDB.
+  // ✅ v13.213 — Un dossier masqué sort de l'historique courant pour TOUS les
+  //   agents (y compris celui qui l'a masqué) : il n'apparaît plus que dans la
+  //   vue « Masqués ». Avant, le masqueur le gardait dans sa liste normale.
   const uid = _currentUser?.username;
   if (!uid) return [];
-  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted
-                              && (!r.restrictedBy || r.createdBy === uid));
+  return _dbCache.filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy);
 }
 
 // ✅ v13.150 — Retrouve un dossier pour l'IMPRESSION / EXPORT, y compris s'il est
@@ -1980,12 +1980,16 @@ async function saveRecordAll() {
     }, { onlyResultats: true });
 
     if (saved) {
+      const _idSauve = _editingRecordId;
       _editingRecordId = null; _editingType = null; _fillAllMode = false;
       if (window._updateMontantCurrent_orig) { window.updateMontantCurrent = window._updateMontantCurrent_orig; window._updateMontantCurrent_orig = null; }
       document.body.classList.remove('fill-all-mode');
       document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
       hideLoading();
       toast('✅ Résultats enregistrés', 'ok');
+      // ✅ v13.212 — Statut de saisie AUTOMATIQUE : si tous les examens demandés
+      //   sont remplis, le dossier passe « rendu » (Terminé) sans action manuelle.
+      await _autoStatutApresSave(_idSauve);
       await refreshDB(true);
       // ✅ v13.141 — Paillasse supprimée : on revient simplement à l'historique.
       showView('historique');
@@ -2073,6 +2077,8 @@ async function saveRecordAllFresh() {
       document.querySelectorAll('button[onclick^="saveThenNext"]').forEach(b => b.style.display = '');
       hideLoading();
       toast('✅ Dossier N°' + (p.dossier || '') + ' enregistré — ' + montant.toLocaleString('fr-FR') + ' FCFA', 'ok');
+      // ✅ v13.212 — Statut de saisie AUTOMATIQUE (voir fillAllResults).
+      if (saved.id != null) await _autoStatutApresSave(saved.id);
       await refreshDB(true);
       // ✅ v13.117 — « Enregistrer + Imprimer » : imprimer le dossier tout juste créé.
       if (window._printAfterSave && saved && saved.id != null) {

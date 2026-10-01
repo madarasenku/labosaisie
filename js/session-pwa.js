@@ -758,9 +758,29 @@ function saisieStatutAuto(r) {
   if (res._reception_seule || res._facture_seule) return 'pas_commence';
   return 'en_cours';
 }
+// ✅ v13.212 — Après un enregistrement, met le dossier « rendu » (Terminé)
+//   AUTOMATIQUEMENT si tous les examens demandés sont remplis (complétude lue
+//   sur le formulaire encore à l'écran). Évite d'avoir à marquer « rendu » à la
+//   main : le statut de saisie devient réellement automatique.
+async function _autoStatutApresSave(id) {
+  if (id == null) return;
+  let complete = false;
+  try { const c = (typeof _completionActive === 'function') ? _completionActive() : null; complete = !!(c && c.complete); } catch (e) {}
+  if (!complete) return;
+  try {
+    if (typeof _sb !== 'undefined' && _sb && typeof TK === 'function' && TK()) {
+      await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: id, p_statut: 'rendu' });
+    }
+    // Reflet immédiat dans le cache (le refreshDB appelant le confirmera).
+    const r = (typeof _dbCache !== 'undefined' ? _dbCache : []).find(x => x.id === id);
+    if (r) r.patient = Object.assign({}, r.patient || {}, { statut: 'rendu' });
+    try { const s = getStatuts(); s[id] = 'rendu'; localStorage.setItem(STATUTS_KEY, JSON.stringify(s)); } catch (e) {}
+  } catch (e) {}
+}
+
 function saisieStatutBadge(r) {
   const conf = {
-    pas_commence: ['⚪ Pas commencé', '#f1f5f9', '#475569', '#cbd5e1'],
+    pas_commence: ['⚪ Aucun résultat', '#f1f5f9', '#475569', '#cbd5e1'],
     en_cours:     ['🟡 En cours',     '#fef9c3', '#854d0e', '#fde047'],
     termine:      ['🟢 Terminé',      '#dcfce7', '#166534', '#86efac'],
   }[saisieStatutAuto(r)];
