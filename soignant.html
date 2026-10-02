@@ -4,13 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow, noarchive">
+<!-- ✅ v13.216 — En-têtes de sécurité posés en <meta> (GitHub Pages n'autorise
+     pas d'en-têtes HTTP personnalisés). Voir index.html pour le détail. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://uvxxbihlagfncraokqlg.supabase.co wss://uvxxbihlagfncraokqlg.supabase.co; worker-src 'self'; manifest-src 'self' blob:; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<script>/* anti-clickjacking */(function(){try{if(self!==top){document.documentElement.style.visibility='hidden';top.location=self.location;}}catch(e){try{document.documentElement.style.display='none';}catch(_){}}})();</script>
 <title>Mes patients — Laboratoire CPMI</title>
 <meta name="theme-color" content="#0b2545">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mes patients">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.215">
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.215"></script>
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.216">
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.216"></script>
 <style>
   /* Page volontairement autonome : elle ne charge NI app.css NI les modules
      du laboratoire. Un soignant qui ouvre son portail sur un téléphone en
