@@ -1,6 +1,9 @@
-// ✅ v13.207 — iPhone : le pied du compte rendu ne se superpose plus au contenu.
-// Sur iOS Safari, le pied « position:fixed » chevauchait la zone signature/QR.
-// On bascule iOS sur le pied EN FLUX du <tfoot> (comme l'impression de lot).
+// ✅ v13.210 — iPhone : le pied du compte rendu ne se superpose plus au contenu.
+// Stratégie retenue : on GARDE le pied « position:fixed » (seul moyen de le
+// coller EN BAS de chaque feuille, y compris la dernière, courte) et on rend le
+// pied du <tfoot> TRANSPARENT (opacity:0) pour qu'iOS réserve bien sa hauteur —
+// donc aucun chevauchement — sans l'afficher en double. (L'ancienne approche
+// v13.207 « pas de pied fixe » posait le pied juste après le dernier examen.)
 const { serve, openApp, createReporter } = require('./helpers');
 
 const doss = {
@@ -47,11 +50,11 @@ const doss = {
   r.check('pied fixe affiché', s.fixed !== 'none', true);
   r.check('pied tfoot invisible (réserve la place)', s.tfoot, 'hidden');
 
-  r.section('iOS : pas de pied fixe, pied du tfoot en flux');
+  r.section('iOS : pied fixe conservé, tfoot transparent réserve la hauteur');
   await page.evaluate(() => document.getElementById('print-render').classList.add('cr-ios'));
   s = await lire();
-  r.check('pied fixe masqué', s.fixed, 'none');
-  r.check('pied tfoot visible (en flux, aucun chevauchement)', s.tfoot, 'visible');
+  r.check('pied fixe conservé (collé en bas de chaque feuille)', s.fixed !== 'none', true);
+  r.check('pied tfoot réserve la hauteur (visible mais transparent, aucun chevauchement)', s.tfoot, 'visible');
 
   await page.emulateMedia({ media: 'screen' });
   r.check('aucune erreur JS', errors.length, 0);
