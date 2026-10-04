@@ -67,7 +67,12 @@ function crBlocNFS(res, profile) {
     rows.push({ nom: String(p.name).replace(/\s*⚙\s*$/, ''), val: v.valeur,
                 unite: v.unite || p.unit, ref: refDisplayFor(p, profile), ano: crAno(v.interp) });
   });
-  (typeof HEMA_FL !== 'undefined' ? HEMA_FL : []).forEach(p => {
+  // ✅ La formule leucocytaire (PNN/PNE/PNB/Lympho/Mono) n'a de sens qu'avec un
+  //   hémogramme réel : sans Globules blancs, un paramètre prérempli (ex. une
+  //   ligne de basophiles) ne doit PAS sortir seul sur un rendu électro/GE.
+  const _gb = res['Globules blancs (GB)'];
+  const _nfsReelle = !!(_gb && crV(_gb.valeur) !== '');
+  (_nfsReelle ? (typeof HEMA_FL !== 'undefined' ? HEMA_FL : []) : []).forEach(p => {
     const v = res[p.name]; if (!v || crV(v.valeur) === '') return;
     // ✅ v13.143 — L'anomalie est recalculée depuis la valeur ABSOLUE et les
     // bornes absolues : les dossiers déjà enregistrés avec un « interp » erroné
@@ -252,7 +257,7 @@ function crExamFait(label, R) {
     [/Bilan prénatal/i,           () => true],   // forfait : pas un examen mesurable
     [/NFS/i,                      () => !!(H['Globules blancs (GB)'] && crV(H['Globules blancs (GB)'].valeur))],
     [/Goutte|TDR|Palud/i,         () => crV(H['GE - Résultat']) !== '' || crV(H['GE - TDR']) !== ''],
-    [/Électrophorèse|Electrophor/i, () => ['Hb A','Hb A2','Hb F','Hb S','Hb C'].some(n => H[n] && crV(H[n].valeur))],
+    [/Électrophorèse|Electrophor/i, () => ['Hb A','Hb A2','Hb F','Hb S','Hb C'].some(n => H[n] && crV(H[n].valeur)) || crV(H['Profil Hb']) !== ''],
     [/^VS |Vitesse de s/i,        () => !!(H['VS (1ère heure)'] && crV(H['VS (1ère heure)'].valeur))],
     [/CRP/i,                      () => crV(S['CRP - Valeur']) !== ''],
     [/Widal|SWF/i,                () => (typeof WIDAL_ANTIGENES !== 'undefined' ? WIDAL_ANTIGENES : [])
@@ -288,7 +293,10 @@ function crExamFait(label, R) {
 // ── Examens demandés mais non saisis ────────────────────────
 function crBlocNonRealises(labels) {
   if (!labels.length) return '';
-  const rows = labels.map(l => ({ nom: l, val: '—', unite: '', ref: 'Non réalisé' }));
+  // ✅ L'électrophorèse (souvent envoyée au labo externe) est annoncée
+  //   « Non effectué » ; les autres examens demandés non saisis : « Non réalisé ».
+  const rows = labels.map(l => ({ nom: l, val: '—', unite: '',
+    ref: /Électrophor|Electrophor/i.test(String(l)) ? 'Non effectué' : 'Non réalisé' }));
   return crTable('Examens demandés — non réalisés', rows);
 }
 
@@ -502,8 +510,18 @@ async function crBuildHTML(record) {
   //    pagination place les blocs entiers page par page (jamais coupés). ──
   const blocsHema = [];
   const pushT = (arr, html) => { (String(html || '').match(/<table[\s\S]*?<\/table>/g) || []).forEach(t => arr.push(t)); };
-  pushT(blocsHema, crBlocNFS(hema, profile));
-  pushT(blocsHema, crBlocEPHB(hema));
+  // ✅ Le bloc NFS ne s'imprime que si une NFS / VS a été demandée (ou un BPN).
+  //   Sans ce garde, une formule leucocytaire contaminée (ex. une ligne de
+  //   basophiles préremplie) sortait seule en haut d'un rendu « électro seule »
+  //   ou « GE seule ».
+  if (estCoche(/\bNFS\b|Num[ée]ration Formule|H[ée]mogramme|\bVS\b|Vitesse de s[ée]d/i) || _estBPN)
+    pushT(blocsHema, crBlocNFS(hema, profile));
+  // ✅ L'électrophorèse n'imprime son tableau que si elle a été DEMANDÉE et
+  //   FAITE (profil posé ou pourcentages Hb). Demandée mais non faite → elle
+  //   apparaît « Non effectué » dans le bloc des examens non réalisés (bas de page).
+  if ((estCoche(/Électro|Electro|Hémoglobine/i) || _estBPN)
+      && crExamFait("Électrophorèse de l'hémoglobine", R))
+    pushT(blocsHema, crBlocEPHB(hema));
   // ✅ La GE ne s'imprime que si elle a été DEMANDÉE (GE ou TDR). Sans ce garde,
   //   un « GE - Résultat : Négatif » contaminé s'imprimait sur des bilans
   //   prénatals qui n'incluaient pas la goutte épaisse.
