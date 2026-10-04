@@ -1619,10 +1619,13 @@ function dossierEncaisseVerrou(record) {
             || (typeof getPaiementStatus === 'function' && record && getPaiementStatus(record.id) === 'paye');
   return !!paye;
 }
-// ✅ v13.210 (option B) — Verrou FIN sur une fiche encaissée : on ouvre la fiche
-//   mais on désactive l'identité du patient et les résultats DÉJÀ saisis ; les
-//   examens encore vides restent remplissables (ex. résultat de sous-traitance
-//   revenu après l'encaissement). Appelé après le chargement du formulaire.
+// ✅ VERROU TOTAL sur une fiche encaissée : une fois le dossier payé, PLUS AUCUN
+//   champ n'est modifiable (identité, résultats déjà saisis ET examens encore
+//   vides), et les boutons d'enregistrement sont neutralisés. Seul
+//   l'administrateur est exempté (dossierEncaisseVerrou renvoie false pour lui) :
+//   lui seul peut corriger une erreur ou saisir un résultat revenu du labo
+//   externe. Le serveur applique la même règle (update_resultat /
+//   update_dossier_patient refusent une fiche payée pour les non-admins).
 function appliquerVerrouEncaissement(record) {
   const actif = dossierEncaisseVerrou(record);
   const idFields = ['p_nom', 'p_dossier', 'p_date', 'p_age', 'p_sexe', 'p_medecin',
@@ -1632,34 +1635,32 @@ function appliquerVerrouEncaissement(record) {
     el.disabled = false; el.classList.remove('champ-verrouille-enc');
     el.style.removeProperty('background'); el.style.removeProperty('cursor');
     if (el.title === 'Fiche encaissée — champ verrouillé') el.title = '';
+    delete el.dataset.encLock;
   };
-  // Toujours repartir d'un état propre (une édition précédente a pu verrouiller).
-  if (zone) zone.querySelectorAll('.champ-verrouille-enc').forEach(deverrou);
-  idFields.forEach(id => { const e = document.getElementById(id); if (e && e.dataset.encLock) { deverrou(e); delete e.dataset.encLock; } });
+  // Toujours repartir d'un état propre (champs ET boutons, dans toute la page).
+  document.querySelectorAll('.champ-verrouille-enc').forEach(deverrou);
   const vieilleNote = document.getElementById('enc-lock-note'); if (vieilleNote) vieilleNote.remove();
   if (!actif) return;
 
   const verrou = el => {
-    el.disabled = true; el.classList.add('champ-verrouille-enc');
+    el.disabled = true; el.classList.add('champ-verrouille-enc'); el.dataset.encLock = '1';
     el.style.background = '#f1f5f9'; el.style.cursor = 'not-allowed';
-    el.title = 'Fiche encaissée — champ verrouillé';
+    if (!el.title) el.title = 'Fiche encaissée — champ verrouillé';
   };
-  // Identité patient : verrouillée après encaissement.
-  idFields.forEach(id => { const e = document.getElementById(id); if (e) { verrou(e); e.dataset.encLock = '1'; } });
-  // Résultats DÉJÀ saisis : verrouillés ; les cases vides restent éditables.
+  // Identité patient.
+  idFields.forEach(id => { const e = document.getElementById(id); if (e) verrou(e); });
+  // TOUS les champs de résultats (remplis comme vides).
   if (zone) {
     zone.querySelectorAll('input, select, textarea').forEach(el => {
-      if (el.type === 'button' || el.type === 'submit' || el.type === 'hidden') return;
-      const rempli = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : String(el.value || '').trim() !== '';
-      if (rempli) verrou(el);
-    });
-    // Groupes de boutons radio : si l'un est renseigné, on verrouille tout le groupe
-    // (sinon on pourrait changer la réponse via une autre option du même groupe).
-    zone.querySelectorAll('input[type=radio]:checked').forEach(cr => {
-      if (!cr.name) return;
-      zone.querySelectorAll('input[type=radio]').forEach(rb => { if (rb.name === cr.name) verrou(rb); });
+      if (el.type === 'hidden') return;
+      verrou(el);
     });
   }
+  // Boutons d'enregistrement neutralisés (le serveur refuse de toute façon).
+  document.querySelectorAll('#zone-saisie button, #btn-save-all').forEach(b => {
+    const oc = b.getAttribute('onclick') || '';
+    if (b.id === 'btn-save-all' || /save|enregistr/i.test(oc)) verrou(b);
+  });
   // Mention explicite dans le bandeau d'édition.
   const banner = document.getElementById('edit-mode-banner');
   if (banner && !document.getElementById('enc-lock-note')) {
@@ -1667,8 +1668,7 @@ function appliquerVerrouEncaissement(record) {
     n.id = 'enc-lock-note';
     n.style.cssText = 'background:#ecfccb;border:1.5px solid #65a30d;color:#3f6212;padding:8px 14px;'
       + 'border-radius:var(--radius);margin-bottom:14px;font-size:12.5px;font-weight:600';
-    n.textContent = '🔒 Fiche encaissée : les résultats déjà saisis et l\'identité du patient sont '
-      + 'verrouillés. Vous pouvez seulement compléter les examens encore vides.';
+    n.textContent = '🔒 Fiche encaissée : verrouillée. Toute correction est réservée à l\'administrateur.';
     banner.parentNode.insertBefore(n, banner.nextSibling);
   }
 }
