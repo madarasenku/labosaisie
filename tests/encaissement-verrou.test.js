@@ -1,11 +1,13 @@
-// ✅ v13.210 (option B) — Verrou FIN d'encaissement : une fiche payée s'ouvre
-// en édition, mais l'identité patient et les résultats DÉJÀ saisis sont
-// verrouillés ; les examens encore vides restent remplissables. Admin : rien.
+// ✅ VERROU TOTAL d'encaissement : une fiche payée est entièrement verrouillée
+// pour les non-admins — identité patient, résultats déjà saisis ET examens
+// encore vides. Seul l'administrateur peut corriger. (Le serveur applique la
+// même règle : update_resultat / update_dossier_patient refusent une fiche
+// payée pour les non-admins.)
 const { serve, openApp, createReporter } = require('./helpers');
 
 (async () => {
   const srv = await serve(8255);
-  const r = createReporter('VERROU FIN D\'ENCAISSEMENT (option B)');
+  const r = createReporter('VERROU TOTAL D\'ENCAISSEMENT');
 
   // ── Agent : fiche payée → identité + résultats remplis verrouillés ──
   {
@@ -35,7 +37,7 @@ const { serve, openApp, createReporter } = require('./helpers');
     r.check('verrou actif (payée, non-admin)', res.verrou, true);
     r.check('identité patient verrouillée', res.pnom, true);
     r.check('résultat déjà saisi verrouillé', res.rempli, true);
-    r.check('examen vide reste éditable', res.vide, false);
+    r.check('examen vide AUSSI verrouillé', res.vide, true);
     r.check('mention de verrou affichée', res.note, true);
 
     // Fiche NON payée : rien n'est verrouillé.
