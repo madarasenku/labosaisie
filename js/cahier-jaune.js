@@ -86,7 +86,9 @@ function _cjFcfa(n) {
   return v.toLocaleString('fr-FR');
 }
 
-/** Jours ouvrés du mois, groupés par semaine (lundi → vendredi). */
+/** Jours du mois, groupés par semaine calendaire (lundi → dimanche).
+ *  ✅ Labo ouvert 24h/24, 7j/7 : samedi et dimanche sont désormais inclus
+ *  (ils étaient auparavant ignorés). La semaine se clôt le dimanche. */
 function _cjSemaines(mois) {
   const [a, m] = mois.split('-').map(Number);
   const semaines = [];
@@ -94,10 +96,8 @@ function _cjSemaines(mois) {
   const dernier = new Date(a, m, 0).getDate();
   for (let j = 1; j <= dernier; j++) {
     const d = new Date(a, m - 1, j);
-    const jour = d.getDay();
-    if (jour === 0 || jour === 6) continue;          // le labo ne tient pas le cahier le week-end
     courante.push(mois + '-' + String(j).padStart(2, '0'));
-    if (jour === 5) { semaines.push(courante); courante = []; }
+    if (d.getDay() === 0) { semaines.push(courante); courante = []; }  // dimanche → fin de semaine
   }
   if (courante.length) semaines.push(courante);
   return semaines;
@@ -321,6 +321,32 @@ function renderCahierJaune() {
       + '<td style="text-align:right">' + _cjFcfa(sousTotalLigne) + '</td><td></td></tr>';
   });
 
+  // ✅ Bilan sous-traitance : somme ENCAISSÉE (retirée) vs NON ENCAISSÉE (non
+  //   retirée). Les montants de sous-traitance sont des sorties (négatifs) ; on
+  //   affiche leur valeur absolue, plus parlante sur un cahier.
+  const stColIds = new Set(colonnes.filter(c => _cjEstSousTraitance(c)).map(c => c.id));
+  let stRetire = 0, stNonRetire = 0;
+  if (stColIds.size) {
+    ecritures.forEach(e => {
+      if (!stColIds.has(e.colonne_id)) return;
+      const v = Math.abs(Number(e.montant) || 0);
+      if (e.retire === true) stRetire += v; else stNonRetire += v;
+    });
+  }
+  const blocST = stColIds.size
+    ? '<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch">'
+      + '<div style="flex:1;min-width:150px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:8px 12px">'
+      + '<div style="font-size:11px;color:#15803d;font-weight:700">✓ Sous-traitance retirée (encaissée)</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#15803d">' + _cjFcfa(stRetire) + '</div></div>'
+      + '<div style="flex:1;min-width:150px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px">'
+      + '<div style="font-size:11px;color:#b45309;font-weight:700">⏳ Sous-traitance non retirée (non encaissée)</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#b45309">' + _cjFcfa(stNonRetire) + '</div></div>'
+      + '<div style="flex:1;min-width:150px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:8px 12px">'
+      + '<div style="font-size:11px;color:#334155;font-weight:700">Total sous-traitance</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#334155">' + _cjFcfa(stRetire + stNonRetire) + '</div></div>'
+      + '</div>'
+    : '';
+
   zone.innerHTML =
     '<div class="table-wrap"><table style="width:100%;font-size:12.5px;border-collapse:collapse">'
     + '<thead><tr><th style="text-align:left">Date</th>'
@@ -334,6 +360,7 @@ function renderCahierJaune() {
     + colonnes.map(c => '<td style="text-align:right">' + _cjFcfa(totauxColonne[c.id]) + '</td>').join('')
     + '<td style="text-align:right;font-size:14px">' + _cjFcfa(totalMois) + '</td><td></td>'
     + '</tr></tfoot></table></div>'
+    + blocST
     + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">'
     + 'Les montants négatifs sont des sorties. Survolez une cellule pour en voir le détail. '
     + '☀️ = Permanence (8h–16h) · 🌙 = Garde (16h–8h).'
@@ -473,9 +500,10 @@ async function enregistrerEcritureCahier(jour, idEcriture) {
     ? (document.getElementById('cj-retire')?.value === 'oui')
     : null;
 
-  // Seul le cahier noir connaît le paramètre p_retire : ne jamais l'envoyer
-  // à la RPC du jaune (sa signature ne l'accepte pas).
-  const extra = _cahierEstNoir() ? { p_retire: retire } : {};
+  // ✅ Les deux cahiers (jaune ET noir) acceptent désormais p_retire : la
+  // sous-traitance y est suivie « retirée / non retirée ». Pour une colonne
+  // non sous-traitance, retire vaut null (le serveur l'ignore).
+  const extra = { p_retire: retire };
 
   try {
     const { data, error } = idEcriture

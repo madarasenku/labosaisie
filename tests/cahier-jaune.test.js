@@ -80,8 +80,9 @@ const preparer = (page, extra) => page.evaluate(([cols, ecr, sup]) => {
     r.check('une colonne par intervenant', vu && vu.entetes.includes('SFPMI'), true);
     r.check('SOUS-TRAITANCE aussi', vu && vu.entetes.includes('SOUS-TRAITANCE'), true);
     r.check('une colonne TOTAL', vu && vu.entetes.includes('TOTAL'), true);
-    // Juin 2026 compte 22 jours ouvrés : le cahier ne tient pas le week-end.
-    r.check('un jour ouvré par ligne', vu && vu.jours, 22);
+    // ✅ Labo 24h/24, 7j/7 : tous les jours du mois figurent (juin 2026 = 30 jours),
+    //    week-ends inclus.
+    r.check('un jour par ligne (week-ends inclus)', vu && vu.jours, 30);
     r.check('des sous-totaux hebdomadaires', vu && vu.semaines.length, 5);
     r.check('le pied porte le total du mois',
             vu && vu.pied.some(c => /137\s?000/.test(c)), true);
