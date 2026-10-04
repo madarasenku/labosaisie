@@ -32,6 +32,31 @@ function _jourLocal(d) {
 
 function _fcfa(n) { return (Number(n) || 0).toLocaleString('fr-FR') + ' FCFA'; }
 
+/* ✅ Poste de travail (laboratoire ouvert 24h/24), déduit de l'heure
+   d'ENREGISTREMENT locale du dossier :
+     • Permanence = 08h00 → 16h00
+     • Garde      = le reste (16h00 → 08h00, nuit incluse, passage de minuit)
+   Côte d'Ivoire = UTC+0 sans heure d'été : l'heure locale est fiable.
+   Helper commun, réutilisé par le registre du jour et les cahiers jaune/noire.
+   La coupure de journée reste MINUIT (inchangée) : on étiquette seulement le
+   poste, on ne redéfinit pas la clôture. */
+const POSTE_PERM_DEBUT = 8, POSTE_PERM_FIN = 16;
+function posteDepuisHeure(ts) {
+  if (!ts) return 'Garde';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return 'Garde';
+  const h = d.getHours();
+  return (h >= POSTE_PERM_DEBUT && h < POSTE_PERM_FIN) ? 'Permanence' : 'Garde';
+}
+function posteDossier(r) { return posteDepuisHeure(r && (r.savedAt || r.created_at || r.createdAt)); }
+// Pastille HTML courte pour un poste (réutilisée par registre & cahiers).
+function posteBadge(p) {
+  const perm = p === 'Permanence';
+  return '<span style="display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;'
+    + (perm ? 'background:#fef3c7;color:#92400e' : 'background:#e0e7ff;color:#3730a3') + '">'
+    + (perm ? '☀️ Permanence' : '🌙 Garde') + '</span>';
+}
+
 // ✅ v13.127 — Journées verrouillées (gel des sommes du jour).
 let _cloturesVerr = new Set();
 function jourVerrouille(jour) { return _cloturesVerr.has(jour); }
@@ -179,11 +204,20 @@ function calculerCloture(jour) {
     .map(r => ({ r, du: (typeof monnaieDue === 'function' ? monnaieDue(r.id) : 0) }))
     .filter(x => x.du > 0);
 
+  // ✅ Répartition par poste (permanence / garde) — purement additive :
+  // la somme des deux postes = c.total, aucun total existant n'est modifié.
+  const parPoste = { Permanence: { nb: 0, total: 0 }, Garde: { nb: 0, total: 0 } };
+  payes.forEach(r => {
+    const p = posteDossier(r);
+    parPoste[p].nb++;
+    parPoste[p].total += Number(r.montant) || 0;
+  });
+
   return {
     jour,
     dossiers: payes.length,
     total: somme(payes),
-    parAgent, parType, detail,
+    parAgent, parType, parPoste, detail,
     impayes: impayes.map(r => ({ id: r.id, dossier: r.patient?.dossier || '—',
                                  nom: r.patient?.nom || '—', montant: Number(r.montant) || 0 })),
     totalImpaye: somme(impayes),
@@ -253,6 +287,19 @@ function renderCloture() {
     + '<table style="width:100%;font-size:12.5px;border-collapse:collapse">'
     + '<thead><tr><th style="text-align:left">Agent</th><th style="text-align:right">Dossiers</th>'
     + '<th style="text-align:right">Encaissé</th></tr></thead><tbody>' + lignesAgent + '</tbody></table>'
+    // ✅ Recette par poste (permanence / garde) — le total global reste inchangé.
+    + (function () {
+        const pp = c.parPoste || { Permanence: { nb: 0, total: 0 }, Garde: { nb: 0, total: 0 } };
+        const carte = (nom, v, bg, col) =>
+          '<div style="flex:1;min-width:130px;background:' + bg + ';border-radius:8px;padding:7px 11px">'
+          + '<div style="font-size:11px;font-weight:700;color:' + col + '">' + nom + '</div>'
+          + '<div style="font-weight:800;font-size:14px;color:' + col + '">' + _fcfa(v.total) + '</div>'
+          + '<div style="font-size:10.5px;color:' + col + ';opacity:.8">' + v.nb + ' dossier(s)</div></div>';
+        return '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+          + carte('☀️ Permanence · 8h–16h', pp.Permanence, '#fef9ed', '#92400e')
+          + carte('🌙 Garde · 16h–8h', pp.Garde, '#eef0fb', '#3730a3')
+          + '</div>';
+      })()
     + alerte('Monnaie promise non rendue', c.monnaieDue.length, c.totalMonnaieDue, '#b45309')
     + alerte('Dossiers non encaissés', c.impayes.length, c.totalImpaye, '#b91c1c')
     // ✅ v13.89 — Ces deux lignes ne s'affichent QUE pour l'administrateur :
@@ -327,6 +374,19 @@ function imprimerCloture() {
         + '<thead><tr><th style="text-align:left">Agent</th><th style="text-align:right">Dossiers</th>'
         + '<th style="text-align:right">Montant</th></tr></thead><tbody>'
         + rangs(c.parAgent, true) + '</tbody></table>')
+
+    // ✅ Répartition par poste (labo 24h/24) — somme = recette du jour.
+    + bloc('Répartition par poste',
+        '<table style="width:100%;font-size:10.5pt;border-collapse:collapse">'
+        + '<thead><tr><th style="text-align:left">Poste</th><th style="text-align:right">Dossiers</th>'
+        + '<th style="text-align:right">Montant</th></tr></thead><tbody>'
+        + '<tr><td>☀️ Permanence (8h–16h)</td><td style="text-align:right">' + c.parPoste.Permanence.nb
+        + '</td><td style="text-align:right">' + _fcfa(c.parPoste.Permanence.total) + '</td></tr>'
+        + '<tr><td>🌙 Garde (16h–8h, nuit incluse)</td><td style="text-align:right">' + c.parPoste.Garde.nb
+        + '</td><td style="text-align:right">' + _fcfa(c.parPoste.Garde.total) + '</td></tr>'
+        + '</tbody><tfoot><tr style="border-top:1.5px solid #000;font-weight:800">'
+        + '<td>TOTAL</td><td style="text-align:right">' + c.dossiers
+        + '</td><td style="text-align:right">' + _fcfa(c.total) + '</td></tr></tfoot></table>')
 
     // ✅ v13.85 — Détail nominatif : c'est ce qui permet de pointer la
     // clôture ligne à ligne contre le cahier de caisse. Sans lui, le

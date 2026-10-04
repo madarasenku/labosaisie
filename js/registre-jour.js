@@ -201,6 +201,8 @@ function _regLigne(r) {
     montant: Number(r.montant) || 0,
     // ✅ Prescripteur externe (hors CPMI) → ligne colorée dans le registre.
     externe: _prescExterne(r),
+    // ✅ Poste (labo 24h/24) d'après l'heure d'enregistrement : Permanence / Garde.
+    poste: (typeof posteDossier === 'function') ? posteDossier(r) : '',
   };
 }
 
@@ -249,6 +251,8 @@ async function renderRegistre() {
   const lignes = recs.map(_regLigne);
   const rendus = lignes.filter(l => l.rendu).length;
   const recette = lignes.reduce((s, l) => s + l.montant, 0);
+  const nPerm = lignes.filter(l => l.poste === 'Permanence').length;
+  const nGarde = lignes.length - nPerm;
   const jourLong = new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -263,6 +267,7 @@ async function renderRegistre() {
     + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
     + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? ' <span style="color:var(--text-muted);font-size:11px">' + esc(l.meta) + '</span>' : '')
     + (l.externe ? ' <span style="font-size:10px;font-weight:700;color:#b45309;background:#fde7bf;border-radius:4px;padding:1px 5px">EXTERNE</span>' : '') + '</td>'
+    + '<td style="white-space:nowrap">' + (typeof posteBadge === 'function' ? posteBadge(l.poste) : esc(l.poste)) + '</td>'
     + '<td style="color:var(--text-muted)">' + esc(l.presc) + '</td>'
     + '<td style="color:var(--text-muted)">' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
     + '<td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">' + _regMontant(l.montant) + '</td>'
@@ -271,11 +276,13 @@ async function renderRegistre() {
   zone.innerHTML =
     '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);margin-bottom:10px">'
     + '<span><strong style="color:var(--text-label);font-size:15px">' + lignes.length + '</strong> patient(s)</span>'
+    + '<span>☀️ Permanence : <strong style="color:var(--text-label)">' + nPerm + '</strong></span>'
+    + '<span>🌙 Garde : <strong style="color:var(--text-label)">' + nGarde + '</strong></span>'
     + '<span><strong style="color:var(--text-label);font-size:15px">' + rendus + '</strong> / ' + lignes.length + ' résultat(s) rendu(s)</span>'
     + '<span><strong style="color:var(--text-label);font-size:15px">' + _regMontant(recette) + '</strong> F</span>'
     + '</div>'
     + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12px">'
-    + '<thead><tr><th>N°</th><th>Patient</th><th>Prescripteur</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
+    + '<thead><tr><th>N°</th><th>Patient</th><th>Poste</th><th>Prescripteur</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
     + '<tbody>' + corps + '</tbody></table></div>';
 }
 
@@ -294,6 +301,8 @@ async function imprimerRegistre(jourArg) {
   const lignes = recs.map(_regLigne);
   const rendus = lignes.filter(l => l.rendu).length;
   const recette = lignes.reduce((s, l) => s + l.montant, 0);
+  const nPerm = lignes.filter(l => l.poste === 'Permanence').length;
+  const nGarde = lignes.length - nPerm;
   const now = new Date();
   const jourLong = new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -306,11 +315,12 @@ async function imprimerRegistre(jourArg) {
         '<tr' + (l.externe ? ' style="' + _extStyle + '"' : '') + '>'
         + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
         + '<td><strong>' + esc(l.nom) + '</strong>' + (l.externe ? ' <strong>[EXTERNE]</strong>' : '') + (l.meta ? '<div style="font-size:8.5pt;color:#555">' + esc(l.meta) + '</div>' : '') + '</td>'
+        + '<td style="white-space:nowrap">' + (l.poste === 'Permanence' ? '☀️ Perm.' : '🌙 Garde') + '</td>'
         + '<td>' + esc(l.presc) + '</td>'
         + '<td>' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
         + '<td style="text-align:right;white-space:nowrap">' + _regMontant(l.montant) + '</td>'
         + '</tr>').join('')
-    : '<tr><td colspan="5" style="font-style:italic;text-align:center">Aucun dossier ce jour.</td></tr>';
+    : '<tr><td colspan="6" style="font-style:italic;text-align:center">Aucun dossier ce jour.</td></tr>';
 
   const html =
     // ✅ v13.200 — Registre du jour imprimé en PAYSAGE (plus de largeur pour la
@@ -326,15 +336,16 @@ async function imprimerRegistre(jourArg) {
     + '<div class="print-header-bar bottom"></div>'
 
     + '<div style="margin-top:10px;font-size:10pt;color:#333;text-align:center">'
-    + '<strong>' + lignes.length + '</strong> patient(s) · <strong>' + rendus + '</strong> / '
+    + '<strong>' + lignes.length + '</strong> patient(s) · ☀️ Permanence <strong>' + nPerm
+    + '</strong> · 🌙 Garde <strong>' + nGarde + '</strong> · <strong>' + rendus + '</strong> / '
     + lignes.length + ' résultat(s) rendu(s) · Recette : <strong>' + _fcfa(recette) + '</strong></div>'
 
     + '<table class="print-table" style="margin-top:12px;font-size:9.5pt">'
     + '<thead><tr>'
-    + '<th>N° dossier</th><th>Patient</th><th>Prescripteur</th>'
+    + '<th>N° dossier</th><th>Patient</th><th>Poste</th><th>Prescripteur</th>'
     + '<th>Résultat</th><th style="text-align:right">Prix</th>'
     + '</tr></thead><tbody>' + corps + '</tbody>'
-    + '<tfoot><tr><td colspan="4" style="text-align:right;font-weight:800">TOTAL</td>'
+    + '<tfoot><tr><td colspan="5" style="text-align:right;font-weight:800">TOTAL</td>'
     + '<td style="text-align:right;font-weight:800">' + _fcfa(recette) + '</td></tr></tfoot>'
     + '</table>'
 

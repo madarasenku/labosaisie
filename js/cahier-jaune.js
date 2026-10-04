@@ -265,12 +265,17 @@ function renderCahierJaune() {
             ? ' <span style="font-size:10px;color:#15803d;font-weight:700">✓ retirée</span>'
             : ' <span style="font-size:10px;color:#b45309;font-weight:700">⏳ non retirée</span>')
         : '';
+      // ✅ Poste (labo 24h/24) d'après l'heure d'enregistrement de l'écriture.
+      const pb = (typeof posteDepuisHeure === 'function') ? posteDepuisHeure(l.created_at) : '';
+      const posteIcone = pb
+        ? ' <span title="' + pb + '" style="font-size:10px">' + (pb === 'Permanence' ? '☀️' : '🌙') + '</span>'
+        : '';
       return '<div style="white-space:nowrap;color:' + (v < 0 ? '#b91c1c' : '#0b2545')
         + (modifiable ? ';cursor:pointer" title="Cliquer pour modifier"'
                         + ' onclick="ouvrirSaisieCahier(\'' + j + '\',' + l.id + ')"' : '"') + '>'
         + '<span style="color:var(--text-muted);font-weight:400">' + numeros[l.id] + '.</span> '
         + '<span style="font-weight:400">' + esc(nomDeLigne(l)) + '</span> '
-        + '<strong>' + _cjFcfa(v) + '</strong>' + badge + '</div>';
+        + '<strong>' + _cjFcfa(v) + '</strong>' + posteIcone + badge + '</div>';
     }).join('');
     // Le sous-total de la cellule n'apparaît que s'il y a plusieurs écritures :
     // le répéter sous un montant unique n'apprend rien et alourdit la page.
@@ -330,7 +335,8 @@ function renderCahierJaune() {
     + '<td style="text-align:right;font-size:14px">' + _cjFcfa(totalMois) + '</td><td></td>'
     + '</tr></tfoot></table></div>'
     + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">'
-    + 'Les montants négatifs sont des sorties. Survolez une cellule pour en voir le détail.'
+    + 'Les montants négatifs sont des sorties. Survolez une cellule pour en voir le détail. '
+    + '☀️ = Permanence (8h–16h) · 🌙 = Garde (16h–8h).'
     + (_cahierEstNoir() ? '' : ' Les bilans prénatals internes y sont reportés automatiquement.')
     + '</div>';
 }
