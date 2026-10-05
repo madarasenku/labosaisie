@@ -317,8 +317,13 @@ function getStatuts() { try { return JSON.parse(localStorage.getItem(STATUTS_KEY
 // Lit le statut depuis le cache DB (prioritaire) ou localStorage (fallback hors-ligne)
 function getStatut(id) {
   const r = (_dbCache || []).find(r => r.id === id);
-  if (r?.patient?.statut) return r.patient.statut;
-  return getStatuts()[id] || 'attente';
+  let s = (r?.patient?.statut) || getStatuts()[id] || 'attente';
+  // ✅ v13.224 — Statuts « Rien saisi » et « En cours » fusionnés en un seul
+  //   (« En cours »). Les anciens dossiers marqués « en cours » retombent sur
+  //   la valeur canonique 'attente' (seule valeur acceptée côté serveur avec
+  //   'rendu'/'urgent'), sans réécriture en base.
+  if (s === 'en cours') s = 'attente';
+  return s;
 }
 
 /**
@@ -726,7 +731,7 @@ function renderCaisseAEncaisser() {
 
 function cycleStatut(id) {
   if (blockIfSpectateur()) return;
-  const order = ['attente','en cours','rendu','urgent'];
+  const order = ['attente','rendu','urgent'];
   const cur = order.indexOf(getStatut(id));
   const next = order[(cur < 0 ? 0 : cur + 1) % order.length];
   setStatut(id, next);
@@ -744,9 +749,9 @@ function paiementBadge(id) {
 }
 function statutBadge(id) {
   const s = getStatut(id);
-  const labels = {rendu:'✅ Rendu', 'en cours':'🔵 En cours', attente:'⏳ Rien saisi', urgent:'🔴 Urgent'};
-  const cls    = {rendu:'badge-rendu', 'en cours':'badge-encours', attente:'badge-attente', urgent:'badge-urgent'};
-  return `<span class="${cls[s] || 'badge-attente'}" onclick="event.stopPropagation();cycleStatut(${id})" title="Cliquer pour changer">${labels[s] || labels.attente}</span>`;
+  const labels = {rendu:'✅ Rendu', attente:'🔵 En cours', urgent:'🔴 Urgent'};
+  const cls    = {rendu:'badge-rendu', attente:'badge-encours', urgent:'badge-urgent'};
+  return `<span class="${cls[s] || 'badge-encours'}" onclick="event.stopPropagation();cycleStatut(${id})" title="Cliquer pour changer">${labels[s] || labels.attente}</span>`;
 }
 
 // ✅ v13.210 — Statut de SAISIE, déduit AUTOMATIQUEMENT de l'état du dossier

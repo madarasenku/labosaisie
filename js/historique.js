@@ -394,16 +394,16 @@ async function renderHistory(forceRefresh) {
   // ✅ v13.183 — Poste Pro « File du jour » : compteurs par statut sur les
   // dossiers filtrés (réutilise getStatut, aucune nouvelle règle).
   try {
-    let nAtt = 0, nEnc = 0, nUrg = 0, nRen = 0;
+    // ✅ v13.224 — Statut « En cours » unique (fusion Rien saisi + En cours).
+    let nAtt = 0, nUrg = 0, nRen = 0;
     filtered.forEach(r => {
       const s = getStatut(r.id);
       if (s === 'rendu') nRen++;
       else if (s === 'urgent') nUrg++;
-      else if (s === 'en cours') nEnc++;
-      else nAtt++;
+      else nAtt++;              // 'attente' (= En cours) + tout statut inconnu
     });
     const setK = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setK('hist-kpi-attente', nAtt); setK('hist-kpi-encours', nEnc);
+    setK('hist-kpi-attente', nAtt);
     setK('hist-kpi-urgent', nUrg);
     setK('hist-kpi-rendu', nRen);   setK('hist-kpi-total', filtered.length);
   } catch (e) {}
@@ -1181,7 +1181,7 @@ async function bulkSetStatut(statut) {
   if (blockIfSpectateur()) return;
   const ids = [..._selectedIds];
   if (!ids.length) return;
-  const labels = { attente: 'En attente', 'en cours': 'En cours', rendu: 'Rendu' };
+  const labels = { attente: 'En cours', rendu: 'Rendu', urgent: 'Urgent' };
   if (!await showConfirmModal({
     icon: '📋',
     title: 'Changer le statut ?',
