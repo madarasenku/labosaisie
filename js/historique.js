@@ -1184,7 +1184,7 @@ async function bulkSetStatut(statut) {
   if (blockIfSpectateur()) return;
   const ids = [..._selectedIds];
   if (!ids.length) return;
-  const labels = { attente: 'En cours', rendu: 'Rendu', urgent: 'Urgent' };
+  const labels = { attente: 'En cours', rendu: 'Terminé', urgent: 'Urgent' };
   if (!await showConfirmModal({
     icon: '📋',
     title: 'Changer le statut ?',

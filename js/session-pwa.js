@@ -747,11 +747,25 @@ function paiementBadge(id) {
   if (s === 'paye') return '<span style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">💵 Payé</span>' + monnaieTag;
   return '<span style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer" onclick="event.stopPropagation();ouvrirModalPaiement(' + id + ')">💳 Non payé</span>' + monnaieTag;
 }
+// ✅ v13.226 — UNE SEULE pastille, qui dit l'AVANCEMENT réel du dossier :
+//   ⚪ À faire (rien saisi) · 🟡 En cours (saisie entamée) · 🟢 Terminé (rendu)
+//   · 🔴 Urgent (marqueur manuel prioritaire). « Terminé » = dossier rendu
+//   (passé automatiquement à l'enregistrement d'un dossier complet, ou marqué
+//   à la main). Clic = À faire → Terminé → Urgent (cycle du statut manuel).
 function statutBadge(id) {
-  const s = getStatut(id);
-  const labels = {rendu:'✅ Rendu', attente:'🔵 En cours', urgent:'🔴 Urgent'};
-  const cls    = {rendu:'badge-rendu', attente:'badge-encours', urgent:'badge-urgent'};
-  return `<span class="${cls[s] || 'badge-encours'}" onclick="event.stopPropagation();cycleStatut(${id})" title="Cliquer pour changer">${labels[s] || labels.attente}</span>`;
+  const r = (typeof _dbCache !== 'undefined' ? _dbCache : []).find(x => x.id === id);
+  const s = getStatut(id);                 // statut manuel : attente / rendu / urgent
+  let key, label;
+  if (s === 'urgent')      { key = 'urgent'; label = '🔴 Urgent'; }
+  else if (s === 'rendu')  { key = 'rendu';  label = '🟢 Terminé'; }
+  else {
+    // 'attente' : on déduit l'avancement des résultats réellement présents.
+    const av = (typeof saisieStatutAuto === 'function') ? saisieStatutAuto(r) : 'pas_commence';
+    if (av === 'en_cours') { key = 'encours'; label = '🟡 En cours'; }
+    else                   { key = 'afaire';  label = '⚪ À faire'; }
+  }
+  const cls = { urgent:'badge-urgent', rendu:'badge-rendu', encours:'badge-encours', afaire:'badge-afaire' };
+  return `<span class="${cls[key]}" onclick="event.stopPropagation();cycleStatut(${id})" title="Avancement — cliquer pour changer (À faire / Terminé / Urgent)">${label}</span>`;
 }
 
 // ✅ v13.210 — Statut de SAISIE, déduit AUTOMATIQUEMENT de l'état du dossier
