@@ -1,51 +1,70 @@
-// ✅ v13.225 — UNE SEULE pastille de statut par ligne.
+// ✅ v13.225/226 — UNE SEULE pastille de statut par ligne, qui dit l'AVANCEMENT.
 //
-// Avant : chaque ligne d'historique affichait DEUX badges — l'avancement
-// automatique (⚪/🟡 « En cours »/🟢) ET le statut manuel (🔵 « En cours »/✅/🔴).
-// Deux « En cours » côte à côte. On garde le seul manuel (cliquable, qui pilote
-// filtres/compteurs/actions et passe « Rendu » tout seul). On vérifie aussi que
-// l'agent peut encaisser même si un caissier existe (peutEncaisser élargi).
+// Avant v13.225 : deux badges par ligne (avancement auto + statut manuel), tous
+// deux « En cours ». v13.225 n'en gardait qu'un, mais il n'indiquait plus
+// clairement « Terminé ». v13.226 : une seule pastille = À faire (rien saisi) /
+// En cours (saisie entamée) / Terminé (rendu) / Urgent. On vérifie qu'il n'y a
+// qu'UNE pastille et qu'elle dit bien l'état. L'agent peut aussi encaisser même
+// si un caissier existe (peutEncaisser élargi), sans tenir la caisse complète.
 const { serve, openApp, createReporter } = require('./helpers');
 
 const p = n => String(n).padStart(2, '0');
 const now = new Date();
 const AUJ = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate());
 
+const mk = (id, nom, resultats, statut) => ({
+  id, type: 'Dossier', montant: 3000, created_at: AUJ + 'T09:00:00Z', created_by: 'agent1',
+  patient: { nom, dossier: 'S' + id, date: AUJ, statut },
+  resultats, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null,
+});
 const FICHES = [
-  { id: 501, type: 'Dossier', montant: 3000, created_at: AUJ + 'T09:00:00Z', created_by: 'agent1',
-    patient: { nom: 'TEST STATUT', dossier: 'S1', date: AUJ },
-    resultats: { 'Hématologie': { x: 1 } }, // a des résultats → l'auto aurait dit « En cours »
-    prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null },
+  mk(601, 'A FAIRE',  { _facture_seule: true },        'attente'), // rien saisi  → À faire
+  mk(602, 'EN COURS', { 'Hématologie': { x: 1 } },     'attente'), // des résultats → En cours
+  mk(603, 'TERMINE',  { 'Hématologie': { x: 1 } },     'rendu'),   // rendu        → Terminé
 ];
 
 (async () => {
   const srv = await serve(8266);
-  const r = createReporter('STATUT — PASTILLE UNIQUE + ENCAISSEMENT AGENT');
+  const r = createReporter('STATUT — PASTILLE UNIQUE (AVANCEMENT)');
   const { ctx, page, errors } = await openApp({ role: 'agent', username: 'agent1', userId: 2, port: 8266,
     rpc: { get_tarifs: {}, get_examens_custom: [], get_resultats_light: FICHES, get_restriction_status: [],
            caissier_exists: true } });
 
-  const cell = await page.evaluate(async () => {
+  const cells = await page.evaluate(async () => {
     window._noCaissier = false;          // un caissier existe
     await refreshDB(true);
-    setHistPeriode && setHistPeriode('tout');
+    if (typeof setHistPeriode === 'function') setHistPeriode('tout');
     renderHistory();
-    const tr = document.querySelector('#history-body tr');
-    const td = tr && tr.querySelector('td[data-label="Statut"]');
-    return td ? td.innerHTML : '';
+    const out = {};
+    document.querySelectorAll('#history-body tr').forEach(tr => {
+      const nom = (tr.querySelector('td[data-label="Patient"]') || {}).textContent || '';
+      const td = tr.querySelector('td[data-label="Statut"]');
+      const key = nom.includes('A FAIRE') ? 'afaire' : nom.includes('EN COURS') ? 'encours'
+                : nom.includes('TERMINE') ? 'termine' : 'autre';
+      // html = structure (compte des pastilles) ; text = libellé VISIBLE (hors
+      // infobulle title, qui contient les mots du menu « À faire / Terminé … »).
+      if (td) out[key] = { html: td.innerHTML, text: td.textContent };
+    });
+    return out;
   });
 
-  r.section('Une seule pastille de statut');
-  r.check('badge d\'avancement auto retiré', /Avancement de la saisie/.test(cell), false);
-  r.check('une seule pastille cliquable (cycleStatut)', (cell.match(/cycleStatut\(/g) || []).length, 1);
-  r.check('la pastille dit « En cours »', /En cours/.test(cell), true);
-  r.check('pas deux « En cours »', (cell.match(/En cours/g) || []).length, 1);
+  r.section('Une seule pastille, pas de doublon');
+  ['afaire', 'encours', 'termine'].forEach(k => {
+    const h = (cells[k] || {}).html || '';
+    r.check(k + ' : badge auto retiré', /Avancement de la saisie/.test(h), false);
+    r.check(k + ' : une seule pastille cliquable', (h.match(/cycleStatut\(/g) || []).length, 1);
+  });
 
-  r.section('L\'agent peut encaisser même avec un caissier');
-  const peut = await page.evaluate(() => peutEncaisser());
-  r.check('peutEncaisser = true', peut, true);
-  const tient = await page.evaluate(() => tientLaCaisse());
-  r.check('mais ne tient pas la caisse complète', tient, false);
+  r.section('La pastille dit l\'avancement (libellé visible)');
+  r.check('rien saisi → « À faire »',  /À faire/.test((cells.afaire || {}).text || ''), true);
+  r.check('résultats → « En cours »',  /En cours/.test((cells.encours || {}).text || ''), true);
+  r.check('rendu → « Terminé »',       /Terminé/.test((cells.termine || {}).text || ''), true);
+  r.check('« Terminé » absent quand pas rendu', /Terminé/.test((cells.encours || {}).text || ''), false);
+  r.check('« En cours » n\'est pas « Terminé »', /À faire/.test((cells.termine || {}).text || ''), false);
+
+  r.section('L\'agent peut encaisser (caissier présent) sans tenir la caisse');
+  r.check('peutEncaisser = true', await page.evaluate(() => peutEncaisser()), true);
+  r.check('tientLaCaisse = false', await page.evaluate(() => tientLaCaisse()), false);
 
   r.check('aucune erreur JS', errors.length, 0);
   if (errors.length) console.log('   ', errors.slice(0, 4));
