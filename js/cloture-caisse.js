@@ -123,7 +123,7 @@ async function chargerClotures() {
 async function verrouillerJournee() {
   const champ = document.getElementById('cloture-date');
   const jour = (champ && champ.value) || _jourLocal();
-  if (typeof peutEncaisser === 'function' && !peutEncaisser()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
+  if (typeof tientLaCaisse === 'function' && !tientLaCaisse()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
   const c = calculerCloture(jour);
   if (typeof showConfirmModal === 'function' && !await showConfirmModal({
     icon: '🔒', title: 'Verrouiller la journée ?',
@@ -142,7 +142,7 @@ async function verrouillerJournee() {
 async function verrouillerJusqua() {
   const champ = document.getElementById('cloture-date');
   const jour = (champ && champ.value) || _jourLocal();
-  if (typeof peutEncaisser === 'function' && !peutEncaisser()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
+  if (typeof tientLaCaisse === 'function' && !tientLaCaisse()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
   if (typeof showConfirmModal === 'function' && !await showConfirmModal({
     icon: '🔒', title: 'Tout verrouiller jusqu\'à cette date ?',
     message: 'Toutes les journées <strong>jusqu\'au ' + esc(jour) + ' inclus</strong> seront gelées : plus aucune modification possible sur ces dossiers.<br>'
@@ -319,7 +319,7 @@ function renderCloture() {
     // ✅ v13.127 — Verrouillage de la journée (gel des sommes).
     + (function () {
         const verr = jourVerrouille(jour);
-        const peut = (typeof peutEncaisser === 'function' && peutEncaisser());
+        const peut = (typeof tientLaCaisse === 'function' && tientLaCaisse());
         let action = '';
         if (verr) {
           action = (typeof isAdmin === 'function' && isAdmin())

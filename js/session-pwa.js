@@ -1423,7 +1423,7 @@ async function renderCaisse() {
   } catch (e) {}
   // ✅ v13.33 — Brancher selon le rôle : agent → vue simplifiée, admin/caissier → caisse complète
   // ✅ v13.122 — Sauf si l'agent fait la caisse (aucun caissier) → caisse complète.
-  if (!isAdmin() && !isCaissier() && !isSpectateur() && !(typeof peutEncaisser === 'function' && peutEncaisser())) {
+  if (!isAdmin() && !isCaissier() && !isSpectateur() && !(typeof tientLaCaisse === 'function' && tientLaCaisse())) {
     // La clôture est un document de caisse : elle n'a rien à faire dans la
     // vue simplifiée d'un agent, qui ne tient pas le tiroir.
     const carte = document.getElementById('cloture-card');
