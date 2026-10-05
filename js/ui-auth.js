@@ -124,17 +124,31 @@ function blockIfSpectateur() {
   return false;
 }
 
-// ✅ v13.122 — Encaissement : admin et caissier toujours ; un agent PEUT encaisser
-// UNIQUEMENT s'il n'existe aucun compte caissier (petit labo sans caisse dédiée).
-// window._noCaissier est renseigné par chargerEtatCaissier() après connexion.
+// ✅ v13.225 — PROVISOIRE (demande explicite « pour le moment ») : TOUS les
+// agents peuvent encaisser, même lorsqu'un compte caissier existe. Seuls le
+// spectateur (lecture seule) et le prescripteur (portail soignant) restent
+// exclus. Les RPC serveur encaisser_lot / update_dossier_patient appliquent la
+// même règle. Pour revenir au comportement antérieur (agent uniquement si
+// aucun caissier), restaurer la condition window._noCaissier === true.
 function peutEncaisser() {
-  if (isAdmin() || isCaissier()) return true;
-  if (isSpectateur()) return false;
-  return window._noCaissier === true;
+  if (!_currentUser) return false;
+  const role = _currentUser.role;
+  return role !== 'spectateur' && role !== 'prescripteur';
 }
 // Un agent « fait la caisse » (pas de caissier) — utile pour l'aiguillage des vues.
 function agentFaitCaisse() {
   return !isAdmin() && !isCaissier() && !isSpectateur() && window._noCaissier === true;
+}
+// ✅ v13.225 — « Tenir la caisse » = disposer de la CAISSE COMPLÈTE (tableau de
+// bord, clôture/verrouillage de journée). C'est PLUS que le simple droit
+// d'encaisser : réservé à l'admin, au caissier, ou à un agent quand il n'existe
+// aucun caissier. Un agent ordinaire peut encaisser (peutEncaisser) sans pour
+// autant tenir la caisse (pas de clôture). La clôture n'est réouvrable que par
+// l'admin : on ne l'ouvre donc pas à tout agent.
+function tientLaCaisse() {
+  if (isAdmin() || isCaissier()) return true;
+  if (isSpectateur()) return false;
+  return window._noCaissier === true;
 }
 async function chargerEtatCaissier() {
   try {

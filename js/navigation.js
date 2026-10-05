@@ -21,7 +21,10 @@ function showView(v) {
   // Admin et Caissier → caisse complète ; Agent → vue personnelle simplifiée
   // ✅ v13.122 — S'il n'y a pas de caissier, l'agent obtient la caisse COMPLÈTE
   // (il tient la caisse lui-même) via peutEncaisser().
-  const caisseComplet = isAdmin() || isCaissier() || (typeof peutEncaisser === 'function' && peutEncaisser());
+  // ✅ v13.225 — Caisse COMPLÈTE réservée à qui tient la caisse (admin/caissier,
+  //   ou agent s'il n'y a pas de caissier). Un agent qui a seulement le droit
+  //   d'encaisser garde la vue simplifiée (il encaisse depuis l'historique).
+  const caisseComplet = isAdmin() || isCaissier() || (typeof tientLaCaisse === 'function' && tientLaCaisse());
   const caisseAdminVisible  = (v === 'caisse' && caisseComplet);
   const caisseUserVisible   = (v === 'caisse' && !caisseComplet);
 

@@ -657,7 +657,10 @@ async function renderHistory(forceRefresh) {
         }).join('') + '</td>'
       + '<td data-label="Saisi par">' + hl(r.createdBy || '—') + '</td>'
       + '<td data-label="Montant" style="font-weight:700;color:var(--accent);white-space:nowrap">' + montantStr + '</td>'
-      + '<td data-label="Statut">' + saisieStatutBadge(r) + ' ' + statutBadge(r.id) + ' ' + paiementBadge(r.id) + '</td>'
+      // ✅ v13.225 — Un SEUL badge de statut (le manuel, cliquable, qui pilote
+      //   filtres/compteurs/actions et passe en « Rendu » automatiquement). Le
+      //   badge auto d'avancement faisait doublon (deux « En cours »).
+      + '<td data-label="Statut">' + statutBadge(r.id) + ' ' + paiementBadge(r.id) + '</td>'
       + '<td data-label="Actions">'
         // ✅ v13.33 — Caissier : lecture seule (export/impression uniquement, pas de modification)
         // ✅ v13.37 — Spectateur : idem, lecture seule stricte
