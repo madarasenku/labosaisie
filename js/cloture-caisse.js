@@ -50,37 +50,39 @@ function renderReductionsMois() {
 
   const db = (typeof getDB === 'function') ? getDB() : [];
   const parAuteur = {};
-  let total = 0, nbTotal = 0;
+  let totRemise = 0, totSupp = 0, nbR = 0, nbS = 0;
   db.forEach(r => {
     if (!r || r.deletedAt || r._hardDeleted) return;
     const p = r.patient || {};
-    const rem = Number(p.remise_montant) || 0;
-    if (rem <= 0) return;
+    const adj = Number(p.remise_montant) || 0;   // signé : <0 réduction, >0 supplément
+    if (adj === 0) return;
     const d = String(p.remise_le || p.date || (r.savedAt || '').slice(0, 10) || '');
     if (d.slice(0, 7) !== mois) return;
-    // Attribution au DEMANDEUR de la réduction (nom saisi) ; à défaut, l'agent.
+    // Attribution au DEMANDEUR (nom saisi) ; à défaut, l'agent connecté.
     const a = p.remise_demandee_par || p.remise_par || r.createdBy || '—';
-    if (!parAuteur[a]) parAuteur[a] = { nb: 0, total: 0 };
-    parAuteur[a].nb++; parAuteur[a].total += rem;
-    total += rem; nbTotal++;
+    if (!parAuteur[a]) parAuteur[a] = { remise: 0, supp: 0, nbR: 0, nbS: 0 };
+    if (adj < 0) { parAuteur[a].remise += -adj; parAuteur[a].nbR++; totRemise += -adj; nbR++; }
+    else         { parAuteur[a].supp   +=  adj; parAuteur[a].nbS++; totSupp   +=  adj; nbS++; }
   });
 
-  const lignes = Object.entries(parAuteur).sort((a, b) => b[1].total - a[1].total);
+  const lignes = Object.entries(parAuteur)
+    .sort((a, b) => (b[1].remise + b[1].supp) - (a[1].remise + a[1].supp));
   if (!lignes.length) {
-    body.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Aucune réduction accordée ce mois.</p>';
+    body.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Aucune réduction ni supplément ce mois.</p>';
     return;
   }
   const _e = (typeof esc === 'function') ? esc : (x => String(x == null ? '' : x));
   body.innerHTML =
-    lignes.map(([nom, v]) =>
-      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px dotted var(--border);font-size:13.5px">'
-      + '<span>Ce mois, <strong>' + _e(nom) + '</strong> a accordé <strong>' + v.nb + '</strong> réduction'
-      + (v.nb > 1 ? 's' : '') + '</span>'
-      + '<strong style="color:#b45309;white-space:nowrap">' + _fcfa(v.total) + '</strong></div>'
-    ).join('')
-    + '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-weight:800">'
-    + '<span>Total des réductions (' + nbTotal + ' dossier' + (nbTotal > 1 ? 's' : '') + ')</span>'
-    + '<span style="color:#b45309">' + _fcfa(total) + '</span></div>';
+    lignes.map(([nom, v]) => {
+      const parts = [];
+      if (v.nbR) parts.push('<span style="color:#b45309;font-weight:700">− ' + _fcfa(v.remise) + '</span> de réduction (' + v.nbR + ')');
+      if (v.nbS) parts.push('<span style="color:#1d4ed8;font-weight:700">+ ' + _fcfa(v.supp) + '</span> de supplément (' + v.nbS + ')');
+      return '<div style="padding:7px 2px;border-bottom:1px dotted var(--border);font-size:13.5px">'
+        + 'Ce mois, <strong>' + _e(nom) + '</strong> : ' + parts.join(' · ') + '</div>';
+    }).join('')
+    + '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-weight:800;flex-wrap:wrap">'
+    + '<span>Total : <span style="color:#b45309">− ' + _fcfa(totRemise) + '</span> réductions (' + nbR + ')'
+    + ' · <span style="color:#1d4ed8">+ ' + _fcfa(totSupp) + '</span> suppléments (' + nbS + ')</span></div>';
 }
 
 /* ✅ Poste de travail (laboratoire ouvert 24h/24), déduit de l'heure

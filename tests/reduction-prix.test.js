@@ -1,10 +1,12 @@
-// Réduction de prix (prix verrouillés) + bilan mensuel admin.
+// Ajustement de prix (prix verrouillés) : réduction (−) OU supplément (+),
+// tracé (agent + demandeur) + bilan mensuel admin.
 //
 // - Les cases prix (px_*) sont en lecture seule.
-// - La case « Réduction » (montant OU %) calcule le NET (total − remise).
-// - La remise + son auteur sont inscrits sur le patient ; le montant du dossier
-//   devient le net.
-// - Le tableau de bord admin agrège par auteur les réductions du mois.
+// - Un seul contrôle « Ajustement » : Réduction/Supplément × Montant/%.
+//   Net = total + ajustement signé (borné ≥ 0).
+// - remise_montant est SIGNÉ : <0 réduction, >0 supplément. L'auteur agent et
+//   le demandeur (nom libre) sont enregistrés ; le bilan admin regroupe par
+//   demandeur (à défaut l'agent) et sépare réductions et suppléments.
 const { serve, openApp, createReporter } = require('./helpers');
 
 const p = n => String(n).padStart(2, '0');
@@ -12,63 +14,67 @@ const now = new Date();
 const AUJ = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate());
 const MOIS = AUJ.slice(0, 7);
 
-const fiche = (id, nom, remise_montant, remise_par, demandeur) => ({
-  id, type: 'Dossier', montant: 10000 - remise_montant, created_at: AUJ + 'T09:00:00Z', created_by: remise_par,
+// adj signé : négatif = réduction, positif = supplément.
+const fiche = (id, nom, adj, par, demandeur) => ({
+  id, type: 'Dossier', montant: 10000 + adj, created_at: AUJ + 'T09:00:00Z', created_by: par,
   patient: { nom, dossier: 'D' + id, date: AUJ, statut: 'rendu',
-             remise_type: 'montant', remise_valeur: remise_montant, remise_montant,
-             remise_par, remise_demandee_par: demandeur || '', remise_le: AUJ },
+             remise_type: adj < 0 ? 'remise_montant' : 'supp_montant',
+             remise_valeur: Math.abs(adj), remise_montant: adj,
+             remise_par: par, remise_demandee_par: demandeur || '', remise_le: AUJ },
   resultats: {}, prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null,
 });
-// Attribution au DEMANDEUR si présent, sinon à l'agent :
-//   nadia : 1000 + 3000 = 4000 (pas de demandeur) ; YERIGUE : 2000 ;
-//   DR KONE (demandeur, saisi par YERIGUE) : 1500.
+// nadia : réductions 1000 + 3000 = 4000 ; YERIGUE : réduction 2000 ;
+// DR KONE (demandeur, saisi par YERIGUE) : supplément 1500.
 const FICHES = [
-  fiche(1, 'A', 1000, 'nadia'),
-  fiche(2, 'B', 3000, 'nadia'),
-  fiche(3, 'C', 2000, 'YERIGUE'),
-  fiche(5, 'E', 1500, 'YERIGUE', 'DR KONE'),
-  { id: 4, type: 'Dossier', montant: 5000, created_at: AUJ + 'T10:00:00Z', created_by: 'nadia',
-    patient: { nom: 'D', dossier: 'D4', date: AUJ }, resultats: {}, prescripteur_id: 1,
-    est_bpn: false, restricted_by: null, deleted_at: null },
+  fiche(1, 'A', -1000, 'nadia'),
+  fiche(2, 'B', -3000, 'nadia'),
+  fiche(3, 'C', -2000, 'YERIGUE'),
+  fiche(5, 'E', +1500, 'YERIGUE', 'DR KONE'),
 ];
 
 (async () => {
   const srv = await serve(8184);
-  const r = createReporter('RÉDUCTION DE PRIX');
+  const r = createReporter('AJUSTEMENT (RÉDUCTION / SUPPLÉMENT)');
   const { ctx, page, errors } = await openApp({ role: 'admin', username: 'admin', port: 8184,
     rpc: { get_tarifs: {}, get_examens_custom: [], get_resultats_light: FICHES, get_restriction_status: [] } });
 
-  // ── Prix verrouillés + calcul du net (UI) ───────────────────────────
-  const ui = await page.evaluate(() => {
+  const setAjust = (mode, valeur, dem) => page.evaluate(({ mode, valeur, dem }) => {
+    document.getElementById('remise-type').value = mode;
+    document.getElementById('remise-valeur').value = String(valeur);
+    if (dem != null) document.getElementById('remise-demandeur').value = dem;
+    calcFicheTotal();
+    const net = Number(document.getElementById('net-preview').dataset.net);
+    const pat = {}; const adj = _appliquerRemisePatient(pat, Number(document.getElementById('montant-preview').dataset.montant));
+    return { net, adj, pat };
+  }, { mode, valeur, dem });
+
+  // ── Prix verrouillés + brut ─────────────────────────────────────────
+  const brut = await page.evaluate(() => {
     if (typeof rechargeFichePrix === 'function') rechargeFichePrix();
     const nfs = document.getElementById('ex_nfs'); nfs.checked = true;
     if (typeof syncExamRowState === 'function') syncExamRowState('ex_nfs');
     calcFicheTotal();
-    const pxRO = document.getElementById('px_ex_nfs')?.readOnly === true;
-    const brut = Number(document.getElementById('montant-preview').dataset.montant);
-    // Réduction montant 1000
-    document.getElementById('remise-type').value = 'montant';
-    document.getElementById('remise-valeur').value = '1000';
-    calcFicheTotal();
-    const netMontant = Number(document.getElementById('net-preview').dataset.net);
-    // Réduction 10 %
-    document.getElementById('remise-type').value = 'pct';
-    document.getElementById('remise-valeur').value = '10';
-    calcFicheTotal();
-    const netPct = Number(document.getElementById('net-preview').dataset.net);
-    // Marquage patient (avec un demandeur distinct de l'agent)
-    document.getElementById('remise-demandeur').value = 'DR KONE';
-    const pat = {};
-    const remMontant = _appliquerRemisePatient(pat, brut);
-    return { pxRO, brut, netMontant, netPct, remMontant, pat };
+    return { px: document.getElementById('px_ex_nfs')?.readOnly === true,
+             total: Number(document.getElementById('montant-preview').dataset.montant) };
   });
-  r.section('Prix verrouillés & calcul du net');
-  r.check('case prix en lecture seule', ui.pxRO, true);
-  r.check('réduction montant : net = brut − 1000', ui.netMontant, ui.brut - 1000);
-  r.check('réduction 10 % : net = brut × 0,9', ui.netPct, Math.round(ui.brut * 0.9));
-  r.check('remise inscrite sur le patient', ui.pat.remise_montant, ui.remMontant);
-  r.check('agent (saisie) enregistré', ui.pat.remise_par, 'admin');
-  r.check('demandeur (nom libre) enregistré', ui.pat.remise_demandee_par, 'DR KONE');
+  r.section('Prix verrouillés');
+  r.check('case prix en lecture seule', brut.px, true);
+
+  r.section('Réduction (−)');
+  const redM = await setAjust('remise_montant', 1000, 'DR KONE');
+  r.check('réduction montant : net = brut − 1000', redM.net, brut.total - 1000);
+  r.check('ajustement signé négatif', redM.adj, -1000);
+  r.check('remise_montant stocké négatif', redM.pat.remise_montant, -1000);
+  r.check('demandeur enregistré', redM.pat.remise_demandee_par, 'DR KONE');
+  r.check('agent enregistré', redM.pat.remise_par, 'admin');
+  const redP = await setAjust('remise_pct', 10, '');
+  r.check('réduction 10 % : net = brut × 0,9', redP.net, Math.round(brut.total * 0.9));
+
+  r.section('Supplément (+)');
+  const supM = await setAjust('supp_montant', 500, '');
+  r.check('supplément montant : net = brut + 500', supM.net, brut.total + 500);
+  r.check('ajustement signé positif', supM.adj, 500);
+  r.check('remise_montant stocké positif', supM.pat.remise_montant, 500);
 
   // ── Bilan mensuel admin ─────────────────────────────────────────────
   const rapport = await page.evaluate(async (mois) => {
@@ -81,11 +87,11 @@ const FICHES = [
   }, MOIS);
   r.section('Bilan mensuel (admin)');
   r.check('carte visible pour l\'admin', rapport.visible, true);
-  r.check('nadia listée', /nadia/.test(rapport.texte), true);
-  r.check('total nadia = 4 000', /4\s?000/.test(rapport.texte), true);
+  r.check('nadia (réductions 4 000)', /nadia[\s\S]*4\s?000/.test(rapport.texte), true);
   r.check('YERIGUE listée', /YERIGUE/.test(rapport.texte), true);
-  r.check('DR KONE (demandeur) listé, pas l\'agent', /DR KONE/.test(rapport.texte), true);
-  r.check('total général = 7 500', /7\s?500/.test(rapport.texte), true);
+  r.check('DR KONE (supplément) listé', /DR KONE/.test(rapport.texte), true);
+  r.check('supplément 1 500 présent', /1\s?500/.test(rapport.texte), true);
+  r.check('total réductions 6 000', /6\s?000/.test(rapport.texte), true);
 
   r.check('aucune erreur JS', errors.length, 0);
   if (errors.length) console.log('   ', errors.slice(0, 5));

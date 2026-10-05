@@ -633,18 +633,23 @@ function syncExamRowState(exId) {
   if (chk && row) row.classList.toggle('checked', chk.checked);
 }
 
-// ✅ Lit le contrôle de réduction → { type, valeur, montant } pour un total brut.
-//    Le montant de remise est borné à [0, brut] (jamais plus que le total).
+// ✅ Lit le contrôle d'AJUSTEMENT → { type, valeur, montant } pour un total brut.
+//    montant est SIGNÉ : négatif = réduction, positif = supplément.
+//    Une réduction ne peut pas dépasser le total (net ≥ 0) ; un supplément n'est
+//    pas plafonné. `valeur` est toujours la valeur positive saisie.
 function _lireReduction(brut) {
   const typeEl = document.getElementById('remise-type');
   const valEl  = document.getElementById('remise-valeur');
   const type = typeEl ? typeEl.value : 'aucune';
-  const valeur = valEl ? (parseFloat(valEl.value) || 0) : 0;
+  const v = Math.abs(valEl ? (parseFloat(valEl.value) || 0) : 0);
+  const b = Number(brut) || 0;
   let montant = 0;
-  if (type === 'montant') montant = Math.round(valeur);
-  else if (type === 'pct') montant = Math.round((Number(brut) || 0) * valeur / 100);
-  montant = Math.max(0, Math.min(montant, Number(brut) || 0));
-  return { type: montant > 0 ? type : 'aucune', valeur, montant };
+  if (type === 'remise_montant') montant = -Math.round(v);
+  else if (type === 'remise_pct') montant = -Math.round(b * v / 100);
+  else if (type === 'supp_montant') montant = Math.round(v);
+  else if (type === 'supp_pct') montant = Math.round(b * v / 100);
+  if (montant < 0) montant = Math.max(montant, -b); // réduction bornée au total
+  return { type: montant !== 0 ? type : 'aucune', valeur: v, montant };
 }
 
 // ✅ Écrit (ou nettoie) les champs de réduction sur l'objet patient, auteur =
@@ -652,14 +657,14 @@ function _lireReduction(brut) {
 function _appliquerRemisePatient(p, brut) {
   const r = _lireReduction(brut);
   if (p) {
-    if (r.montant > 0) {
+    if (r.montant !== 0) {
       const demEl = document.getElementById('remise-demandeur');
       const demandeur = demEl ? (demEl.value || '').trim() : '';
-      p.remise_type    = r.type;
-      p.remise_valeur  = r.valeur;
-      p.remise_montant = r.montant;
+      p.remise_type    = r.type;         // remise_montant | remise_pct | supp_montant | supp_pct
+      p.remise_valeur  = r.valeur;        // valeur positive saisie
+      p.remise_montant = r.montant;       // SIGNÉ : <0 réduction, >0 supplément
       // remise_par = AGENT connecté qui saisit (traçabilité) ;
-      // remise_demandee_par = NOM saisi de qui a demandé la réduction (≠ agent).
+      // remise_demandee_par = NOM saisi de qui a demandé l'ajustement (≠ agent).
       p.remise_par     = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '';
       p.remise_demandee_par = demandeur;
       p.remise_le      = (typeof _jourLocal === 'function') ? _jourLocal() : new Date().toISOString().slice(0, 10);
@@ -709,27 +714,30 @@ function calcFicheTotal() {
 
   const montantEl = document.getElementById('montant-preview');
   const countEl   = document.getElementById('fiche-examens-count');
-  // ✅ Réduction : calcul du net (total − remise) et affichage.
+  // ✅ Ajustement : net = total + ajustement SIGNÉ (−réduction / +supplément).
   const remise = _lireReduction(total);
-  const net = Math.max(0, total - remise.montant);
+  const net = Math.max(0, total + remise.montant);
   if (montantEl) {
     montantEl.textContent = total.toLocaleString('fr-FR') + ' FCFA';
-    montantEl.dataset.montant = total;         // brut (somme des prix verrouillés)
-    montantEl.dataset.remise  = remise.montant; // réduction en FCFA
+    montantEl.dataset.montant = total;          // brut (somme des prix verrouillés)
+    montantEl.dataset.remise  = remise.montant; // ajustement signé en FCFA
     montantEl.dataset.net     = net;            // net à payer
     // Stocker le détail par tab pour saveRecord
     montantEl.dataset.montantParTab = JSON.stringify(montantParTab);
   }
-  // Affichage du bloc réduction
+  // Affichage du bloc ajustement
   const rType = document.getElementById('remise-type');
   const rVal  = document.getElementById('remise-valeur');
   const rDem  = document.getElementById('remise-demandeur');
-  const _afficheRemise = (rType && rType.value !== 'aucune');
-  if (rVal) rVal.style.display = _afficheRemise ? '' : 'none';
-  if (rDem) rDem.style.display = _afficheRemise ? '' : 'none';
+  const _affiche = (rType && rType.value !== 'aucune');
+  if (rVal) rVal.style.display = _affiche ? '' : 'none';
+  if (rDem) rDem.style.display = _affiche ? '' : 'none';
   const apercu = document.getElementById('remise-apercu');
-  if (apercu) apercu.textContent = remise.montant > 0
-    ? ('− ' + remise.montant.toLocaleString('fr-FR') + ' FCFA') : '';
+  if (apercu) {
+    if (remise.montant < 0) { apercu.textContent = '− ' + Math.abs(remise.montant).toLocaleString('fr-FR') + ' FCFA'; apercu.style.color = '#b45309'; }
+    else if (remise.montant > 0) { apercu.textContent = '+ ' + remise.montant.toLocaleString('fr-FR') + ' FCFA'; apercu.style.color = '#1d4ed8'; }
+    else apercu.textContent = '';
+  }
   const netEl = document.getElementById('net-preview');
   if (netEl) { netEl.textContent = net.toLocaleString('fr-FR') + ' FCFA'; netEl.dataset.net = net; }
   if (countEl) countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
@@ -995,10 +1003,10 @@ async function enregistrerFicheIdentif() {
     return;
   }
 
-  // ✅ Réduction : on enregistre la remise (+ auteur) sur le patient et le
-  //    montant du dossier devient le NET (total − remise), borné ≥ 0.
-  const _remiseMontant = _appliquerRemisePatient(p, montantTotal);
-  montantTotal = Math.max(0, montantTotal - _remiseMontant);
+  // ✅ Ajustement : on enregistre l'ajustement signé (+ auteur) sur le patient
+  //    et le montant du dossier devient le NET (total + ajustement), borné ≥ 0.
+  const _ajust = _appliquerRemisePatient(p, montantTotal);
+  montantTotal = Math.max(0, montantTotal + _ajust);
 
   if (_saving) return;
   _saving = true;

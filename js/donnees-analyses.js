@@ -1093,15 +1093,21 @@ function applyBpnSections() {
 // (les tarifs sont restaurés par applyBpnSections).
 function initBpnComposition() {
   const on = !!document.getElementById('ex_bpn')?.checked;
-  if (on) {
-    BPN_EXAM_IDS.forEach(id => {
-      const chk = document.getElementById(id);
-      if (chk && !chk.checked) {
-        chk.checked = true;
-        if (typeof syncExamRowState === 'function') syncExamRowState(id);
-      }
-    });
-  }
+  // ✅ Cocher le forfait → coche sa composition ; DÉCOCHER le forfait → décoche
+  //   aussi tous ses examens composants (sinon ils restaient cochés). N'est
+  //   appelée QU'au basculement de la case ex_bpn, donc décocher un seul examen
+  //   pendant que le BPN reste coché n'y touche pas.
+  BPN_EXAM_IDS.forEach(id => {
+    const chk = document.getElementById(id);
+    if (!chk) return;
+    if (on && !chk.checked) {
+      chk.checked = true;
+      if (typeof syncExamRowState === 'function') syncExamRowState(id);
+    } else if (!on && chk.checked) {
+      chk.checked = false;
+      if (typeof syncExamRowState === 'function') syncExamRowState(id);
+    }
+  });
   if (typeof calcFicheTotal === 'function') calcFicheTotal();
 }
 

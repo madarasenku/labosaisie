@@ -55,12 +55,16 @@ const { serve, openApp, createReporter } = require('./helpers');
     if (typeof initBpnComposition === 'function') initBpnComposition();
     calcFicheTotal();
   });
-  r.section('BPN décoché');
-  // Les composants restent cochés mais retrouvent leur tarif ; le forfait (20 000)
-  // disparaît. On vérifie seulement que le total n'est plus le forfait seul et
-  // qu'il n'y a pas d'erreur (la composition exacte dépend de ce qui reste coché).
-  const apres = await preview();
-  r.check('plus le forfait seul (recalcul propre)', apres !== 20000, true);
+  r.section('BPN décoché → les composants se décochent aussi');
+  // Décocher le forfait décoche TOUS ses examens composants (ils ne doivent plus
+  // rester cochés). Avec le CRP coché juste avant, il reste le seul examen.
+  const etat = await page.evaluate(() => {
+    const ids = ['ex_nfs','ex_ephb','ex_gly','ex_uree','ex_crea','ex_gs','ex_hbs','ex_tpha','ex_toxo','ex_rube'];
+    return { composantsCoches: ids.filter(i => document.getElementById(i)?.checked).length,
+             total: Number(document.getElementById('montant-preview').dataset.montant) };
+  });
+  r.check('aucun composant BPN resté coché', etat.composantsCoches, 0);
+  r.check('plus le forfait seul (recalcul propre)', etat.total !== 20000, true);
 
   r.check('aucune erreur JS', errors.length, 0);
   if (errors.length) console.log('   ', errors.slice(0, 3));
