@@ -66,6 +66,7 @@ function showView(v) {
     }
   } catch (e) {}
   if (v === 'accueil' && typeof renderAccueil === 'function') renderAccueil();
+  if (v === 'accueil' && typeof renderReductionsMois === 'function') renderReductionsMois(); // ✅ bilan réductions (admin)
   if (v !== 'historique' && typeof clearBulkSelection === 'function') clearBulkSelection(); // ✅ v13.30
   if (v === 'saisie' && typeof renderDashboard === 'function') renderDashboard(); // ✅ v13.34
   if (v === 'saisie' && typeof updateBandeauPaiement === 'function') updateBandeauPaiement(); // ✅ v13.35

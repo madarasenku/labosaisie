@@ -591,7 +591,9 @@ function buildFicheExamens() {
             ${ex.custom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
           </label>
           <input type="number" id="px_${ex.id}" value="0" min="0" step="100"
-            oninput="calcFicheTotal()" onclick="event.stopPropagation()">
+            readonly tabindex="-1" title="Prix fixé par la grille tarifaire — non modifiable"
+            style="background:#f1f5f9;color:#475569;cursor:not-allowed"
+            onclick="event.stopPropagation()">
           <span class="exam-unit">F</span>
         </div>`).join('')}
       </div>
@@ -631,7 +633,63 @@ function syncExamRowState(exId) {
   if (chk && row) row.classList.toggle('checked', chk.checked);
 }
 
+// ✅ Lit le contrôle de réduction → { type, valeur, montant } pour un total brut.
+//    Le montant de remise est borné à [0, brut] (jamais plus que le total).
+function _lireReduction(brut) {
+  const typeEl = document.getElementById('remise-type');
+  const valEl  = document.getElementById('remise-valeur');
+  const type = typeEl ? typeEl.value : 'aucune';
+  const valeur = valEl ? (parseFloat(valEl.value) || 0) : 0;
+  let montant = 0;
+  if (type === 'montant') montant = Math.round(valeur);
+  else if (type === 'pct') montant = Math.round((Number(brut) || 0) * valeur / 100);
+  montant = Math.max(0, Math.min(montant, Number(brut) || 0));
+  return { type: montant > 0 ? type : 'aucune', valeur, montant };
+}
+
+// ✅ Écrit (ou nettoie) les champs de réduction sur l'objet patient, auteur =
+//    compte connecté. Renvoie le montant de remise appliqué.
+function _appliquerRemisePatient(p, brut) {
+  const r = _lireReduction(brut);
+  if (p) {
+    if (r.montant > 0) {
+      const demEl = document.getElementById('remise-demandeur');
+      const demandeur = demEl ? (demEl.value || '').trim() : '';
+      p.remise_type    = r.type;
+      p.remise_valeur  = r.valeur;
+      p.remise_montant = r.montant;
+      // remise_par = AGENT connecté qui saisit (traçabilité) ;
+      // remise_demandee_par = NOM saisi de qui a demandé la réduction (≠ agent).
+      p.remise_par     = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '';
+      p.remise_demandee_par = demandeur;
+      p.remise_le      = (typeof _jourLocal === 'function') ? _jourLocal() : new Date().toISOString().slice(0, 10);
+    } else {
+      delete p.remise_type; delete p.remise_valeur; delete p.remise_montant;
+      delete p.remise_par;  delete p.remise_le; delete p.remise_demandee_par;
+    }
+  }
+  return r.montant;
+}
+
+// ✅ Pré-remplit le contrôle de réduction depuis un dossier existant (édition).
+function _prefillReduction(patient) {
+  const typeEl = document.getElementById('remise-type');
+  const valEl  = document.getElementById('remise-valeur');
+  if (!typeEl || !valEl) return;
+  const t = (patient && patient.remise_type) || 'aucune';
+  typeEl.value = (t === 'montant' || t === 'pct') ? t : 'aucune';
+  valEl.value  = (patient && patient.remise_valeur != null) ? patient.remise_valeur : 0;
+  const demEl = document.getElementById('remise-demandeur');
+  if (demEl) demEl.value = (patient && patient.remise_demandee_par) || '';
+}
+
 function calcFicheTotal() {
+  // ✅ Le forfait BPN inclut ses examens composants : applyBpnSections met leur
+  //   prix à 0 (« compris dans les 20 000 »). On l'applique AVANT de sommer —
+  //   sinon le total affiché cumulait le forfait (20 000) ET le plein tarif de
+  //   chaque composant (≈ 62 000).
+  if (typeof applyBpnSections === 'function') applyBpnSections();
+
   let total = 0, count = 0;
   const montantParTab = {}; // ex: { hema: 5500, bio: 1000, ... }
 
@@ -651,15 +709,32 @@ function calcFicheTotal() {
 
   const montantEl = document.getElementById('montant-preview');
   const countEl   = document.getElementById('fiche-examens-count');
+  // ✅ Réduction : calcul du net (total − remise) et affichage.
+  const remise = _lireReduction(total);
+  const net = Math.max(0, total - remise.montant);
   if (montantEl) {
     montantEl.textContent = total.toLocaleString('fr-FR') + ' FCFA';
-    montantEl.dataset.montant = total;
+    montantEl.dataset.montant = total;         // brut (somme des prix verrouillés)
+    montantEl.dataset.remise  = remise.montant; // réduction en FCFA
+    montantEl.dataset.net     = net;            // net à payer
     // Stocker le détail par tab pour saveRecord
     montantEl.dataset.montantParTab = JSON.stringify(montantParTab);
   }
+  // Affichage du bloc réduction
+  const rType = document.getElementById('remise-type');
+  const rVal  = document.getElementById('remise-valeur');
+  const rDem  = document.getElementById('remise-demandeur');
+  const _afficheRemise = (rType && rType.value !== 'aucune');
+  if (rVal) rVal.style.display = _afficheRemise ? '' : 'none';
+  if (rDem) rDem.style.display = _afficheRemise ? '' : 'none';
+  const apercu = document.getElementById('remise-apercu');
+  if (apercu) apercu.textContent = remise.montant > 0
+    ? ('− ' + remise.montant.toLocaleString('fr-FR') + ' FCFA') : '';
+  const netEl = document.getElementById('net-preview');
+  if (netEl) { netEl.textContent = net.toLocaleString('fr-FR') + ' FCFA'; netEl.dataset.net = net; }
   if (countEl) countEl.textContent = count + ' examen' + (count > 1 ? 's' : '') + ' sélectionné' + (count > 1 ? 's' : '');
   if (typeof applyExamLocks === 'function') applyExamLocks(); // ✅ v13.13
-  if (typeof applyBpnSections === 'function') applyBpnSections(); // ✅ v13.21
+  // applyBpnSections est désormais appelé EN TÊTE (avant la somme) — voir plus haut.
 }
 
 function demarrerSaisie() {
@@ -919,6 +994,11 @@ async function enregistrerFicheIdentif() {
     toast('Cochez au moins un examen pour enregistrer la facture', 'err');
     return;
   }
+
+  // ✅ Réduction : on enregistre la remise (+ auteur) sur le patient et le
+  //    montant du dossier devient le NET (total − remise), borné ≥ 0.
+  const _remiseMontant = _appliquerRemisePatient(p, montantTotal);
+  montantTotal = Math.max(0, montantTotal - _remiseMontant);
 
   if (_saving) return;
   _saving = true;

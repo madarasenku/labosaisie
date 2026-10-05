@@ -32,6 +32,57 @@ function _jourLocal(d) {
 
 function _fcfa(n) { return (Number(n) || 0).toLocaleString('fr-FR') + ' FCFA'; }
 
+// ✅ Bilan mensuel des réductions accordées (tableau de bord ADMIN).
+//   Agrège par auteur (remise_par) les remises des dossiers du mois choisi :
+//   « Ce mois, X a accordé N réduction(s) » + total. Admin uniquement.
+function renderReductionsMois() {
+  const card = document.getElementById('reductions-card');
+  const body = document.getElementById('reductions-mois-body');
+  if (!card || !body) return;
+  const estAdmin = (typeof isAdmin === 'function') && isAdmin();
+  card.style.display = estAdmin ? '' : 'none';
+  if (!estAdmin) return;
+
+  const sel = document.getElementById('reductions-mois');
+  const moisCourant = (typeof _jourLocal === 'function' ? _jourLocal() : new Date().toISOString().slice(0, 10)).slice(0, 7);
+  if (sel && !sel.value) sel.value = moisCourant;
+  const mois = (sel && sel.value) || moisCourant;
+
+  const db = (typeof getDB === 'function') ? getDB() : [];
+  const parAuteur = {};
+  let total = 0, nbTotal = 0;
+  db.forEach(r => {
+    if (!r || r.deletedAt || r._hardDeleted) return;
+    const p = r.patient || {};
+    const rem = Number(p.remise_montant) || 0;
+    if (rem <= 0) return;
+    const d = String(p.remise_le || p.date || (r.savedAt || '').slice(0, 10) || '');
+    if (d.slice(0, 7) !== mois) return;
+    // Attribution au DEMANDEUR de la réduction (nom saisi) ; à défaut, l'agent.
+    const a = p.remise_demandee_par || p.remise_par || r.createdBy || '—';
+    if (!parAuteur[a]) parAuteur[a] = { nb: 0, total: 0 };
+    parAuteur[a].nb++; parAuteur[a].total += rem;
+    total += rem; nbTotal++;
+  });
+
+  const lignes = Object.entries(parAuteur).sort((a, b) => b[1].total - a[1].total);
+  if (!lignes.length) {
+    body.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Aucune réduction accordée ce mois.</p>';
+    return;
+  }
+  const _e = (typeof esc === 'function') ? esc : (x => String(x == null ? '' : x));
+  body.innerHTML =
+    lignes.map(([nom, v]) =>
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:7px 2px;border-bottom:1px dotted var(--border);font-size:13.5px">'
+      + '<span>Ce mois, <strong>' + _e(nom) + '</strong> a accordé <strong>' + v.nb + '</strong> réduction'
+      + (v.nb > 1 ? 's' : '') + '</span>'
+      + '<strong style="color:#b45309;white-space:nowrap">' + _fcfa(v.total) + '</strong></div>'
+    ).join('')
+    + '<div style="display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-weight:800">'
+    + '<span>Total des réductions (' + nbTotal + ' dossier' + (nbTotal > 1 ? 's' : '') + ')</span>'
+    + '<span style="color:#b45309">' + _fcfa(total) + '</span></div>';
+}
+
 /* ✅ Poste de travail (laboratoire ouvert 24h/24), déduit de l'heure
    d'ENREGISTREMENT locale du dossier :
      • Permanence = 08h00 → 16h00

@@ -24,7 +24,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.220">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.222">
 <!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
      Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
        1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
@@ -35,14 +35,14 @@
      Versions figées, identiques à celles servies auparavant par le CDN.
      Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
      dans vendor/, puis bumper CACHE dans sw.js. -->
-<script src="./vendor/exceljs-4.4.0.min.js?v=13.220"></script>
-<script src="./vendor/chart-4.4.1.umd.js?v=13.220"></script>
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.220"></script>
-<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.220"></script>
-<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.220"></script>
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.222"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.222"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.222"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.222"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.222"></script>
 <!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
-<script src="./js/qr-generator.js?v=13.220"></script>
-<link rel="stylesheet" href="./css/app.css?v=13.220">
+<script src="./js/qr-generator.js?v=13.222"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.222">
 </head>
 <body>
 <!-- ✅ v13.138 — Badge de version : permet de vérifier d'un coup d'œil quelle
@@ -87,7 +87,7 @@
 <!-- Canvas arrière-plan animé CPMI -->
 <canvas id="cpmi-bg-canvas"></canvas>
 
-<script src="./js/pwa-manifest.js?v=13.220"></script>
+<script src="./js/pwa-manifest.js?v=13.222"></script>
 
   <div id="record-preview" class="record-preview"></div>
 
@@ -231,6 +231,15 @@
     <div class="s"><span class="n" id="kio-stat-jour" style="color:var(--cpmi-deep)">0</span><span class="k">Patients du jour</span></div>
     <div class="s"><span class="n" id="kio-stat-attente" style="color:var(--cpmi-gold)">0</span><span class="k">À saisir</span></div>
     <div class="s" style="margin-left:auto"><span class="n" id="kio-stat-recette" style="color:#15803d">0 F</span><span class="k">Recette du jour</span></div>
+  </div>
+
+  <!-- ✅ Bilan mensuel des réductions accordées (admin uniquement) -->
+  <div id="reductions-card" class="card" style="display:none;margin-top:18px;text-align:left">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <h2 style="margin:0;font-size:16px;color:var(--cpmi-deep)">🏷️ Réductions accordées</h2>
+      <input type="month" id="reductions-mois" onchange="renderReductionsMois()" style="padding:5px 9px;border:1px solid var(--border);border-radius:8px">
+    </div>
+    <div id="reductions-mois-body"><p style="color:var(--text-muted);font-size:13px">—</p></div>
   </div>
 </div>
 
@@ -520,6 +529,30 @@
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Total facture :</span>
         <span id="montant-preview" style="font-weight:800;color:var(--cpmi-deep);font-size:22px;letter-spacing:-.5px" data-montant="0">0 FCFA</span>
+      </div>
+    </div>
+
+    <!-- ✅ Réduction de prix (prix verrouillés) : montant fixe OU pourcentage.
+         L'auteur (compte connecté) est enregistré sur le dossier et comptabilisé
+         dans le bilan mensuel de l'admin. -->
+    <div id="remise-bloc" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:8px;padding:10px 18px;border:1.5px dashed #cbd5e1;border-radius:var(--radius)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--cpmi-deep)">🏷️ Réduction</span>
+        <select id="remise-type" onchange="calcFicheTotal()" style="padding:5px 8px">
+          <option value="aucune">Aucune</option>
+          <option value="montant">Montant (FCFA)</option>
+          <option value="pct">Pourcentage (%)</option>
+        </select>
+        <input type="number" id="remise-valeur" min="0" value="0" step="100" oninput="calcFicheTotal()"
+          style="width:110px;display:none" placeholder="0">
+        <input type="text" id="remise-demandeur" maxlength="80"
+          placeholder="Demandée par (nom)" title="Nom de la personne qui a demandé la réduction (pas forcément l'agent)"
+          style="width:190px;display:none">
+        <span id="remise-apercu" style="font-size:12.5px;color:#b45309;font-weight:700"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Net à payer :</span>
+        <span id="net-preview" style="font-weight:800;color:#15803d;font-size:20px" data-net="0">0 FCFA</span>
       </div>
     </div>
 
@@ -2498,20 +2531,20 @@
 
 <div id="toast"></div>
 
-<script src="./js/periode-nav.js?v=13.220"></script>
-<script src="./js/donnees-analyses.js?v=13.220"></script>
-<script src="./js/dfg.js?v=13.220"></script>
-<script src="./js/navigation.js?v=13.220"></script>
-<script src="./js/supabase-db.js?v=13.220"></script>
-<script src="./js/historique.js?v=13.220"></script>
-<script src="./js/export-excel.js?v=13.220"></script>
-<script src="./js/prescripteurs.js?v=13.220"></script>
-<script src="./js/saisie.js?v=13.220"></script>
-<script src="./js/completude.js?v=13.220"></script>
-<script src="./js/grille.js?v=13.220"></script>
-<script src="./js/ui-auth.js?v=13.220"></script>
-<script src="./js/session-pwa.js?v=13.220"></script>
-<script src="./js/saisie-mobile.js?v=13.220"></script>
+<script src="./js/periode-nav.js?v=13.222"></script>
+<script src="./js/donnees-analyses.js?v=13.222"></script>
+<script src="./js/dfg.js?v=13.222"></script>
+<script src="./js/navigation.js?v=13.222"></script>
+<script src="./js/supabase-db.js?v=13.222"></script>
+<script src="./js/historique.js?v=13.222"></script>
+<script src="./js/export-excel.js?v=13.222"></script>
+<script src="./js/prescripteurs.js?v=13.222"></script>
+<script src="./js/saisie.js?v=13.222"></script>
+<script src="./js/completude.js?v=13.222"></script>
+<script src="./js/grille.js?v=13.222"></script>
+<script src="./js/ui-auth.js?v=13.222"></script>
+<script src="./js/session-pwa.js?v=13.222"></script>
+<script src="./js/saisie-mobile.js?v=13.222"></script>
 
 <!-- ✅ v13.201 — Barre d'onglets mobile (paradigme maquette mobile). Affichée
      uniquement sur téléphone (≤ 640px). Réutilise showView ; visibilité/actif
@@ -2779,16 +2812,16 @@
   <div class="loading-label" id="loading-label">Chargement…</div>
 </div>
 
-<script src="./js/stats.js?v=13.220"></script>
-<script src="./js/compte-rendu.js?v=13.220"></script>
-<script src="./js/impression.js?v=13.220"></script>
-<script src="./js/export-pdf.js?v=13.220"></script>
-<script src="./js/sauvegarde.js?v=13.220"></script>
-<script src="./js/cloture-caisse.js?v=13.220"></script>
-<script src="./js/registre-jour.js?v=13.220"></script>
-<script src="./js/electrophorese.js?v=13.220"></script>
-<script src="./js/coffre.js?v=13.220"></script>
-<script src="./js/cahier-jaune.js?v=13.220"></script>
+<script src="./js/stats.js?v=13.222"></script>
+<script src="./js/compte-rendu.js?v=13.222"></script>
+<script src="./js/impression.js?v=13.222"></script>
+<script src="./js/export-pdf.js?v=13.222"></script>
+<script src="./js/sauvegarde.js?v=13.222"></script>
+<script src="./js/cloture-caisse.js?v=13.222"></script>
+<script src="./js/registre-jour.js?v=13.222"></script>
+<script src="./js/electrophorese.js?v=13.222"></script>
+<script src="./js/coffre.js?v=13.222"></script>
+<script src="./js/cahier-jaune.js?v=13.222"></script>
 
 <script>
 /* ── Navigation rapide dans les tables de résultats (v13.95) ──────────────

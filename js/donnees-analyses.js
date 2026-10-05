@@ -1056,11 +1056,11 @@ function applyBpnSections() {
     if (on && coche) {
       // Examen du forfait réellement coché → prix à 0 (compris dans les 20 000).
       if (px.value !== '0' && px.dataset.prevPrix === undefined) px.dataset.prevPrix = px.value;
-      px.value = '0'; px.readOnly = true; px.style.opacity = '0.5';
+      px.value = '0'; px.style.opacity = '0.5';   // readonly géré en HTML (prix verrouillés)
     } else if (px.dataset.prevPrix !== undefined) {
       // Forfait décoché OU examen décoché → on restitue le tarif.
       px.value = px.dataset.prevPrix; delete px.dataset.prevPrix;
-      px.readOnly = false; px.style.opacity = '';
+      px.style.opacity = '';
     }
   });
 

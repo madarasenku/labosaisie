@@ -835,6 +835,10 @@ async function resetFicheIdentif() {
   _editingFicheId  = null; // ✅ v13.29
   _locksDisabled = false;
   _shareTokenCurrent = null; // Nouveau patient → nouveau token de partage
+  // ✅ Nouvelle fiche → aucune réduction par défaut.
+  { const rt = document.getElementById('remise-type'); if (rt) rt.value = 'aucune';
+    const rv = document.getElementById('remise-valeur'); if (rv) rv.value = '0';
+    const rd = document.getElementById('remise-demandeur'); if (rd) rd.value = ''; }
   // ✅ v13.114 — Sortir du mode « tout sur une page » (nouvelle saisie) et
   // restaurer l'affichage normal par onglets + les boutons par onglet.
   if (typeof _fillAllMode !== 'undefined') _fillAllMode = false;
@@ -1394,6 +1398,17 @@ async function _saveRecordImpl(type) {
       newMontant = montant;
     }
 
+    // ✅ Réduction : le contrôle est pré-rempli en édition. On réinscrit la
+    //    remise (+ auteur) sur le patient et le montant du dossier devient le
+    //    NET (brut − remise), borné ≥ 0. Sans ça, l'enregistrement des résultats
+    //    recalculerait le brut et effacerait la réduction accordée à la facture.
+    if (typeof _appliquerRemisePatient === 'function') {
+      const _rem = _appliquerRemisePatient(p, newMontant);
+      newMontant = Math.max(0, newMontant - _rem);
+    } else if (p && Number(p.remise_montant) > 0) {
+      newMontant = Math.max(0, newMontant - Number(p.remise_montant));
+    }
+
     // ✅ v13.34 — Modifier résultats : ne touche QUE les résultats, montant gelé
     const saved = await updateRecordRemote(_editingRecordId, {
       patient: p, type: isDossierRecord(existing) ? 'Dossier' : type,
@@ -1506,7 +1521,14 @@ async function _saveRecordImpl(type) {
     // ✅ v13.28 — Recalculer le TOTAL depuis _montants (somme de tous les types)
     // au lieu d'additionner à l'ancien total : évite l'accumulation si on
     // ré-enregistre le même type plusieurs fois.
-    const newMontant = Object.values(newRes._montants).reduce((s, m) => s + (Number(m) || 0), 0);
+    let newMontant = Object.values(newRes._montants).reduce((s, m) => s + (Number(m) || 0), 0);
+    // ✅ Réduction : net = brut − remise (contrôle pré-rempli en édition).
+    if (typeof _appliquerRemisePatient === 'function') {
+      const _r = _appliquerRemisePatient(p, newMontant);
+      newMontant = Math.max(0, newMontant - _r);
+    } else if (p && Number(p.remise_montant) > 0) {
+      newMontant = Math.max(0, newMontant - Number(p.remise_montant));
+    }
 
     const saved = await updateRecordRemote(existingDossier.id, {
       patient: p, type: 'Dossier',
@@ -1537,9 +1559,17 @@ async function _saveRecordImpl(type) {
       newRes._montants[otherType] = data.montant;
     });
 
+    // ✅ Montant = total du dossier (somme de tous les types) − réduction, net ≥ 0.
+    let montantDossier = Object.values(newRes._montants).reduce((s, m) => s + (Number(m) || 0), 0);
+    if (typeof _appliquerRemisePatient === 'function') {
+      const _r = _appliquerRemisePatient(p, montantDossier);
+      montantDossier = Math.max(0, montantDossier - _r);
+    } else if (p && Number(p.remise_montant) > 0) {
+      montantDossier = Math.max(0, montantDossier - Number(p.remise_montant));
+    }
     const saved = await insertRecordRemote({
       patient: p, type: 'Dossier',
-      resultats: newRes, montant,
+      resultats: newRes, montant: montantDossier,
       prescripteur_id: prescripteurId || null,
     });
     if (saved) {
@@ -1774,6 +1804,9 @@ async function editRecord(id, typeOverride) {
   if (rappelNom)  rappelNom.textContent  = (p.nom||'').toUpperCase();
   if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
 
+  // ✅ Pré-remplir la réduction depuis le dossier (édition).
+  if (typeof _prefillReduction === 'function') { _prefillReduction(record.patient || {}); if (typeof calcFicheTotal === 'function') calcFicheTotal(); }
+
   // ✅ v13.210 (option B) — verrou fin si la fiche est encaissée.
   appliquerVerrouEncaissement(record);
 
@@ -1892,6 +1925,9 @@ async function fillAllResults(id) {
   const rappelDoss = document.getElementById('rappel-dossier');
   if (rappelNom)  rappelNom.textContent  = (p.nom || '').toUpperCase();
   if (rappelDoss) rappelDoss.textContent = 'N° ' + (p.dossier || '');
+
+  // ✅ Pré-remplir la réduction depuis le dossier (édition).
+  if (typeof _prefillReduction === 'function') { _prefillReduction(record.patient || {}); if (typeof calcFicheTotal === 'function') calcFicheTotal(); }
 
   // ✅ v13.210 (option B) — verrou fin si la fiche est encaissée.
   appliquerVerrouEncaissement(record);
@@ -2204,6 +2240,8 @@ async function editFicheIdentif(id) {
     window.updateMontantCurrent = window._updateMontantCurrent_orig;
     window._updateMontantCurrent_orig = null;
   }
+  // ✅ Pré-remplir la réduction depuis le dossier (édition de la fiche).
+  if (typeof _prefillReduction === 'function') _prefillReduction(record.patient || {});
   if (typeof calcFicheTotal === 'function') calcFicheTotal();
 
   // Bandeau d'édition sur la fiche d'accueil
