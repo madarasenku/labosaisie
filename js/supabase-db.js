@@ -1398,15 +1398,15 @@ async function _saveRecordImpl(type) {
       newMontant = montant;
     }
 
-    // ✅ Réduction : le contrôle est pré-rempli en édition. On réinscrit la
-    //    remise (+ auteur) sur le patient et le montant du dossier devient le
-    //    NET (brut − remise), borné ≥ 0. Sans ça, l'enregistrement des résultats
-    //    recalculerait le brut et effacerait la réduction accordée à la facture.
+    // ✅ Ajustement : le contrôle est pré-rempli en édition. On réinscrit
+    //    l'ajustement signé (+ auteur) et le montant du dossier devient le NET
+    //    (brut + ajustement), borné ≥ 0. Sans ça, l'enregistrement des résultats
+    //    recalculerait le brut et effacerait l'ajustement accordé à la facture.
     if (typeof _appliquerRemisePatient === 'function') {
-      const _rem = _appliquerRemisePatient(p, newMontant);
-      newMontant = Math.max(0, newMontant - _rem);
-    } else if (p && Number(p.remise_montant) > 0) {
-      newMontant = Math.max(0, newMontant - Number(p.remise_montant));
+      const _aj = _appliquerRemisePatient(p, newMontant);
+      newMontant = Math.max(0, newMontant + _aj);
+    } else if (p && Number(p.remise_montant)) {
+      newMontant = Math.max(0, newMontant + Number(p.remise_montant));
     }
 
     // ✅ v13.34 — Modifier résultats : ne touche QUE les résultats, montant gelé
@@ -1522,12 +1522,12 @@ async function _saveRecordImpl(type) {
     // au lieu d'additionner à l'ancien total : évite l'accumulation si on
     // ré-enregistre le même type plusieurs fois.
     let newMontant = Object.values(newRes._montants).reduce((s, m) => s + (Number(m) || 0), 0);
-    // ✅ Réduction : net = brut − remise (contrôle pré-rempli en édition).
+    // ✅ Ajustement : net = brut + ajustement signé (contrôle pré-rempli en édition).
     if (typeof _appliquerRemisePatient === 'function') {
-      const _r = _appliquerRemisePatient(p, newMontant);
-      newMontant = Math.max(0, newMontant - _r);
-    } else if (p && Number(p.remise_montant) > 0) {
-      newMontant = Math.max(0, newMontant - Number(p.remise_montant));
+      const _aj = _appliquerRemisePatient(p, newMontant);
+      newMontant = Math.max(0, newMontant + _aj);
+    } else if (p && Number(p.remise_montant)) {
+      newMontant = Math.max(0, newMontant + Number(p.remise_montant));
     }
 
     const saved = await updateRecordRemote(existingDossier.id, {
@@ -1559,13 +1559,13 @@ async function _saveRecordImpl(type) {
       newRes._montants[otherType] = data.montant;
     });
 
-    // ✅ Montant = total du dossier (somme de tous les types) − réduction, net ≥ 0.
+    // ✅ Montant = total du dossier (somme de tous les types) + ajustement, net ≥ 0.
     let montantDossier = Object.values(newRes._montants).reduce((s, m) => s + (Number(m) || 0), 0);
     if (typeof _appliquerRemisePatient === 'function') {
-      const _r = _appliquerRemisePatient(p, montantDossier);
-      montantDossier = Math.max(0, montantDossier - _r);
-    } else if (p && Number(p.remise_montant) > 0) {
-      montantDossier = Math.max(0, montantDossier - Number(p.remise_montant));
+      const _aj = _appliquerRemisePatient(p, montantDossier);
+      montantDossier = Math.max(0, montantDossier + _aj);
+    } else if (p && Number(p.remise_montant)) {
+      montantDossier = Math.max(0, montantDossier + Number(p.remise_montant));
     }
     const saved = await insertRecordRemote({
       patient: p, type: 'Dossier',

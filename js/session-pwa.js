@@ -524,7 +524,10 @@ function calcMonnaie() {
   const insuffEl    = document.getElementById('pm-insuffisant');
   const btnValider  = document.getElementById('pm-btn-valider');
 
-  if (!recu || isNaN(recu)) {
+  // ✅ Un dossier GRATUIT (réduction 100 % → montant 0) est encaissable : reçu = 0
+  //   est VALIDE quand le montant demandé est 0. On ne bloque que si le champ est
+  //   vide / non numérique (NaN) — pas sur la valeur 0 elle-même.
+  if (isNaN(recu)) {
     monnaieWrap.style.display = 'none';
     insuffEl.style.display = 'none';
     if (btnValider) btnValider.disabled = true;

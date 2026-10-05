@@ -68,14 +68,20 @@ const doss = {
     Object.keys(modes).filter(k => k !== '_case_bpn')
       .forEach(id => r.check('BPN ' + id, modes[id], 'qual/verrouillé'));
     const libere = await page.evaluate(() => {
+      // Décocher le BPN décoche désormais aussi ses composants (dont toxo).
       const cb = document.getElementById('ex_bpn');
       if (cb) { cb.checked = false; cb.dispatchEvent(new Event('change', { bubbles: true })); }
-      
+      const decocheToxo = !document.getElementById('ex_toxo')?.checked;
+      // Recochée seule (hors forfait), la sérologie ne doit plus être forcée en qual.
+      const t = document.getElementById('ex_toxo');
+      if (t) { t.checked = true; t.dispatchEvent(new Event('change', { bubbles: true })); }
+      if (typeof applyExamLocks === 'function') applyExamLocks();
       if (typeof applyBpnSections === 'function') applyBpnSections();
       const m = document.getElementById('smode_toxo');
-      return m ? (m.disabled ? 'verrouillé' : 'libre') : 'absent';
+      return { decocheToxo, mode: m ? (m.disabled ? 'verrouillé' : 'libre') : 'absent' };
     });
-    r.check('mode redevient libre hors BPN', libere, 'libre');
+    r.check('décocher le BPN décoche ses composants', libere.decocheToxo, true);
+    r.check('mode libre hors BPN (sérologie recochée seule)', libere.mode, 'libre');
 
     r.section('Reconnaissance du bilan prénatal');
     r.check('dossier reconnu comme BPN', await page.evaluate(() => estDossierBPN(getDB().find(x => x.id === 2001))), true);
