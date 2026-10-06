@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://ftwsxdivwoczsreiohok.supabase.co wss://ftwsxdivwoczsreiohok.supabase.co; worker-src 'self'; manifest-src 'self' blob:; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<script>/* anti-clickjacking */(function(){try{if(self!==top){document.documentElement.style.visibility='hidden';top.location=self.location;}}catch(e){try{document.documentElement.style.display='none';}catch(_){}}})();</script>
+<title>CPMI — Page introuvable</title>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PC9zdmc+">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+    background: linear-gradient(135deg, #0b2545 0%, #0891b2 100%); color: #fff; padding: 24px;
+  }
+  .card {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 18px; padding: 32px 28px; max-width: 440px; width: 100%; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  }
+  .code { font-size: 54px; font-weight: 800; letter-spacing: 1px; line-height: 1; }
+  h1 { font-size: 18px; margin: 10px 0 6px; font-weight: 700; }
+  p { font-size: 14px; opacity: .9; margin: 0 0 18px; }
+  a.btn {
+    display: inline-block; background: #fff; color: #0b2545; text-decoration: none;
+    font-weight: 800; padding: 11px 22px; border-radius: 10px; font-size: 14px;
+  }
+  .sub { margin-top: 14px; font-size: 12px; opacity: .75; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="code">404</div>
+    <h1>Page introuvable</h1>
+    <p>Cette adresse n'existe pas dans l'application du laboratoire CPMI.</p>
+    <a class="btn" id="go" href="./login.html">↩ Retour à la connexion</a>
+    <div class="sub">Centre de Protection Mère et Infantile · Grand-Bassam</div>
+  </div>
+  <script>
+    // Redirige vers la connexion à la racine du site (compatible GitHub Pages
+    // « projet » /labosaisie/ comme un domaine propre). Sans script, le bouton
+    // relatif ci-dessus reste cliquable.
+    (function () {
+      try {
+        var base = location.hostname.indexOf('github.io') !== -1
+          ? '/' + (location.pathname.split('/')[1] || '') + '/'
+          : '/';
+        var dest = base + 'login.html';
+        var go = document.getElementById('go');
+        if (go) go.setAttribute('href', dest);
+        setTimeout(function () { location.replace(dest); }, 2500);
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

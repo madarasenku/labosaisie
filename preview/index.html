@@ -1,0 +1,2856 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<!-- ✅ v13.216 — En-têtes de sécurité posés en <meta> (GitHub Pages n'autorise
+     pas d'en-têtes HTTP personnalisés). CSP : tout en same-origin sauf l'API
+     Supabase ; 'unsafe-inline' requis par les ~390 gestionnaires onclick= et
+     styles inline existants. data:/blob: couvrent favicon, QR, manifest PWA et
+     le SVG→PNG d'impression. frame-ancestors/X-Frame-Options ne sont pas
+     posables en <meta> → anti-iframe en JS juste dessous. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://ftwsxdivwoczsreiohok.supabase.co wss://ftwsxdivwoczsreiohok.supabase.co; worker-src 'self'; manifest-src 'self' blob:; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<script>/* anti-clickjacking : hors iframe normalement ; si encadré, on casse le cadre, sinon on masque */(function(){try{if(self!==top){document.documentElement.style.visibility='hidden';top.location=self.location;}}catch(e){try{document.documentElement.style.display='none';}catch(_){}}})();</script>
+<title>CPMI — Centre de Protection Mère et Infantile · Laboratoire</title>
+<!-- ✅ v13.34 — PWA : installation sur écran d'accueil, thème, iOS -->
+<meta name="theme-color" content="#0b2545">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CPMI Labo">
+<meta name="description" content="Laboratoire d'analyses médicales — CPMI Grand-Bassam. Saisie, historique, caisse et statistiques.">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
+<link id="pwa-manifest" rel="manifest">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.230">
+<!-- ✅ v13.69 — BIBLIOTHÈQUES HÉBERGÉES LOCALEMENT (dossier vendor/)
+     Auparavant chargées depuis cdnjs / jsdelivr. Deux raisons du changement :
+       1. Sécurité — un CDN compromis pouvait injecter du code arbitraire dans
+          une application médicale qui garde le jeton de session en localStorage.
+          Aucun hash SRI n'était posé. En same-origin, la question disparaît.
+       2. Disponibilité — une première visite pendant une coupure CDN donnait
+          une application cassée. Le labo travaille avec une connexion instable.
+     Versions figées, identiques à celles servies auparavant par le CDN.
+     Pour mettre à jour : npm pack <paquet>@<version>, copier le bundle UMD
+     dans vendor/, puis bumper CACHE dans sw.js. -->
+<script src="./vendor/exceljs-4.4.0.min.js?v=13.230"></script>
+<script src="./vendor/chart-4.4.1.umd.js?v=13.230"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.230"></script>
+<script src="./vendor/jspdf-2.5.1.umd.min.js?v=13.230"></script>
+<script src="./vendor/jspdf-autotable-3.8.2.min.js?v=13.230"></script>
+<!-- ✅ v13.53 — Générateur QR intégré (fonctionne hors-ligne, sans CDN) -->
+<script src="./js/qr-generator.js?v=13.230"></script>
+<link rel="stylesheet" href="./css/app.css?v=13.230">
+</head>
+<body>
+<!-- ✅ v13.138 — Badge de version : permet de vérifier d'un coup d'œil quelle
+     version tourne réellement (diagnostic « cache périmé »). Cliquer force la
+     purge des caches + service worker et recharge proprement. -->
+<div id="badge-version" title="Version en cours — cliquer pour forcer la mise à jour"
+     onclick="forcerMiseAJour()"
+     style="position:fixed;bottom:8px;right:8px;z-index:99999;background:rgba(17,24,28,.82);
+            color:#fff;font:600 10.5px/1 system-ui,sans-serif;padding:5px 9px;border-radius:99px;
+            cursor:pointer;letter-spacing:.03em;user-select:none;opacity:.72"></div>
+<script>
+  // ✅ v13.171 — Le badge dérive la version du ?v= des actifs (app.css), au lieu
+  //   d'une constante codée en dur qu'on oubliait de bumper : le badge restait
+  //   figé (« v13.152 ») alors que l'app tournait en réalité sur une version plus
+  //   récente. Le ?v= vaut TOUJOURS APP_VERSION (garanti par tests/deploiement).
+  window.APP_VERSION_UI = (function () {
+    try {
+      var el = document.querySelector('link[rel="stylesheet"][href*="?v="]')
+            || document.querySelector('script[src*="?v="]');
+      var u = el && (el.getAttribute('href') || el.getAttribute('src') || '');
+      var m = u && u.match(/\?v=([0-9.]+)/);
+      return m ? m[1] : '?';
+    } catch (e) { return '?'; }
+  })();
+  (function () {
+    var b = document.getElementById('badge-version');
+    if (b) b.textContent = 'v' + window.APP_VERSION_UI;
+  })();
+  // Purge totale : caches + service workers, puis rechargement sans cache.
+  async function forcerMiseAJour() {
+    try {
+      if (window.caches) { var ks = await caches.keys(); await Promise.all(ks.map(function (k) { return caches.delete(k); })); }
+      if (navigator.serviceWorker) {
+        var rs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(rs.map(function (r) { return r.unregister(); }));
+      }
+    } catch (e) {}
+    location.replace(location.pathname + '?maj=' + Date.now());
+  }
+</script>
+
+<!-- Canvas arrière-plan animé CPMI -->
+<canvas id="cpmi-bg-canvas"></canvas>
+
+<script src="./js/pwa-manifest.js?v=13.230"></script>
+
+  <div id="record-preview" class="record-preview"></div>
+
+<div id="app-root">
+<div id="offline-banner" style="display:none;background:#b91c1c;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:600;position:sticky;top:0;z-index:900">
+  ⚠ Hors ligne — vos saisies seront enregistrées localement puis synchronisées au retour de la connexion.
+</div>
+<div id="sync-banner" style="display:none;background:#b45309;color:#fff;text-align:center;padding:6px 12px;font-size:13px;font-weight:600;position:sticky;top:0;z-index:899">
+  <span id="sync-banner-label">⏳ Enregistrements en attente de synchronisation</span>
+  <button onclick="flushSyncQueue()" style="margin-left:10px;background:#fff;color:#b45309;border:none;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700;cursor:pointer">Synchroniser maintenant</button>
+</div>
+
+<!-- ✅ v13.43 — Palette de recherche globale (Ctrl+K / ⌘K) -->
+<div id="cmdk-backdrop" onclick="if(event.target===this)closeCmdK()">
+  <div id="cmdk-panel" role="dialog" aria-modal="true" aria-label="Recherche rapide">
+    <div id="cmdk-search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="cmdk-input" placeholder="Rechercher un patient, un dossier, un numéro…" autocomplete="off" spellcheck="false"
+        oninput="cmdkRender()" onkeydown="cmdkKeydown(event)">
+      <kbd id="cmdk-esc">ESC</kbd>
+    </div>
+    <div id="cmdk-results"></div>
+    <div id="cmdk-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> naviguer</span>
+      <span><kbd>↵</kbd> ouvrir</span>
+      <span><kbd>ESC</kbd> fermer</span>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 64 64" width="26" height="26" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="30" fill="rgba(255,255,255,0.12)"/>
+        <path d="M32 16c-5.5 0-10 4.2-10 10.5 0 4.8 2.9 9 7 11.3v3.4c-4.5 1-8 3.6-9.4 7h25c-1.4-3.5-5-6-9.6-7v-3.4c4.1-2.3 7-6.5 7-11.3C42 20.2 37.5 16 32 16z" fill="#fff" opacity="0.95"/>
+        <circle cx="32" cy="14" r="3.4" fill="#fff" opacity="0.95"/>
+        <path d="M27 12.5c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85"/>
+        <g opacity="0.9">
+          <rect x="46" y="40" width="3.2" height="11" rx="1.2" fill="#00b4d8"/>
+          <rect x="41.4" y="44.4" width="11" height="3.2" rx="1.2" fill="#00b4d8"/>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">CPMI</div>
+      <div class="logo-sub">Centre de Protection Mère et Infantile · Grand-Bassam</div>
+    </div>
+  </div>
+  <!-- Badge utilisateur hors de la nav pour éviter qu'il scrolle sur mobile -->
+  <span id="user-badge" style="font-size:12px;opacity:.85;margin-right:6px;white-space:nowrap"></span>
+  <!-- ✅ v13.201 — Bouton menu (mobile) : ouvre la nav complète en panneau
+       déroulant. Sur téléphone, la nav primaire vit dans la barre d'onglets. -->
+  <button id="mobile-menu-btn" onclick="toggleMobileMenu(this)" aria-label="Menu" aria-expanded="false">⋯</button>
+  <nav>
+    <button class="nav-btn" onclick="openCmdK()" title="Recherche rapide (Ctrl+K)" aria-label="Recherche rapide" style="display:flex;align-items:center;gap:5px">🔍 <kbd style="font-size:9px;font-weight:700;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:1px 5px;letter-spacing:.5px">⌘K</kbd></button>
+    <button id="btn-nav-accueil" class="nav-btn" data-view="accueil" onclick="showView('accueil')" style="display:none">🏠 Accueil</button>
+    <button class="nav-btn active" data-view="saisie" onclick="showView('saisie')">Nouvelle saisie</button>
+    <button id="btn-nav-historique" class="nav-btn" data-view="historique" onclick="showView('historique')">Historique<span id="hist-badge" class="nav-badge" style="display:none"></span></button>
+    <button class="nav-btn" data-view="stats" onclick="showView('stats')">📊 Statistiques</button>
+    <button id="btn-nav-caisse" class="nav-btn" data-view="caisse" onclick="showView('caisse')">💰 Caisse</button>
+    <button id="btn-nav-cahier" class="nav-btn" data-view="cahier" onclick="ouvrirCahier('jaune')" style="display:none">📒 Cahier jaune</button>
+    <button id="btn-nav-cahier-noir" class="nav-btn" data-view="cahier" onclick="ouvrirCahier('noir')" style="display:none">📓 Caisse noire</button>
+    <button id="btn-nav-users" class="nav-btn" data-view="comptes" onclick="showView('comptes')" style="display:none">👤 Comptes</button>
+    <button class="nav-btn" onclick="exportAllExcel()">⬇ Exporter tout</button>
+    <button id="btn-install-pwa" class="nav-btn" onclick="installPWA()" title="Installer l'application sur cet appareil" style="display:none;background:rgba(255,255,255,.25);align-items:center;gap:5px">📲 Installer</button>
+    <button class="nav-btn" onclick="toggleDarkMode()" id="btn-dark-mode" title="Mode sombre/clair" aria-label="Basculer mode sombre ou clair" style="font-size:16px;padding:5px 10px">🌙</button>
+    <button class="nav-btn" onclick="ouvrirChangerMdp()" title="Changer mon mot de passe">🔑 Mot de passe</button>
+    <button class="nav-btn logout-btn" onclick="doLogout()" title="Se déconnecter">⎋ Déconnexion</button>
+    <a class="nav-btn" href="./confidentialite.html" title="Confidentialité &amp; protection des données" style="font-size:15px;padding:5px 10px;text-decoration:none;display:inline-flex;align-items:center" aria-label="Confidentialité et protection des données">🔒</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ════════ ACCUEIL / TABLEAU DE BORD (Kiosque — admin) ════════ -->
+<style>
+#view-accueil{max-width:1000px;margin:0 auto;padding:6px 0 30px}
+#view-accueil .kio-head{text-align:center;margin:10px 0 24px}
+#view-accueil .kio-head h1{font-size:26px;font-weight:800;color:var(--text-label);margin:0}
+#view-accueil .kio-head p{color:var(--text-muted);font-size:14px;margin:6px 0 0}
+#view-accueil .kio-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+#view-accueil .kio-tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:14px;
+  min-height:150px;padding:20px;border-radius:20px;border:0;color:#fff;text-align:left;cursor:pointer;
+  box-shadow:0 6px 20px -8px rgba(11,37,69,.35);transition:transform .15s,box-shadow .15s;font-family:inherit}
+#view-accueil .kio-tile:hover{transform:translateY(-3px);box-shadow:0 12px 26px -10px rgba(11,37,69,.45)}
+#view-accueil .kio-tile:active{transform:translateY(-1px)}
+#view-accueil .kio-tile .ic{font-size:34px;line-height:1}
+#view-accueil .kio-tile b{font-size:19px;font-weight:800;display:block}
+#view-accueil .kio-tile span{font-size:12.5px;opacity:.93;font-weight:500;display:block;margin-top:2px}
+#view-accueil .kio-tile .badge{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.22);
+  border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700}
+#view-accueil .kt1{background:linear-gradient(135deg,#0b2545,#0096c7)}
+#view-accueil .kt2{background:linear-gradient(135deg,#0787b3,#00b4d8)}
+#view-accueil .kt3{background:linear-gradient(135deg,#1a6a4f,#2bb583)}
+#view-accueil .kt4{background:linear-gradient(135deg,#b45309,#f59e0b)}
+#view-accueil .kt5{background:linear-gradient(135deg,#b0155f,#e11d76)}
+#view-accueil .kt6{background:linear-gradient(135deg,#334155,#64748b)}
+#view-accueil .kio-foot{margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:14px 20px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(11,37,69,.06)}
+#view-accueil .kio-foot .s{display:flex;flex-direction:column;gap:2px}
+#view-accueil .kio-foot .s .n{font-size:24px;font-weight:800;line-height:1}
+#view-accueil .kio-foot .s .k{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+@media(max-width:760px){#view-accueil .kio-tiles{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){#view-accueil .kio-tiles{grid-template-columns:1fr}#view-accueil .kio-head h1{font-size:22px}}
+</style>
+<div id="view-accueil" style="display:none">
+  <div class="kio-head">
+    <h1 id="kio-hello">Tableau de bord</h1>
+    <p id="kio-date"></p>
+  </div>
+  <div class="kio-tiles">
+    <button class="kio-tile kt1" onclick="showView('historique')">
+      <span class="badge" id="kio-badge-jour">—</span>
+      <span class="ic">🗂️</span>
+      <span><b>Dossiers du jour</b><span>Historique · consulter, imprimer</span></span>
+    </button>
+    <button class="kio-tile kt2" onclick="showView('saisie')">
+      <span class="ic">🧾</span>
+      <span><b>Nouvelle saisie</b><span>Réception, résultats d'un patient</span></span>
+    </button>
+    <button class="kio-tile kt5" onclick="showView('saisie');if(typeof ouvrirGrilleNFS==='function')ouvrirGrilleNFS()">
+      <span class="ic">📋</span>
+      <span><b>Saisie en série</b><span>Un examen, plusieurs patients</span></span>
+    </button>
+    <button class="kio-tile kt3" onclick="showView('caisse')">
+      <span class="badge" id="kio-badge-caisse">—</span>
+      <span class="ic">💰</span>
+      <span><b>Caisse</b><span>Encaissements, clôture, registre</span></span>
+    </button>
+    <button class="kio-tile kt4" onclick="showView('stats')">
+      <span class="ic">📊</span>
+      <span><b>Statistiques</b><span>Activité, recettes, examens</span></span>
+    </button>
+    <button class="kio-tile kt6" onclick="showView('comptes')">
+      <span class="ic">⚙️</span>
+      <span><b>Comptes &amp; réglages</b><span>Utilisateurs, tarifs, prescripteurs</span></span>
+    </button>
+  </div>
+  <div class="kio-foot">
+    <div class="s"><span class="n" id="kio-stat-jour" style="color:var(--cpmi-deep)">0</span><span class="k">Patients du jour</span></div>
+    <div class="s"><span class="n" id="kio-stat-attente" style="color:var(--cpmi-gold)">0</span><span class="k">À saisir</span></div>
+    <div class="s" style="margin-left:auto"><span class="n" id="kio-stat-recette" style="color:#15803d">0 F</span><span class="k">Recette du jour</span></div>
+  </div>
+
+  <!-- ✅ Bilan mensuel des réductions accordées (admin uniquement) -->
+  <div id="reductions-card" class="card" style="display:none;margin-top:18px;text-align:left">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <h2 style="margin:0;font-size:16px;color:var(--cpmi-deep)">🏷️ Réductions &amp; suppléments</h2>
+      <input type="month" id="reductions-mois" onchange="renderReductionsMois()" style="padding:5px 9px;border:1px solid var(--border);border-radius:8px">
+    </div>
+    <div id="reductions-mois-body"><p style="color:var(--text-muted);font-size:13px">—</p></div>
+  </div>
+</div>
+
+<!-- VIEWS -->
+<div id="view-saisie">
+
+<!-- ✅ v13.201 — Poste Pro (étape 1) : mise en page « une page / 2 colonnes »
+     de la saisie patient (mode fill-all). Styles scopés à body.fill-all-mode,
+     aucun champ ni ID modifié. -->
+<style id="poste-pro-saisie-style">
+  /* Bandeau patient (rappel-patient) façon Poste Pro */
+  body.fill-all-mode #zone-saisie #rappel-patient{
+    align-items:center;gap:14px;padding:14px 18px;border-radius:16px;
+    background:var(--card,#fff);border:1px solid var(--border);
+    box-shadow:0 2px 14px rgba(15,23,42,.07);backdrop-filter:none;
+    position:sticky;top:8px;z-index:6;margin-bottom:18px}
+  body.fill-all-mode #zone-saisie #rappel-patient::before{
+    content:"🩺";width:44px;height:44px;flex:none;border-radius:12px;
+    display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(135deg,#065f46,#0891b2);color:#fff}
+  body.fill-all-mode #zone-saisie #rappel-nom{font-size:16px;font-weight:800}
+  /* Mise en page 2 colonnes des sections cochées (une seule → pleine largeur) */
+  body.fill-all-mode #zone-saisie .panel.active{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));
+    gap:16px;align-items:start}
+  body.fill-all-mode #zone-saisie .panel.active > .card{margin-bottom:0}
+  body.fill-all-mode #zone-saisie .panel.active > .card:hover{transform:none}
+  /* Cartes très larges (antibiogramme, bactériologie) : pleine largeur */
+  body.fill-all-mode #zone-saisie #bac-abg-card,
+  body.fill-all-mode #zone-saisie #panel-bacterio .card{grid-column:1/-1}
+  /* Barre d'enregistrement fixe en bas */
+  body.fill-all-mode #zone-saisie #save-all-bar{
+    position:sticky;bottom:0;z-index:6;margin:18px -4px 0;padding:14px 18px;
+    text-align:left;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    background:var(--card,#fff);border:1px solid var(--border);border-radius:16px;
+    box-shadow:0 -3px 16px rgba(15,23,42,.08)}
+  body.fill-all-mode #zone-saisie #save-all-hint{margin-top:0;flex:1;min-width:180px}
+  /* ── Étape 1b : lignes de résultats en BOÎTES denses (comme la maquette) ── */
+  body.fill-all-mode #zone-saisie .result-table thead{display:none}
+  body.fill-all-mode #zone-saisie .result-table,
+  body.fill-all-mode #zone-saisie .result-table tbody,
+  body.fill-all-mode #zone-saisie .result-table tr,
+  body.fill-all-mode #zone-saisie .result-table td{display:block}
+  body.fill-all-mode #zone-saisie .table-wrap{overflow:visible}
+  body.fill-all-mode #zone-saisie .result-table tbody{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px}
+  body.fill-all-mode #zone-saisie .result-table tr{
+    display:flex;flex-direction:column;gap:3px;padding:8px 11px;border-radius:11px;
+    border:1px solid var(--border);background:var(--bg,#f6f9fc)}
+  body.fill-all-mode #zone-saisie .result-table td{padding:0;border:none;background:none}
+  /* 1re cellule = étiquette du paramètre */
+  body.fill-all-mode #zone-saisie .result-table td:first-child{
+    font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+    color:var(--text-muted);line-height:1.25}
+  /* cellule contenant un champ = boîte de saisie */
+  body.fill-all-mode #zone-saisie .result-table td:has(input,select,textarea){
+    border:1px solid var(--border);border-radius:8px;background:var(--card,#fff);
+    padding:5px 8px;display:flex;align-items:center}
+  body.fill-all-mode #zone-saisie .result-table td input,
+  body.fill-all-mode #zone-saisie .result-table td select,
+  body.fill-all-mode #zone-saisie .result-table td textarea{
+    width:100%;border:none;background:transparent;padding:0;font-weight:700;
+    font-size:13px;font-variant-numeric:tabular-nums}
+  body.fill-all-mode #zone-saisie .result-table td input:focus,
+  body.fill-all-mode #zone-saisie .result-table td select:focus{outline:none;box-shadow:none}
+  /* cellules texte restantes (unité, normales, interprétation) = méta discrète */
+  body.fill-all-mode #zone-saisie .result-table td:not(:first-child):not(:has(input,select,textarea)){
+    font-size:9.5px;color:var(--text-muted);opacity:.85;line-height:1.3}
+  /* colonne « valeurs normales » : liseré discret pour la repérer */
+  body.fill-all-mode #zone-saisie .result-table td:last-child:not(:has(input,select,textarea)){
+    color:var(--faint,#9aa7b4)}
+
+  /* ── Surlignage hors-normes sur la boîte (réutilise .val-hi/.val-lo posés
+       par l'app via onParamInputColored — même détection que les rapports) ── */
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi){
+    border-color:#eaa26a !important;background:rgba(245,158,11,.11)}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo){
+    border-color:#7ab0e6 !important;background:rgba(37,99,235,.11)}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi) input{
+    background:transparent !important;color:#c2560a !important}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo) input{
+    background:transparent !important;color:#2563eb !important}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-hi)::after{
+    content:"▲";color:#b45309;font-size:8.5px;margin-left:5px;flex:none}
+  body.fill-all-mode #zone-saisie .result-table td:has(input.val-lo)::after{
+    content:"▼";color:#1d4ed8;font-size:8.5px;margin-left:5px;flex:none}
+  /* Biochimie : la boîte réagit au badge d'interprétation (i_… posé par
+     onParamInput, même logique que les rapports). */
+  body.fill-all-mode #zone-saisie .result-table tr:has(.interp.hi) td:has(input){
+    border-color:#eaa26a !important;background:rgba(245,158,11,.11)}
+  body.fill-all-mode #zone-saisie .result-table tr:has(.interp.lo) td:has(input){
+    border-color:#7ab0e6 !important;background:rgba(37,99,235,.11)}
+  body.fill-all-mode #zone-saisie .result-table tr:has(.interp.hi) td:has(input) input{color:#c2560a !important}
+  body.fill-all-mode #zone-saisie .result-table tr:has(.interp.lo) td:has(input) input{color:#2563eb !important}
+  body.fill-all-mode #zone-saisie .result-table tr:has(.interp.hi) td:has(input)::after{
+    content:"▲";color:#b45309;font-size:8.5px;margin-left:5px;flex:none}
+  body.fill-all-mode #zone-saisie .result-table tr:has(.interp.lo) td:has(input)::after{
+    content:"▼";color:#1d4ed8;font-size:8.5px;margin-left:5px;flex:none}
+
+  /* ── Saisie en série (grille) — au format maquette « Série » ── */
+  #grille-serie #grille-scroll{border-radius:14px !important;box-shadow:0 2px 14px rgba(15,23,42,.07)}
+  /* En-têtes clairs en majuscules (au lieu du bandeau foncé) */
+  #grille-serie thead th{background:var(--surface-2,#f4f7fa) !important;color:var(--text-muted) !important;
+    text-transform:uppercase !important;font-weight:700 !important;letter-spacing:.4px !important;
+    border-bottom:1px solid var(--border) !important}
+  #grille-serie thead th.gr-h1{color:var(--cpmi-deep) !important;border-left:2px solid var(--border) !important}
+  #grille-serie thead th.gr-h2{border-left:1px solid var(--border) !important}
+  #grille-serie thead th.gr-corner{background:var(--surface-2,#f4f7fa) !important;color:var(--cpmi-deep) !important}
+  /* Cellules encadrées arrondies + anneau de focus (comme .grid .cell) */
+  #grille-serie tbody input, #grille-serie tbody select{
+    border:1px solid var(--border) !important;border-radius:8px !important;background:var(--card,#fff) !important}
+  #grille-serie tbody input:focus, #grille-serie tbody select:focus{
+    outline:none !important;border-color:var(--cpmi-mid,#0891b2) !important;
+    box-shadow:0 0 0 3px var(--accent-light) !important}
+  #grille-serie tbody tr:hover td:not([style*="sticky"]){background:rgba(8,145,178,.05)}
+  #grille-serie tbody tr:hover td[style*="sticky"]{background:var(--accent-light) !important}
+  /* Bouton « Enregistrer les cochés » en vert (comme .btn go de la maquette) */
+  #grille-serie #grille-save{background:linear-gradient(135deg,#15803d,#0aa06f) !important;
+    border:none !important;color:#fff !important}
+
+  @media (max-width:760px){
+    body.fill-all-mode #zone-saisie .panel.active{grid-template-columns:1fr}
+    body.fill-all-mode #zone-saisie #rappel-patient{position:static}
+  }
+</style>
+
+<!-- ✅ v13.35 — Bandeau paiement non effectué -->
+<div id="bandeau-paiement">
+  🔒 Paiement non effectué — la saisie des résultats est bloquée
+  <button class="btn-payer" onclick="showView('caisse')">💰 Aller à la caisse</button>
+</div>
+
+  <!-- ✅ v13.34 — Tableau de bord synthétique du jour -->
+  <div id="dashboard-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
+
+  <!-- ✅ v13.43 — Alerte dossiers en attente depuis plus de 48 h -->
+  <div id="alerte-anciens" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:12px;padding:11px 14px;margin-bottom:14px"></div>
+
+  <!-- ✅ v13.130 — Grille de saisie en série (NFS) -->
+  <div id="grille-serie" style="display:none"></div>
+
+  <!-- ═══════════════════════════════════════════════════
+       FICHE D'IDENTIFICATION PATIENT & PRESCRIPTION
+       ═══════════════════════════════════════════════════ -->
+  <!-- ✅ v13.201 — Poste Pro « Réception » : polish scopé de la fiche
+       (champs en boîtes, libellés maquette, récapitulatif/total collant). -->
+  <style id="poste-pro-reception-style">
+    #fiche-identification .form-group > label{font-size:10px;font-weight:700;
+      text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)}
+    #fiche-identification .form-group input:not([type=checkbox]):not([type=radio]),
+    #fiche-identification .form-group select,
+    #fiche-identification .form-group textarea{border-radius:9px}
+    /* Récapitulatif / total : collant en bas comme la maquette */
+    #fiche-identification .fiche-total-bar{position:sticky;bottom:10px;z-index:4;
+      box-shadow:0 6px 18px rgba(11,37,69,.14)}
+    /* ✅ v13.201 — Registre du jour : look « document » bordé de la maquette */
+    #registre-apercu .result-table{border:1px solid var(--border);border-collapse:collapse;width:100%}
+    #registre-apercu .result-table thead th{background:var(--bg);text-transform:uppercase;
+      font-size:10px;letter-spacing:.4px;color:var(--text-muted);
+      border:1px solid var(--border);padding:7px 9px}
+    #registre-apercu .result-table td{border:1px solid var(--border);padding:7px 9px;vertical-align:top}
+  </style>
+
+  <div class="card card-fiche" id="fiche-identification">
+    <div class="card-title" id="fiche-identif-title" style="font-size:13px">
+      🗂 FICHE D'IDENTIFICATION PATIENT & DEMANDE D'ANALYSES
+      <button class="btn" onclick="ouvrirGrilleNFS()" style="margin-left:auto;padding:4px 12px;font-size:12px;flex-shrink:0;background:var(--cpmi-mid);color:#fff" title="Saisir un même paramètre pour plusieurs patients d'affilée (NFS, CRP, glycémie…)">📋 Saisie en série</button>
+      <button class="btn btn-outline" onclick="newPatient()" style="padding:4px 12px;font-size:12px;flex-shrink:0">👤 Nouveau patient</button>
+    </div>
+
+    <!-- Infos patient -->
+    <div class="form-grid">
+      <div class="form-group">
+        <label>N° dossier</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="p_dossier" readonly style="background:var(--bg);font-weight:700;color:var(--cpmi-deep);cursor:default;flex:1;font-size:15px">
+          <button type="button" onclick="regenDossier()" title="Nouveau N° de dossier" aria-label="Générer un nouveau numéro de dossier" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:16px">↺</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Date de prélèvement<span class="req">*</span></label>
+        <input type="date" id="p_date" onchange="regenDossier()" title="Changer la date régénère automatiquement le numéro de dossier pour ce mois">
+      </div>
+      <div class="form-group">
+        <label>Nom complet<span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="text" id="p_nom" placeholder="NOM ET PRÉNOM" autocomplete="off"
+                 style="text-transform:uppercase"
+                 oninput="forcerMajuscule(this);onPatientNameInput();checkPatientExistant()"
+                 onblur="setTimeout(closePatientDropdown,200)"
+                 onkeydown="onPatientNameKey(event)">
+          <div id="patient-suggestions" style="display:none;position:absolute;z-index:2000;left:0;right:0;top:calc(100% + 2px);background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.13);max-height:260px;overflow-y:auto"></div>
+        </div>
+        <div id="patient-existant-notif" style="display:none;margin-top:4px;padding:6px 10px;background:#fef9c3;border:1px solid #fde047;border-radius:6px;font-size:12px;color:#854d0e"></div>
+      </div>
+      <div class="form-group">
+        <label>Âge</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" id="p_age" placeholder="ex. 34" min="0" max="120" step="any"
+            style="flex:2" oninput="onAgeInput()">
+          <select id="p_age_unit" title="Unité de l'âge" onchange="onAgeInput()"
+            style="flex:1;font-size:12px">
+            <option value="ans">ans</option>
+            <option value="mois">mois</option>
+            <option value="jours">jours</option>
+          </select>
+        </div>
+        <div id="p_age_label" style="font-size:11px;color:var(--text-muted);margin-top:3px"></div>
+      </div>
+      <div class="form-group">
+        <label>Sexe</label>
+        <select id="p_sexe" onchange="updateAllRefs();updateMontantCurrent()">
+          <option value="">— Choisir —</option>
+          <option value="M">Masculin</option>
+          <option value="F">Féminin</option>
+        </select>
+      </div>
+      <!-- ✅ v13.201 — Le poids se saisit dans la carte DFG (calcul de clairance),
+           avec les autres données du calcul. Champ conservé ici, masqué, pour la
+           persistance (patient.poids) et le pré-remplissage des dossiers. -->
+      <input type="hidden" id="p_poids">
+      <div class="form-group">
+        <label>Médecin prescripteur</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="p_prescripteur_id" onchange="onPrescripteurChange()" style="flex:1">
+            <option value="">— Choisir un prescripteur —</option>
+          </select>
+          <button type="button" onclick="showAddPrescripteur()" title="Ajouter un prescripteur" aria-label="Ajouter un prescripteur" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:14px">➕</button>
+        </div>
+        <input type="text" id="p_medecin" placeholder="OU SAISIR MANUELLEMENT..." style="margin-top:6px;font-size:12px;text-transform:uppercase" list="medecin-datalist" oninput="forcerMajuscule(this);updateMontantCurrent()">
+        <datalist id="medecin-datalist"></datalist>
+      </div>
+      <div class="form-group">
+        <label>Service / provenance</label>
+        <select id="p_service">
+          <option value="">— Choisir —</option>
+          <option>Consultation externe</option>
+          <option>Urgences</option>
+          <option>Hospitalisation</option>
+          <option>Maternité</option>
+          <option>Pédiatrie</option>
+          <option>Chirurgie</option>
+          <option>Médecine interne</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Téléphone patient</label>
+        <input type="tel" id="p_telephone" placeholder="ex. 07 00 00 00 00">
+      </div>
+      <div class="form-group full">
+        <label>Renseignements cliniques</label>
+        <textarea id="p_clinique" placeholder="Signes cliniques, diagnostic présomptif, motif de la demande..." rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- Séparateur -->
+    <div style="margin:18px -24px 18px;border-top:2px dashed var(--border)"></div>
+
+    <!-- Examens commandés avec prix -->
+    <div style="font-size:11.5px;font-weight:800;color:var(--cpmi-deep);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">
+      📋 Examens demandés & Facturation
+    </div>
+
+    <!-- ✅ v13.28 — Modèles rapides : cochent d'un clic un ensemble d'examens fréquents -->
+    <div id="modeles-rapides-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;padding:10px 12px;background:var(--accent-light);border:1px solid var(--border);border-radius:var(--radius)">
+      <span style="font-size:11px;font-weight:800;color:var(--cpmi-deep);align-self:center;margin-right:4px">⚡ Modèles rapides :</span>
+      <button type="button" class="btn-modele" onclick="appliquerModele('nfs')">🩸 NFS complète</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('renal')">💧 Bilan rénal</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('hepatique')">🫀 Bilan hépatique</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('lipidique')">🧈 Bilan lipidique</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('infectieux')">🦠 Bilan infectieux</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('groupe')">🩸 Groupe sanguin</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('ecbu')">🧫 ECBU</button>
+      <button type="button" class="btn-modele" onclick="appliquerModele('serologie')">💉 Sérologie</button>
+      <button type="button" class="btn-modele btn-modele-clear" onclick="decocherTousExamens()">✕ Tout décocher</button>
+    </div>
+
+    <div id="fiche-examens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px"></div>
+
+    <!-- Total facture -->
+    <div class="fiche-total-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:14px 18px;background:linear-gradient(135deg,var(--accent-light),#e0f2fe);border-radius:var(--radius);border:1.5px solid var(--cpmi-mid)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="patient-tranche" style="font-size:12px;background:rgba(255,255,255,.8);padding:3px 12px;border-radius:99px;border:1px solid var(--border);color:var(--cpmi-deep);font-weight:700"></span>
+        <span id="fiche-examens-count" style="font-size:12.5px;color:var(--text-muted)">0 examen sélectionné</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Total facture :</span>
+        <span id="montant-preview" style="font-weight:800;color:var(--cpmi-deep);font-size:22px;letter-spacing:-.5px" data-montant="0">0 FCFA</span>
+      </div>
+    </div>
+
+    <!-- ✅ Réduction de prix (prix verrouillés) : montant fixe OU pourcentage.
+         L'auteur (compte connecté) est enregistré sur le dossier et comptabilisé
+         dans le bilan mensuel de l'admin. -->
+    <div id="remise-bloc" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:8px;padding:10px 18px;border:1.5px dashed #cbd5e1;border-radius:var(--radius)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--cpmi-deep)">🏷️ Ajustement</span>
+        <select id="remise-type" onchange="calcFicheTotal()" style="padding:5px 8px">
+          <option value="aucune">Aucun</option>
+          <option value="remise_montant">Réduction (FCFA)</option>
+          <option value="remise_pct">Réduction (%)</option>
+          <option value="supp_montant">Supplément (FCFA)</option>
+          <option value="supp_pct">Supplément (%)</option>
+        </select>
+        <input type="number" id="remise-valeur" min="0" value="0" step="100" oninput="calcFicheTotal()"
+          style="width:110px;display:none" placeholder="0">
+        <input type="text" id="remise-demandeur" maxlength="80"
+          placeholder="Demandé par (nom)" title="Nom de la personne qui a demandé la réduction/le supplément (pas forcément l'agent)"
+          style="width:190px;display:none">
+        <span id="remise-apercu" style="font-size:12.5px;font-weight:700"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Net à payer :</span>
+        <span id="net-preview" style="font-weight:800;color:#15803d;font-size:20px" data-net="0">0 FCFA</span>
+      </div>
+    </div>
+
+    <!-- Bouton démarrer saisie -->
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="demarrerSaisie()" style="font-size:14px;padding:11px 24px">
+        ✏️ Démarrer la saisie des résultats
+      </button>
+      <button class="btn btn-outline" onclick="enregistrerFicheIdentif()" style="font-size:13px">
+        💾 Enregistrer sans saisie
+      </button>
+      <!-- ✅ v13.130 — Réception seule : exclure ce dossier de la saisie en série -->
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer" title="Le dossier n'apparaîtra pas dans la grille de saisie en série (à cocher pour un simple enregistrement de réception)">
+        <input type="checkbox" id="chk-reception-seule" style="width:15px;height:15px">
+        Réception seule (exclure de la saisie en série)
+      </label>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       ZONE DE SAISIE DES RÉSULTATS (masquée au départ)
+       ═══════════════════════════════════════════════════ -->
+  <div id="zone-saisie" style="display:none">
+
+    <!-- ✅ v13.28 — Alerte valeurs critiques (non bloquante, mise à jour en direct) -->
+    <div id="critical-alert-box"></div>
+
+    <!-- Rappel patient compact -->
+    <div id="rappel-patient" style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,.85);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;flex-wrap:wrap;backdrop-filter:blur(4px)">
+      <span style="font-size:12px;color:var(--text-muted)">Patient :</span>
+      <strong id="rappel-nom" style="color:var(--cpmi-deep)"></strong>
+      <span id="rappel-dossier" style="font-size:11.5px;background:var(--accent-light);color:var(--cpmi-deep);padding:2px 10px;border-radius:99px;font-weight:700"></span>
+      <span id="rappel-examens" style="font-size:11.5px;color:var(--text-muted)"></span>
+      <button onclick="document.getElementById('zone-saisie').style.display='none';document.getElementById('fiche-identification').style.display=''" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:12.5px;color:var(--cpmi-mid);font-weight:600;font-family:inherit">← Retour à la fiche</button>
+      <div id="rappel-saved-analyses" style="font-size:11px;color:var(--text-muted);margin-top:2px;width:100%"></div>
+    </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('hema')" id="tab-hema"><span class="tab-icon">🩸</span>Hématologie</button>
+    <button class="tab" onclick="switchTab('bio')" id="tab-bio"><span class="tab-icon">🧪</span>Biochimie</button>
+    <button class="tab" onclick="switchTab('bacterio')" id="tab-bacterio"><span class="tab-icon">🦠</span>Bactériologie</button>
+    <button class="tab" onclick="switchTab('sero')" id="tab-sero"><span class="tab-icon">💉</span>Immuno-Sérologie</button>
+    <button class="tab" onclick="switchTab('parasito')" id="tab-parasito"><span class="tab-icon">🔬</span>Parasitologie</button>
+    <button class="tab" onclick="switchTab('gs')" id="tab-gs"><span class="tab-icon">🩸</span>Groupe sanguin</button>
+  </div>
+  <!-- ✅ v13.35 — Bouton enregistrer tout -->
+  <div id="save-all-bar" style="display:none;padding:10px 0 4px;text-align:right">
+    <button id="btn-save-all" class="btn btn-primary" onclick="saveAllTabs()" style="padding:10px 24px;font-size:14px;gap:8px">
+      💾 Enregistrer tous les examens cochés
+    </button>
+    <div id="save-all-hint" style="font-size:11.5px;color:var(--text-muted);margin-top:4px"></div>
+  </div>
+
+  <!-- ===== HÉMATOLOGIE ===== -->
+  <div class="panel active" id="panel-hema">
+    <!-- NFS -->
+    <div class="card" id="sec-nfs">
+      <div class="card-title">🩸 NFS — Numération formule sanguine</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th></tr></thead>
+          <tbody id="hema-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Formule leucocytaire avec valeurs absolues -->
+      <div class="section-label" style="margin-top:16px">Formule leucocytaire</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Paramètre</th><th>% (saisie)</th><th>Valeur absolue</th><th>Valeurs normales</th></tr></thead>
+          <tbody id="hema-fl-body"></tbody>
+        </table>
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">
+        💡 Les valeurs absolues (/µL) sont calculées automatiquement : % × GB / 100
+      </div>
+    </div>
+
+    <!-- Électrophorèse de l'hémoglobine -->
+    <div class="card" id="sec-ephb">
+      <div class="card-title">🔬 Électrophorèse de l'hémoglobine</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Fraction</th><th>%</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead>
+          <tbody id="ephb-body"></tbody>
+        </table>
+      </div>
+      <div class="form-group" style="margin-top:10px">
+        <label>Profil / Conclusion électrophorèse</label>
+        <select id="ephb_profil" style="width:280px">
+          <option value="">— Choisir un profil —</option>
+          <option>Profil AA (Normal)</option>
+          <option>Profil AS (Drépanocytose trait)</option>
+          <option>Profil SS (Drépanocytose homozygote)</option>
+          <option>Profil AC (Trait HbC)</option>
+          <option>Profil SC (Drépanocytose SC)</option>
+          <option>Profil CC (HbC homozygote)</option>
+          <option>β-Thalassémie mineure</option>
+          <option>β-Thalassémie majeure</option>
+          <option>Profil AF (Hb fœtale élevée)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Commentaire électrophorèse</label>
+        <textarea id="ephb_commentaire" placeholder="Commentaire clinique..." rows="2"></textarea>
+      </div>
+    </div>
+
+    <!-- GE / Parasitologie -->
+    <div class="card" id="sec-ge">
+      <div class="card-title">🦟 Goutte épaisse / Parasitologie</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Résultat GE</label>
+          <select id="ge_result">
+            <option value="">—</option>
+            <option>Positif</option>
+            <option>Négatif</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Espèce plasmodiale</label>
+          <select id="ge_espece">
+            <option value="">—</option>
+            <option>Plasmodium falciparum</option>
+            <option>Plasmodium vivax</option>
+            <option>Plasmodium ovale</option>
+            <option>Plasmodium malariae</option>
+            <option>Plasmodium knowlesi</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Parasitémie (%)</label>
+          <input type="number" id="ge_para" step="0.01" min="0" max="100" placeholder="ex: 2.5">
+        </div>
+        <div class="form-group">
+          <label>Densité parasitaire (/µL)</label>
+          <input type="number" id="ge_densite" step="1" min="0" placeholder="ex: 5000">
+        </div>
+        <div class="form-group">
+          <label>Stade parasitaire</label>
+          <select id="ge_stade">
+            <option value="">—</option>
+            <option>Trophozoïtes</option>
+            <option>Gamétocytes</option>
+            <option>Schizontes</option>
+            <option>Formes mixtes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>TDR Paludisme</label>
+          <select id="ge_tdr">
+            <option value="">—</option>
+            <option>Positif</option>
+            <option>Négatif</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observation</label>
+          <input type="text" id="ge_obs" placeholder="Observation...">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveThenNext('Hématologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Hématologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
+        <button class="btn btn-success" onclick="exportSingle('Hématologie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Hématologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('hema')">↺ Effacer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BIOCHIMIE ===== -->
+  <div class="panel" id="panel-bio">
+    <div class="card">
+      <div class="card-title">🧪 Biochimie sanguine</div>
+      <div id="sec-bio-glucides-wrap">
+        <div class="section-label" id="sec-bio-glucides">Glucides</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-glucides-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-rein-wrap">
+        <div class="section-label" id="sec-bio-rein">Fonction rénale</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-rein-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-foie-wrap">
+        <div class="section-label" id="sec-bio-foie">Fonction hépatique</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-foie-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-lipides-wrap">
+        <div class="section-label" id="sec-bio-lipides">Lipides</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-lipides-body"></tbody></table></div>
+      </div>
+      <div id="sec-bio-iono-wrap">
+        <div class="section-label" id="sec-bio-iono">Ionogramme</div>
+        <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-iono-body"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="card" id="sec-bio-fer-wrap">
+      <div class="card-title">🔴 Fer & Hémostase</div>
+      <div class="section-label">Métabolisme du fer</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-fer-body"></tbody></table></div>
+      <div class="section-label" style="margin-top:12px">Coagulation</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-coag-body"></tbody></table></div>
+    </div>
+
+    <div class="card" id="sec-bio-card-wrap">
+      <div class="card-title">❤️ Marqueurs cardiaques</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-card-body"></tbody></table></div>
+    </div>
+
+    <div class="card" id="sec-bio-horm-wrap">
+      <div class="card-title">🧬 Hormones & Vitamines</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-horm-body"></tbody></table></div>
+    </div>
+
+    <div class="card" id="sec-bio-autre-wrap">
+      <div class="card-title">🔬 Autres marqueurs</div>
+      <div class="table-wrap"><table class="result-table"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Unité</th><th>Valeurs normales</th><th>Interprétation</th></tr></thead><tbody id="bio-autre-body"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveThenNext('Biochimie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Biochimie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
+        <button class="btn btn-success" onclick="exportSingle('Biochimie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Biochimie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('bio')">↺ Effacer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BACTÉRIOLOGIE / ECBU ===== -->
+  <div class="panel" id="panel-bacterio">
+
+    <!-- Type de prélèvement -->
+    <div class="card">
+      <div class="card-title" id="sec-bacterio-title">🦠 Bactériologie — ECBU / Prélèvements divers</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Type de prélèvement <span class="req">*</span></label>
+          <select id="bac_type" onchange="adaptBacterioForm()">
+            <option value="ECBU">ECBU (Examen Cytobactériologique des Urines)</option>
+            <option value="Hémoculture">Hémoculture</option>
+            <option value="Coproculture">Coproculture</option>
+            <option value="PG">Prélèvement de gorge</option>
+            <option value="PGU">Prélèvement génito-urinaire</option>
+            <option value="LCR">LCR (Liquide Céphalo-Rachidien)</option>
+            <option value="Pus">Pus / Suppuration</option>
+            <option value="Crachat">Crachat / Expectorations</option>
+            <option value="Plaie">Prélèvement de plaie</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Site anatomique / Précision</label>
+          <input type="text" id="bac_site" placeholder="ex. Urines du matin, plaie du pied gauche...">
+        </div>
+        <div class="form-group">
+          <label>Date & heure de prélèvement</label>
+          <input type="datetime-local" id="bac_datetime">
+        </div>
+      </div>
+    </div>
+
+    <!-- MACROSCOPIE -->
+    <div class="card" id="bac-macro-card">
+      <div class="card-title">🔍 Macroscopie</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Aspect</label>
+          <select id="bac_aspect">
+            <option value="">—</option>
+            <option>Limpide</option>
+            <option>Trouble</option>
+            <option>Légèrement trouble</option>
+            <option>Hématique</option>
+            <option>Purulent</option>
+            <option>Visqueux</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Couleur</label>
+          <select id="bac_couleur">
+            <option value="">—</option>
+            <option>Jaune claire</option>
+            <option>Jaune foncée</option>
+            <option>Ambrée</option>
+            <option>Rosée / Hématique</option>
+            <option>Incolore</option>
+            <option>Brun-verdâtre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Odeur</label>
+          <select id="bac_odeur">
+            <option value="">—</option>
+            <option>Normale</option>
+            <option>Nauséabonde / Putride</option>
+            <option>Ammoniacale</option>
+            <option>Sucrée</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>pH urinaire</label>
+          <select id="bac_ph">
+            <option value="">—</option>
+            <option>4.5</option><option>5.0</option><option>5.5</option>
+            <option>6.0</option><option>6.5</option><option>7.0</option>
+            <option>7.5</option><option>8.0</option><option>8.5</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÉTAT FRAIS / CYTOLOGIE -->
+    <div class="card">
+      <div class="card-title">🔬 État frais — Cytologie</div>
+      <div class="table-wrap">
+        <table class="result-table" id="etat-frais-table">
+          <thead><tr><th>Élément</th><th>Quantité / Résultat</th><th>Unité</th><th>Interprétation</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Leucocytes</td>
+              <td><input type="number" id="ef_leuco" placeholder="ex. 50000" style="width:110px" oninput="interpretEtatFrais('leuco')"></td>
+              <td>/mm³</td>
+              <td><span id="ef_i_leuco" style="font-weight:600"></span></td>
+            </tr>
+            <tr>
+              <td>Hématies</td>
+              <td><input type="number" id="ef_hematies" placeholder="ex. 5000" style="width:110px" oninput="interpretEtatFrais('hematies')"></td>
+              <td>/mm³</td>
+              <td><span id="ef_i_hematies" style="font-weight:600"></span></td>
+            </tr>
+            <tr>
+              <td>Cellules épithéliales</td>
+              <td><select id="ef_epitheliales" style="width:140px">
+                <option value="">—</option>
+                <option>Absentes</option><option>Rares</option>
+                <option>Modérées</option><option>Nombreuses</option>
+              </select></td>
+              <td></td>
+              <td><span id="ef_i_epi" style="font-size:11px;color:var(--text-muted)"></span></td>
+            </tr>
+            <tr>
+              <td>Cylindres</td>
+              <td><select id="ef_cylindres" style="width:140px">
+                <option value="">Absents</option>
+                <option>Cylindres hyalins</option><option>Cylindres granuleux</option>
+                <option>Cylindres leucocytaires</option><option>Cylindres érythrocytaires</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Cristaux</td>
+              <td><select id="ef_cristaux" style="width:140px">
+                <option value="">Absents</option>
+                <option>Oxalate de calcium</option><option>Acide urique</option>
+                <option>Phosphates</option><option>Cystine</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Bactéries</td>
+              <td><select id="ef_bacteries" style="width:140px">
+                <option value="">—</option>
+                <option>Absentes</option><option>Rares</option>
+                <option>Modérées</option><option>Nombreuses (+)</option>
+                <option>Très nombreuses (++)</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Levures / Champignons</td>
+              <td><select id="ef_levures" style="width:140px">
+                <option value="">—</option>
+                <option>Absentes</option><option>Présentes</option>
+                <option>Nombreuses</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Parasites</td>
+              <td><input type="text" id="ef_parasites" placeholder="ex. Trichomonas..." style="width:200px"></td>
+              <td></td><td></td>
+            </tr>
+            <tr>
+              <td>Spermatozoïdes</td>
+              <td><select id="ef_sperma" style="width:140px">
+                <option value="">—</option>
+                <option>Absents</option><option>Présents</option>
+              </select></td>
+              <td></td><td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="bacteriurie-alert" style="display:none;margin-top:8px;padding:8px 12px;border-radius:var(--radius);font-size:12.5px;font-weight:600"></div>
+    </div>
+
+    <!-- COLORATION DE GRAM -->
+    <div class="card">
+      <div class="card-title">🎨 Coloration de Gram</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Résultat Gram</label>
+          <select id="bac_gram" onchange="updateGramDetail()">
+            <option value="">— Non réalisée —</option>
+            <option value="neg">Négatif — Non réalisé / Pas de germe</option>
+            <option value="coc_G+">Cocci Gram + en amas (Staphylocoques)</option>
+            <option value="coc_G+_ch">Cocci Gram + en chaînettes (Streptocoques)</option>
+            <option value="coc_G+_dp">Cocci Gram + en diplocoque (Pneumocoque)</option>
+            <option value="coc_G-">Cocci Gram − en diplocoque (Méningocoque/Gonocoque)</option>
+            <option value="bac_G+">Bacilles Gram +</option>
+            <option value="bac_G-">Bacilles Gram −</option>
+            <option value="bac_G-_e">Bacilles Gram − entérobactéries</option>
+            <option value="lev">Levures / Filaments</option>
+            <option value="poly">Flore polymorphe</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Abondance</label>
+          <select id="bac_gram_abond">
+            <option value="">—</option>
+            <option>Rares</option><option>Modérés</option>
+            <option>Nombreux (+)</option><option>Très nombreux (++)</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Commentaire Gram</label>
+          <input type="text" id="bac_gram_comment" placeholder="Détail morphologique...">
+        </div>
+      </div>
+    </div>
+
+    <!-- CULTURE -->
+    <div class="card">
+      <div class="card-title">🧫 Culture & Identification</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Résultat culture</label>
+          <select id="bac_culture" onchange="updateCultureFields()">
+            <option value="">—</option>
+            <option value="pos">Positive</option>
+            <option value="neg">Négative / Stérile</option>
+            <option value="contam">Contamination (> 3 germes)</option>
+          </select>
+        </div>
+        <div class="form-group" id="bac-count-field">
+          <label>Numération bactérienne</label>
+          <select id="bac_numeration">
+            <option value="">—</option>
+            <option>&lt; 10³ UFC/mL</option>
+            <option>10³ – 10⁴ UFC/mL</option>
+            <option>10⁴ – 10⁵ UFC/mL</option>
+            <option>≥ 10⁵ UFC/mL (Bactériurie significative)</option>
+          </select>
+        </div>
+        <div class="form-group" id="bac-germe-field">
+          <label>Germe(s) identifié(s)</label>
+          <input type="text" id="bac_germe" placeholder="ex. Escherichia coli, Staphylococcus aureus...">
+        </div>
+        <div class="form-group" id="bac-germe2-field">
+          <label>2ème germe (si poly-microbien)</label>
+          <input type="text" id="bac_germe2" placeholder="2ème germe éventuel...">
+        </div>
+        <div class="form-group" id="bac-milieu-field">
+          <label>Milieux de culture utilisés</label>
+          <input type="text" id="bac_milieux" placeholder="ex. CNA, MacConkey, Sabouraud...">
+        </div>
+        <div class="form-group full">
+          <label>Observations culture</label>
+          <textarea id="bac_obs" rows="2" placeholder="Aspect des colonies, morphologie, résistance naturelle..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANTIBIOGRAMME / ANTIFONGIGRAMME -->
+    <div class="card" id="bac-abg-card">
+      <div class="card-title" id="abg-title-label">💊 Antibiogramme</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button type="button" onclick="setAbgMode('abg')" id="btn-abg-mode" class="btn btn-primary" style="padding:5px 12px;font-size:12px">Antibiogramme</button>
+        <button type="button" onclick="setAbgMode('afg')" id="btn-afg-mode" class="btn btn-outline" style="padding:5px 12px;font-size:12px">Antifongigramme</button>
+        <span style="font-size:11.5px;color:var(--text-muted);align-self:center">S = Sensible · I = Intermédiaire · R = Résistant · N/D = Non déterminé</span>
+      </div>
+      <div class="abg-grid" id="abg-grid"></div>
+      <div class="abg-grid" id="afg-grid" style="display:none"></div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Commentaire antibiogramme</label>
+        <textarea id="bac_abg_comment" rows="2" placeholder="Mécanismes de résistance, antibiotiques de choix recommandés..."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveThenNext('Bactériologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Bactériologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
+        <button class="btn btn-success" onclick="exportSingle('Bactériologie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Bactériologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('bacterio')">↺ Effacer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SÉROLOGIE ===== -->
+  <div class="panel" id="panel-sero">
+    <div class="card">
+      <div class="card-title">💉 Immuno-Sérologie</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Test</th><th>Résultat qualitatif</th><th>Valeur numérique</th><th>Valeurs normales</th><th>Commentaire</th></tr></thead>
+          <tbody id="sero-body"></tbody>
+        </table>
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label>Observations / Commentaires</label>
+        <textarea id="sero_obs" placeholder="Contexte clinique, antécédents vaccinaux, résultats antérieurs..."></textarea>
+      </div>
+    </div>
+
+    <!-- ✅ v13.24 — GS/Rh, CRP et SWF déplacés sur Sérologie/Immuno -->
+    <div class="card" id="sec-gs-hema">
+      <div class="card-title">🩸 Groupe sanguin ABO / Rhésus</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Groupe ABO</label>
+          <select id="gs_abo_hema">
+            <option value="">—</option>
+            <option>A</option><option>B</option><option>AB</option><option>O</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rhésus</label>
+          <select id="gs_rh_hema">
+            <option value="">—</option>
+            <option>Positif (Rh+)</option>
+            <option>Négatif (Rh−)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="sec-crp">
+      <div class="card-title">🔥 CRP — Protéine C-réactive (Latex)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Valeur CRP (mg/L)</label>
+          <select id="crp_valeur" onchange="interpretCRP()">
+            <option value="">—</option>
+            <option value="neg">&lt; 6 mg/L</option>
+            <option value="6">6 mg/L</option>
+            <option value="12">12 mg/L</option>
+            <option value="24">24 mg/L</option>
+            <option value="48">48 mg/L</option>
+            <option value="96">96 mg/L</option>
+            <option value="192">192 mg/L</option>
+            <option value="384">≥ 384 mg/L</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Interprétation</label>
+          <div id="crp_interp" style="padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-weight:600;min-height:38px;display:flex;align-items:center">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="sec-widal">
+      <div class="card-title">🦠 Sérodiagnostic de Widal et Félix (SWF)</div>
+      <div class="table-wrap">
+        <table class="result-table" id="widal-table">
+          <thead>
+            <tr>
+              <th>Antigène</th>
+              <th>Titre</th>
+              <th>Cinétique</th>
+              <th>Interprétation</th>
+            </tr>
+          </thead>
+          <tbody id="widal-body"></tbody>
+        </table>
+      </div>
+      <div id="widal-conclusion" style="margin-top:12px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;display:none"></div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveThenNext('Immuno-Sérologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Immuno-Sérologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
+        <button class="btn btn-success" onclick="exportSingle('Immuno-Sérologie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Immuno-Sérologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('sero')">↺ Effacer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PARASITOLOGIE ===== -->
+  <div class="panel" id="panel-parasito">
+    <div class="card">
+      <div class="card-title" id="sec-eps-title">🔬 Parasitologie — Goutte épaisse / Frottis / Coproparasitologie</div>
+      <div class="form-grid col-3">
+        <div class="form-group">
+          <label>Type d'examen</label>
+          <select id="para_type">
+            <option>Goutte épaisse + frottis mince</option>
+            <option>Goutte épaisse seule</option>
+            <option>Frottis mince seul</option>
+            <option>Examen parasitologique des selles (EPS)</option>
+            <option>Scotch-test anal</option>
+            <option>Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Résultat global</label>
+          <select id="para_resultat">
+            <option value="">— Résultat —</option>
+            <option>Positif</option>
+            <option>Négatif</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Technique de coloration</label>
+          <select id="para_coloration">
+            <option>Giemsa</option>
+            <option>MGG (May-Grünwald-Giemsa)</option>
+            <option>Lugol</option>
+            <option>Aucune</option>
+            <option>Autre</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-label">Paludisme (Plasmodium)</div>
+      <div class="form-grid col-3">
+        <div class="form-group">
+          <label>Espèce plasmodiale</label>
+          <select id="para_espece">
+            <option value="">— Résultat négatif / non identifié —</option>
+            <option>Plasmodium falciparum</option>
+            <option>Plasmodium vivax</option>
+            <option>Plasmodium malariae</option>
+            <option>Plasmodium ovale</option>
+            <option>Plasmodium knowlesi</option>
+            <option>Infection mixte</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Parasitémie (%)</label>
+          <input type="number" id="para_parasitemie" placeholder="ex. 2.5" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label>Densité parasitaire (/µL)</label>
+          <input type="number" id="para_densite" placeholder="ex. 12400">
+        </div>
+        <div class="form-group">
+          <label>Stade parasitaire</label>
+          <select id="para_stade">
+            <option value="">— Non applicable —</option>
+            <option>Trophozoïtes (anneau)</option>
+            <option>Schizontes</option>
+            <option>Gamétocytes</option>
+            <option>Formes mixtes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Indice érythrocytaire</label>
+          <select id="para_indice">
+            <option value="">—</option>
+            <option>Faible (&lt; 1%)</option>
+            <option>Modéré (1–5%)</option>
+            <option>Élevé (&gt; 5%)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>TDR paludisme</label>
+          <select id="para_tdr">
+            <option value="">— Non réalisé —</option>
+            <option>Positif</option>
+            <option>Négatif</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-label">Autres parasites (EPS / Selles)</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Parasite recherché</th><th>Résultat</th><th>Observations</th></tr></thead>
+          <tbody id="para-eps-body"></tbody>
+        </table>
+      </div>
+
+      <div class="form-group" style="margin-top:14px">
+        <label>Observations / Commentaires</label>
+        <textarea id="para_obs" placeholder="Qualité de la lame, contexte clinique, recommandations..."></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveThenNext('Parasitologie')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Parasitologie')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
+        <button class="btn btn-success" onclick="exportSingle('Parasitologie')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Parasitologie')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('parasito')">↺ Effacer</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== BILAN PRÉNATAL ===== -->
+  <!-- ===== BILAN DE ROUTINE ===== -->
+  <!-- ===== GROUPE SANGUIN ===== -->
+  <div class="panel" id="panel-gs">
+    <div class="card">
+      <div class="card-title" id="sec-gs-standalone">🩸 Détermination du groupe sanguin</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead><tr><th>Paramètre</th><th>Résultat</th><th colspan="2">Observation</th></tr></thead>
+          <tbody id="gs-body"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveThenNext('Groupe sanguin')">💾 Enregistrer</button>
+        <button class="btn" onclick="saveThenNext('Groupe sanguin')" style="background:var(--cpmi-mid);color:#fff;margin-left:6px" title="Enregistrer et passer à l'onglet suivant coché">➡ Suivant</button>
+        <button class="btn btn-success" onclick="exportSingle('Groupe sanguin')">⬇ Excel</button>
+        <button class="btn" onclick="exportPDFFromForm('Groupe sanguin')" style="background:#dc2626;color:#fff">📄 PDF</button>
+        <button class="btn btn-outline" onclick="resetPanel('gs')">↺ Effacer</button>
+      </div>
+    </div>
+  </div>
+
+
+  </div><!-- /zone-saisie -->
+
+</div><!-- /view-saisie -->
+
+<!-- HISTORIQUE -->
+<div id="view-historique" style="display:none">
+
+  <!-- ✅ v13.210 — Bouton d'impression du REGISTRE du jour, tout en haut de
+       l'historique (document clinique de la journée, accessible à tous les agents). -->
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <input type="date" id="hist-registre-date" onchange="" aria-label="Jour du registre"
+           style="padding:6px 9px;font-size:12.5px">
+    <button class="btn btn-primary" onclick="imprimerRegistreDepuisHistorique()"
+            style="padding:7px 16px;font-size:13px;font-weight:700">🖨 Imprimer le registre du jour</button>
+  </div>
+
+  <!-- ✅ v13.201 — Poste Pro « File du jour » : bandeau de compteurs par statut
+       (peuplé par renderHistory sur les dossiers filtrés). Styles scopés. -->
+  <style id="poste-pro-file-style">
+    #view-historique .pp-file-kpis{display:flex;flex-wrap:wrap;border:1px solid var(--border);
+      border-radius:14px;overflow:hidden;background:var(--card,#fff);
+      box-shadow:0 2px 12px rgba(15,23,42,.05);margin-bottom:14px}
+    #view-historique .pp-file-kpis .k{flex:1;min-width:130px;padding:12px 18px;
+      border-left:1px solid var(--border)}
+    #view-historique .pp-file-kpis .k:first-child{border-left:none}
+    #view-historique .pp-file-kpis .kl{font-size:10px;text-transform:uppercase;
+      letter-spacing:.6px;color:var(--text-muted);font-weight:700}
+    #view-historique .pp-file-kpis .kn{font-size:23px;font-weight:800;margin-top:2px;
+      line-height:1;font-variant-numeric:tabular-nums}
+    #view-historique .pp-file-kpis .kd{font-size:10.5px;color:var(--text-muted);opacity:.8;margin-top:1px}
+    #view-historique .pp-file-kpis .pp-kn-att{color:#b45309}
+    #view-historique .pp-file-kpis .pp-kn-enc{color:#0891b2}
+    #view-historique .pp-file-kpis .pp-kn-urg{color:#dc2626}
+    #view-historique .pp-file-kpis .pp-kn-ren{color:#15803d}
+    #view-historique #history-table thead th{text-transform:uppercase;font-size:10.5px;letter-spacing:.4px}
+    #view-historique #history-table tbody tr:hover{background:var(--accent-light)}
+  </style>
+  <div class="pp-file-kpis" aria-label="Résumé de la file du jour">
+    <div class="k"><div class="kl">En cours</div><div class="kn pp-kn-enc" id="hist-kpi-attente">—</div><div class="kd">pas encore rendu</div></div>
+    <div class="k"><div class="kl">Urgent</div><div class="kn pp-kn-urg" id="hist-kpi-urgent">—</div><div class="kd">à traiter vite</div></div>
+    <div class="k"><div class="kl">Terminés</div><div class="kn pp-kn-ren" id="hist-kpi-rendu">—</div><div class="kd">résultats rendus</div></div>
+    <div class="k"><div class="kl">Total</div><div class="kn" id="hist-kpi-total">—</div><div class="kd">sur la période</div></div>
+  </div>
+
+  <!-- ✅ v13.171 — Liste hebdomadaire des électrophorèses à faire (accessible
+       aux techniciens : la vue Historique est ouverte à tous les rôles de saisie). -->
+  <div class="card" id="electro-card" style="margin-bottom:14px">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>🧬 Électrophorèses à faire</span>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="decalerElectro(-1)" title="Semaine précédente" aria-label="Semaine précédente" style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+        <span id="electro-week-label" style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:210px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" onclick="decalerElectro(1)" title="Semaine suivante" aria-label="Semaine suivante" style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+        <button class="btn btn-outline" onclick="retourElectroSemaine()" style="padding:5px 10px;font-size:12px">↻ Cette semaine</button>
+        <button class="btn btn-primary" onclick="imprimerElectro()" style="padding:5px 14px;font-size:12px">🖨 Imprimer</button>
+      </div>
+    </div>
+    <div id="electro-apercu"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">🔍 Recherche & Filtres</div>
+
+    <!-- Barre principale compacte : recherche + période rapide + bouton avancés -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div style="position:relative;flex:1;min-width:200px">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:14px;pointer-events:none">🔍</span>
+        <input type="text" id="search-input" placeholder="Nom, N° dossier, médecin, service…"
+          style="padding-left:32px;width:100%" oninput="renderHistoryDebounced()">
+      </div>
+      <!-- Période rapide : Aujourd'hui actif par défaut -->
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-outline active" id="hist-btn-jour" onclick="setHistPeriode('jour')" style="padding:6px 12px;font-size:11.5px">Aujourd'hui</button>
+        <button class="btn btn-outline" id="hist-btn-semaine" onclick="setHistPeriode('semaine')" style="padding:6px 12px;font-size:11.5px">Semaine</button>
+        <button class="btn btn-outline" id="hist-btn-mois" onclick="setHistPeriode('mois')" style="padding:6px 12px;font-size:11.5px">Mois</button>
+        <button class="btn btn-outline" id="hist-btn-tout" onclick="setHistPeriode('tout')" style="padding:6px 12px;font-size:11.5px">Tout</button>
+      </div>
+      <button class="btn btn-outline" id="btn-filtres-avances" onclick="toggleFiltresAvances()"
+              style="padding:6px 13px;font-size:12px;white-space:nowrap">⚙ Filtres <span id="filtres-avances-chevron">▾</span></button>
+      <!-- Alertes toujours visibles (fiches masquées / corbeille) : hors du panneau replié -->
+      <button id="btn-masquees" onclick="toggleMasquees()"
+        style="display:none;padding:6px 12px;font-size:12px;border-radius:8px;cursor:pointer;border:1.5px solid #fbbf24;background:#fef3c7;color:#92400e;font-weight:600;align-items:center;gap:6px;white-space:nowrap">
+        🔒 Masquées&nbsp;<span id="masquees-badge" style="background:#d97706;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px">0</span>
+      </button>
+      <button id="btn-corbeille" onclick="toggleCorbeille()"
+        style="display:none;padding:6px 12px;font-size:12px;border-radius:8px;cursor:pointer;border:1.5px solid #f87171;background:#fef2f2;color:#b91c1c;font-weight:600;align-items:center;gap:6px;white-space:nowrap">
+        🗑️ Corbeille&nbsp;<span id="corbeille-badge" style="background:#dc2626;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px">0</span>
+      </button>
+    </div>
+
+    <!-- Panneau avancé — masqué par défaut (« ne pas surcharger ») -->
+    <div id="hist-filtres-avances" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+
+      <!-- Type + statut + tri -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="flex:1;min-width:150px">
+          <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Type d'analyse</label>
+          <select id="filter-type" onchange="renderHistory()" style="width:100%">
+            <option value="">Tous les types</option>
+            <option>Hématologie</option><option>Biochimie</option><option>Bactériologie</option>
+            <option>Immuno-Sérologie</option><option>Parasitologie</option>
+            <option>Groupe sanguin</option><option>Bilan prénatal</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Statut</label>
+          <select id="filter-statut" onchange="renderHistory()" style="width:100%">
+            <option value="">Tous les statuts</option>
+            <option value="attente">🔵 En cours</option>
+            <option value="rendu">🟢 Terminé</option>
+            <option value="urgent">🔴 Urgent</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Tri</label>
+          <select id="filter-sort" onchange="appliquerTriHistorique()" style="width:100%">
+            <option value="date-desc">⬇ Plus récent</option>
+            <option value="date-asc">⬆ Plus ancien</option>
+            <option value="nom-asc">🔤 Nom A → Z</option>
+            <option value="nom-desc">🔤 Nom Z → A</option>
+            <option value="montant-desc">💰 Montant décroissant</option>
+            <option value="montant-asc">💰 Montant croissant</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Navigation dans le temps + dates précises -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;background:var(--bg);border-radius:var(--radius);margin-bottom:10px">
+        <div id="hist-nav-periode" style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-outline" id="hist-nav-precedent" onclick="decalerPeriode(-1)"
+                  title="Période précédente" aria-label="Période précédente"
+                  style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+          <span id="hist-nav-label"
+                style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
+          <button class="btn btn-outline" id="hist-nav-suivant" onclick="decalerPeriode(1)"
+                  title="Période suivante" aria-label="Période suivante"
+                  style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+          <button class="btn btn-outline" id="hist-nav-retour" onclick="retourPeriodeCourante()"
+                  title="Revenir à la période en cours"
+                  style="padding:5px 9px;font-size:11.5px;display:none">↻ Actuel</button>
+        </div>
+        <div id="hist-mois-annee" style="display:flex;align-items:center;gap:5px">
+          <select id="hist-sel-mois" onchange="allerAuMois()" aria-label="Aller au mois"
+                  style="width:auto;min-width:104px;padding:4px 8px;font-size:11.5px"></select>
+          <select id="hist-sel-annee" onchange="allerAuMois()" aria-label="Aller à l'année"
+                  style="width:auto;min-width:78px;padding:4px 8px;font-size:11.5px"></select>
+        </div>
+        <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <label style="font-size:11.5px;color:var(--text-muted)">Du</label>
+          <input type="date" id="filter-date-from" onchange="setHistPeriode('custom')" style="width:auto">
+          <label style="font-size:11.5px;color:var(--text-muted)">au</label>
+          <input type="date" id="filter-date-to" onchange="setHistPeriode('custom')" style="width:auto">
+          <button class="btn btn-outline" onclick="appliquerFiltreCustom()" style="padding:4px 10px;font-size:11.5px">🔍 Appliquer</button>
+        </div>
+      </div>
+
+      <!-- Agent + service + reset -->
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:150px">
+          <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Agent</label>
+          <select id="filter-agent" onchange="renderHistory()" style="width:100%"><option value="">Tous les agents</option></select>
+        </div>
+        <div style="flex:1;min-width:150px">
+          <label style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:4px;display:block">Service</label>
+          <select id="filter-service" onchange="renderHistory()" style="width:100%"><option value="">Tous les services</option></select>
+        </div>
+        <button class="btn btn-outline" onclick="clearSearchFilters()"
+          style="padding:8px 14px;font-size:12.5px;display:flex;align-items:center;gap:6px">
+          ↺ Réinitialiser
+        </button>
+      </div>
+    </div>
+
+    <!-- Bandeau résultats -->
+    <div id="search-count-bar" style="margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:linear-gradient(to right,var(--accent-light),#f0f9ff);border:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span id="search-count" style="font-size:12.5px;font-weight:600;color:var(--cpmi-deep)"></span>
+      <span id="search-total-bar" style="font-size:12.5px;font-weight:800;color:#15803d;margin-left:auto"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span>📋 Résultats</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="exportAllExcel()" style="padding:5px 12px;font-size:12px">⬇ Excel</button>
+        <button class="btn btn-outline" onclick="exportHistoryCSV()" style="padding:5px 12px;font-size:12px">📄 CSV</button>
+        <button class="btn btn-outline" onclick="printHistory()" style="padding:5px 12px;font-size:12px">🖨 Imprimer</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="history-table">
+        <thead><tr>
+          <!-- ✅ v13.30 — colonne sélection en masse -->
+          <th style="width:36px;text-align:center;padding:6px 4px">
+            <input type="checkbox" id="select-all-chk" title="Tout sélectionner / désélectionner"
+              onchange="toggleSelectAll(this.checked)"
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+          </th>
+          <th onclick="setSortCol('date')" style="cursor:pointer">Date <span id="sort-date">↓</span></th>
+          <th>N° Dossier</th>
+          <th onclick="setSortCol('nom')" style="cursor:pointer">Patient <span id="sort-nom"></span></th>
+          <th>Âge</th><th>Sexe</th><th>Service</th>
+          <th>Type d'analyse</th><th>Saisi par</th>
+          <th onclick="setSortCol('montant')" style="cursor:pointer">Montant <span id="sort-montant"></span></th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr></thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ✅ v13.30 — Barre d'actions en masse (apparaît quand des lignes sont cochées) -->
+  <div id="bulk-toolbar" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:#1e293b;color:#f1f5f9;border-radius:14px;padding:10px 18px;
+    box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:9999;
+    display:none;align-items:center;gap:10px;flex-wrap:wrap;min-width:340px;max-width:90vw">
+    <span id="bulk-count" style="font-weight:700;font-size:13px;white-space:nowrap;color:#94a3b8">0 sélectionnée(s)</span>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Statut -->
+    <button onclick="bulkSetStatut('attente')"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#dbeafe;color:#1d4ed8"
+      title="Marquer comme En cours (pas encore rendu)">🔵 En cours</button>
+    <button onclick="bulkSetStatut('rendu')"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#dcfce7;color:#166534"
+      title="Marquer comme Terminé (résultats rendus)">🟢 Terminé</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Encaissement groupé -->
+    <button onclick="bulkEncaisser()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#00b4d8;color:#fff"
+      title="Encaisser tous les dossiers sélectionnés (montant reçu = montant demandé)">💰 Encaisser</button>
+    <button id="bulk-annuler-btn" onclick="bulkAnnulerPaiement()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#fef2f2;color:#991b1b"
+      title="Annuler le paiement des dossiers sélectionnés (admin / caissier)">↩ Annuler paiement</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Restriction — ✅ v13.82 : réservée à l'administrateur -->
+    <button id="bulk-lock-btn" onclick="bulkLock()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#fef3c7;color:#92400e"
+      title="Masquer aux autres profils (admin)">🔒 Verrouiller</button>
+    <button id="bulk-unlock-btn" onclick="bulkUnlock()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#f0fdf4;color:#166534"
+      title="Rendre visible à tous les profils (admin)">🔓 Déverrouiller</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- ✅ v13.130 — Réception seule : exclure / réintégrer dans la saisie en série -->
+    <button id="bulk-recept-on" onclick="bulkReceptionSeule(true)"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#e0e7ff;color:#3730a3"
+      title="Marquer réception seule (exclure de la saisie en série)">📥 Réception seule</button>
+    <button id="bulk-recept-off" onclick="bulkReceptionSeule(false)"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#eef2ff;color:#4338ca"
+      title="Réintégrer dans la saisie en série">↩ Remettre en série</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- ✅ v13.201 — Report manuel au cahier jaune (classement automatique) -->
+    <button id="bulk-cahier-btn" onclick="bulkCahierJaune()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e"
+      title="Porter au cahier jaune (SFPMI / SFHG / EXTERNE selon le dossier)">📒 Cahier jaune</button>
+    <!-- ✅ v13.205 — Report manuel au cahier noir (admin ; colonne au choix) -->
+    <button id="bulk-cahier-noir-btn" onclick="bulkCahierNoir()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#111827;color:#f9fafb"
+      title="Porter à la caisse noire (colonne au choix)">📓 Caisse noire</button>
+    <!-- ✅ v13.208 — Changer le propriétaire en lot (admin) -->
+    <button id="bulk-auteur-btn" onclick="bulkChangerAuteur()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#e0f2fe;color:#075985"
+      title="Changer le propriétaire des dossiers cochés (visibilité spectateurs)">👤 Propriétaire</button>
+    <div style="width:1px;height:24px;background:#334155;flex-shrink:0"></div>
+    <!-- Suppression -->
+    <button id="bulk-delete-btn" onclick="bulkDelete()"
+      style="padding:5px 11px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#dc2626;color:#fff"
+      title="Supprimer les fiches sélectionnées">🗑 Supprimer</button>
+    <!-- Fermer -->
+    <button onclick="clearBulkSelection()"
+      style="padding:5px 10px;border-radius:8px;border:1px solid #475569;cursor:pointer;font-size:13px;font-weight:700;background:transparent;color:#94a3b8;margin-left:4px"
+      title="Annuler la sélection">✕</button>
+  </div>
+</div>
+
+
+<div id="view-stats" style="display:none">
+
+<!-- ✅ v13.201 — Harmonisation Poste Pro des écrans internes (Statistiques,
+     Comptes & réglages, Cahier jaune) : cartes arrondies, tuiles KPI, en-têtes
+     de tableau majuscules, onglets admin en segments. 100 % CSS scopée. -->
+<style id="poste-pro-internes-style">
+  #view-stats .card, #view-comptes .card, #view-cahier .card{
+    border-radius:16px;box-shadow:0 2px 12px rgba(15,23,42,.06)}
+  #view-stats .card:hover, #view-comptes .card:hover, #view-cahier .card:hover{transform:none}
+  #view-stats .stats-kpi{border-radius:14px;box-shadow:0 2px 12px rgba(15,23,42,.07)}
+  #view-comptes #users-table thead th,
+  #view-comptes #prescripteurs-list th,
+  #view-cahier table thead th{text-transform:uppercase;font-size:10.5px;letter-spacing:.4px}
+  #view-comptes .admin-tabs-main{background:var(--card,#fff);border:1px solid var(--border);
+    border-radius:12px;padding:4px;gap:2px;box-shadow:0 1px 6px rgba(15,23,42,.05);
+    display:inline-flex;flex-wrap:wrap}
+  #view-comptes .admin-tab-main{border-radius:9px}
+</style>
+
+  <!-- Filtres temporels -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">🔍 Filtres & Période</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-outline active" id="stats-btn-jour" onclick="setStatsPeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
+      <button class="btn btn-outline" id="stats-btn-semaine" onclick="setStatsPeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
+      <button class="btn btn-outline" id="stats-btn-mois" onclick="setStatsPeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
+      <button class="btn btn-outline" id="stats-btn-tout" onclick="setStatsPeriode('tout')" style="padding:6px 14px;font-size:12.5px">Tout</button>
+      <!-- ✅ v13.73 — Navigation dans le temps (composant partagé js/periode-nav.js) -->
+      <div id="stats-nav-periode" style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <button class="btn btn-outline" id="stats-nav-precedent" onclick="decalerStats(-1)"
+                title="Période précédente" aria-label="Période précédente"
+                style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+        <span id="stats-nav-label"
+              style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="stats-nav-suivant" onclick="decalerStats(1)"
+                title="Période suivante" aria-label="Période suivante"
+                style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+        <button class="btn btn-outline" id="stats-nav-retour" onclick="retourStatsCourant()"
+                title="Revenir à la période en cours"
+                style="padding:5px 9px;font-size:11.5px;display:none">↻ Actuel</button>
+      </div>
+      <div id="stats-mois-annee" style="display:flex;align-items:center;gap:5px">
+        <select id="stats-sel-mois" onchange="allerAuMoisStats()" aria-label="Aller au mois"
+                style="width:auto;min-width:104px;padding:4px 8px;font-size:11.5px"></select>
+        <select id="stats-sel-annee" onchange="allerAuMoisStats()" aria-label="Aller à l'année"
+                style="width:auto;min-width:78px;padding:4px 8px;font-size:11.5px"></select>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;margin-left:8px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--text-muted)">Du</label>
+        <input type="date" id="stats-date-from" style="width:auto;max-width:150px">
+        <label style="font-size:12px;color:var(--text-muted)">Au</label>
+        <input type="date" id="stats-date-to" style="width:auto;max-width:150px">
+        <button class="btn btn-primary" onclick="setStatsPeriode('custom')" style="padding:6px 12px;font-size:12px">Appliquer</button>
+      </div>
+      <span id="stats-periode-label" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
+    </div>
+  </div>
+
+  <!-- KPI améliorés -->
+  <div class="stats-kpi-row" id="stats-kpi-row">
+    <div class="stats-kpi" id="kpi-total">
+      <div class="kpi-val">—</div><div class="kpi-label">Dossiers totaux</div>
+      <div class="kpi-sub" id="kpi-total-sub" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+    </div>
+    <div class="stats-kpi" id="kpi-month">
+      <div class="kpi-val">—</div><div class="kpi-label">Période sélectionnée</div>
+      <div class="kpi-sub" id="kpi-month-sub" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+    </div>
+    <div class="stats-kpi" id="kpi-agents">
+      <div class="kpi-val">—</div><div class="kpi-label">Agents actifs</div>
+      <div class="kpi-sub" id="kpi-agents-sub" style="font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+    </div>
+    <div class="stats-kpi" id="kpi-recettes-month" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes période (FCFA)</div></div>
+    <div class="stats-kpi" id="kpi-recettes-total" style="border-left:3px solid #15803d"><div class="kpi-val" style="color:#15803d">—</div><div class="kpi-label">Recettes totales (FCFA)</div></div>
+  </div>
+
+  <!-- Graphiques Chart.js -->
+  <div class="charts-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">🍩 Répartition par type</div>
+      <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center">
+        <canvas id="chartjs-donut" style="max-height:200px"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">💰 Recettes mensuelles (FCFA)</div>
+      <div style="position:relative;height:220px">
+        <canvas id="chartjs-bar-recettes"></canvas>
+      </div>
+    </div>
+  </div>
+  <div style="margin-bottom:16px" class="card">
+    <div class="card-title">📈 Évolution du nombre de dossiers (12 mois)</div>
+    <div style="position:relative;height:180px">
+      <canvas id="chartjs-line-evolution"></canvas>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="card stats-card">
+      <div class="card-title">📋 Fiches par type d'analyse</div>
+      <div id="chart-by-type"></div>
+    </div>
+    <div class="card stats-card">
+      <div class="card-title">📈 Évolution mensuelle (6 mois)</div>
+      <div id="chart-monthly"></div>
+    </div>
+    <div class="card stats-card">
+      <div class="card-title">👤 Répartition par agent</div>
+      <div id="chart-by-agent"></div>
+    </div>
+
+    <div class="card stats-card">
+      <div class="card-title">💰 Recettes par type d'analyse (FCFA)</div>
+      <div id="chart-recettes-type"></div>
+    </div>
+    <div class="card stats-card">
+      <div class="card-title">📅 Recettes mensuelles (6 mois)</div>
+      <div id="chart-recettes-monthly"></div>
+    </div>
+
+    <div class="card stats-card" style="grid-column:1/-1">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>🏆 Top examens les plus demandés</span>
+        <span id="top-examens-sub" style="font-size:11px;color:var(--text-muted);font-weight:500"></span>
+      </div>
+      <div id="chart-top-examens"></div>
+    </div>
+  </div>
+
+  <!-- Ristournes prescripteurs -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">💊 Ristournes prescripteurs</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Règle : <strong>0% de ristourne sur les BPN</strong> (seul le nombre est comptabilisé).
+      Les ristournes s'appliquent uniquement sur les examens hors-BPN.
+    </p>
+    <div id="ristournes-table"></div>
+
+  </div>
+
+</div>
+
+<div id="view-comptes" style="display:none">
+
+  <!-- ✅ v13.33 — Onglets principaux admin -->
+  <div class="admin-tabs-main">
+    <button class="admin-tab-main active" onclick="adminShowMain('ac-comptes',this)">👤 Comptes</button>
+    <button class="admin-tab-main" onclick="adminShowMain('ac-config',this)">⚙️ Configuration</button>
+    <button class="admin-tab-main" onclick="adminShowMain('ac-journal',this)">🛡️ Journal & Rapports</button>
+  </div>
+
+  <!-- ── ONGLET 1 : COMPTES ─────────────────────────────── -->
+  <div id="ac-comptes" class="admin-section active">
+    <div class="admin-tabs-sub">
+      <button class="admin-tab-sub active" onclick="adminShowSub('ac-users',this)">👤 Utilisateurs</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-presc',this)">👨‍⚕️ Prescripteurs</button>
+    </div>
+
+    <!-- Sous-onglet : Utilisateurs -->
+    <div id="ac-users" class="admin-sub-section active">
+      <div class="card">
+        <div class="card-title">👤 Nouveau compte</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nom d'utilisateur</label>
+            <input type="text" id="nu_username" placeholder="ex: agent2" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Mot de passe</label>
+            <div style="position:relative">
+              <input type="password" id="nu_password" placeholder="Mot de passe" style="padding-right:40px">
+              <button type="button" onclick="togglePwdVisibility('nu_password',this)"
+                aria-label="Afficher ou masquer le mot de passe"
+                style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px">👁</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Rôle</label>
+            <select id="nu_role">
+              <option value="agent">Agent (saisie)</option>
+              <option value="caissier">Caissier (caisse uniquement)</option>
+              <option value="spectateur">Spectateur (lecture seule caisse)</option>
+              <option value="prescripteur">Prescripteur (portail soignant)</option>
+              <option value="admin">Administrateur</option>
+            </select>
+          </div>
+        </div>
+        <!-- ✅ v13.103 — Un compte prescripteur DOIT être rattaché à une fiche
+             de soignant : c'est ce lien, et non le nom d'utilisateur, qui
+             décide des dossiers qu'il verra. Sans lui, le serveur refuse la
+             création (« prescripteur_requis »). -->
+        <div id="nu-presc-bloc" style="display:none;margin-top:10px">
+          <label style="display:block;font-size:12.5px;margin-bottom:4px">
+            Soignant rattaché <span style="color:var(--danger)">*</span>
+          </label>
+          <select id="nu_prescripteur" style="width:100%"></select>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
+            Ce compte ne verra que les patients adressés par ce soignant.
+          </div>
+        </div>
+        <div id="nu-error" style="color:var(--danger);font-size:12.5px;margin-top:4px"></div>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary" onclick="createUserAccount()">➕ Créer le compte</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Comptes existants</div>
+        <div class="table-wrap">
+          <table id="users-table">
+            <thead><tr><th>Nom d'utilisateur</th><th>Rôle</th><th>Créé le</th><th>Actions</th></tr></thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Prescripteurs -->
+    <div id="ac-presc" class="admin-sub-section">
+      <div class="card" id="prescripteurs-admin-card">
+        <div class="card-title">👨‍⚕️ Gestion des prescripteurs</div>
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>Nom complet</label>
+            <input type="text" id="presc_nom" placeholder="DR NOM PRÉNOM" style="text-transform:uppercase" oninput="forcerMajuscule(this)">
+          </div>
+          <div class="form-group">
+            <label>Spécialité</label>
+            <input type="text" id="presc_spec" placeholder="Médecine générale...">
+          </div>
+          <div class="form-group">
+            <label>Structure / Cabinet</label>
+            <input type="text" id="presc_struct" placeholder="Hôpital, clinique...">
+          </div>
+          <div class="form-group">
+            <label>Taux de ristourne extra-BPN (%)</label>
+            <input type="number" id="presc_taux" min="0" max="100" step="0.5" value="0">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="savePrescripteur()" style="margin-bottom:16px">➕ Ajouter le prescripteur</button>
+        <!-- ✅ v13.74 — Recherche : 25 prescripteurs en base, retrouver un nom
+             à l'œil dans le tableau était fastidieux. -->
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <input type="text" id="presc-search" oninput="filtrerPrescripteurs(this.value)"
+                 placeholder="🔍 Rechercher un nom, une spécialité, une structure…"
+                 aria-label="Rechercher un prescripteur"
+                 style="flex:1;min-width:220px;padding:6px 10px;font-size:12.5px">
+          <button class="btn btn-outline" onclick="effacerRecherchePresc()"
+                  style="padding:5px 11px;font-size:11.5px">↻ Effacer</button>
+          <span id="presc-count" style="font-size:11.5px;color:var(--text-muted);white-space:nowrap"></span>
+        </div>
+        <div id="prescripteurs-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ONGLET 2 : CONFIGURATION ───────────────────────── -->
+  <div id="ac-config" class="admin-section">
+    <div class="admin-tabs-sub">
+      <button class="admin-tab-sub active" onclick="adminShowSub('ac-tarifs',this)">📋 Examens & tarifs</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-refs',this)">📐 Valeurs de référence</button>
+    </div>
+
+    <!-- Sous-onglet : Examens & tarifs -->
+    <div id="ac-tarifs" class="admin-sub-section active">
+      <div class="card" id="tarifs-config-card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>📋 Examens demandés & Tarification par défaut</span>
+          <button onclick="showAddExamenModal()" class="btn btn-primary" style="padding:5px 12px;font-size:12px">➕ Ajouter un examen</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+          Modifiez les prix par défaut ou ajoutez vos propres examens. Les changements s'appliquent immédiatement sur la fiche d'accueil.
+        </p>
+        <div id="admin-examens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px;margin-bottom:16px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn btn-primary" onclick="saveAdminTarifs()">💾 Enregistrer les prix</button>
+          <button class="btn btn-outline" onclick="resetAdminTarifs()">↺ Remettre les prix par défaut</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Valeurs de référence -->
+    <div id="ac-refs" class="admin-sub-section">
+      <div class="card" id="refs-config-card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>📐 Valeurs de référence du laboratoire</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="saveRefsConfig()" style="padding:5px 12px;font-size:12px">💾 Enregistrer comme base</button>
+            <button class="btn btn-outline" onclick="resetRefsConfig()" style="padding:5px 12px;font-size:12px">↺ Remettre défauts</button>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px">
+          Modifiez les bornes de référence selon les valeurs de votre laboratoire.
+          Ces valeurs s'appliquent à toute l'application (interprétation, coloration Excel, affichage).
+        </p>
+        <div id="refs-editor-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ONGLET 3 : JOURNAL & RAPPORTS ─────────────────── -->
+  <div id="ac-journal" class="admin-section">
+    <div class="admin-tabs-sub">
+      <button class="admin-tab-sub active" onclick="adminShowSub('ac-audit',this)">🛡️ Audit</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-connexions',this)">🔐 Connexions</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-rapport',this)">📑 Rapport PDF</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-topex',this)">🔬 Top examens</button>
+      <button class="admin-tab-sub" onclick="adminShowSub('ac-sauvegarde',this)">💾 Sauvegarde</button>
+    </div>
+
+    <!-- Sous-onglet : Audit -->
+    <div id="ac-audit" class="admin-sub-section active">
+      <div class="card" id="audit-log-card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>🛡️ Journal d'audit</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline" onclick="renderAuditLog()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+            <button class="btn" onclick="purgeAuditLog()" style="padding:5px 12px;font-size:12px;background:#dc2626;color:#fff">🗑️ Purger</button>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Trace inaltérable de toutes les créations, modifications et suppressions (qui, quand, quoi). Lecture seule.
+        </p>
+        <div class="table-wrap">
+          <table id="audit-table">
+            <thead><tr><th>Date/heure</th><th>Utilisateur</th><th>Action</th><th>Détails</th></tr></thead>
+            <tbody id="audit-body"><tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:14px">Cliquez sur « Actualiser » pour charger le journal.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Connexions (v13.37) -->
+    <div id="ac-connexions" class="admin-sub-section">
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between">
+          <span>🔐 Connexions & déconnexions</span>
+          <button class="btn btn-outline" onclick="renderConnexions()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Historique des connexions et déconnexions de chaque compte (heure exacte). Pratique pour surveiller les comptes caissier / spectateur.
+        </p>
+        <div class="table-wrap">
+          <table class="result-table" style="width:100%">
+            <thead><tr><th>Date / heure</th><th>Utilisateur</th><th>Événement</th></tr></thead>
+            <tbody id="connexions-body"><tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:14px">Cliquez sur « Actualiser » pour charger.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Rapport PDF -->
+    <!-- ✅ v13.77 — Sauvegarde complète, téléchargée sur le poste de l'admin.
+         Le dépôt GitHub étant public, aucun export n'y est jamais déposé. -->
+    <div id="ac-sauvegarde" class="admin-sub-section">
+
+      <!-- ✅ v13.105 — DEUX MOTS DE PASSE POUR UN SEUL IDENTIFIANT.
+           Toute la valeur du dispositif tient à ce qu'on NE VOIT PAS : en
+           session ordinaire, aucun cadenas, aucun bouton grisé, aucune
+           boîte qui réclame un code. Ce panneau est le seul endroit où la
+           seconde porte est nommée — et il n'est visible que depuis une
+           session déjà administratrice. -->
+      <div class="card" id="coffre-card">
+        <div class="section-title"><span>🔑 Second mot de passe</span></div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 10px">
+          Votre identifiant reste <strong>admin</strong>, mais vous avez deux mots de passe.
+          Le premier ouvre l'application ordinaire : le cahier jaune et les dossiers
+          verrouillés n'y apparaissent nulle part, pas même sous forme de bouton.
+          Le second ouvre la même application, ces éléments compris.
+        </p>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+          L'intérêt tient à ce qui ne se voit pas : depuis l'écran ordinaire, rien
+          n'indique qu'un second monde existe. Quelqu'un qui vous regarde taper, ou
+          qui vous oblige à ouvrir la session, obtient une application complète et
+          cohérente — et repart avec.
+        </p>
+        <div id="coffre-etat" style="font-size:12.5px;margin-bottom:12px"></div>
+        <div id="coffre-actuel-bloc" style="display:none;margin-bottom:8px">
+          <label style="display:block;font-size:12.5px;margin-bottom:4px">Second mot de passe actuel</label>
+          <input type="password" id="coffre-actuel" autocomplete="off" style="width:100%">
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:12.5px;margin-bottom:4px">Nouveau second mot de passe (8 caractères minimum)</label>
+          <input type="password" id="coffre-nouveau" autocomplete="off" style="width:100%">
+        </div>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:12.5px;margin-bottom:4px">Confirmer</label>
+          <input type="password" id="coffre-confirme" autocomplete="off" style="width:100%">
+        </div>
+        <div id="coffre-admin-err" style="color:var(--danger);font-size:12.5px;min-height:16px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn" onclick="enregistrerCodeCoffre()">Enregistrer</button>
+          <button class="btn btn-ghost" onclick="fermerCoffre()">Quitter cette session</button>
+        </div>
+        <p style="font-size:11.5px;color:var(--text-muted);margin:10px 0 0;line-height:1.5">
+          Il doit être <strong>différent</strong> de votre mot de passe habituel, sinon la
+          seconde porte n'existe pas. Notez-le ailleurs qu'ici : si vous l'oubliez, les
+          données restent en base mais il faudra une intervention technique.
+        </p>
+      </div>
+
+      <div class="card" id="sauvegarde-card">
+        <div class="section-title"><span>💾 Sauvegarde de la base</span></div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+          Télécharge <strong>toutes les fiches avec leurs résultats détaillés</strong>, ainsi que
+          les prescripteurs, la grille tarifaire et les examens personnalisés, dans un seul
+          fichier. Conservez-le sur un support sécurisé : il contient des données médicales
+          nominatives.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-sauvegarde" onclick="sauvegarderBase()">💾 Sauvegarder maintenant</button>
+          <span id="sauvegarde-etat" style="font-size:12px"></span>
+        </div>
+      </div>
+
+      <!-- ✅ v13.78 — Une sauvegarde qu'on ne sait pas relire n'est pas une sauvegarde. -->
+      <div class="card" id="restauration-card">
+        <div class="section-title"><span>♻️ Restaurer une sauvegarde</span></div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+          Réinsère les fiches d'un fichier de sauvegarde qui <strong>ne sont plus en base</strong>.
+          Aucune fiche existante n'est modifiée ni supprimée, et la grille tarifaire comme le
+          catalogue d'examens restent inchangés. Un aperçu vous indique le nombre exact de fiches
+          concernées avant toute écriture, et l'opération peut être relancée sans risque : ce qui
+          est déjà présent est simplement ignoré.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-outline" id="btn-restauration" onclick="choisirFichierRestauration()">♻️ Restaurer une sauvegarde</button>
+          <input type="file" id="fichier-restauration" accept="application/json,.json"
+                 style="display:none" onchange="restaurerDepuisFichier(this)">
+        </div>
+      </div>
+
+      <!-- ✅ v13.79 — Retour arrière sur les instantanés nocturnes du serveur.
+           Le filet existait depuis toujours ; il n'était exposé nulle part. -->
+      <div class="card" id="retour-arriere-card">
+        <div class="section-title"><span>🕑 Retour arrière</span></div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+          Le serveur photographie la base <strong>chaque nuit à 23h</strong> et conserve
+          les 15 derniers jours. Choisissez une date pour voir ce qui a disparu depuis,
+          et remettre en place les fiches manquantes. Les fiches créées ou modifiées
+          depuis ne sont jamais touchées.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <select id="instantane-date" onchange="analyserInstantane()" style="min-width:280px">
+            <option value="">— choisir une date —</option>
+          </select>
+          <button class="btn btn-primary" id="btn-retour-arriere"
+                  onclick="lancerRetourArriere()" style="display:none"></button>
+        </div>
+        <div id="instantane-resultat" style="margin-top:12px"></div>
+
+        <div style="border-top:1px solid var(--border,#e2e8f0);margin-top:14px;padding-top:12px">
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin-bottom:8px">
+            <strong>Réparer une fiche</strong> abîmée par une mauvaise saisie : elle reviendra
+            à son contenu de la date choisie ci-dessus. Contrairement au bouton précédent,
+            celui-ci <strong>écrase</strong> la version actuelle de cette fiche — d'où le
+            passage par un numéro de dossier précis.
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="reparer-dossier" placeholder="N° de dossier (ex. 0102-0826)"
+                   style="min-width:220px">
+            <button class="btn btn-outline" onclick="reparerFicheParDossier()">↺ Réparer cette fiche</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ v13.80 — Audit de sécurité exécuté sur le serveur réel. -->
+      <div class="card" id="audit-securite-card">
+        <div class="section-title"><span>🛡️ Audit de sécurité</span></div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+          Interroge le serveur pour vérifier qu'aucune fonction n'est accessible
+          sans être connecté, que toutes les tables sont protégées, et qu'aucun mot
+          de passe ne reste sur un hachage faible. À lancer après chaque mise à jour.
+        </p>
+        <button class="btn btn-outline" onclick="lancerAuditSecurite()">🛡️ Lancer l'audit</button>
+        <div id="audit-securite-resultat" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <div id="ac-rapport" class="admin-sub-section">
+      <div class="card" id="rapport-mensuel-card">
+        <div class="card-title">📑 Rapport d'activité mensuel</div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Génère un rapport PDF complet (statistiques globales, répartitions, top prescripteurs,
+          courbe d'activité et alertes critiques) pour le mois sélectionné.
+        </p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-outline" onclick="decalerSelecteursMois('rapport-mois','rapport-annee',-1,null)"
+                title="Mois précédent" aria-label="Mois précédent"
+                style="padding:4px 9px;font-size:12px;line-height:1">◀</button>
+        <span id="rapport-mois-label" style="font-size:12.5px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:118px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="rapport-mois-suivant" onclick="decalerSelecteursMois('rapport-mois','rapport-annee',1,null)"
+                title="Mois suivant" aria-label="Mois suivant"
+                style="padding:4px 9px;font-size:12px;line-height:1">▶</button>
+        <select id="rapport-mois" style="width:auto;min-width:110px;padding:6px 10px;font-size:12.5px"></select>
+          <select id="rapport-annee" style="width:auto;min-width:84px;padding:6px 10px;font-size:12.5px"></select>
+          <button class="btn" onclick="genererRapportMensuel()" style="padding:7px 16px;font-size:12.5px;background:#dc2626;color:#fff">📄 Générer le rapport PDF</button>
+        </div>
+      </div>
+
+      <!-- ✅ v13.34 — Sauvegarde / restauration complète -->
+      <div class="card" id="backup-card">
+        <div class="card-title">💾 Sauvegarde &amp; restauration</div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+          Exportez une copie complète de toutes les fiches (fichier JSON) comme filet de sécurité,
+          ou pour archiver un mois clôturé. La restauration ré-importe les fiches manquantes sans écraser les existantes.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="exportBackup()" style="padding:7px 16px;font-size:12.5px">⬇ Télécharger la sauvegarde</button>
+          <label class="btn btn-outline" style="padding:7px 16px;font-size:12.5px;cursor:pointer;margin:0">
+            ⬆ Restaurer depuis un fichier
+            <input type="file" id="backup-file-input" accept="application/json,.json" style="display:none" onchange="importBackup(event)">
+          </label>
+          <span id="backup-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sous-onglet : Top examens -->
+    <div id="ac-topex" class="admin-sub-section">
+      <div class="card">
+        <div class="card-title">🔬 Top 10 examens les plus demandés</div>
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>#</th><th>Examen</th><th>Nb demandes</th></tr></thead>
+          <tbody id="top-examens-body"><tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="add-examen-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:white;border-radius:var(--radius-lg);padding:28px 32px;width:100%;max-width:480px;box-shadow:var(--shadow-lg)">
+      <h3 style="font-size:15px;font-weight:700;color:var(--cpmi-deep);margin-bottom:18px">➕ Ajouter un examen personnalisé</h3>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Nom de l'examen <span class="req">*</span></label>
+        <input type="text" id="new_ex_label" placeholder="ex. Ferritinémie, HbA1c, Scanner...">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Onglet de saisie</label>
+        <select id="new_ex_groupe">
+          <option value="hema">🩸 Hématologie</option>
+          <option value="bio">🧪 Biochimie</option>
+          <option value="sero">💉 Immuno-Sérologie</option>
+          <option value="bacterio">🦠 Bactériologie</option>
+          <option value="parasito">🦟 Parasitologie</option>
+          <option value="gs">🩸 Groupe sanguin</option>
+          <option value="other">🔬 Autres (sur la fiche uniquement)</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:18px">
+        <label>Prix (FCFA)</label>
+        <input type="number" id="new_ex_prix" value="0" min="0" step="100">
+      </div>
+      <p style="font-size:11.5px;color:var(--text-muted);margin-bottom:14px">
+        💡 L'examen apparaîtra sur la fiche d'identification pour cocher et facturer. Le résultat se saisit dans le champ « Observations » de l'onglet correspondant.
+      </p>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="addExamenPersonnalise()">Ajouter</button>
+        <button class="btn btn-outline" onclick="document.getElementById('add-examen-modal').style.display='none'">Annuler</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     ✅ v13.28 — VUE CAISSE (tableau de bord financier)
+     ═══════════════════════════════════════════════════ -->
+<!-- ✅ v13.86 — Cahier jaune : reprise du cahier Excel du laboratoire.
+     Une ligne par jour ouvré, colonnes nommées configurables, montants
+     négatifs pour les sorties, sous-total par semaine, total du mois. -->
+<div id="view-cahier" style="display:none">
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span id="cahier-titre">📒 Cahier jaune</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="month" id="cahier-mois" onchange="changerMoisCahier()"
+               style="padding:5px 8px;font-size:12.5px" aria-label="Mois du cahier">
+        <button class="btn btn-outline" onclick="chargerCahierJaune()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+      </div>
+    </div>
+    <p id="cahier-intro-jaune" style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">
+      Registre des sommes qui reviennent au personnel plutôt qu'au laboratoire.
+      Un <strong>bilan prénatal interne</strong> y est reporté automatiquement pour son
+      montant (10 000 FCFA : 5 000 sage-femme, 5 000 laboratoire) et <strong>sort de la
+      recette du jour</strong> dans la clôture de caisse. Les montants négatifs sont des
+      sorties et exigent une explication.
+    </p>
+    <div id="cahier-tableau"></div>
+  </div>
+
+  <!-- ✅ v13.92 — Le cahier appartient à l'administrateur. Il décide qui
+       d'autre le voit, et sur quelle période. -->
+  <div class="card" id="cahier-partage-card" style="margin-bottom:16px;display:none">
+    <div class="card-title">👁 Partage du cahier</div>
+    <p style="font-size:12.5px;color:var(--text-muted);line-height:1.55;margin:0 0 10px">
+      Par défaut, ce cahier n'est visible que par vous. Vous pouvez l'ouvrir à
+      d'autres profils <strong>en lecture seule</strong>, et limiter ce qu'ils voient à une
+      période donnée — utile pour faire vérifier une semaine sans donner accès à l'année.
+    </p>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:10px">
+      <input type="checkbox" id="partage-actif" style="width:16px;height:16px">
+      Autoriser d'autres profils à consulter le cahier
+    </label>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">
+        <input type="checkbox" id="partage-role-caissier"> Caissier</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">
+        <input type="checkbox" id="partage-role-spectateur"> Spectateur</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">
+        <input type="checkbox" id="partage-role-agent"> Agent</label>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div><label style="font-size:12px;font-weight:600;display:block">Du (facultatif)</label>
+        <input type="date" id="partage-debut" style="padding:5px 8px;font-size:12.5px"></div>
+      <div><label style="font-size:12px;font-weight:600;display:block">Au (facultatif)</label>
+        <input type="date" id="partage-fin" style="padding:5px 8px;font-size:12.5px"></div>
+      <button class="btn btn-primary" onclick="enregistrerPartageCahier()" style="padding:6px 16px;font-size:12.5px">Enregistrer</button>
+    </div>
+    <div id="partage-info" style="font-size:11.5px;color:var(--text-muted);margin-top:8px"></div>
+  </div>
+
+  <div class="card" id="cahier-colonnes-card" style="margin-bottom:16px">
+    <div class="card-title">➕ Ajouter une colonne</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px">
+      Les intervenants changent d'un mois à l'autre. Une colonne retirée est archivée,
+      jamais supprimée : les mois déjà clos ne doivent pas changer.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="cahier-nouvelle-colonne" placeholder="SFHG, ZEHI, DIABAGATE…"
+             style="min-width:220px;padding:6px 10px">
+      <button class="btn btn-outline" onclick="ajouterColonneCahier()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div id="view-caisse" style="display:none">
+
+  <!-- ✅ v13.201 — Refonte Kiosque de la caisse : styles scopés + réorganisation
+       par ordre flexbox (aucun déplacement DOM, tous les IDs/handlers conservés). -->
+  <style id="caisse-kiosque-style">
+    #view-caisse, #view-caisse-user { display:flex; flex-direction:column; }
+    /* ✅ v13.210 — Vue caisse MINIMALE pour la caissière : on masque l'analyse
+       par période et les ristournes (réservées à l'administrateur). */
+    body.caisse-min .caisse-avance { display:none !important; }
+    .ckiosk-hero{order:0;display:flex;align-items:center;justify-content:space-between;gap:16px;
+      flex-wrap:wrap;background:linear-gradient(135deg,#065f46 0%,#0891b2 100%);color:#fff;
+      border-radius:18px;padding:20px 24px;margin-bottom:18px;box-shadow:0 8px 24px rgba(6,95,70,.22)}
+    .ckiosk-hero-title{font-size:22px;font-weight:800;letter-spacing:.3px;line-height:1.15}
+    .ckiosk-hero-sub{font-size:12.5px;opacity:.92;margin-top:4px;max-width:520px}
+    .ckiosk-hero .btn{background:#fff;color:#065f46;border:none;font-weight:800;
+      box-shadow:0 3px 10px rgba(0,0,0,.18);transition:transform .12s ease}
+    .ckiosk-hero .btn:hover{transform:translateY(-2px)}
+    .ckiosk-label{display:flex;align-items:center;gap:9px;margin:8px 4px 10px;
+      font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--cpmi-mid,#0891b2)}
+    .ckiosk-label::after{content:"";flex:1;height:1px;background:var(--border)}
+    #view-caisse .card, #view-caisse-user .card{border-radius:16px;box-shadow:0 2px 12px rgba(15,23,42,.06)}
+    #view-caisse .stats-kpi, #view-caisse-user .stats-kpi{border-radius:14px;
+      box-shadow:0 2px 12px rgba(15,23,42,.07)}
+    @media (max-width:640px){ .ckiosk-hero{padding:16px 18px}.ckiosk-hero-title{font-size:19px} }
+  </style>
+
+  <!-- En-tête Kiosque + action principale -->
+  <div class="ckiosk-hero">
+    <div>
+      <div class="ckiosk-hero-title">💰 Caisse</div>
+      <div class="ckiosk-hero-sub">Encaissements, monnaie, clôture &amp; registre du jour, analyse et ristournes.</div>
+    </div>
+    <button class="btn" onclick="caisseNouveauPatient()" style="padding:12px 24px;font-size:14.5px">➕ Enregistrer un patient</button>
+  </div>
+
+  <!-- Étiquettes de section (positionnées par flexbox order) -->
+  <div class="ckiosk-label" style="order:2">🔔 Opérations du jour</div>
+  <div class="ckiosk-label" style="order:5">🧾 Documents de caisse</div>
+  <div class="ckiosk-label caisse-avance" style="order:8">📊 Analyse par période</div>
+  <div class="ckiosk-label caisse-avance" style="order:12">💊 Ristournes prescripteurs</div>
+
+  <!-- ✅ v13.84 — Clôture de caisse : état de fin de journée, signé par le
+       caissier et le responsable. Les dossiers verrouillés sont présentés
+       HORS recette : ils sont exclus de tous les calculs de l'application,
+       les inclure ici ferait signer un chiffre introuvable ailleurs. -->
+  <div class="card" id="cloture-card" style="margin-bottom:16px;order:6">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>🧾 Clôture de caisse</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="date" id="cloture-date" onchange="renderCloture()"
+               style="padding:5px 8px;font-size:12.5px" aria-label="Journée à clôturer">
+        <button class="btn btn-outline" onclick="renderCloture()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+        <button class="btn btn-primary" onclick="imprimerCloture()" style="padding:5px 14px;font-size:12px">🖨 Imprimer la clôture</button>
+      </div>
+    </div>
+    <div id="cloture-apercu"></div>
+  </div>
+
+  <!-- ✅ v13.169 — Registre du jour : document clinique/opérationnel (une ligne
+       par patient avec examens, résultat et prix), distinct de la clôture qui
+       est financière. Imprimable en A4 noir & blanc. -->
+  <div class="card" id="registre-card" style="margin-bottom:16px;order:7">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>📋 Registre du jour</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="date" id="registre-date" onchange="renderRegistre()"
+               style="padding:5px 8px;font-size:12.5px" aria-label="Journée du registre">
+        <button class="btn btn-outline" onclick="renderRegistre()" style="padding:5px 12px;font-size:12px">↻ Actualiser</button>
+        <button class="btn btn-primary" onclick="imprimerRegistre()" style="padding:5px 14px;font-size:12px">🖨 Imprimer le registre</button>
+      </div>
+    </div>
+    <div id="registre-apercu"></div>
+  </div>
+
+  <!-- Sélecteur de période -->
+  <div class="card" style="margin-bottom:16px;order:9">
+    <div class="card-title">🗓 Sélection de période</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-outline active" id="caisse-btn-jour" onclick="setCaissePeriode('jour')" style="padding:6px 14px;font-size:12.5px">Aujourd'hui</button>
+      <button class="btn btn-outline" id="caisse-btn-semaine" onclick="setCaissePeriode('semaine')" style="padding:6px 14px;font-size:12.5px">Cette semaine</button>
+      <button class="btn btn-outline" id="caisse-btn-mois" onclick="setCaissePeriode('mois')" style="padding:6px 14px;font-size:12.5px">Ce mois</button>
+      <!-- ✅ v13.108 — « Tout » ajouté pour que les commandes de période soient identiques aux autres vues. -->
+      <button class="btn btn-outline" id="caisse-btn-tout" onclick="setCaissePeriode('tout')" style="padding:6px 14px;font-size:12.5px">Tout</button>
+      <!-- ✅ v13.73 — Navigation dans le temps (composant partagé js/periode-nav.js) -->
+      <div id="caisse-nav-periode" style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <button class="btn btn-outline" id="caisse-nav-precedent" onclick="decalerCaisse(-1)"
+                title="Période précédente" aria-label="Période précédente"
+                style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+        <span id="caisse-nav-label"
+              style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="caisse-nav-suivant" onclick="decalerCaisse(1)"
+                title="Période suivante" aria-label="Période suivante"
+                style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+        <button class="btn btn-outline" id="caisse-nav-retour" onclick="retourCaisseCourante()"
+                title="Revenir à la période en cours"
+                style="padding:5px 9px;font-size:11.5px;display:none">↻ Actuel</button>
+      </div>
+      <div id="caisse-mois-annee" style="display:flex;align-items:center;gap:5px">
+        <select id="caisse-sel-mois" onchange="allerAuMoisCaisse()" aria-label="Aller au mois"
+                style="width:auto;min-width:104px;padding:4px 8px;font-size:11.5px"></select>
+        <select id="caisse-sel-annee" onchange="allerAuMoisCaisse()" aria-label="Aller à l'année"
+                style="width:auto;min-width:78px;padding:4px 8px;font-size:11.5px"></select>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px;margin-left:8px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--text-muted)">Du</label>
+        <input type="date" id="caisse-date-from" style="width:auto;max-width:150px">
+        <label style="font-size:12px;color:var(--text-muted)">Au</label>
+        <input type="date" id="caisse-date-to" style="width:auto;max-width:150px">
+        <button class="btn btn-primary" onclick="setCaissePeriode('custom')" style="padding:6px 12px;font-size:12px">Appliquer</button>
+      </div>
+      <span id="caisse-periode-label" style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
+    </div>
+
+    <!-- ✅ v13.37 — Export du point journalier (par jour + total) sur la période choisie -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <span style="font-size:12.5px;font-weight:700;color:var(--text-label)">📅 Point journalier :</span>
+      <button class="btn btn-success" onclick="exportPointJournalierExcel()" style="padding:6px 14px;font-size:12.5px">⬇ Excel</button>
+      <button class="btn" onclick="exportPointJournalierPDF()" style="padding:6px 14px;font-size:12.5px;background:#dc2626;color:#fff">📄 PDF</button>
+      <span style="font-size:11.5px;color:var(--text-muted)">Par jour (payé / non payé) + par type d'analyse + par prescripteur, avec totaux — sur la période sélectionnée.</span>
+    </div>
+
+    <!-- v13.32 — Fiches verrouillées exclues de la comptabilité (voir section Fiches verrouillées) -->
+    <div id="caisse-cles-toggle" style="display:none"></div>
+  </div>
+
+  <!-- KPI -->
+  <div class="stats-kpi-row" id="caisse-kpi-row" style="order:1">
+    <div class="stats-kpi" style="border-left:3px solid #15803d"><div class="kpi-val" id="caisse-kpi-total" style="color:#15803d">—</div><div class="kpi-label">Total encaissé (FCFA)</div></div>
+    <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-nb">—</div><div class="kpi-label">Nombre de dossiers</div></div>
+    <div class="stats-kpi"><div class="kpi-val" id="caisse-kpi-moy">—</div><div class="kpi-label">Moyenne / dossier (FCFA)</div></div>
+    <div class="stats-kpi" style="border-left:3px solid var(--warning)"><div class="kpi-val" id="caisse-kpi-attente" style="color:var(--warning)">—</div><div class="kpi-label">Dossiers en attente de paiement</div></div>
+  </div>
+
+  <!-- ✅ v13.35 — Dossiers à encaisser -->
+  <div class="card" style="margin-bottom:16px;order:3" id="caisse-a-encaisser-card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>🔒 Dossiers à encaisser</span>
+      <span id="caisse-encaisser-count" style="font-size:12px;color:var(--warning);font-weight:700"></span>
+    </div>
+    <div id="caisse-a-encaisser-body">
+      <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:16px">Chargement…</p>
+    </div>
+  </div>
+
+  <!-- ✅ v13.36 — Monnaie à rendre (patients qui n'ont pas repris leur monnaie) -->
+  <div class="card" style="margin-bottom:16px;display:none;order:4" id="caisse-monnaie-card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>💵 Monnaie à rendre</span>
+      <span id="caisse-monnaie-count" style="font-size:12px;color:#b45309;font-weight:700"></span>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">Patients à qui la monnaie n'a pas encore été remise. Cliquez « Remise » quand le patient repart avec sa monnaie.</p>
+    <div id="caisse-monnaie-body"></div>
+  </div>
+
+  <!-- Graphique recettes par jour -->
+  <div class="card caisse-avance" style="margin-bottom:16px;order:10">
+    <div class="card-title">📊 Recettes par jour (période sélectionnée)</div>
+    <div style="position:relative;height:240px"><canvas id="caisse-chart-jour"></canvas></div>
+  </div>
+
+  <div class="stats-grid caisse-avance" style="order:11">
+    <!-- Répartition par type d'examen -->
+    <div class="card stats-card">
+      <div class="card-title">🔬 Répartition par type d'analyse</div>
+      <div class="table-wrap">
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>Type</th><th style="text-align:center">Nb dossiers</th><th style="text-align:right">Total FCFA</th><th style="text-align:right">%</th></tr></thead>
+          <tbody id="caisse-type-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Top 5 prescripteurs -->
+    <div class="card stats-card">
+      <div class="card-title">🏆 Top 5 prescripteurs par volume</div>
+      <div class="table-wrap">
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>#</th><th>Prescripteur</th><th style="text-align:center">Nb dossiers</th><th style="text-align:right">Total FCFA</th></tr></thead>
+          <tbody id="caisse-top-presc-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ v13.28 — Ristournes prescripteurs (Feature 6) : calcul mensuel + export PDF/Excel -->
+  <div class="card caisse-avance" style="margin-top:16px;order:13" id="caisse-ristournes-card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>💊 Ristournes prescripteurs</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="decalerSelecteursMois('rist-mois','rist-annee',-1,renderRistournesMois)"
+                title="Mois précédent" aria-label="Mois précédent"
+                style="padding:4px 9px;font-size:12px;line-height:1">◀</button>
+        <span id="rist-mois-label" style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:118px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="rist-mois-suivant" onclick="decalerSelecteursMois('rist-mois','rist-annee',1,renderRistournesMois)"
+                title="Mois suivant" aria-label="Mois suivant"
+                style="padding:4px 9px;font-size:12px;line-height:1">▶</button>
+        <select id="rist-mois" onchange="renderRistournesMois()" style="width:auto;min-width:104px;padding:5px 8px;font-size:12px"></select>
+        <select id="rist-annee" onchange="renderRistournesMois()" style="width:auto;min-width:78px;padding:5px 8px;font-size:12px"></select>
+        <button class="btn" onclick="exportRistournesPDF()" style="padding:5px 12px;font-size:12px;background:#dc2626;color:#fff">📄 Export PDF</button>
+        <button class="btn btn-success" onclick="exportRistournesExcel()" style="padding:5px 12px;font-size:12px">⬇ Export Excel</button>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px">
+      Ristourne = montant des examens du mois × taux du prescripteur / 100.
+      Modifiez le taux directement dans le tableau puis cliquez « Enregistrer les taux ».
+    </p>
+    <div id="rist-mois-table"></div>
+    <div style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveRistourneTaux()" style="padding:6px 14px;font-size:12.5px">💾 Enregistrer les taux</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.33 — Vue Caisse simplifiée (utilisateurs non-admin) -->
+<div id="view-caisse-user" style="display:none">
+
+  <!-- ✅ v13.201 — En-tête Kiosque (styles partagés avec #view-caisse) -->
+  <div class="ckiosk-hero">
+    <div>
+      <div class="ckiosk-hero-title">💰 Ma caisse</div>
+      <div class="ckiosk-hero-sub">Votre activité, vos recettes et vos ristournes sur la période choisie.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;order:2">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span>🗓 Période</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-outline active" id="ucaisse-btn-jour" onclick="setUCaissePeriode('jour')" style="padding:5px 12px;font-size:12px">Aujourd'hui</button>
+        <button class="btn btn-outline" id="ucaisse-btn-semaine" onclick="setUCaissePeriode('semaine')" style="padding:5px 12px;font-size:12px">Cette semaine</button>
+        <button class="btn btn-outline" id="ucaisse-btn-mois" onclick="setUCaissePeriode('mois')" style="padding:5px 12px;font-size:12px">Ce mois</button>
+      <!-- ✅ v13.73 — Navigation dans le temps (composant partagé js/periode-nav.js) -->
+      <div id="ucaisse-nav-periode" style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <button class="btn btn-outline" id="ucaisse-nav-precedent" onclick="decalerUCaisse(-1)"
+                title="Période précédente" aria-label="Période précédente"
+                style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+        <span id="ucaisse-nav-label"
+              style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:150px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="ucaisse-nav-suivant" onclick="decalerUCaisse(1)"
+                title="Période suivante" aria-label="Période suivante"
+                style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+        <button class="btn btn-outline" id="ucaisse-nav-retour" onclick="retourUCaisseCourante()"
+                title="Revenir à la période en cours"
+                style="padding:5px 9px;font-size:11px;display:none">↻ Actuel</button>
+      </div>
+      <div id="ucaisse-mois-annee" style="display:flex;align-items:center;gap:5px">
+        <select id="ucaisse-sel-mois" onchange="allerAuMoisUCaisse()" aria-label="Aller au mois"
+                style="width:auto;min-width:104px;padding:4px 8px;font-size:11.5px"></select>
+        <select id="ucaisse-sel-annee" onchange="allerAuMoisUCaisse()" aria-label="Aller à l'année"
+                style="width:auto;min-width:78px;padding:4px 8px;font-size:11.5px"></select>
+      </div>
+
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <label style="font-size:11px;color:var(--text-muted)">Du</label>
+          <input type="date" id="ucaisse-date-from" style="width:auto;max-width:150px;font-size:12px">
+          <label style="font-size:11px;color:var(--text-muted)">Au</label>
+          <input type="date" id="ucaisse-date-to" style="width:auto;max-width:150px;font-size:12px">
+          <button class="btn btn-primary" onclick="setUCaissePeriode('custom')" style="padding:5px 10px;font-size:12px">Appliquer</button>
+        </div>
+        <span id="ucaisse-periode-label" style="font-size:11.5px;color:var(--text-muted)"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="stats-kpi-row" style="margin-bottom:16px;order:1">
+    <div class="stats-kpi" style="border-left:3px solid #15803d">
+      <div class="kpi-val" id="ucaisse-kpi-total" style="color:#15803d">—</div>
+      <div class="kpi-label">Total encaissé (FCFA)</div>
+    </div>
+    <div class="stats-kpi">
+      <div class="kpi-val" id="ucaisse-kpi-nb">—</div>
+      <div class="kpi-label">Patients enregistrés</div>
+    </div>
+    <div class="stats-kpi">
+      <div class="kpi-val" id="ucaisse-kpi-moy">—</div>
+      <div class="kpi-label">Moyenne / dossier (FCFA)</div>
+    </div>
+    <div class="stats-kpi" style="border-left:3px solid var(--warning)">
+      <div class="kpi-val" id="ucaisse-kpi-attente" style="color:var(--warning)">—</div>
+      <div class="kpi-label">Dossiers en attente de paiement</div>
+    </div>
+  </div>
+
+  <!-- Graphique recettes par jour -->
+  <div class="card" style="margin-bottom:16px;order:3">
+    <div class="card-title">📊 Recettes par jour (période sélectionnée)</div>
+    <div style="position:relative;height:220px"><canvas id="ucaisse-chart-jour"></canvas></div>
+  </div>
+
+  <!-- Répartition type + Ristournes côte à côte -->
+  <div class="stats-grid" style="margin-bottom:16px;order:4">
+    <!-- Répartition par type -->
+    <div class="card stats-card">
+      <div class="card-title">🔬 Répartition par type d'analyse</div>
+      <div class="table-wrap">
+        <table class="result-table" style="width:100%">
+          <thead><tr><th>Type</th><th style="text-align:center">Nb</th><th style="text-align:right">Total FCFA</th><th style="text-align:right">%</th></tr></thead>
+          <tbody id="ucaisse-type-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Ristournes de mes prescripteurs (lecture seule) -->
+    <div class="card stats-card">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:6px">
+        <span>💊 Mes ristournes du mois</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-outline" onclick="decalerSelecteursMois('ucaisse-rist-mois','ucaisse-rist-annee',-1,renderUCaisseRistournes)"
+                title="Mois précédent" aria-label="Mois précédent"
+                style="padding:4px 9px;font-size:12px;line-height:1">◀</button>
+        <span id="ucaisse-rist-mois-label" style="font-size:11.5px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:118px;text-align:center;white-space:nowrap"></span>
+        <button class="btn btn-outline" id="ucaisse-rist-mois-suivant" onclick="decalerSelecteursMois('ucaisse-rist-mois','ucaisse-rist-annee',1,renderUCaisseRistournes)"
+                title="Mois suivant" aria-label="Mois suivant"
+                style="padding:4px 9px;font-size:12px;line-height:1">▶</button>
+        <select id="ucaisse-rist-mois" onchange="renderUCaisseRistournes()" style="width:auto;min-width:104px;padding:4px 8px;font-size:12px"></select>
+          <select id="ucaisse-rist-annee" onchange="renderUCaisseRistournes()" style="width:auto;min-width:78px;padding:4px 8px;font-size:12px"></select>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Ristournes générées par les prescripteurs de vos dossiers.</p>
+      <div id="ucaisse-rist-table"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div id="toast"></div>
+
+<script src="./js/periode-nav.js?v=13.230"></script>
+<script src="./js/donnees-analyses.js?v=13.230"></script>
+<script src="./js/dfg.js?v=13.230"></script>
+<script src="./js/navigation.js?v=13.230"></script>
+<script src="./js/supabase-db.js?v=13.230"></script>
+<script src="./js/historique.js?v=13.230"></script>
+<script src="./js/export-excel.js?v=13.230"></script>
+<script src="./js/prescripteurs.js?v=13.230"></script>
+<script src="./js/saisie.js?v=13.230"></script>
+<script src="./js/completude.js?v=13.230"></script>
+<script src="./js/grille.js?v=13.230"></script>
+<script src="./js/ui-auth.js?v=13.230"></script>
+<script src="./js/session-pwa.js?v=13.230"></script>
+<script src="./js/saisie-mobile.js?v=13.230"></script>
+
+<!-- ✅ v13.201 — Barre d'onglets mobile (paradigme maquette mobile). Affichée
+     uniquement sur téléphone (≤ 640px). Réutilise showView ; visibilité/actif
+     synchronisés par showView. -->
+<style id="poste-pro-mobile-style">
+  #mobile-tabbar{display:none}
+  #mobile-menu-btn{display:none}
+  /* Saisie en série : la déroulante « un examen à la fois » ne sert que sur mobile.
+     Sur desktop le grand tableau multi-examens reste affiché tel quel. */
+  .grille-mob-pick{display:none}
+  @media (max-width:640px){
+    /* ===== SAISIE EN SÉRIE — RENDU EN CARTES (façon maquette mobile) =====
+       Sur mobile, le grand tableau devient une liste de cartes patient : en haut
+       une déroulante choisit l'examen, puis chaque patient est une carte avec ses
+       champs étiquetés (GB, GR, Hb…). Purement CSS — mêmes id de champs, mêmes
+       handlers : l'enregistrement est identique au desktop. */
+    .grille-mob-pick{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5;
+      margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;
+      background:linear-gradient(135deg,#f0fdfa,#ecfeff);box-shadow:0 2px 8px rgba(15,23,42,.06)}
+    .grille-mob-pick label{font-size:12.5px;font-weight:800;color:var(--cpmi-deep,#0b2545);flex:none}
+    .grille-mob-pick select{flex:1;min-width:0;padding:11px 12px;font-size:16px;font-weight:700;
+      border:1.5px solid var(--cpmi-mid,#0891b2);border-radius:10px;background:#fff;
+      color:var(--cpmi-deep,#0b2545)}
+    /* Le conteneur ne défile plus horizontalement : les cartes s'empilent. */
+    #grille-serie #grille-scroll{max-height:none;overflow:visible;border:0;background:transparent}
+    #grille-serie #grille-scroll table,
+    #grille-serie #grille-scroll tbody{display:block;width:100%}
+    #grille-serie #grille-scroll thead{display:none}       /* étiquettes reprises dans les cartes */
+    /* Chaque ligne patient = une carte */
+    #grille-serie tr[data-doss]{display:flex;flex-wrap:wrap;gap:9px;
+      margin:0 0 12px;padding:12px 12px 14px;background:var(--card,#fff);
+      border:1px solid var(--border);border-radius:14px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+    /* En-tête de carte : nom + n° dossier + coche « prêt » */
+    #grille-serie tr[data-doss] > td:first-child{position:static !important;flex:1 0 100%;
+      border:0 !important;border-bottom:1px dashed var(--border) !important;border-radius:0 !important;
+      padding:0 0 9px !important;font-size:15px !important;background:transparent !important}
+    #grille-serie tr[data-doss] > td:first-child input[type=checkbox]{width:20px;height:20px}
+    /* Champs de la carte : 3 colonnes, étiquette au-dessus du champ */
+    #grille-serie td[data-exam]{flex:1 1 calc(33.333% - 9px);min-width:84px;display:flex;
+      flex-direction:column;gap:3px;padding:0 !important;border:0 !important;text-align:left}
+    #grille-serie td[data-exam]::before{content:attr(data-lab);font-size:11px;font-weight:700;
+      color:var(--text-muted);text-transform:uppercase;letter-spacing:.02em}
+    #grille-serie td[data-exam][data-lab=""]::before{content:none}
+    #grille-serie td[data-exam] input,
+    #grille-serie td[data-exam] select{width:100% !important;min-width:0 !important;
+      box-sizing:border-box;padding:10px 8px !important;font-size:16px !important;text-align:left}
+    /* Cellules « — » (examen non demandé) : pleine largeur, discrètes */
+    #grille-serie td[data-exam][colspan]{flex:1 0 100%;padding:8px !important;border-radius:8px !important;
+      display:block;text-align:center}
+    #grille-serie td[data-exam][colspan]::before{content:none}
+  }
+  @media (max-width:640px){
+    /* En-tête compact : bouton menu visible, nav primaire repliée en panneau */
+    #mobile-menu-btn{display:inline-flex;align-items:center;justify-content:center;
+      width:40px;height:40px;flex:none;border-radius:10px;cursor:pointer;
+      background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);
+      color:#fff;font-size:22px;line-height:1;padding:0}
+    #app-root > header{flex-wrap:nowrap !important;gap:10px}
+    #app-root > header #user-badge{margin-left:auto}
+    #app-root > header > nav{display:none;position:absolute;top:100%;left:0;right:0;z-index:250;
+      flex-direction:column;align-items:stretch;gap:4px;padding:10px 12px;margin:0;
+      background:#0b2545;border-top:1px solid rgba(255,255,255,.15);
+      box-shadow:0 10px 24px rgba(0,0,0,.34);max-height:72vh;overflow-y:auto}
+    #app-root > header > nav.mob-open{display:flex}
+    #app-root > header > nav .nav-btn{width:100%;justify-content:flex-start;text-align:left;font-size:13.5px}
+    /* La saisie passe par la barre du bas (« Saisie série ») : on retire l'entrée
+       « Nouvelle saisie » du menu du haut sur mobile pour ne pas doublonner. */
+    #app-root > header > nav .nav-btn[data-view="saisie"]{display:none}
+    #mobile-tabbar{display:grid;grid-template-columns:repeat(4,1fr);
+      position:fixed;bottom:0;left:0;right:0;z-index:300;
+      background:var(--card,#fff);border-top:1px solid var(--border);
+      padding-bottom:env(safe-area-inset-bottom,0);
+      box-shadow:0 -2px 14px rgba(15,23,42,.12)}
+    #mobile-tabbar button{border:0;background:none;cursor:pointer;font-family:inherit;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:2px;padding:8px 4px;color:var(--text-muted);font-size:10px;font-weight:700}
+    #mobile-tabbar button .i{font-size:19px;line-height:1}
+    #mobile-tabbar button.on{color:var(--cpmi-mid,#0891b2)}
+    #mobile-tabbar .mtb-fab{color:var(--cpmi-mid,#0891b2)}
+    #mobile-tabbar .mtb-fab .i{width:44px;height:44px;border-radius:14px;margin-top:-16px;
+      background:linear-gradient(135deg,#065f46,#0891b2);color:#fff;display:grid;place-items:center;
+      box-shadow:0 4px 12px rgba(6,95,70,.35);font-size:22px}
+    #app-root > main{padding-bottom:80px !important}
+  }
+</style>
+<nav id="mobile-tabbar" aria-label="Navigation mobile">
+  <button data-view="historique" onclick="showView('historique')"><span class="i">📁</span>File</button>
+  <button data-view="saisie" onclick="showView('saisie');if(typeof ouvrirGrilleNFS==='function')ouvrirGrilleNFS()"><span class="i">📋</span>Saisie série</button>
+  <button class="mtb-fab" onclick="showView('saisie');if(typeof newPatient==='function')newPatient()"><span class="i">＋</span>Nouveau</button>
+  <button data-view="caisse" onclick="showView('caisse')"><span class="i">💰</span>Caisse</button>
+</nav>
+<script>
+  function toggleMobileMenu(btn){
+    const n = document.querySelector('#app-root > header > nav');
+    if (!n) return;
+    const open = n.classList.toggle('mob-open');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    const n = document.querySelector('#app-root > header > nav');
+    if (n) n.addEventListener('click', function(e){
+      if (e.target.closest('.nav-btn')) {
+        n.classList.remove('mob-open');
+        const b = document.getElementById('mobile-menu-btn');
+        if (b) b.setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
+</script>
+
+</div><!-- /#app-root -->
+
+<!-- ✅ v13.7 — Modale d'édition de compte (remplace confirm + prompt) -->
+<div id="user-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+  <div class="modal-box">
+    <div class="modal-title" id="user-modal-title">Modifier le compte</div>
+    <input type="hidden" id="um_id">
+    <div id="um_name" style="font-weight:700;margin-bottom:10px"></div>
+    <label class="modal-label" for="um_role">Rôle</label>
+    <select class="modal-input" id="um_role" aria-label="Rôle du compte">
+      <option value="agent">Agent</option>
+      <option value="caissier">Caissier (caisse uniquement)</option>
+      <option value="spectateur">Spectateur (lecture seule caisse)</option>
+      <option value="prescripteur">Prescripteur (portail soignant)</option>
+      <option value="admin">Administrateur</option>
+    </select>
+    <label class="modal-label" for="um_password">Nouveau mot de passe <span style="font-weight:400;color:var(--text-muted)">(laisser vide pour ne pas changer)</span></label>
+    <input class="modal-input" id="um_password" type="password" autocomplete="new-password" aria-label="Nouveau mot de passe">
+    <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;line-height:1.4">🔑 Mot de passe oublié : saisissez ici un mot de passe temporaire. L'utilisateur devra en choisir un nouveau à sa prochaine connexion.</div>
+    <div id="um-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeUserModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitUserModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.1 — Modale d'édition prescripteur (remplace les prompt() en série) -->
+<div id="presc-modal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="presc-modal-title">
+  <div class="modal-box">
+    <div class="modal-title" id="presc-modal-title">Modifier le prescripteur</div>
+    <input type="hidden" id="pm_id">
+    <label class="modal-label" for="pm_nom">Nom</label>
+    <input class="modal-input" id="pm_nom" type="text" aria-label="Nom du prescripteur" style="text-transform:uppercase" oninput="forcerMajuscule(this)">
+    <label class="modal-label" for="pm_spec">Spécialité</label>
+    <input class="modal-input" id="pm_spec" type="text" aria-label="Spécialité">
+    <label class="modal-label" for="pm_struct">Structure</label>
+    <input class="modal-input" id="pm_struct" type="text" aria-label="Structure">
+    <label class="modal-label" for="pm_taux">Taux de ristourne (%)</label>
+    <input class="modal-input" id="pm_taux" type="number" min="0" max="100" step="0.5" aria-label="Taux de ristourne en pourcentage">
+    <div id="pm-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePrescModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitPrescModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vue publique de vérification (QR code) -->
+<div id="share-view" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#0b2545,#0096c7,#00b4d8);align-items:center;justify-content:center;z-index:3000;padding:20px">
+  <div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:480px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18);font-family:'Poppins',sans-serif;text-align:center">
+    <div style="width:44px;height:44px;border:4px solid #e0eaff;border-top-color:#0b2545;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px"></div>
+    <div style="font-size:14px;color:#4a5c82;font-weight:600">Vérification du dossier…</div>
+  </div>
+</div>
+
+<!-- ✅ v13.28 — Modale de changement de mot de passe obligatoire (première connexion) -->
+<div id="first-login-modal" class="modal-backdrop" style="display:none;z-index:3200" role="dialog" aria-modal="true" aria-labelledby="fl-title">
+  <div class="modal-box">
+    <div class="modal-title" id="fl-title">🔐 Changement de mot de passe obligatoire</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+      Pour votre sécurité, vous devez définir un nouveau mot de passe avant d'accéder à l'application.
+    </p>
+    <label class="modal-label" for="fl_old">Mot de passe actuel</label>
+    <input class="modal-input" id="fl_old" type="password" autocomplete="current-password">
+    <label class="modal-label" for="fl_new">Nouveau mot de passe <span style="font-weight:400;color:var(--text-muted)">(min. 8 caractères, au moins 1 chiffre)</span></label>
+    <input class="modal-input" id="fl_new" type="password" autocomplete="new-password">
+    <label class="modal-label" for="fl_confirm">Confirmer le mot de passe</label>
+    <input class="modal-input" id="fl_confirm" type="password" autocomplete="new-password">
+    <div id="fl-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="submitFirstLoginPassword()">Changer le mot de passe</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.174 — Changement de mot de passe volontaire (tous les rôles, à tout moment) -->
+<div id="change-pwd-modal" class="modal-backdrop" style="display:none;z-index:3200" role="dialog" aria-modal="true" aria-labelledby="cp-title">
+  <div class="modal-box">
+    <div class="modal-title" id="cp-title">🔑 Changer mon mot de passe</div>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">
+      Choisissez un nouveau mot de passe personnel. Il ne sera connu que de vous.
+    </p>
+    <label class="modal-label" for="cp_old">Mot de passe actuel</label>
+    <input class="modal-input" id="cp_old" type="password" autocomplete="current-password">
+    <label class="modal-label" for="cp_new">Nouveau mot de passe <span style="font-weight:400;color:var(--text-muted)">(min. 8 caractères, au moins 1 chiffre)</span></label>
+    <input class="modal-input" id="cp_new" type="password" autocomplete="new-password">
+    <label class="modal-label" for="cp_confirm">Confirmer le nouveau mot de passe</label>
+    <input class="modal-input" id="cp_confirm" type="password" autocomplete="new-password">
+    <div id="cp-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fermerChangerMdp()">Annuler</button>
+      <button class="btn btn-primary" id="cp-submit" onclick="submitChangerMdp()">Changer le mot de passe</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.204 — ADMIN : changer l'auteur d'un dossier (pilote la visibilité spectateurs) -->
+<div id="change-author-modal" class="modal-backdrop" style="display:none;z-index:3200" role="dialog" aria-modal="true" aria-labelledby="ca-title">
+  <div class="modal-card">
+    <div class="modal-title" id="ca-title">👤 Changer l'auteur du dossier</div>
+    <p class="modal-desc" style="font-size:12.5px;color:var(--text-muted)">
+      La visibilité des spectateurs dépend de l'auteur. Un dossier attribué à
+      <strong>Nadia</strong> ou à <strong>admin</strong> reste caché des spectateurs ;
+      attribué à un autre compte, il devient visible.
+    </p>
+    <div id="ca-info" style="font-size:12.5px;margin:6px 0 10px;padding:8px 10px;background:var(--bg);border-radius:8px"></div>
+    <label class="modal-label" for="ca_author">Nouvel auteur</label>
+    <select class="modal-input" id="ca_author"></select>
+    <div id="ca-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fermerChangerAuteur()">Annuler</button>
+      <button class="btn btn-primary" id="ca-submit" onclick="submitChangerAuteur()">Changer l'auteur</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.208 — ADMIN : changer le propriétaire de plusieurs dossiers cochés -->
+<div id="bulk-author-modal" class="modal-backdrop" style="display:none;z-index:3200" role="dialog" aria-modal="true" aria-labelledby="ba-title">
+  <div class="modal-card">
+    <div class="modal-title" id="ba-title">👤 Changer le propriétaire (en lot)</div>
+    <p class="modal-desc" style="font-size:12.5px;color:var(--text-muted)">
+      La visibilité des spectateurs dépend de l'auteur. Attribuer à <strong>YERIGUE</strong>
+      (ou un autre compte visible) rend les dossiers visibles ; les attribuer à
+      <strong>Nadia</strong> ou <strong>admin</strong> les cache.
+    </p>
+    <div id="ba-info" style="font-size:12.5px;margin:6px 0 10px;padding:8px 10px;background:var(--bg);border-radius:8px"></div>
+    <label class="modal-label" for="ba_author">Nouvel auteur (pour tous les dossiers cochés)</label>
+    <select class="modal-input" id="ba_author"></select>
+    <div id="ba-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fermerBulkAuteur()">Annuler</button>
+      <button class="btn btn-primary" id="ba-submit" onclick="submitBulkAuteur()">Changer le propriétaire</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ v13.205 — ADMIN : porter des dossiers cochés au cahier noir (colonne au choix) -->
+<div id="cahier-noir-report-modal" class="modal-backdrop" style="display:none;z-index:3200" role="dialog" aria-modal="true" aria-labelledby="cn-report-title">
+  <div class="modal-card">
+    <div class="modal-title" id="cn-report-title">📓 Porter à la caisse noire</div>
+    <div id="cn-report-info" style="font-size:12.5px;margin:6px 0 10px;padding:8px 10px;background:var(--bg);border-radius:8px"></div>
+    <label class="modal-label" for="cn-report-colonne">Colonne de la caisse noire</label>
+    <select class="modal-input" id="cn-report-colonne"></select>
+    <div id="cn-report-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fermerReportNoir()">Annuler</button>
+      <button class="btn btn-primary" id="cn-report-submit" onclick="submitReportNoir()">Porter à la caisse noire</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-label" id="loading-label">Chargement…</div>
+</div>
+
+<script src="./js/stats.js?v=13.230"></script>
+<script src="./js/compte-rendu.js?v=13.230"></script>
+<script src="./js/impression.js?v=13.230"></script>
+<script src="./js/export-pdf.js?v=13.230"></script>
+<script src="./js/sauvegarde.js?v=13.230"></script>
+<script src="./js/cloture-caisse.js?v=13.230"></script>
+<script src="./js/registre-jour.js?v=13.230"></script>
+<script src="./js/electrophorese.js?v=13.230"></script>
+<script src="./js/coffre.js?v=13.230"></script>
+<script src="./js/cahier-jaune.js?v=13.230"></script>
+
+<script>
+/* ── Navigation rapide dans les tables de résultats (v13.95) ──────────────
+   Enter dans un input d'une .result-table → focus sur le prochain input
+   visible et non-readonly de la même table (ou du même formulaire si c'est
+   le dernier). Auto-sélection au focus pour écraser la valeur en une frappe.
+   Portée : uniquement les .result-table, pour ne pas interférer avec le reste. */
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return;
+  const el = e.target;
+  if (!el.matches('input, select, textarea')) return;
+  const table = el.closest('.result-table');
+  if (!table) return;
+  e.preventDefault();
+  const all = Array.from(table.querySelectorAll('input:not([readonly]), select, textarea'))
+    .filter(n => !n.disabled && n.offsetParent !== null);
+  const idx = all.indexOf(el);
+  if (idx >= 0 && idx < all.length - 1) {
+    const next = all[idx + 1];
+    next.focus();
+    if (next.select) next.select();
+  }
+}, true);
+
+/* Auto-sélection au focus sur tous les inputs numériques des tables */
+document.addEventListener('focusin', function(e) {
+  const el = e.target;
+  if (el.type === 'number' && el.closest('.result-table')) {
+    el.select();
+  }
+});
+</script>
+<div id="preview-test-banner" style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#b91c1c;color:#fff;text-align:center;font:700 12px/1.6 system-ui;padding:3px 6px">⚠️ VERSION DE TEST · données isolées · ne pas utiliser pour la production</div>
+</body>
+</html>

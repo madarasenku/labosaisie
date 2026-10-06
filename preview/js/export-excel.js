@@ -1,0 +1,1249 @@
+/* ═══════════════════════════════════════════════════════════════
+   LaboSaisie CPMI — export-excel.js
+   Extrait de index.html (v13.70). Chargé en script classique, PAS en
+   module ES : les gestionnaires inline du HTML (onclick="…") résolvent
+   les fonctions dans la portée globale. L'ordre des balises <script>
+   dans index.html doit être conservé.
+   ═══════════════════════════════════════════════════════════════ */
+
+function dupliquerFiche(id) {
+  const r = _dbCache.find(x => x.id === id);
+  if (!r) { toast('Fiche introuvable', 'err'); return; }
+  showView('saisie');
+  const p = r.patient || {};
+  const setV = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  setV('p_nom',     p.nom);
+  setV('p_age',     p.age);
+  setV('p_sexe',    p.sexe);
+  setV('p_poids',   p.poids);
+  setV('p_medecin', p.medecin);
+  setV('p_service', p.service);
+  setV('p_clinique',p.clinique);
+  setV('p_telephone', p.telephone);
+  setV('p_date', new Date().toISOString().slice(0, 10));
+  regenDossier();
+  const examens = r.resultats?._examens_coches || {};
+  Object.values(examens).flat().forEach(exId => {
+    const chk = document.getElementById(exId);
+    if (chk) { chk.checked = true; chk.dispatchEvent(new Event('change', { bubbles: true })); }
+  });
+  if (typeof rechargeFichePrix === 'function') rechargeFichePrix();
+  if (typeof updateAllRefs === 'function') updateAllRefs();
+  toast('⧉ Fiche dupliquée — saisissez les nouvelles valeurs', 'ok');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function exportBackup() {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  try {
+    const backup = {
+      _format: 'cpmi-labo-backup',
+      _version: 1,
+      exportedAt: new Date().toISOString(),
+      exportedBy: _currentUser?.username || '',
+      count: _dbCache.length,
+      fiches: _dbCache
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = 'cpmi-sauvegarde-' + d + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const st = document.getElementById('backup-status');
+    if (st) st.textContent = '✅ ' + _dbCache.length + ' fiche(s) exportée(s)';
+    toast('💾 Sauvegarde téléchargée (' + _dbCache.length + ' fiches)', 'ok');
+  } catch (e) {
+    console.error('exportBackup:', e);
+    toast('Erreur lors de la sauvegarde', 'err');
+  }
+}
+
+// ✅ v13.34 — Restauration : ré-importe les fiches manquantes (ne réécrit rien)
+async function importBackup(event) {
+  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  const file = event.target?.files?.[0];
+  if (!file) return;
+  const st = document.getElementById('backup-status');
+  if (st) st.textContent = '⏳ Lecture du fichier…';
+
+  let backup;
+  try {
+    backup = JSON.parse(await file.text());
+  } catch (e) {
+    if (st) st.textContent = '';
+    toast('Fichier illisible ou corrompu', 'err');
+    event.target.value = '';
+    return;
+  }
+  if (backup._format !== 'cpmi-labo-backup' || !Array.isArray(backup.fiches)) {
+    if (st) st.textContent = '';
+    toast("Ce fichier n'est pas une sauvegarde CPMI valide", 'err');
+    event.target.value = '';
+    return;
+  }
+
+  // Ne garder que les fiches absentes du cache (par N° de dossier + type)
+  const existing = new Set(_dbCache.map(r => (r.patient?.dossier || '') + '|' + (r.type || '')));
+  const toImport = backup.fiches.filter(f =>
+    !existing.has((f.patient?.dossier || '') + '|' + (f.type || '')));
+
+  if (!toImport.length) {
+    if (st) st.textContent = '✅ Rien à restaurer — toutes les fiches sont déjà présentes.';
+    toast('Toutes les fiches de la sauvegarde sont déjà présentes', 'ok');
+    event.target.value = '';
+    return;
+  }
+
+  const ok = await showConfirmModal({
+    icon: '⬆',
+    title: 'Restaurer ' + toImport.length + ' fiche(s) ?',
+    message: 'La sauvegarde du ' + (backup.exportedAt || '').slice(0, 10) + ' contient '
+      + backup.fiches.length + ' fiche(s), dont ' + toImport.length
+      + ' absente(s) de la base actuelle. Les fiches déjà présentes ne seront pas modifiées.',
+    confirmText: 'Restaurer', cancelText: 'Annuler'
+  });
+  if (!ok) { event.target.value = ''; if (st) st.textContent = ''; return; }
+
+  let done = 0, failed = 0;
+  for (const f of toImport) {
+    try {
+      const est_bpn = f.est_bpn || (f.resultats?._types || []).includes('Bilan prénatal');
+      const { error } = await _sb.rpc('insert_resultat', {
+        p_token: TK(), p_type: f.type, p_patient: f.patient,
+        p_resultats: f.resultats, p_montant: f.montant || 0,
+        p_prescripteur_id: f.prescripteur_id || null, p_est_bpn: est_bpn
+      });
+      if (error) throw error;
+      done++;
+      if (st) st.textContent = '⏳ Restauration… ' + done + '/' + toImport.length;
+    } catch (e) {
+      console.error('importBackup fiche:', e);
+      failed++;
+    }
+  }
+
+  await refreshDB(true);
+  renderHistory(true);
+  if (st) st.textContent = '✅ ' + done + ' restaurée(s)' + (failed ? ' · ' + failed + ' échec(s)' : '');
+  toast('✅ ' + done + ' fiche(s) restaurée(s)' + (failed ? ' — ' + failed + ' échec(s)' : ''), failed ? 'err' : 'ok');
+  event.target.value = '';
+}
+
+// ✅ v13.34 — Ouvrir/fermer le menu ⋯ des actions condensées (< 900px)
+function toggleActionMenu(btn) {
+  const wrap = btn.closest('.action-dropdown') || btn.parentElement;
+  const isOpen = wrap.classList.contains('open');
+  // Fermer tous les menus ouverts
+  document.querySelectorAll('.action-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) {
+    wrap.classList.add('open');
+    // Fermer au prochain clic ailleurs
+    setTimeout(() => {
+      document.addEventListener('click', function close(e) {
+        if (!wrap.contains(e.target)) { wrap.classList.remove('open'); document.removeEventListener('click', close); }
+      });
+    }, 0);
+  }
+}
+
+function clearHistory() {
+  console.warn('clearHistory() désactivé en v13.33');
+}
+
+// ============================================================
+// EXCEL EXPORT — RENDU PROFESSIONNEL (ExcelJS)
+// ============================================================
+
+const CENTRE         = 'CPMI DE GRAND-BASSAM';
+const CENTRE_SUB     = "Centre de Protection Mère et Infantile";
+const CENTRE_ADRESSE = "Laboratoire d'analyses médicales · Grand-Bassam, Côte d'Ivoire";
+
+// Palette sobre — économique en encre
+const C_HEADER_BG   = 'FF1E3A8A'; // bleu profond en-tête (seul fond coloré foncé)
+const C_HEADER_FG   = 'FFFFFFFF';
+const C_SECTION_BG  = 'FFE8F0FE'; // bleu très pâle pour les sections
+const C_SECTION_FG  = 'FF1E3A8A';
+const C_PAT_BG      = 'FFFAFCFF';
+const C_PAT_LABEL_BG= 'FFE8F0FE';
+const C_PARAM_BG    = 'FFFFFFFF'; // blanc pur
+const C_ALT_BG      = 'FFF5F8FF'; // alternance très légère
+const C_BORDER      = 'FFD1D9E6'; // gris clair
+const C_HIGH_BG     = 'FFFFF1F1'; // rouge ultra-pâle
+const C_HIGH_FG     = 'FFB91C1C';
+const C_LOW_BG      = 'FFF0F5FF'; // bleu ultra-pâle
+const C_LOW_FG      = 'FF1D4ED8';
+const C_NORM_BG     = 'FFF0FDF4'; // vert ultra-pâle
+const C_NORM_FG     = 'FF15803D';
+const C_LABEL_FG    = 'FF374151';
+const C_MUTED       = 'FF6B7280';
+const C_TH_BG       = 'FF1E3A8A';
+const C_TH_FG       = 'FFFFFFFF';
+const C_GOLD        = 'FFCBA135';
+
+function thinBorder(color) {
+  const b = { style: 'thin', color: { argb: color || C_BORDER } };
+  return { top: b, bottom: b, left: b, right: b };
+}
+
+function styleCell(cell, { bg, fg, bold, size, halign, border, italic } = {}) {
+  cell.font = { name: 'Calibri', size: size || 10, bold: !!bold, italic: !!italic,
+    color: { argb: fg || 'FF111827' } };
+  cell.alignment = { horizontal: halign || 'left', vertical: 'middle', wrapText: true };
+  if (bg) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+  if (border) cell.border = thinBorder(border === true ? C_BORDER : border);
+}
+
+// Retourne l'intitulé d'examen à afficher : la liste précise des examens
+// cochés au départ sur la fiche d'accueil (ex: "NFS · CRP"), ou à défaut
+// le type générique de l'onglet (ex: "Hématologie")
+// ── Helpers dossier unifié ───────────────────────────────────
+// Un enregistrement de type 'Dossier' contient TOUTES les analyses
+// d'un même patient en une seule fiche (clé resultats._types).
+// ⚠ CONVENTION (v13) — Dans un objet `resultats`, les clés commençant par
+// un underscore sont des MÉTADONNÉES techniques, pas des résultats d'analyse :
+//   _types           : liste des analyses du dossier
+//   _montants        : montant facturé par analyse (recalcul à la suppression)
+//   _examens_coches  : examens cochés (demandés) par analyse
+//   _bpn_inclus      : composition d'un bilan prénatal (forfait fixe)
+// Toute boucle sur `resultats` (rendu, export, impression) DOIT ignorer les
+// clés `k.startsWith('_')` pour ne pas les afficher comme des paramètres.
+function isDossierRecord(r) { return r && r.type === 'Dossier'; }
+function getRecordTypes(r) {
+  if (isDossierRecord(r)) return r.resultats?._types || [];
+  return r.type ? [r.type] : [];
+}
+
+// Retourne les résultats d'une analyse spécifique dans un enregistrement
+// (compatible ancien format et nouveau format dossier)
+function getRecordResultats(r, type) {
+  if (isDossierRecord(r)) {
+    const sub = r.resultats?.[type] || {};
+    // ✅ v13.6 — réinjecter les examens cochés de CE type (stockés au niveau
+    // du dossier) pour qu'ils apparaissent sur la fiche exportée/imprimée.
+    const coches = r.resultats?._examens_coches?.[type];
+    if (coches && coches.length && !sub._examens_coches) {
+      return { ...sub, _examens_coches: coches };
+    }
+    return sub;
+  }
+  return r.resultats || {};
+}
+
+/**
+ * ✅ v13.85 — Le bilan prénatal est un FORFAIT : une seule prestation, un
+ * seul prix. Il coche mécaniquement cinq catégories d'analyses, et le
+ * dossier s'affichait donc « Hématologie · Groupe sanguin · Immuno-Sérologie
+ * · Biochimie · Bactériologie » — illisible sur un reçu comme sur une
+ * clôture, alors que le laboratoire l'appelle simplement « BPN ».
+ *
+ * On ne se fie pas à la seule colonne `est_bpn` : sur les 41 dossiers
+ * prénatals de la base, elle vaut `false` partout. C'est la présence du
+ * forfait parmi les examens cochés qui fait foi.
+ */
+function estBPN(r) {
+  if (!r) return false;
+  if (r.est_bpn === true) return true;
+  const types = r.resultats?._types;
+  if (Array.isArray(types) && types.some(t => /pr[ée]natal/i.test(String(t)))) return true;
+  const coches = r.resultats?._examens_coches;
+  if (!coches) return false;
+  // Deux formats coexistent : un tableau à plat (ancien) ou un objet
+  // { type: [examens] } (dossier). Les deux doivent être reconnus.
+  const liste = Array.isArray(coches) ? coches : Object.values(coches).flat();
+  return liste.some(x => /pr[ée]natal/i.test(String(x)));
+}
+
+function getDisplayType(r) {
+  // Le forfait prime sur le détail : c'est le nom de la prestation vendue.
+  if (estBPN(r)) return 'BPN';
+  if (isDossierRecord(r)) {
+    const types = r.resultats?._types || [];
+    return types.length ? types.join(' · ') : 'Dossier';
+  }
+  const coches = r.resultats && r.resultats['_examens_coches'];
+  if (coches && coches.length) return coches.join(' · ');
+  return r.type || '—';
+}
+
+// Version courte pour les noms de fichiers (sigles avant le tiret, sans accents lourds)
+function getDisplayTypeShort(r) {
+  const coches = r.resultats && r.resultats['_examens_coches'];
+  if (coches && coches.length) {
+    return coches.map(c => c.split(/[—-]/)[0].trim()).join('+');
+  }
+  return r.type;
+}
+
+function makeFilename(dossier, date, nom, type) {
+  const safe = s => (s||'').toString().trim().replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,'_');
+  const d = date ? date.split('-').reverse().join('-') : '';
+  return [safe(type), safe(nom)||'PATIENT', safe(dossier), d].filter(Boolean).join('_') + '.xlsx';
+}
+
+function buildProfessionalSheet(wb, r, sheetName, opts) {
+  // ✅ v13.148 — opts (facultatif) :
+  //   render      : [{type,res}]  → corps à rendre sur CETTE feuille (défaut : le
+  //                 seul type de r). Permet de COMBINER plusieurs analyses sur une
+  //                 même feuille (bilan prénatal : Héma+Groupe puis Bio+Séro).
+  //   bpn         : bool          → réglages prénatals (électrophorèse = profil en
+  //                 grand sans pourcentages ; pas de Widal).
+  //   montant     : number        → montant affiché (forfait BPN = 20 000).
+  //   pending     : [{label,rows}] → examens demandés non remplis (à compléter).
+  //   composition : [string]      → « _bpn_inclus » (traçabilité du forfait).
+  opts = opts || {};
+  // ── Helpers globaux ──────────────────────────────────────────
+  const p = r.patient || {};
+  const res = r.resultats || {};
+  const profile = profileFromPatient(p); // ✅ v13.17 — pour les valeurs normales
+  const nomMAJ = (p.nom || 'PATIENT').toUpperCase();
+  const dateF  = p.date ? p.date.split('-').reverse().join('/') : '—';
+  const ageSexeF = [p.age ? formatAge(p.age) : '', p.sexe === 'M' ? 'Masculin' : p.sexe === 'F' ? 'Féminin' : p.sexe || ''].filter(Boolean).join(' · ');
+
+  // ✅ v13.111 — RENDU NOIR & BLANC (économie d'encre, impression N&B).
+  //   Plus aucune couleur : surlignage GRIS uniquement sur les valeurs anormales.
+  //   La palette garde les mêmes noms — tout le rendu bascule sans toucher au
+  //   câblage des données.
+  const BLU  = 'FF111111'; // ex-bleu → encre noire (texte, filets, accents)
+  const BLU2 = 'FF333333';
+  const GLD  = 'FFDDDDDD'; // ex-or → gris clair (liserés / séparateurs)
+  const WHT  = 'FFFFFFFF';
+  const PAT_LABEL = 'FFEDEDED'; // fond étiquette patient (gris très clair)
+  const PAT_VAL   = 'FFFFFFFF'; // fond valeur patient (blanc)
+  const SEC_BG    = 'FFE0E0E0'; // fond titre de section (gris clair)
+  const SEC_FG    = 'FF111111';
+  const TH_BG     = 'FFE0E0E0'; // en-tête de tableau (gris clair)
+  const TH_FG     = 'FF111111'; // texte foncé (fond clair)
+  const PAR_W     = 'FFFFFFFF'; // ligne paire
+  const PAR_A     = 'FFFFFFFF'; // ligne impaire — plus de zébrage (économie d'encre)
+  // Surlignage anormal = GRIS marqué ; normal = blanc (pas de surlignage)
+  const HI_BG     = 'FFC9C9C9'; const HI_FG = 'FF111111'; // élevé / positif → gris
+  const LO_BG     = 'FFC9C9C9'; const LO_FG = 'FF111111'; // bas → gris
+  const OK_BG     = 'FFFFFFFF'; const OK_FG = 'FF111111'; // normal → blanc
+  const MUTED     = 'FF555555';
+  const DARK      = 'FF111111';
+  const BRD       = 'FFB0B0B0';
+
+  function tB(col) { const b={style:'thin',color:{argb:col||BRD}}; return {top:b,bottom:b,left:b,right:b}; }
+  function medB(col) { const b={style:'medium',color:{argb:col||BLU}}; return {top:b,bottom:b,left:b,right:b}; }
+
+  function sC(cell, {bg,fg,bold,size,ha,border,italic,wt}={}) {
+    cell.font = { name:'Calibri', size:size||10, bold:!!bold, italic:!!italic, color:{argb:fg||DARK} };
+    cell.alignment = { horizontal:ha||'left', vertical:'middle', wrapText:wt!==false };
+    if (bg) cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+    if (border) cell.border = tB(border===true ? BRD : border);
+  }
+
+  // ✅ v12.2 — Hauteur adaptative : estime le nombre de lignes qu'occupera
+  // un texte dans une plage de colonnes (fusion incluse) et retourne la
+  // hauteur nécessaire, bornée pour éviter les lignes démesurées.
+  const COLW = [37, 20, 12, 12, 20, 14]; // ✅ v13.64 — col. libellé + valeur élargies (lignes sur 1 seule ligne = hauteurs uniformes) · doit rester aligné sur ws.columns
+  function spanWidth(c1, c2) { let w = 0; for (let c = c1; c <= c2; c++) w += COLW[c-1] || 10; return w; }
+  function neededLines(text, widthChars) {
+    const s = String(text ?? '');
+    if (!s) return 1;
+    return s.split('\n').reduce((n, seg) =>
+      n + Math.max(1, Math.ceil(seg.length / Math.max(4, widthChars - 2))), 0);
+  }
+  // parts : [{text, c1, c2, size?}] — retourne la hauteur max requise
+  function fitH(parts, minH) {
+    let lines = 1;
+    parts.forEach(p => { lines = Math.max(lines, neededLines(p.text, spanWidth(p.c1, p.c2 ?? p.c1))); });
+    lines = Math.min(lines, 10); // garde-fou
+    return Math.max(minH || 15, lines * 12 + 4);
+  }
+
+  // ── Création feuille ─────────────────────────────────────────
+  const NC = 6;
+  const ws = wb.addWorksheet(sheetName || getDisplayType(r).substring(0,31), {
+    // ✅ v13.60 — Largeur toujours ajustée à la page. La hauteur (fitToHeight)
+    //   est décidée à la fin selon la longueur : court → 1 page remplie ;
+    //   long → taille normale, s'étale sur 2 pages (fixé dans fillPage).
+    pageSetup: { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0,
+      horizontalCentered:true,
+      margins:{left:0.4,right:0.4,top:0.4,bottom:0.4,header:0.15,footer:0.15} },
+    views: [{ showGridLines:false, state:'frozen', ySplit:10 }],
+  });
+  // ✅ v13.151 — Numéro de page en bas (visible à l'impression) : « Page X / Y ».
+  ws.headerFooter = {
+    oddFooter: '&C&"Calibri"&8Page &P / &N',
+    evenFooter: '&C&"Calibri"&8Page &P / &N',
+  };
+  ws.columns = [
+    {width:37}, {width:20}, {width:12},
+    {width:12}, {width:20}, {width:14},
+  ]; // ✅ v13.64 — aligné sur COLW
+
+  let row = 1;
+  function mg(r1,c1,r2,c2) { ws.mergeCells(r1,c1,r2,c2); }
+
+  // ════════════════════════════════════════════════════
+  // BLOC 1 — EN-TÊTE CPMI
+  // ════════════════════════════════════════════════════
+  // Liseré or
+  ws.getRow(row).height = 5;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:GLD}};
+  row++;
+
+  // Nom centre (grande ligne)
+  ws.getRow(row).height = 20; // ✅ v13.34 compact
+  mg(row,1,row,NC);
+  const cCentre = ws.getCell(row,1);
+  cCentre.value = 'CPMI DE GRAND-BASSAM  —  Centre de Protection Mère et Infantile';
+  sC(cCentre, {bg:SEC_BG, fg:DARK, bold:true, size:13, ha:'center'});
+  row++;
+
+  // Sous-titre + type analyse (2 colonnes)
+  // ✅ v13.58 — Badge = catégorie d'analyse (courte), pas la liste des examens.
+  //   Hauteur de ligne adaptative pour éviter tout débordement sur le titre.
+  const subT = "Laboratoire d'analyses médicales  ·  Grand-Bassam, Côte d'Ivoire";
+  const badgeType = (r.type && r.type !== 'Dossier') ? r.type : (sheetName || getDisplayType(r));
+  const typeT = 'RÉSULTAT : ' + String(badgeType).toUpperCase();
+  const hdrLines = Math.max(neededLines(subT, spanWidth(1,4)), neededLines(typeT, spanWidth(5,NC)));
+  ws.getRow(row).height = Math.max(17, hdrLines * 12 + 4);
+  mg(row,1,row,4);
+  const cSub = ws.getCell(row,1);
+  cSub.value = subT;
+  sC(cSub, {bg:SEC_BG, fg:MUTED, size:9, italic:true});
+  mg(row,5,row,NC);
+  const cType = ws.getCell(row,5);
+  cType.value = typeT;
+  sC(cType, {bg:SEC_BG, fg:DARK, bold:true, size:10, ha:'right'});
+  row++;
+
+  // Liseré or bas
+  ws.getRow(row).height = 5;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:GLD}};
+  row++;
+
+  // ════════════════════════════════════════════════════
+  // BLOC 2 — NOM DU PATIENT (très visible, en MAJUSCULES)
+  // ════════════════════════════════════════════════════
+  row++; // espace
+  // ✅ v12.2 — police 18 ≈ caractères 2x plus larges : largeur effective divisée par 2
+  // ✅ v13.62 — nom encore plus grand et mis en valeur
+  ws.getRow(row).height = Math.max(30, neededLines(nomMAJ, Math.floor(spanWidth(1,NC)/2.3)) * 20 + 6);
+  mg(row,1,row,NC);
+  const cNom = ws.getCell(row,1);
+  cNom.value = nomMAJ;
+  sC(cNom, {bg:PAT_LABEL, fg:BLU, bold:true, size:23, ha:'center'});
+  cNom.border = { top:{style:'medium',color:{argb:BLU}}, bottom:{style:'medium',color:{argb:BLU}},
+    left:tB().left, right:tB().right };
+  row++;
+
+  // ════════════════════════════════════════════════════
+  // BLOC 3 — FICHE PATIENT (grille 2×3)
+  // ════════════════════════════════════════════════════
+  // ✅ v13.62 — cases patient plus compactes (police et hauteur réduites)
+  const LS = {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:8.5, border:true};
+  const VS = {bg:PAT_VAL,   fg:DARK,   size:9,    border:true};
+
+  function patRow2(l1,v1,l2,v2) {
+    const rr = ws.getRow(row);
+    // ✅ v13.63 — cases patient encore plus compactes (hauteur réduite par ligne)
+    const _pl = Math.min(4, Math.max(
+      neededLines(l1, spanWidth(1,1)), neededLines(v1||'—', spanWidth(2,3)),
+      neededLines(l2||'', spanWidth(4,4)), neededLines(v2||'—', spanWidth(5,NC))));
+    rr.height = Math.max(13, _pl * 10.5 + 2);
+    sC(rr.getCell(1),LS); rr.getCell(1).value = l1;
+    mg(row,2,row,3); sC(rr.getCell(2),VS); rr.getCell(2).value = v1||'—';
+    if (l2 !== undefined) {
+      sC(rr.getCell(4),LS); rr.getCell(4).value = l2;
+      mg(row,5,row,NC); sC(rr.getCell(5),{...VS,bold:(l2==='N° Dossier')}); rr.getCell(5).value = v2||'—';
+    }
+    row++;
+  }
+
+  patRow2('N° Dossier',        p.dossier,  'Date de prélèvement', dateF);
+  patRow2('Âge / Sexe',        ageSexeF,   'Médecin prescripteur', p.medecin);
+  patRow2('Service / Unité',   p.service,  'Renseignements cliniques', p.clinique || '');
+
+  row++; // espace
+
+  // ════════════════════════════════════════════════════
+  // HELPERS RÉSULTATS
+  // ════════════════════════════════════════════════════
+  let alt = false;
+
+  let _firstSec = true; // ✅ v13.62 — pas d'espace avant le 1er examen
+  function secHdr(title) {
+    // ✅ v13.63 — plus d'air entre deux examens (avant chaque section sauf la 1ère)
+    if (!_firstSec) { ws.getRow(row).height = 18; row++; }
+    _firstSec = false;
+    ws.getRow(row).height = 17;
+    mg(row,1,row,NC);
+    const c = ws.getCell(row,1);
+    c.value = title.replace(/[^\w\s\-–·'àâäéèêëîïôùûüç%°()\/,.:]/g, '').trim();
+    sC(c, {bg:SEC_BG, fg:SEC_FG, bold:true, size:11.5});
+    c.border = { top:{style:'medium',color:{argb:BLU}}, bottom:{style:'thin',color:{argb:BLU}},
+      left:tB().left, right:tB().right };
+    row++;
+    alt = false;
+  }
+
+  // tblHdr : mêmes fusions que pRow pour éviter tout conflit ExcelJS
+  function tblHdr(label, valeur, unite, ref) {
+    const rr = ws.getRow(row); rr.height = 15;
+    const th = {bg:TH_BG, fg:TH_FG, bold:true, size:10, wt:false};
+    sC(rr.getCell(1), {...th, ha:'left'});   rr.getCell(1).value = label  || 'Paramètre';
+    sC(rr.getCell(2), {...th, ha:'center'}); rr.getCell(2).value = valeur || 'Valeur';
+    sC(rr.getCell(3), {...th, ha:'center'}); rr.getCell(3).value = unite  || 'Unité';
+    mg(row,4,row,NC);
+    sC(rr.getCell(4), {...th, ha:'center'}); rr.getCell(4).value = ref    || 'Valeurs normales';
+    row++;
+  }
+
+  function pRow(nom, valeur, unite, ref, interp) {
+    if (!valeur || valeur.toString().trim() === '') return;
+    alt = !alt;
+    const bg = alt ? PAR_A : PAR_W;
+    // ✅ v13.18 — valeur colorée si anormale (pas de colonne Interprétation)
+    let vBg = bg, vFg = DARK;
+    const il = (interp||'').toLowerCase();
+    if (il.includes('élevé')||il.includes('eleve')||il.includes('positif')||il.includes('anormal'))
+      { vBg = HI_BG; vFg = HI_FG; }
+    else if (il.includes('bas'))
+      { vBg = LO_BG; vFg = LO_FG; }
+    else if (il.includes('normal'))
+      { vBg = OK_BG; vFg = OK_FG; }
+    const rr = ws.getRow(row);
+    rr.height = fitH([
+      {text:nom, c1:1}, {text:valeur, c1:2}, {text:unite, c1:3}, {text:ref, c1:4, c2:NC}
+    ], 16);
+    // ✅ v13.153 — Texte du rapport un peu plus grand (plus lisible à l'impression).
+    sC(rr.getCell(1), {bg,    fg:DARK,  size:10.5, border:true}); rr.getCell(1).value = nom;
+    sC(rr.getCell(2), {bg:vBg, fg:vFg,  bold:true, size:13, ha:'center', border:true}); rr.getCell(2).value = valeur;
+    sC(rr.getCell(3), {bg,    fg:MUTED, size:10,   ha:'center', border:true}); rr.getCell(3).value = unite||'';
+    mg(row,4,row,NC);
+    sC(rr.getCell(4), {bg,    fg:MUTED, size:10,   ha:'center', border:true}); rr.getCell(4).value = ref||'';
+    row++;
+  }
+
+  // ✅ v12.4 — Ligne vide (examen demandé, résultat à remplir à la main)
+  function pRowEmpty(nom, unite, ref) {
+    alt = !alt;
+    const bg = alt ? PAR_A : PAR_W;
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text:nom, c1:1}, {text:ref, c1:4, c2:NC}], 18);
+    sC(rr.getCell(1), {bg, fg:DARK, size:10.5, border:true}); rr.getCell(1).value = nom;
+    sC(rr.getCell(2), {bg:'FFFFFFFF', fg:DARK, border:true}); rr.getCell(2).value = '';
+    sC(rr.getCell(3), {bg, fg:MUTED, size:10, ha:'center', border:true}); rr.getCell(3).value = unite||'';
+    mg(row,4,row,NC);
+    sC(rr.getCell(4), {bg, fg:MUTED, size:10, ha:'center', border:true}); rr.getCell(4).value = ref||'';
+    row++;
+  }
+
+  function fRow(label, value) {
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text:label, c1:1}, {text:value, c1:2, c2:NC}], 15); // ✅ v12.2
+    sC(rr.getCell(1), {bg:PAT_LABEL, fg:SEC_FG, bold:true, size:9, border:true}); rr.getCell(1).value = label;
+    mg(row,2,row,NC);
+    sC(rr.getCell(2), {bg:PAT_VAL, fg:DARK, size:9.5, border:true}); rr.getCell(2).value = value;
+    row++;
+  }
+
+  function nRow(text, bgColor) {
+    if (!text||text==='—') return;
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text, c1:1, c2:NC}], 20); // ✅ v12.2 — observations multi-lignes
+    mg(row,1,row,NC);
+    const c = rr.getCell(1);
+    sC(c, {bg:bgColor||'FFEDEDED', fg:DARK, italic:true, size:9.5, border:true});
+    c.value = text;
+    row++;
+  }
+
+  // abgRow : la case valeur (S/I/R) colorée directement
+  function abgRow(nom, val) {
+    if (!val||val==='nd') return;
+    alt = !alt;
+    const bg = alt ? PAR_A : PAR_W;
+    const label = val==='S'?'Sensible':val==='I'?'Intermédiaire':val==='R'?'Résistant':val;
+    let vBg=bg, vFg=DARK;
+    if (val==='S'){vBg=OK_BG;vFg=OK_FG;}
+    else if (val==='R'){vBg=HI_BG;vFg=HI_FG;}
+    else if (val==='I'){vBg='FFDDDDDD';vFg=DARK;}
+    const rr = ws.getRow(row);
+    rr.height = fitH([{text:nom, c1:1}, {text:label, c1:2, c2:NC}], 15); // ✅ v12.2
+    sC(rr.getCell(1),{bg,fg:DARK,size:9.5,border:true}); rr.getCell(1).value=nom;
+    mg(row,2,row,NC);
+    sC(rr.getCell(2),{bg:vBg,fg:vFg,bold:true,size:10.5,ha:'center',border:true}); rr.getCell(2).value=label;
+    row++;
+  }
+
+  // ════════════════════════════════════════════════════
+  // CONTENU PAR TYPE D'ANALYSE
+  // ✅ v13.148 — extrait en fonction pour pouvoir combiner plusieurs analyses
+  //   sur une même feuille (bilan prénatal). `bt` = type rendu, `res` = ses
+  //   sous-résultats.
+  // ════════════════════════════════════════════════════
+  function renderTypeBody(bt, res) {
+  if (bt === 'Hématologie') {
+    const nfsVals = [...HEMA_PARAMS,...HEMA_FL].filter(q=>res[q.name]&&res[q.name].valeur);
+    if (nfsVals.length) {
+      secHdr('NFS — Numération Formule Sanguine');
+      tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
+      nfsVals.forEach(q => {
+        const v=res[q.name];
+        const val = v.valeur; // ✅ v13.25 — valeur absolue directement
+        pRow(q.name, val, getUnit(q.id, v.unite||q.unit||''), refDisplayFor(q, profile), v.interp||'');
+      });
+      row++;
+    }
+    // ✅ v13.148 — En BPN, l'électrophorèse est rendue à part (profil en grand,
+    //   sans pourcentages) par bigProfil() : on saute donc le tableau ici.
+    const ephbNames=['Hb A','Hb A2','Hb F','Hb S','Hb C','Hb D','Hb E'].filter(n=>res[n]&&res[n].valeur);
+    if (!opts.bpn && (ephbNames.length||res['Profil Hb'])) {
+      secHdr("Electrophorese de l'Hemoglobine");
+      tblHdr('Fraction', '%', '', 'Valeur normale');
+      ephbNames.forEach(n=>{const v=res[n]; pRow(n,v.valeur,'%','',v.interp||'');});
+      if (res['Profil Hb'])       fRow('Profil',res['Profil Hb']);
+      if (res['Commentaire Hb'])  nRow(res['Commentaire Hb']);
+      row++;
+    }
+    if (res['GE - Résultat']||res['GE - TDR']) {
+      secHdr('Goutte Epaisse / Parasitologie');
+      tblHdr('Paramètre', 'Résultat', '', '');
+      if (res['GE - Résultat'])   pRow('Résultat GE',res['GE - Résultat'],'','','');
+      if (res['GE - TDR'])        pRow('TDR Paludisme',res['GE - TDR'],'','','');
+      if (res['GE - Espèce'])     pRow('Espèce plasmodiale',res['GE - Espèce'],'','','');
+      if (res['GE - Parasitémie (%)']) pRow('Parasitémie',res['GE - Parasitémie (%)'],'%','','');
+      if (res['GE - Densité parasitaire (/µL)']) pRow('Densité parasitaire',res['GE - Densité parasitaire (/µL)'],'/µL','','');
+      if (res['GE - Stade'])      pRow('Stade',res['GE - Stade'],'','','');
+      if (res['GE - Observation']) nRow(res['GE - Observation']);
+      row++;
+    }
+    if (res['Groupe ABO'] || res['Rhésus']) {
+      secHdr('Groupe Sanguin ABO / Rhésus');
+      tblHdr('Paramètre', 'Résultat', '', '');
+      if (res['Groupe ABO']) pRow('Groupe ABO', res['Groupe ABO'], '', '', '');
+      if (res['Rhésus'])     pRow('Rhésus',     res['Rhésus'],     '', '', '');
+      if (res['Commentaire GS']) nRow(res['Commentaire GS']);
+      row++;
+    }
+    if (res['CRP - Valeur']) {
+      secHdr('CRP — Protéine C-réactive (Latex)');
+      tblHdr('Test', 'Résultat', '', '');
+      const crpL = res['CRP - Valeur']==='neg'?'< 6 mg/L':res['CRP - Valeur']+' mg/L';
+      const crpI = (res['CRP - Interprétation']||'').replace(/^[^\w]+/,'');
+      pRow('CRP Latex', crpL, 'mg/L', '< 6', crpI);
+      row++;
+    }
+    const _wid = widalReport(res);
+    if (!opts.bpn && _wid.show) {
+      secHdr('Sérodiagnostic de Widal & Felix');
+      if (_wid.rows.length) {
+        tblHdr('Antigène', 'Titre', 'Cinétique', 'Commentaire');
+        _wid.rows.forEach(w => pRow(w.name, w.titre, w.cinetique || '—', '', w.interp || ''));
+      }
+      if (_wid.concl) nRow(_wid.concl.replace(/^[^\w]+/, ''), _wid.concl.includes('ÉTAT') || _wid.concl.includes('DÉBUT') ? 'FFC9C9C9' : 'FFEDEDED');
+      row++;
+    }
+
+  } else if (bt === 'Biochimie') {
+    const bioSections = [
+      {label:'Glucides', params:BIO_GLUCIDES},
+      {label:'Fonction rénale', params:BIO_REIN},
+      {label:'Fonction hépatique & Pancréas', params:BIO_FOIE},
+      {label:'Lipides', params:BIO_LIPIDES},
+      {label:'Ionogramme & Minéraux', params:BIO_IONO},
+      {label:'Fer & Hémostase', params:[...BIO_FER,...BIO_COAG]},
+      {label:'Marqueurs cardiaques', params:BIO_CARD},
+      {label:'Hormones & Vitamines', params:BIO_HORM},
+      {label:'Autres marqueurs', params:BIO_AUTRE},
+    ];
+    bioSections.forEach(sec => {
+      const vals = sec.params.filter(q=>res[q.name]&&res[q.name].valeur);
+      if (!vals.length) return;
+      secHdr('Biochimie — ' + sec.label);
+      tblHdr('Paramètre', 'Valeur', 'Unité', 'Valeurs normales');
+      vals.forEach(q=>{const v=res[q.name]; pRow(q.name,v.valeur,getUnit(q.id,v.unite||q.unit||''),refDisplayFor(q,profile),v.interp||'');});
+      row++;
+    });
+
+  } else if (bt === 'Bactériologie') {
+    if (res['Type de prélèvement']) fRow('Type de prélèvement', res['Type de prélèvement']);
+    if (res['Site / Précision'])    fRow('Site / Précision', res['Site / Précision']);
+    // Macroscopie
+    const macroFields = ['Aspect','Couleur','Odeur','pH'];
+    const macroVals = macroFields.filter(k=>res[k]&&res[k]!=='—');
+    if (macroVals.length) {
+      secHdr('Macroscopie');
+      tblHdr('Paramètre', 'Résultat', '', '');
+      macroVals.forEach(k=>pRow(k,res[k],'','',''));
+      row++;
+    }
+    // État frais
+    const efFields=['Leucocytes (/mm³)','Hématies (/mm³)','Cellules épithéliales','Bactéries (état frais)','Levures'];
+    const efVals = efFields.filter(k=>res[k]&&res[k]!=='—'&&res[k]!=='Absents'&&res[k]!=='Absentes');
+    if (efVals.length) {
+      secHdr('État frais — Cytologie');
+      tblHdr('Élément', 'Résultat', 'Unité', '');
+      if (res['Leucocytes (/mm³)']) pRow('Leucocytes',res['Leucocytes (/mm³)'],'/mm³','','');
+      if (res['Hématies (/mm³)'])   pRow('Hématies',res['Hématies (/mm³)'],'/mm³','','');
+      efVals.filter(k=>!k.startsWith('Leuco')&&!k.startsWith('Héma')).forEach(k=>pRow(k,res[k],'','',''));
+      row++;
+    }
+    // Gram
+    if (res['Coloration de Gram']&&res['Coloration de Gram']!=='neg') {
+      secHdr('Coloration de Gram');
+      tblHdr('Résultat Gram', 'Abondance', '', '');
+      pRow(res['Coloration de Gram'], res['Gram - Abondance']||'—','','','');
+      if (res['Gram - Commentaire']) nRow(res['Gram - Commentaire']);
+      row++;
+    }
+    // Culture
+    if (res['Culture']||res['Germe identifié']) {
+      secHdr('Culture & Identification');
+      tblHdr('Paramètre', 'Résultat', '', '');
+      if (res['Culture'])            pRow('Culture',res['Culture'],'','','');
+      if (res['Numération bactérienne']) pRow('Numération',res['Numération bactérienne'],'','','');
+      if (res['Germe identifié'])    pRow('Germe identifié',res['Germe identifié'],'','','');
+      if (res['2ème germe'])         pRow('2ème germe',res['2ème germe'],'','','');
+      row++;
+    }
+    // Antibiogramme
+    const abgD = ABG_ANTIBIOS.filter(ab=>res['ABG_'+ab]&&res['ABG_'+ab]!=='nd');
+    if (abgD.length) {
+      secHdr('Antibiogramme');
+      tblHdr('Antibiotique', 'Résultat', '', '');
+      abgD.forEach(ab=>abgRow(ab,res['ABG_'+ab]));
+      if (res['Commentaire antibiogramme']) nRow(res['Commentaire antibiogramme']);
+      row++;
+    }
+    const afgD = AFG_ANTIFONGIQUES.filter(af=>res['AFG_'+af]&&res['AFG_'+af]!=='nd');
+    if (afgD.length) {
+      secHdr('Antifongigramme');
+      tblHdr('Antifongique', 'Résultat', '', '');
+      afgD.forEach(af=>abgRow(af,res['AFG_'+af]));
+      row++;
+    }
+
+  } else if (bt === 'Immuno-Sérologie') {
+    const seroVals = (typeof SERO_TESTS!=='undefined') ? SERO_TESTS.filter(t=>{const v=res[t.name];return v&&(v.resultat||v.valeur);}) : [];
+    if (seroVals.length) {
+      secHdr('Sérologies');
+      tblHdr('Test', 'Résultat', 'Valeur', '');
+      seroVals.forEach(t=>{
+        const v=res[t.name];
+        const interp = v.resultat==='Positif'?'Positif' : v.resultat==='Négatif'?'Négatif' : v.resultat||'';
+        pRow(t.name, v.resultat||v.valeur||'', getUnit('sero_'+t.id, t.unit||''), '', interp);
+      });
+      row++;
+    }
+    // ✅ v13.37 — CRP / Widal / Groupe sanguin manquaient dans l'export Excel.
+    if (res['CRP - Valeur']) {
+      secHdr('CRP — Protéine C-réactive (Latex)');
+      tblHdr('Test', 'Résultat', 'Unité', 'Valeurs normales');
+      const _crp = res['CRP - Valeur'] === 'neg' ? '< 6 mg/L' : res['CRP - Valeur'] + ' mg/L';
+      pRow('CRP Latex', _crp, '', '< 6 mg/L', res['CRP - Valeur'] === 'neg' ? 'Normal' : 'Élevé');
+      row++;
+    }
+    if (!opts.bpn && typeof WIDAL_ANTIGENES !== 'undefined') {
+      const _widD = WIDAL_ANTIGENES.filter(ag => { const w = res['Widal - ' + ag.name]; return w && w.titre; });
+      if (_widD.length) {
+        secHdr('Sérodiagnostic de Widal & Félix (SWF)');
+        tblHdr('Antigène', 'Titre', 'Cinétique', 'Commentaire');
+        _widD.forEach(ag => { const w = res['Widal - ' + ag.name]; pRow(ag.name, w.titre, w.cinetique || '', w.interp || '', ''); });
+        if (res['Widal - Conclusion']) nRow(res['Widal - Conclusion']);
+        row++;
+      }
+    }
+    const _sAbo = res['Groupe ABO'] || res['GS - ABO'];
+    const _sRh  = res['Rhésus'] || res['GS - Rhésus'];
+    if (_sAbo || _sRh) {
+      secHdr('Groupe Sanguin ABO / Rhésus');
+      tblHdr('Paramètre', 'Résultat', '', '');
+      if (_sAbo) pRow('Groupe ABO', _sAbo, '', '', '');
+      if (_sRh)  pRow('Rhésus', _sRh, '', '', '');
+      row++;
+    }
+
+  } else if (bt === 'Groupe sanguin') {
+    secHdr('Groupe Sanguin ABO / Rhésus');
+    tblHdr('Paramètre', 'Résultat', '', '');
+    if (res['Groupe ABO']) pRow('Groupe ABO', res['Groupe ABO'], '', '', '');
+    if (res['Rhésus'])     pRow('Rhésus',     res['Rhésus'],     '', '', '');
+    if (res['Commentaire GS']) nRow(res['Commentaire GS']);
+    row++;
+
+  } else if (bt === 'Parasitologie') {
+    // ✅ v13.37 — CORRECTIF : lisait des clés inexistantes (« Aspect des selles »,
+    // « EPS_… ») → section vide. On lit désormais les vraies clés (collectResults).
+    secHdr('Examen Parasitologique / Paludisme');
+    tblHdr('Paramètre', 'Résultat', 'Unité', 'Observation');
+    if (res["Type d'examen"])           pRow("Type d'examen", res["Type d'examen"], '', '', '');
+    if (res['Résultat global'])         pRow('Résultat global', res['Résultat global'], '', '', '');
+    if (res['Coloration'])              pRow('Coloration', res['Coloration'], '', '', '');
+    if (res['Espèce plasmodiale'])      pRow('Espèce plasmodiale', res['Espèce plasmodiale'], '', '', '');
+    if (res['Parasitémie (%)'])         pRow('Parasitémie', res['Parasitémie (%)'], '%', '', '');
+    if (res['Densité parasitaire /µL']) pRow('Densité parasitaire', res['Densité parasitaire /µL'], '/µL', '', '');
+    if (res['Stade parasitaire'])       pRow('Stade parasitaire', res['Stade parasitaire'], '', '', '');
+    if (res['Indice érythrocytaire'])   pRow('Indice érythrocytaire', res['Indice érythrocytaire'], '', '', '');
+    if (res['TDR paludisme'])           pRow('TDR paludisme', res['TDR paludisme'], '', '', '');
+    if (typeof PARA_EPS !== 'undefined') {
+      PARA_EPS.forEach(pa => { const v = res[pa]; if (v && v !== 'Absent' && v !== '') pRow(pa, v, '', '', ''); });
+    }
+    if (res['Observations']) nRow(res['Observations']);
+    row++;
+
+  } else {
+    // Rendu générique fallback
+    const gRows=[];
+    Object.entries(res).forEach(([k,v])=>{
+      if (!v||k.startsWith('ABG_')||k.startsWith('AFG_')||k.startsWith('BPNSERO_')||k.startsWith('_')) return; // ✅ v12
+      if (typeof v==='object') {
+        const val=v.valeur||v.resultat||v.titre||'';
+        if (val) gRows.push({n:k,v:val,u:v.unite||'',i:v.interp||v.obs||''});
+      } else if (typeof v==='string'&&v&&v!=='—') {
+        gRows.push({n:k,v,u:'',i:''});
+      }
+    });
+    if (gRows.length) {
+      secHdr(bt + ' — Résultats');
+      tblHdr('Paramètre', 'Résultat', 'Unité', '');
+      gRows.forEach(q=>pRow(q.n,q.v,q.u,'',q.i));
+      row++;
+    }
+    const abgD=ABG_ANTIBIOS.filter(ab=>res['ABG_'+ab]&&res['ABG_'+ab]!=='nd');
+    if (abgD.length) {
+      secHdr('Antibiogramme'); tblHdr('Antibiotique', 'Résultat', '', '');
+      abgD.forEach(ab=>abgRow(ab,res['ABG_'+ab])); row++;
+    }
+    const afgD=AFG_ANTIFONGIQUES.filter(af=>res['AFG_'+af]&&res['AFG_'+af]!=='nd');
+    if (afgD.length) {
+      secHdr('Antifongigramme'); tblHdr('Antifongique', 'Résultat', '', '');
+      afgD.forEach(af=>abgRow(af,res['AFG_'+af])); row++;
+    }
+  }
+  } // fin renderTypeBody
+
+  // ✅ v13.148 — Électrophorèse en BPN : profil en GRAND, sans les pourcentages.
+  function bigProfil(value) {
+    secHdr("Electrophorese de l'Hemoglobine");
+    ws.getRow(row).height = 34;
+    mg(row,1,row,NC);
+    const c = ws.getCell(row,1);
+    c.value = 'PROFIL : ' + value;
+    sC(c, {bg:PAT_VAL, fg:BLU, bold:true, size:16, ha:'center', border:true});
+    row++;
+  }
+
+  // ✅ v13.148 — Rendu du/des corps : un seul type (défaut) ou plusieurs combinés
+  //   sur cette feuille (bilan prénatal).
+  const _bodies = (Array.isArray(opts.render) && opts.render.length)
+    ? opts.render : [{ type: r.type, res: res }];
+  _bodies.forEach(b => {
+    if (opts.bpn && b.type === 'Hématologie') {
+      // Électrophorèse : profil en grand, pas de pourcentages (rendu spécial),
+      // puis le reste de l'hématologie via renderTypeBody (qui ignore l'ephb en
+      // mode bpn — voir la garde dans la section électrophorèse).
+      renderTypeBody(b.type, b.res);
+      const profil = b.res && b.res['Profil Hb'];
+      if (profil) bigProfil(profil);
+    } else {
+      renderTypeBody(b.type, b.res);
+    }
+  });
+
+  // ✅ v12.4 — Composition BPN (traçabilité des examens inclus, forfait fixe)
+  const _compo = opts.composition || res['_bpn_inclus'];
+  if (Array.isArray(_compo) && _compo.length) {
+    secHdr('Composition du bilan prénatal (forfait ' + ((opts.montant || r.montant || 20000)).toLocaleString('fr-FR') + ' FCFA)');
+    _compo.forEach(lbl => nRow('☑  ' + lbl, 'FFEDEDED'));
+    row++;
+  }
+
+  // ✅ v12.4 — Examens demandés non encore renseignés → affichés vides à compléter
+  const pending = opts.pending || getPendingCheckedExams(r, r.type);
+  if (pending.length) {
+    secHdr('Examens demandés — résultats à compléter');
+    pending.forEach(ex => {
+      tblHdr(ex.label, 'Résultat', 'Unité', 'Valeurs normales');
+      ex.rows.forEach(pr => pRowEmpty(pr.name, pr.unit, pr.ref));
+    });
+    row++;
+  }
+
+  // ✅ v13.155 — Espaceur : une ligne vide dont la hauteur sera calculée à la fin
+  //   pour POUSSER le pied de page tout en bas de la feuille A4 (comme le modèle
+  //   PDF : contenu compact en haut, signature ancrée en bas). Les lignes de
+  //   résultats gardent leur taille normale (pas d'étirement).
+  row++;
+  const _spacerRow = row;
+  ws.getRow(row).height = 6;
+  row++;
+
+  // ════════════════════════════════════════════════════
+  // PIED DE PAGE
+  // ════════════════════════════════════════════════════
+  row++;
+  ws.getRow(row).height = 5;
+  for (let c=1;c<=NC;c++) ws.getCell(row,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:GLD}};
+  row++;
+
+  ws.getRow(row).height = 13;
+  mg(row,1,row,3);
+  const cFt = ws.getCell(row,1);
+  cFt.value = 'Édité le ' + new Date().toLocaleDateString('fr-FR') + '  —  CPMI de Grand-Bassam';
+  sC(cFt, {fg:MUTED, size:8, italic:true});
+
+  mg(row,4,row,NC);
+  const cMontant = ws.getCell(row,4);
+  const _montantAff = opts.montant || r.montant;
+  if (_montantAff) {
+    cMontant.value = 'Montant : ' + _montantAff.toLocaleString('fr-FR') + ' FCFA';
+    sC(cMontant, {fg:DARK, bold:true, size:9, ha:'right'});
+  }
+  row++; row++;
+
+  // Zones signature
+  ws.getRow(row).height = 14;
+  mg(row,1,row,3); sC(ws.getCell(row,1),{bg:PAT_LABEL,fg:SEC_FG,bold:true,size:9});
+  ws.getCell(row,1).value='Commentaire du technicien :';
+  mg(row,4,row,NC); sC(ws.getCell(row,4),{bg:PAT_LABEL,fg:SEC_FG,bold:true,size:9});
+  ws.getCell(row,4).value='Signature du technicien :';
+  row++;
+  const sigStartRow = row; // ✅ v13.37 — ancre pour l'image de signature + QR
+  for (let i=0;i<4;i++) {
+    ws.getRow(row).height=14;
+    mg(row,1,row,3); ws.getCell(row,1).border=tB(BRD);
+    mg(row,4,row,NC); ws.getCell(row,4).border=tB(BRD);
+    row++;
+  }
+  // ✅ v13.37 — Nom (façon signature) + titre sous la ligne de signature,
+  // et QR : les IMAGES sont ajoutées ensuite par addQrAndSignatures(wb).
+  const _techName = ((typeof nomTechnicien === 'function' ? nomTechnicien() : (_currentUser?.username || '')) || '').toUpperCase();
+  const _refDoc = getOrCreateRef(r);
+  ws.getCell(sigStartRow + 2, 4).value = _techName || '—';
+  sC(ws.getCell(sigStartRow + 2, 4), { fg: SEC_FG, bold: true, size: 9 });
+  ws.getCell(sigStartRow + 3, 4).value = 'Technicien de laboratoire · CPMI Grand-Bassam';
+  sC(ws.getCell(sigStartRow + 3, 4), { fg: MUTED, italic: true, size: 7.5 });
+  // ✅ v13.65 — QR : on retire la ligne ANALYSE et on affiche le montant payé
+  const _payInfos = p.paiement_infos || {};
+  const _recu = Number(_payInfos.montant_recu);
+  const _payeStr = (p.paiement_status === 'paye' && !isNaN(_recu) && _recu > 0)
+    ? _recu.toLocaleString('fr-FR') + ' FCFA'
+    : 'NON PAYÉ';
+  // ✅ v13.66 — QR allégé : on garde le DOSSIER (pas la REF) et un seul mot du nom
+  const _nomCourt = (nomMAJ.split(/\s+/)[0] || nomMAJ);
+  ws._qrSig = {
+    sigRow: sigStartRow,
+    techName: _techName,
+    refDoc: _refDoc,
+    NC: NC,
+    qrContent: 'CPMI GRAND-BASSAM\nDOSSIER: ' + (p.dossier || '—')
+      + '\nPATIENT: ' + _nomCourt + '\nPAYE: ' + _payeStr + '\nDATE: ' + dateF
+      + (_techName ? ('\nTECH: ' + _techName) : '')
+  };
+
+  // ✅ v13.155 — PIED DE PAGE ANCRÉ EN BAS (modèle PDF).
+  //   Les lignes de résultats gardent leur taille normale, lisible (pas
+  //   d'étirement). On mesure la hauteur totale du contenu + du pied de page,
+  //   puis on dilate UNIQUEMENT la ligne espaceur pour combler le vide restant
+  //   jusqu'au bas d'une page A4 → contenu compact en haut, signature en bas.
+  //     • Rapport court (NFS seule) → grand espaceur → pied de page en bas.
+  //     • Rapport long (bilan complet) → petit/zéro espaceur, tout tient sur
+  //       une page ; s'il déborde vraiment, il s'étale (fitToHeight:0).
+  (function anchorFooter() {
+    const lastRow = row - 1;
+    if (lastRow < 3 || !_spacerRow) { ws.pageSetup.fitToHeight = 0; return; }
+    const getH = rr => (rr.height != null ? rr.height : 15);
+    let total = 0;
+    for (let i = 1; i <= lastRow; i++) total += getH(ws.getRow(i));
+    // Hauteur imprimable d'une page A4 (points). Réglable via window.__pageFill.
+    const PAGE = (typeof window !== 'undefined' && window.__pageFill) ? window.__pageFill : 756;
+    const deficit = PAGE - total;
+    if (deficit > 6) ws.getRow(_spacerRow).height = Math.round(deficit * 10) / 10;
+    ws.pageSetup.fitToHeight = 0; // jamais de compression
+  })();
+}
+
+
+// Vérifie que la bibliothèque ExcelJS (chargée depuis un CDN) est bien
+// disponible avant de tenter un export — évite un échec silencieux si
+// la connexion internet est coupée ou trop lente au moment du clic.
+// ✅ v13.35 — Code impression/export déplacé dans print.js
+// ✅ v13.75 — TARIFS PARTAGÉS ENTRE TOUS LES POSTES
+//   Auparavant, la grille vivait dans le localStorage de chaque navigateur.
+//   Changer un prix sur un poste laissait les autres facturer l'ancien
+//   montant, sans aucun signal : deux guichets pouvaient encaisser des
+//   sommes différentes pour le même examen le même jour.
+//   La grille est désormais en base (table labo_tarifs, RPC get_tarifs /
+//   save_tarifs). Le localStorage ne sert plus que de cache hors-ligne :
+//   un poste sans réseau continue de facturer avec la dernière grille
+//   connue plutôt que de retomber sur les prix d'usine.
+let _tarifsRefCache = null;
+
+function getTarifsRef() {
+  if (_tarifsRefCache) return _tarifsRefCache;
+  try {
+    const local = JSON.parse(localStorage.getItem('tarifs_ref') || 'null');
+    if (local) { _tarifsRefCache = local; return local; }
+  } catch (e) { /* cache illisible : on repart des prix du catalogue */ }
+  return buildTarifsRefDefault();
+}
+
+/** Charge la grille depuis la base et rafraîchit le cache local. */
+async function chargerTarifsDepuisBase() {
+  if (!navigator.onLine || typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('get_tarifs', { p_token: TK() });
+    if (error || !data || typeof data !== 'object') return;
+    // Grille vide = aucun prix personnalisé : on garde ceux du catalogue.
+    const grille = Object.keys(data).length ? { ...buildTarifsRefDefault(), ...data }
+                                            : buildTarifsRefDefault();
+    _tarifsRefCache = grille;
+    try { localStorage.setItem('tarifs_ref', JSON.stringify(grille)); } catch (e) {}
+  } catch (e) { /* hors-ligne : le cache local prend le relais */ }
+}
+
+/** Enregistre la grille en base ; le cache local suit. */
+async function saveTarifsRef(t) {
+  _tarifsRefCache = t;
+  try { localStorage.setItem('tarifs_ref', JSON.stringify(t)); } catch (e) {}
+  if (typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('save_tarifs', { p_token: TK(), p_grille: t });
+    if (error)            { toast('Tarifs enregistrés sur ce poste seulement (serveur injoignable)', 'err'); return; }
+    if (data === 'forbidden') { toast('Seul un administrateur peut modifier les tarifs', 'err'); return; }
+    if (data !== 'ok')    { toast('Tarifs non enregistrés : ' + data, 'err'); return; }
+    toast('Tarifs enregistrés pour tous les postes', 'ok');
+  } catch (e) {
+    toast('Tarifs enregistrés sur ce poste seulement (hors-ligne)', 'err');
+  }
+}
+
+function buildTarifsRefDefault() {
+  const ref = {};
+  CATALOGUE_EXAMENS.forEach(ex => { ref[ex.id] = ex.prix; });
+  return ref;
+}
+
+// Examens personnalisés ajoutés par l'admin
+// ✅ v13.77 — EXAMENS PERSONNALISÉS PARTAGÉS
+//   Ils vivaient dans le localStorage du poste où ils avaient été créés :
+//   les autres postes ne pouvaient tout simplement PAS les prescrire, et ils
+//   disparaissaient si le cache du navigateur était vidé. Même faille que la
+//   grille tarifaire, en plus grave — ce n'est pas un prix faux, c'est un
+//   examen absent du formulaire.
+//   La liste vit désormais en base ; le localStorage sert de cache hors-ligne.
+let _examensCustomCache = null;
+
+function getExamensCustom() {
+  if (_examensCustomCache) return _examensCustomCache;
+  try {
+    const local = JSON.parse(localStorage.getItem('examens_custom') || 'null');
+    if (Array.isArray(local)) { _examensCustomCache = local; return local; }
+  } catch (e) { /* cache illisible */ }
+  return [];
+}
+
+/** Charge la liste depuis la base et rafraîchit le cache local. */
+async function chargerExamensCustomDepuisBase() {
+  if (!navigator.onLine || typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('get_examens_custom', { p_token: TK() });
+    if (error || !Array.isArray(data)) return;
+    _examensCustomCache = data;
+    try { localStorage.setItem('examens_custom', JSON.stringify(data)); } catch (e) {}
+    if (typeof rechargeFichePrix === 'function') rechargeFichePrix();
+  } catch (e) { /* hors-ligne : le cache local prend le relais */ }
+}
+
+async function saveExamensCustom(list) {
+  _examensCustomCache = list;
+  try { localStorage.setItem('examens_custom', JSON.stringify(list)); } catch (e) {}
+  if (typeof _sb === 'undefined' || !_sb) return;
+  try {
+    const { data, error } = await _sb.rpc('save_examens_custom', { p_token: TK(), p_liste: list });
+    if (error)                { toast('Examen enregistré sur ce poste seulement (serveur injoignable)', 'err'); return; }
+    if (data === 'forbidden') { toast('Seul un administrateur peut modifier le catalogue', 'err'); return; }
+    if (data !== 'ok')        { toast('Examen non enregistré : ' + data, 'err'); return; }
+    toast('Catalogue mis à jour pour tous les postes', 'ok');
+  } catch (e) {
+    toast('Examen enregistré sur ce poste seulement (hors-ligne)', 'err');
+  }
+}
+
+// Catalogue complet = défauts + personnalisés
+function getCatalogueComplet() {
+  return [...CATALOGUE_EXAMENS, ...getExamensCustom()];
+}
+
+function showAddExamenModal() {
+  const modal = document.getElementById('add-examen-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('new_ex_label').value = '';
+    document.getElementById('new_ex_prix').value = '0';
+  }
+}
+
+async function addExamenPersonnalise() {
+  const label = document.getElementById('new_ex_label')?.value?.trim();
+  if (!label) { toast('Le nom de l\'examen est obligatoire', 'err'); return; }
+
+  const tabVal = document.getElementById('new_ex_groupe')?.value || 'other';
+  const prix   = parseInt(document.getElementById('new_ex_prix')?.value || '0');
+  const id     = 'custom_' + Date.now();
+
+  const tabToGroupe = {
+    hema:'🩸 Hématologie', bio:'🧪 Biochimie', sero:'💉 Immuno-Sérologie',
+    bacterio:'🦠 Bactériologie', parasito:'🦟 Parasitologie',
+    gs:'🩸 Groupe sanguin', other:'🔬 Autres'
+  };
+  const groupe = tabToGroupe[tabVal] || '🔬 Autres';
+  const tab    = tabVal === 'other' ? 'hema' : tabVal;
+
+  const custom = getExamensCustom();
+  custom.push({ id, label, groupe, prix, tab, custom: true });
+
+  const ref = getTarifsRef();
+  ref[id] = prix;
+
+  // ✅ v13.77 — les deux écritures partent en base ; saveExamensCustom et
+  // saveTarifsRef signalent eux-mêmes le succès ou l'échec.
+  await saveExamensCustom(custom);
+  await saveTarifsRef(ref);
+
+  document.getElementById('add-examen-modal').style.display = 'none';
+  document.getElementById('new_ex_label').value = '';
+  document.getElementById('new_ex_prix').value = '0';
+  buildAdminExamensGrid();
+  buildFicheExamens();
+}
+
+async function removeExamenCustom(id) {
+  const ex = getExamensCustom().find(x => x.id === id);
+  const ok = (typeof showConfirmModal === 'function')
+    ? await showConfirmModal({ icon:'🗑', title:'Supprimer cet examen',
+        message:'« ' + (ex ? ex.label : id) + ' » sera retiré du catalogue de TOUS les postes. '
+              + 'Les dossiers déjà enregistrés avec cet examen ne sont pas modifiés.',
+        confirmText:'Supprimer', confirmClass:'btn-danger' })
+    : confirm('Supprimer cet examen personnalisé ?');
+  if (!ok) return;
+  const custom = getExamensCustom().filter(x => x.id !== id);
+  const ref = getTarifsRef();
+  delete ref[id];
+  await saveExamensCustom(custom);
+  await saveTarifsRef(ref);
+  buildAdminExamensGrid();
+  buildFicheExamens();
+}
+
+// Recharge les prix de la fiche d'accueil depuis les tarifs de référence
+function rechargeFichePrix() {
+  const ref = getTarifsRef();
+  getCatalogueComplet().forEach(ex => {
+    const el = document.getElementById('px_' + ex.id);
+    if (el) el.value = ref[ex.id] !== undefined ? ref[ex.id] : ex.prix;
+  });
+  calcFicheTotal();
+}
+
+// ── Grille admin (Comptes) ─────────────────────────────────────
+function buildAdminExamensGrid() {
+  const grid = document.getElementById('admin-examens-grid');
+  if (!grid) return;
+  const ref     = getTarifsRef();
+  const custom  = getExamensCustom();
+
+  // Grouper par catégorie (catalogue complet)
+  const groupes = {};
+  getCatalogueComplet().forEach(ex => {
+    if (!groupes[ex.groupe]) groupes[ex.groupe] = [];
+    groupes[ex.groupe].push(ex);
+  });
+
+  grid.innerHTML = Object.entries(groupes).map(([groupe, examens]) => `
+    <div class="exam-group-card">
+      <div class="exam-group-title">${groupe}</div>
+      ${examens.map(ex => {
+        const prix       = ref[ex.id] !== undefined ? ref[ex.id] : ex.prix;
+        const isCustom   = !!ex.custom;
+        const removeBtn  = isCustom
+          ? `<button onclick="removeExamenCustom('${ex.id}')" title="Supprimer cet examen" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:15px;padding:2px 4px;line-height:1;border-radius:4px;transition:background .15s" onmouseover="this.style.background='var(--danger-light)'" onmouseout="this.style.background='none'">✕</button>`
+          : '';
+        return `<div style="display:flex;align-items:center;gap:6px;padding:6px 4px;border-bottom:1px dashed rgba(199,215,245,.5);border-radius:6px;transition:background .15s" onmouseover="this.style.background='rgba(224,234,255,.4)'" onmouseout="this.style.background='none'">
+          <label style="flex:1;font-size:12.5px;font-weight:${isCustom?'600':'500'};color:var(--text)">
+            ${ex.label}${isCustom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
+            ${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
+          </label>
+          <input type="number" id="adm_px_${ex.id}" value="${prix}" min="0" step="100"
+            style="width:80px;text-align:right;font-weight:700;color:var(--cpmi-deep);font-size:12.5px;padding:4px 6px">
+          <span style="font-size:10.5px;color:var(--text-muted);flex-shrink:0">F</span>
+          ${removeBtn}
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+async function saveAdminTarifs() {
+  const ref = getTarifsRef();
+  getCatalogueComplet().forEach(ex => {
+    const el = document.getElementById('adm_px_' + ex.id);
+    if (el) ref[ex.id] = parseInt(el.value) || 0;
+  });
+  // ✅ v13.76 — on attend la confirmation du serveur avant de rafraîchir la
+  // fiche : saveTarifsRef signale lui-même le succès ou l'échec, inutile
+  // d'annoncer « enregistré » avant d'en être sûr.
+  await saveTarifsRef(ref);
+  rechargeFichePrix();
+}
+
+// ✅ v13.76 — « Remettre les prix par défaut » restaure LES PRIX ACTUELS.
+//
+//   Deux défauts corrigés ici.
+//
+//   1. La fonction se contentait d'effacer le cache local. Depuis que la
+//      grille vit en base (v13.75), cela ne remettait rien à zéro : le poste
+//      rechargeait la grille du serveur à la connexion suivante, et les
+//      autres postes n'étaient jamais concernés. La remise à zéro était donc
+//      illusoire — l'utilisateur voyait un message de succès sans effet réel.
+//
+//   2. Le cache mémoire (_tarifsRefCache) n'était pas vidé, donc l'écran
+//      continuait d'afficher les anciens prix jusqu'à un rechargement.
+//
+//   « Par défaut » signifie désormais : les prix du catalogue de
+//   l'application, c'est-à-dire ceux effectivement pratiqués au laboratoire
+//   (NFS 3 000, CRP 3 500, groupe sanguin 2 000, ECBU 10 000…). Jamais zéro.
+//   Les examens ajoutés à la main par l'admin gardent leur prix : ils n'ont
+//   pas de « valeur d'usine » à laquelle revenir.
+async function resetAdminTarifs() {
+  const message = 'Remettre tous les prix aux tarifs par défaut du laboratoire ?\n\n'
+                + 'Les examens que vous avez ajoutés vous-même garderont leur prix. '
+                + 'Le changement s\'appliquera à TOUS les postes.';
+  const ok = (typeof showConfirmModal === 'function')
+    ? await showConfirmModal({ icon:'↺', title:'Remettre les prix par défaut',
+                               message, confirmText:'Remettre par défaut' })
+    : confirm(message);
+  if (!ok) return;
+
+  // Prix d'usine du catalogue…
+  const grille = buildTarifsRefDefault();
+  // …auxquels on rattache les examens personnalisés, absents du catalogue.
+  const actuelle = getTarifsRef();
+  getExamensCustom().forEach(ex => {
+    grille[ex.id] = (actuelle && actuelle[ex.id] !== undefined)
+      ? actuelle[ex.id] : (Number(ex.prix) || 0);
+  });
+
+  _tarifsRefCache = null;                 // sinon l'écran garde les anciens prix
+  await saveTarifsRef(grille);            // écrit en base ET dans le cache local
+  buildAdminExamensGrid();
+  rechargeFichePrix();
+}
+
+// Compatibilité
+function renderTarifsConfig() { buildAdminExamensGrid(); }
+function saveTarifsConfig()   { return saveAdminTarifs(); }
+function resetTarifsConfig()  { return resetAdminTarifs(); }
+
+// ──────────────────────────────────────────────────────────────
+// PRESCRIPTEURS
+// ──────────────────────────────────────────────────────────────
+
+
