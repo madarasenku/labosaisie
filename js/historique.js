@@ -838,6 +838,13 @@ function updateBulkToolbar() {
     const b = document.getElementById(idBtn);
     if (b) b.style.display = peutMasquer ? '' : 'none';
   });
+  // ✅ v13.228 — Annuler un paiement : admin ou caissier uniquement (les agents
+  //   encaissent mais n'annulent pas). Hors corbeille.
+  const annulBtn = document.getElementById('bulk-annuler-btn');
+  if (annulBtn) {
+    const peutAnn = (typeof peutAnnulerPaiement === 'function') && peutAnnulerPaiement();
+    annulBtn.style.display = (peutAnn && !_filterCorbeille) ? '' : 'none';
+  }
   // ✅ v13.201 — Cahier jaune : admin ou caissier, hors corbeille.
   const cahierBtn = document.getElementById('bulk-cahier-btn');
   if (cahierBtn) {
@@ -1590,6 +1597,10 @@ async function bulkEncaisser() {
 // ✅ v13.42 — Annulation groupée de paiement
 async function bulkAnnulerPaiement() {
   if (blockIfSpectateur()) return;
+  // ✅ v13.228 — Annulation réservée à l'admin / caissier (pas les agents).
+  if (typeof peutAnnulerPaiement === 'function' && !peutAnnulerPaiement()) {
+    toast('Annulation d\'un paiement réservée à l\'administrateur ou au caissier', 'err'); return;
+  }
   const ids = [..._selectedIds];
   if (!ids.length) return;
 

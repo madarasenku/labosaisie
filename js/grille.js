@@ -213,11 +213,13 @@ const GRILLE_EXAMS = {
     // ✅ v13.147 — Ac anti-HBc RETIRÉ de la grille série : rarement demandé en
     // prénatal ici. Il reste facturable et saisissable via le formulaire complet
     // (examen « Ac anti-HBc totaux »), mais ne surcharge plus la grille.
+    // ✅ v13.228 — Ac anti-HBs RETIRÉ de la grille série : un BPN ne fait que
+    //   l'Ag HBs (dépistage). L'Ac anti-HBs reste saisissable/facturable via le
+    //   formulaire complet (examen « Ac anti-HBs » commandé séparément).
     label: 'BPN · Hépatite B (Ag HBs)', type: 'Immuno-Sérologie', exId: 'ex_hbs', coche: /HBs|Hépatite B/i,
     filled: s => s['Ag HBs'] && s['Ag HBs'].resultat,
     cols: [
       { k: 'hbsag', lab: 'Ag HBs', dom: 'sr_hbsag', kind: 'sel', opts: _SERO_OPTS },
-      { k: 'hbsac', lab: 'Ac anti-HBs (UI/L)', dom: 'sv_hbsac', kind: 'num' },
     ],
   },
   hcv: {
@@ -914,6 +916,10 @@ async function grilleSaveAll() {
 
   showLoading('Enregistrement du lot…');
   let ok = 0, err = 0; const savedIds = [];
+  // ✅ v13.227 — Dossiers dont TOUS les examens de la grille sont complets : on
+  //   les passera automatiquement « Terminé » (le flux « page unique » le faisait
+  //   déjà, pas la grille — d'où des dossiers finis restés « En cours »).
+  const completeIds = [];
   const btn = document.getElementById('grille-save'); if (btn) btn.disabled = true;
   try {
     for (const id of ids) {
@@ -944,14 +950,34 @@ async function grilleSaveAll() {
         newRes._types = [...types];
         newRes._facture_seule = false;
         newRes._saisi_serie = marque;
+        // Complétude lue AVANT l'écriture : une fois enregistrés, les examens
+        // sortent de la liste « éditables » de la grille et la ligne ne serait
+        // plus jugée complète. Si tous les examens éditables sont remplis, le
+        // dossier est « Terminé ».
+        let rowComplete = false;
+        try { rowComplete = grilleRowComplete(id); } catch (e) {}
         const saved = await updateRecordRemote(record.id, {
           patient: record.patient, type: 'Dossier', resultats: newRes,
           montant: record.montant || 0, prescripteur_id: record.prescripteur_id || null,
         }, { onlyResultats: true });
-        if (saved) { ok++; savedIds.push(record.id); } else err++;
+        if (saved) {
+          ok++; savedIds.push(record.id);
+          if (rowComplete) completeIds.push(record.id);
+        } else err++;
       } catch (e) { err++; }
     }
   } finally { if (btn) btn.disabled = false; }
+
+  // ✅ v13.227 — Marquage AUTOMATIQUE « Terminé » (rendu) des dossiers complets,
+  //   avant le rechargement pour que la liste et la grille le reflètent aussitôt.
+  for (const cid of completeIds) {
+    try { if (typeof setStatutLocal === 'function') setStatutLocal(cid, 'rendu'); } catch (e) {}
+    try {
+      if (typeof _sb !== 'undefined' && _sb && typeof TK === 'function' && TK()) {
+        await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: cid, p_statut: 'rendu' });
+      }
+    } catch (e) {}
+  }
 
   hideLoading();
   await refreshDB(true);

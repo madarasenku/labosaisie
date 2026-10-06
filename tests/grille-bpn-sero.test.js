@@ -42,7 +42,7 @@ const dossGs = {
     await page.evaluate(() => { try { showView('saisie'); } catch (e) {} });
     await page.waitForTimeout(300);
 
-    r.section('Hépatite B (Ag HBs + Ac HBc + Ac anti-HBs)');
+    r.section('Hépatite B (Ag HBs SEUL — dépistage prénatal)');
     await page.evaluate(() => { _grilleDate = ''; window.ouvrirGrille('hbs'); });
     await page.waitForTimeout(300);
     // Grille unifiée : tous les patients sont listés ; on vérifie ceux qui
@@ -51,19 +51,19 @@ const dossGs = {
     await page.evaluate(() => {
       const set = (id, v, ev) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event(ev, { bubbles: true })); };
       set('g_920_hbs_hbsag', 'Positif', 'change');
-      set('g_920_hbs_hbsac', '12.5', 'input');
     });
     await page.evaluate(() => window.grilleSaveAll());
     await page.waitForTimeout(800);
     const hb = await page.evaluate(() => {
       const p = window.__u.find(u => u.p_id === 920); const s = p && p.p_resultats['Immuno-Sérologie'];
-      return { ag: s && s['Ag HBs'] && s['Ag HBs'].resultat, hbsac: s && s['Ac anti-HBs'] && s['Ac anti-HBs'].valeur };
+      return { ag: s && s['Ag HBs'] && s['Ag HBs'].resultat };
     });
     r.check('Ag HBs = Positif', hb.ag, 'Positif');
-    r.check('Ac anti-HBs (quant) = 12.5', hb.hbsac, '12.5');
-    // ✅ v13.147 — L'Ac anti-HBc a été retiré de la grille série (rarement
-    // demandé) : sa colonne ne doit plus exister.
-    const noHbc = await page.evaluate(() => !document.getElementById('g_920_hbs_hbcac'));
+    // ✅ v13.228 — Un BPN ne fait que l'Ag HBs : les colonnes Ac anti-HBs ET
+    //   Ac anti-HBc n'existent PLUS dans la grille série.
+    const noHbsac = await page.evaluate(() => !document.getElementById('g_920_hbs_hbsac'));
+    const noHbc   = await page.evaluate(() => !document.getElementById('g_920_hbs_hbcac'));
+    r.check('colonne Ac anti-HBs absente de la grille', noHbsac, true);
     r.check('colonne Ac anti-HBc absente de la grille', noHbc, true);
 
     r.section('Groupe sanguin ABO / Rhésus');
