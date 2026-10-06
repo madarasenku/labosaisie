@@ -696,8 +696,15 @@ async function deleteRecordRemote(id) {
     toast('Échec de la suppression distante', 'err');
     return false;
   }
-  if (data !== true) {
-    toast('Seul un administrateur peut supprimer une fiche', 'err');
+  // ✅ v13.230 — La RPC delete_resultat_admin renvoie du TEXTE ('ok' / 'forbidden'),
+  //   pas un booléen. L'ancien test `data !== true` faisait passer TOUTE
+  //   suppression définitive pour un échec (« Seul un administrateur peut
+  //   supprimer ») — l'admin ne pouvait donc jamais vider la corbeille. On
+  //   accepte 'ok' (et true, par compat) ; 'forbidden' = droit refusé.
+  if (data !== true && data !== 'ok') {
+    toast(data === 'forbidden'
+      ? 'Suppression définitive réservée à l\'administrateur'
+      : 'Échec de la suppression', 'err');
     return false;
   }
   // ✅ v13.33 — Trace permanente : la fiche reste dans le cache admin
