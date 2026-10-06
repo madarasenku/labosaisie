@@ -213,11 +213,13 @@ const GRILLE_EXAMS = {
     // ✅ v13.147 — Ac anti-HBc RETIRÉ de la grille série : rarement demandé en
     // prénatal ici. Il reste facturable et saisissable via le formulaire complet
     // (examen « Ac anti-HBc totaux »), mais ne surcharge plus la grille.
+    // ✅ v13.228 — Ac anti-HBs RETIRÉ de la grille série : un BPN ne fait que
+    //   l'Ag HBs (dépistage). L'Ac anti-HBs reste saisissable/facturable via le
+    //   formulaire complet (examen « Ac anti-HBs » commandé séparément).
     label: 'BPN · Hépatite B (Ag HBs)', type: 'Immuno-Sérologie', exId: 'ex_hbs', coche: /HBs|Hépatite B/i,
     filled: s => s['Ag HBs'] && s['Ag HBs'].resultat,
     cols: [
       { k: 'hbsag', lab: 'Ag HBs', dom: 'sr_hbsag', kind: 'sel', opts: _SERO_OPTS },
-      { k: 'hbsac', lab: 'Ac anti-HBs (UI/L)', dom: 'sv_hbsac', kind: 'num' },
     ],
   },
   hcv: {

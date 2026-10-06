@@ -150,6 +150,13 @@ function tientLaCaisse() {
   if (isSpectateur()) return false;
   return window._noCaissier === true;
 }
+// ✅ v13.228 — ANNULER / reverser un paiement est réservé à l'admin et au
+// caissier. Les agents peuvent ENCAISSER (peutEncaisser) mais pas annuler :
+// séparation des tâches (prendre l'argent ≠ le rendre). Miroir côté serveur
+// dans update_dossier_patient (RETURN 'forbidden_annulation').
+function peutAnnulerPaiement() {
+  return isAdmin() || (typeof isCaissier === 'function' && isCaissier());
+}
 async function chargerEtatCaissier() {
   try {
     if (!_sb || typeof TK !== 'function' || !TK()) return;

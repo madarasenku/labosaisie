@@ -320,7 +320,12 @@ function examFieldIds(examId) {
     ex_bhcg:  () => ['v_bhcg'],
     // ── Sérologie ─────────────────────────────────────────────
     ex_vih:   () => S(['vih1']),
-    ex_hbs:   () => S(['hbsag','hbcac','hbsac']),
+    // ✅ v13.228 — « Ag HBs (Hépatite B) » = ANTIGÈNE SEUL (hbsag). L'Ac anti-HBs
+    //   et l'Ac anti-HBc ne sont PLUS inclus d'office (ils ne font pas partie d'un
+    //   BPN et se commandent séparément via ex_hbsac / ex_hbcac). Ainsi, en saisie
+    //   « tout sur une page », les lignes anti-HBs / anti-HBc sont masquées tant
+    //   que leur examen dédié n'est pas coché (hideUncheckedExamRows).
+    ex_hbs:   () => S(['hbsag']),
     ex_hbsac: () => S(['hbsac']),   // ✅ v13.102 — Ac anti-HBs facturable seul
     ex_hbcac: () => S(['hbcac']),   // ✅ v13.102 — Ac anti-HBc totaux facturable seul
     ex_hcv:   () => S(['hcv']),

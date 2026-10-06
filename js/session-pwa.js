@@ -588,6 +588,10 @@ function validerPaiement(id) {
 
 function annulerPaiement(id) {
   if (blockIfSpectateur()) return;
+  // ✅ v13.228 — Annulation réservée à l'admin / caissier (pas les agents).
+  if (typeof peutAnnulerPaiement === 'function' && !peutAnnulerPaiement()) {
+    toast('Annulation d\'un paiement réservée à l\'administrateur ou au caissier', 'err'); return;
+  }
   if (!confirm('Annuler le paiement de ce dossier ?')) return;
   setPaiementStatus(id, 'non_paye', {});
   toast('Paiement annulé', 'err');
