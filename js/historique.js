@@ -851,10 +851,9 @@ function updateBulkToolbar() {
     const peutCahier = isAdmin() || (typeof isCaissier === 'function' && isCaissier());
     cahierBtn.style.display = (peutCahier && !_filterCorbeille) ? '' : 'none';
   }
-  // ✅ v13.231 — Porter à la caisse noire = ÉCRITURE : ADMIN uniquement (nadia
-  //   peut consulter le cahier noir mais ne le modifie plus). Hors corbeille.
+  // ✅ v13.211 — Caisse noire : nadia OU administrateur, hors corbeille.
   const cahierNoirBtn = document.getElementById('bulk-cahier-noir-btn');
-  if (cahierNoirBtn) cahierNoirBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
+  if (cahierNoirBtn) cahierNoirBtn.style.display = (accesCaisseNoire() && !_filterCorbeille) ? '' : 'none';
   // ✅ v13.208 — Changer le propriétaire en lot : ADMIN, hors corbeille.
   const auteurBtn = document.getElementById('bulk-auteur-btn');
   if (auteurBtn) auteurBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
@@ -1297,8 +1296,7 @@ async function bulkCahierJaune() {
 let _cnReportPlan = null;
 async function bulkCahierNoir() {
   if (blockIfSpectateur()) return;
-  // ✅ v13.231 — Écriture du cahier noir réservée à l'administrateur.
-  if (!isAdmin()) { toast('🔒 Modification de la caisse noire réservée à l\'administrateur', 'err'); return; }
+  if (!accesCaisseNoire()) { toast('🔒 Caisse noire — réservée à nadia et à l\'administrateur', 'err'); return; }
   const ids = [..._selectedIds];
   if (!ids.length) return;
   const plan = ids.map(id => _dbCache.find(x => x.id === id)).filter(Boolean)
