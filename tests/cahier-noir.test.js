@@ -39,9 +39,10 @@ const { serve, openApp, createReporter } = require('./helpers');
   r.check('retour au jaune : get_cahier_jaune', backJaune.rpcGet, 'get_cahier_jaune');
 
   // ── Porter à la caisse noire depuis l'historique (colonne au choix) ─
-  // ✅ v13.231 — Écriture du cahier noir réservée à l'ADMIN (le compte reste admin).
-  r.section('Report manuel vers la caisse noire (admin)');
+  // ✅ v13.211 — Réservé au compte nadia : on bascule l'utilisateur courant.
+  r.section('Report manuel vers la caisse noire (nadia)');
   const report = await page.evaluate(async () => {
+    _currentUser = Object.assign({}, _currentUser, { username: 'nadia' });
     window.__calls = [];
     _sb.rpc = async (n, p) => {
       window.__calls.push({ n, p });
