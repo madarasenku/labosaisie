@@ -28,7 +28,9 @@ const { serve, openApp, createReporter } = require('./helpers');
     const txt = (window.__printed || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     return {
       champPresent: !!champ, boutonPresent: !!btn, fn: typeof imprimerRegistreDepuisHistorique,
-      imprime: txt.length > 0, titre: /REGISTRE DU JOUR/.test(txt), patient: /KONE/.test(txt),
+      imprime: txt.length > 0,
+      // ✅ v13.231 — registre séparé par poste : KONE (09h) → Registre de permanence.
+      titre: /REGISTRE DE PERMANENCE/.test(txt), patient: /KONE/.test(txt),
     };
   });
 
@@ -37,7 +39,7 @@ const { serve, openApp, createReporter } = require('./helpers');
   r.check('bouton présent dans l\'historique', res.boutonPresent, true);
   r.check('fonction définie', res.fn, 'function');
   r.check('le registre est imprimé', res.imprime, true);
-  r.check('titre « REGISTRE DU JOUR »', res.titre, true);
+  r.check('titre « REGISTRE DE PERMANENCE » (séparé par poste)', res.titre, true);
   r.check('le patient du jour figure', res.patient, true);
 
   r.check('aucune erreur JS', errors.length, 0);

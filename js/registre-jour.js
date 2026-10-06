@@ -262,28 +262,45 @@ async function renderRegistre() {
     return;
   }
 
-  const corps = lignes.map(l =>
+  // ✅ v13.231 — Aperçu SÉPARÉ par poste (comme à l'impression) : une section
+  //   « Permanence » puis une section « Garde », chacune avec son propre tableau
+  //   et son total. Plus de colonne Poste (chaque tableau ne contient qu'un poste).
+  const corpsPrev = (arr) => arr.map(l =>
     '<tr' + (l.externe ? ' style="background:#fff5e0"' : '') + '>'
     + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
     + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? ' <span style="color:var(--text-muted);font-size:11px">' + esc(l.meta) + '</span>' : '')
     + (l.externe ? ' <span style="font-size:10px;font-weight:700;color:#b45309;background:#fde7bf;border-radius:4px;padding:1px 5px">EXTERNE</span>' : '') + '</td>'
-    + '<td style="white-space:nowrap">' + (typeof posteBadge === 'function' ? posteBadge(l.poste) : esc(l.poste)) + '</td>'
     + '<td style="color:var(--text-muted)">' + esc(l.presc) + '</td>'
     + '<td style="color:var(--text-muted)">' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
     + '<td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">' + _regMontant(l.montant) + '</td>'
     + '</tr>').join('');
 
+  const sectionPrev = (titre, arr) => {
+    if (!arr.length) return '';
+    const rec = arr.reduce((s, l) => s + l.montant, 0);
+    const rnd = arr.filter(l => l.rendu).length;
+    return '<div style="margin-top:14px">'
+      + '<div style="font-weight:800;font-size:13.5px;color:var(--cpmi-deep,#065f46);margin-bottom:6px">'
+      + titre + ' · <span style="font-weight:600;color:var(--text-muted);font-size:12px">'
+      + arr.length + ' patient(s) · ' + rnd + ' rendu(s) · ' + _regMontant(rec) + ' F</span></div>'
+      + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12px">'
+      + '<thead><tr><th>N°</th><th>Patient</th><th>Prescripteur</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
+      + '<tbody>' + corpsPrev(arr) + '</tbody></table></div></div>';
+  };
+
+  const lignesPerm  = lignes.filter(l => l.poste === 'Permanence');
+  const lignesGarde = lignes.filter(l => l.poste !== 'Permanence');
+
   zone.innerHTML =
-    '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);margin-bottom:10px">'
+    '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);margin-bottom:4px">'
     + '<span><strong style="color:var(--text-label);font-size:15px">' + lignes.length + '</strong> patient(s)</span>'
     + '<span>☀️ Permanence : <strong style="color:var(--text-label)">' + nPerm + '</strong></span>'
     + '<span>🌙 Garde : <strong style="color:var(--text-label)">' + nGarde + '</strong></span>'
     + '<span><strong style="color:var(--text-label);font-size:15px">' + rendus + '</strong> / ' + lignes.length + ' résultat(s) rendu(s)</span>'
     + '<span><strong style="color:var(--text-label);font-size:15px">' + _regMontant(recette) + '</strong> F</span>'
     + '</div>'
-    + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12px">'
-    + '<thead><tr><th>N°</th><th>Patient</th><th>Poste</th><th>Prescripteur</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
-    + '<tbody>' + corps + '</tbody></table></div>';
+    + sectionPrev('☀️ Registre de permanence', lignesPerm)
+    + sectionPrev('🌙 Registre de garde', lignesGarde);
 }
 
 /** Construit le registre imprimable (A4, noir & blanc) et lance l'impression.
@@ -299,66 +316,77 @@ async function imprimerRegistre(jourArg) {
   hideLoading();
 
   const lignes = recs.map(_regLigne);
-  const rendus = lignes.filter(l => l.rendu).length;
-  const recette = lignes.reduce((s, l) => s + l.montant, 0);
-  const nPerm = lignes.filter(l => l.poste === 'Permanence').length;
-  const nGarde = lignes.length - nPerm;
+  const lignesPerm  = lignes.filter(l => l.poste === 'Permanence');
+  const lignesGarde = lignes.filter(l => l.poste !== 'Permanence');
   const now = new Date();
   const jourLong = new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const editePar = esc((typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '?');
 
   // ✅ Les lignes « externe » sont surlignées (impression : fond gris clair forcé
   //   via print-color-adjust). Un patient de consultation externe ressort ainsi.
   const _extStyle = 'background:#e9e9e9;-webkit-print-color-adjust:exact;print-color-adjust:exact';
-  const corps = lignes.length
-    ? lignes.map(l =>
+
+  // Corps d'un registre (sans colonne Poste : chaque registre ne contient qu'un poste).
+  const corpsPoste = (arr) => arr.length
+    ? arr.map(l =>
         '<tr' + (l.externe ? ' style="' + _extStyle + '"' : '') + '>'
         + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
         + '<td><strong>' + esc(l.nom) + '</strong>' + (l.externe ? ' <strong>[EXTERNE]</strong>' : '') + (l.meta ? '<div style="font-size:8.5pt;color:#555">' + esc(l.meta) + '</div>' : '') + '</td>'
-        + '<td style="white-space:nowrap">' + (l.poste === 'Permanence' ? '☀️ Perm.' : '🌙 Garde') + '</td>'
         + '<td>' + esc(l.presc) + '</td>'
         + '<td>' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
         + '<td style="text-align:right;white-space:nowrap">' + _regMontant(l.montant) + '</td>'
         + '</tr>').join('')
-    : '<tr><td colspan="6" style="font-style:italic;text-align:center">Aucun dossier ce jour.</td></tr>';
+    : '<tr><td colspan="5" style="font-style:italic;text-align:center">Aucun dossier.</td></tr>';
+
+  // ✅ v13.231 — Registre SÉPARÉ par poste : une page « Registre de permanence »
+  //   et une page « Registre de garde », chacune avec son en-tête, son total et
+  //   ses signatures (document autonome). La colonne Poste disparaît.
+  const pagePoste = (titre, arr) => {
+    const rec = arr.reduce((s, l) => s + l.montant, 0);
+    const rnd = arr.filter(l => l.rendu).length;
+    return ''
+      + '<div class="print-header-bar"></div>'
+      + '<div style="text-align:center;padding:10px 0 4px">'
+      + '<div style="font-size:17pt;font-weight:900">CPMI DE GRAND-BASSAM</div>'
+      + '<div style="font-size:10pt;color:#444">Laboratoire d\'analyses médicales</div>'
+      + '<div style="font-size:14pt;font-weight:800;margin-top:8px;letter-spacing:.5px">' + titre + '</div>'
+      + '<div style="font-size:11pt;margin-top:2px">' + esc(jourLong) + '</div></div>'
+      + '<div class="print-header-bar bottom"></div>'
+      + '<div style="margin-top:10px;font-size:10pt;color:#333;text-align:center">'
+      + '<strong>' + arr.length + '</strong> patient(s) · <strong>' + rnd + '</strong> / '
+      + arr.length + ' résultat(s) rendu(s) · Recette : <strong>' + _fcfa(rec) + '</strong></div>'
+      + '<table class="print-table" style="margin-top:12px;font-size:9.5pt">'
+      + '<thead><tr><th>N° dossier</th><th>Patient</th><th>Prescripteur</th>'
+      + '<th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
+      + '<tbody>' + corpsPoste(arr) + '</tbody>'
+      + '<tfoot><tr><td colspan="4" style="text-align:right;font-weight:800">TOTAL</td>'
+      + '<td style="text-align:right;font-weight:800">' + _fcfa(rec) + '</td></tr></tfoot>'
+      + '</table>'
+      + '<div class="print-footer" style="margin-top:22px">'
+      + '<div class="print-footer-content">'
+      + '<div class="print-sig-box"><div class="print-sig-label">Le biologiste / technicien</div><div class="print-sig-zone"></div></div>'
+      + '<div class="print-sig-box"><div class="print-sig-label">Le responsable</div><div class="print-sig-zone"></div></div>'
+      + '<div class="print-meta">Édité le ' + now.toLocaleDateString('fr-FR')
+      + ' à ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      + '<br>par ' + editePar + '</div>'
+      + '</div>'
+      + '<div class="print-confidential">Document interne du laboratoire CPMI Grand-Bassam</div>'
+      + '</div>';
+  };
+
+  // Permanence d'abord, puis garde ; chaque poste présent sur sa propre page.
+  const pages = [];
+  if (lignesPerm.length)  pages.push(pagePoste('REGISTRE DE PERMANENCE (☀️ 08h–16h)', lignesPerm));
+  if (lignesGarde.length) pages.push(pagePoste('REGISTRE DE GARDE (🌙 16h–08h)', lignesGarde));
+  if (!pages.length)      pages.push(pagePoste('REGISTRE DU JOUR', []));
 
   const html =
     // ✅ v13.200 — Registre du jour imprimé en PAYSAGE (plus de largeur pour la
     //   colonne Résultat). @page ne cible qu'ici : le compte-rendu, qui remplace
     //   ensuite #print-render, retrouve le portrait par défaut (css/app.css).
     '<style>@media print{@page{size:A4 landscape}}</style>'
-    + '<div class="print-header-bar"></div>'
-    + '<div style="text-align:center;padding:10px 0 4px">'
-    + '<div style="font-size:17pt;font-weight:900">CPMI DE GRAND-BASSAM</div>'
-    + '<div style="font-size:10pt;color:#444">Laboratoire d\'analyses médicales</div>'
-    + '<div style="font-size:14pt;font-weight:800;margin-top:8px;letter-spacing:.5px">REGISTRE DU JOUR</div>'
-    + '<div style="font-size:11pt;margin-top:2px">' + esc(jourLong) + '</div></div>'
-    + '<div class="print-header-bar bottom"></div>'
-
-    + '<div style="margin-top:10px;font-size:10pt;color:#333;text-align:center">'
-    + '<strong>' + lignes.length + '</strong> patient(s) · ☀️ Permanence <strong>' + nPerm
-    + '</strong> · 🌙 Garde <strong>' + nGarde + '</strong> · <strong>' + rendus + '</strong> / '
-    + lignes.length + ' résultat(s) rendu(s) · Recette : <strong>' + _fcfa(recette) + '</strong></div>'
-
-    + '<table class="print-table" style="margin-top:12px;font-size:9.5pt">'
-    + '<thead><tr>'
-    + '<th>N° dossier</th><th>Patient</th><th>Poste</th><th>Prescripteur</th>'
-    + '<th>Résultat</th><th style="text-align:right">Prix</th>'
-    + '</tr></thead><tbody>' + corps + '</tbody>'
-    + '<tfoot><tr><td colspan="5" style="text-align:right;font-weight:800">TOTAL</td>'
-    + '<td style="text-align:right;font-weight:800">' + _fcfa(recette) + '</td></tr></tfoot>'
-    + '</table>'
-
-    + '<div class="print-footer" style="margin-top:22px">'
-    + '<div class="print-footer-content">'
-    + '<div class="print-sig-box"><div class="print-sig-label">Le biologiste / technicien</div><div class="print-sig-zone"></div></div>'
-    + '<div class="print-sig-box"><div class="print-sig-label">Le responsable</div><div class="print-sig-zone"></div></div>'
-    + '<div class="print-meta">Édité le ' + now.toLocaleDateString('fr-FR')
-    + ' à ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    + '<br>par ' + esc((typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '?') + '</div>'
-    + '</div>'
-    + '<div class="print-confidential">Document interne du laboratoire CPMI Grand-Bassam</div>'
-    + '</div>';
+    + pages.join('<div style="break-before:page;height:0"></div>');
 
   let printDiv = document.getElementById('print-render');
   if (!printDiv) {
