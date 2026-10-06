@@ -735,10 +735,13 @@ function renderCaisseAEncaisser() {
 
 function cycleStatut(id) {
   if (blockIfSpectateur()) return;
-  const order = ['attente','rendu','urgent'];
-  const cur = order.indexOf(getStatut(id));
-  const next = order[(cur < 0 ? 0 : cur + 1) % order.length];
-  setStatut(id, next);
+  // ✅ v13.231 — Le clic ne force PLUS le passage en « Terminé » (source de
+  //   faux « Terminé » sur des examens non finis) : « Terminé » est posé
+  //   AUTOMATIQUEMENT quand le dossier est complet (enregistrement / grille).
+  //   Le clic ne fait plus que BASCULER le marqueur « Urgent » : non urgent →
+  //   Urgent, Urgent → retiré (revient à l'avancement À faire/En cours).
+  const cur = getStatut(id);
+  setStatut(id, cur === 'urgent' ? 'attente' : 'urgent');
 }
 
 function paiementBadge(id) {
@@ -753,9 +756,9 @@ function paiementBadge(id) {
 }
 // ✅ v13.226 — UNE SEULE pastille, qui dit l'AVANCEMENT réel du dossier :
 //   ⚪ À faire (rien saisi) · 🟡 En cours (saisie entamée) · 🟢 Terminé (rendu)
-//   · 🔴 Urgent (marqueur manuel prioritaire). « Terminé » = dossier rendu
-//   (passé automatiquement à l'enregistrement d'un dossier complet, ou marqué
-//   à la main). Clic = À faire → Terminé → Urgent (cycle du statut manuel).
+//   · 🔴 Urgent (marqueur manuel prioritaire). « Terminé » = dossier rendu,
+//   posé AUTOMATIQUEMENT à l'enregistrement d'un dossier complet (jamais par le
+//   clic). Le clic ne fait que basculer « Urgent » (mettre / retirer).
 function statutBadge(id) {
   const r = (typeof _dbCache !== 'undefined' ? _dbCache : []).find(x => x.id === id);
   const s = getStatut(id);                 // statut manuel : attente / rendu / urgent
@@ -769,7 +772,7 @@ function statutBadge(id) {
     else                   { key = 'afaire';  label = '⚪ À faire'; }
   }
   const cls = { urgent:'badge-urgent', rendu:'badge-rendu', encours:'badge-encours', afaire:'badge-afaire' };
-  return `<span class="${cls[key]}" onclick="event.stopPropagation();cycleStatut(${id})" title="Avancement — cliquer pour changer (À faire / Terminé / Urgent)">${label}</span>`;
+  return `<span class="${cls[key]}" onclick="event.stopPropagation();cycleStatut(${id})" title="Avancement (Terminé = automatique quand le dossier est complet). Cliquer = marquer / retirer Urgent">${label}</span>`;
 }
 
 // ✅ v13.210 — Statut de SAISIE, déduit AUTOMATIQUEMENT de l'état du dossier
