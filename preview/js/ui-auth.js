@@ -304,7 +304,19 @@ function updateUserBadge() {
   const saisieNavBtn = document.querySelector('header .nav-btn[data-view="saisie"]');
   if (saisieNavBtn) saisieNavBtn.style.display = (isCaissier() || isSpectateur()) ? 'none' : '';
   const exportAllBtn = document.querySelector('header .nav-btn[onclick="exportAllExcel()"]');
-  if (exportAllBtn) exportAllBtn.style.display = (isCaissier() || isSpectateur()) ? 'none' : '';
+  // ✅ TEST — Agent : écran minimal. On ne garde que « Nouvelle saisie » et
+  // « Historique ». L'agent n'a plus besoin des onglets Statistiques, Caisse ni
+  // Exporter tout : l'encaissement se fait en cochant dans l'historique, et le
+  // bouton « Imprimer » en haut de l'historique sort le registre du jour.
+  const estAgent = !!_currentUser && _currentUser.role === 'agent';
+  if (exportAllBtn) exportAllBtn.style.display = (isCaissier() || isSpectateur() || estAgent) ? 'none' : '';
+  const statsNavBtn = document.querySelector('header .nav-btn[data-view="stats"]');
+  if (statsNavBtn) statsNavBtn.style.display = estAgent ? 'none' : '';
+  const caisseNavBtn = document.getElementById('btn-nav-caisse');
+  if (caisseNavBtn) caisseNavBtn.style.display = estAgent ? 'none' : '';
+  // Barre mobile : même règle pour l'onglet Caisse.
+  const caisseMobBtn = document.getElementById('mtb-caisse');
+  if (caisseMobBtn) caisseMobBtn.style.display = estAgent ? 'none' : '';
   // ✅ v13.109 — Au chargement, revenir sur le dernier onglet consulté plutôt
   // que de retomber systématiquement sur « Nouveau patient ». Le défaut par
   // rôle (caisse pour le caissier/spectateur, saisie pour l'admin/agent) ne
@@ -315,15 +327,24 @@ function updateUserBadge() {
 function restaurerDerniereVue() {
   // Les vues de travail auxquelles CE rôle a droit. Le cahier jaune et les
   // Comptes en sont volontairement absents (voir showView).
+  // ✅ TEST — L'agent n'a que « Nouvelle saisie » et « Historique ». On retire
+  // Stats et Caisse de ses vues permises pour qu'un onglet mémorisé ne le
+  // ramène pas sur une page désormais masquée.
+  const estAgent = !!_currentUser && _currentUser.role === 'agent';
   const permises = (isCaissier() || isSpectateur())
     ? ['historique','stats','caisse']
-    : ['saisie','historique','stats','caisse'];   // admin, agent
+    : estAgent
+      ? ['saisie','historique']
+      : ['saisie','historique','stats','caisse'];   // admin
   let v = null;
   try { v = localStorage.getItem('labo_vue_courante'); } catch (e) {}
   if (v && permises.includes(v)) { showView(v); return; }
   // À défaut : le point de départ habituel de chaque rôle. L'admin arrive sur
-  // son tableau de bord Kiosque (accueil).
-  showView(isAdmin() ? 'accueil' : (isCaissier() || isSpectateur()) ? 'caisse' : 'saisie');
+  // son tableau de bord Kiosque (accueil) ; l'agent sur l'historique (son hub).
+  showView(isAdmin() ? 'accueil'
+    : (isCaissier() || isSpectateur()) ? 'caisse'
+    : estAgent ? 'historique'
+    : 'saisie');
 }
 
 // ============================================================

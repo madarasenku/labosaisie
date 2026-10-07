@@ -828,7 +828,11 @@ function updateBulkToolbar() {
     delBtn.style.display = (spect || (_filterCorbeille && !isAdmin())) ? 'none' : '';
     delBtn.innerHTML = _filterCorbeille ? '🗑 Supprimer définitivement' : '🗑 Supprimer';
   }
-  const peutMasquer = !(typeof isSpectateur === 'function' && isSpectateur());
+  // ✅ TEST — Agent : barre d'actions minimale. On garde Statut (En cours /
+  // Terminé), « 💰 Encaisser » et « 🗑 Supprimer ». On masque pour l'agent le
+  // verrouillage/masquage et la réception seule (fonctions avancées).
+  const estAgent = (typeof _currentUser !== 'undefined') && _currentUser && _currentUser.role === 'agent';
+  const peutMasquer = !(typeof isSpectateur === 'function' && isSpectateur()) && !estAgent;
   // ✅ v13.125 — Réception seule : boutons visibles hors spectateur et hors corbeille.
   ['bulk-recept-on', 'bulk-recept-off'].forEach(idBtn => {
     const b = document.getElementById(idBtn);
