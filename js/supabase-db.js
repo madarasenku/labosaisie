@@ -1685,18 +1685,17 @@ function dossierEncaisseVerrou(record) {
             || (typeof getPaiementStatus === 'function' && record && getPaiementStatus(record.id) === 'paye');
   return !!paye;
 }
-// ✅ VERROU TOTAL sur une fiche encaissée : une fois le dossier payé, PLUS AUCUN
-//   champ n'est modifiable (identité, résultats déjà saisis ET examens encore
-//   vides), et les boutons d'enregistrement sont neutralisés. Seul
-//   l'administrateur est exempté (dossierEncaisseVerrou renvoie false pour lui) :
-//   lui seul peut corriger une erreur ou saisir un résultat revenu du labo
-//   externe. Le serveur applique la même règle (update_resultat /
-//   update_dossier_patient refusent une fiche payée pour les non-admins).
+// ✅ v13.237 — VERROU D'ENCAISSEMENT « argent + identité » : sur une fiche payée,
+//   un non-admin peut SAISIR LES RÉSULTATS (BPN, sous-traités, électrophorèses
+//   revenus après paiement) mais ne touche plus à l'identité du patient, au
+//   prescripteur, aux examens facturés (cases, prix) ni à l'ajustement. Seul
+//   l'administrateur est exempté (dossierEncaisseVerrou renvoie false pour lui).
+//   Le serveur applique la même règle (update_resultat garde patient, montant,
+//   prescripteur et examens facturés d'une fiche payée pour les non-admins).
 function appliquerVerrouEncaissement(record) {
   const actif = dossierEncaisseVerrou(record);
   const idFields = ['p_nom', 'p_dossier', 'p_date', 'p_age', 'p_sexe', 'p_medecin',
                     'p_service', 'p_clinique', 'p_prescripteur_id', 'p_poids'];
-  const zone = document.getElementById('zone-saisie');
   const deverrou = el => {
     el.disabled = false; el.classList.remove('champ-verrouille-enc');
     el.style.removeProperty('background'); el.style.removeProperty('cursor');
@@ -1715,18 +1714,16 @@ function appliquerVerrouEncaissement(record) {
   };
   // Identité patient.
   idFields.forEach(id => { const e = document.getElementById(id); if (e) verrou(e); });
-  // TOUS les champs de résultats (remplis comme vides).
-  if (zone) {
-    zone.querySelectorAll('input, select, textarea').forEach(el => {
-      if (el.type === 'hidden') return;
-      verrou(el);
-    });
+  // L'ARGENT : fiche d'identification (examens cochés, prix, ajustement) et, par
+  // sécurité, toute case/prix d'examen du catalogue où qu'elle soit affichée.
+  document.querySelectorAll('#fiche-identification input, #fiche-identification select, #fiche-identification textarea')
+    .forEach(el => { if (el.type !== 'hidden') verrou(el); });
+  if (typeof getCatalogueComplet === 'function') {
+    getCatalogueComplet().forEach(ex => [ex.id, 'px_' + ex.id].forEach(i => {
+      const e = document.getElementById(i); if (e) verrou(e);
+    }));
   }
-  // Boutons d'enregistrement neutralisés (le serveur refuse de toute façon).
-  document.querySelectorAll('#zone-saisie button, #btn-save-all').forEach(b => {
-    const oc = b.getAttribute('onclick') || '';
-    if (b.id === 'btn-save-all' || /save|enregistr/i.test(oc)) verrou(b);
-  });
+  // Les champs de RÉSULTATS de la zone de saisie restent saisissables.
   // Mention explicite dans le bandeau d'édition.
   const banner = document.getElementById('edit-mode-banner');
   if (banner && !document.getElementById('enc-lock-note')) {
@@ -1734,7 +1731,8 @@ function appliquerVerrouEncaissement(record) {
     n.id = 'enc-lock-note';
     n.style.cssText = 'background:#ecfccb;border:1.5px solid #65a30d;color:#3f6212;padding:8px 14px;'
       + 'border-radius:var(--radius);margin-bottom:14px;font-size:12.5px;font-weight:600';
-    n.textContent = '🔒 Fiche encaissée : verrouillée. Toute correction est réservée à l\'administrateur.';
+    n.textContent = '🔒 Fiche encaissée : identité du patient, examens facturés et montant verrouillés '
+      + '(administrateur uniquement). Vous pouvez saisir et compléter les résultats.';
     banner.parentNode.insertBefore(n, banner.nextSibling);
   }
 }
