@@ -115,6 +115,11 @@ function _jourPlus(jour, n) {
   d.setDate(d.getDate() + n);
   return _jourLocal(d);
 }
+/** Journée de SERVICE en cours : avant 08h00, on est encore dans la garde de la veille. */
+function _jourServiceCourant() {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes() < POSTE_PERM_DEBUT_MIN ? _jourPlus(_jourLocal(n), -1) : _jourLocal(n);
+}
 /** Poste + journée de service d'un dossier.
  *    { poste, jour, fin } — pour une garde, `jour` = jour où elle commence et
  *    `fin` = lendemain ; pour une permanence, fin = jour. */
@@ -149,17 +154,18 @@ async function chargerClotures() {
 }
 async function verrouillerJournee() {
   const champ = document.getElementById('cloture-date');
-  const jour = (champ && champ.value) || _jourLocal();
+  const jour = (champ && champ.value) || _jourServiceCourant();
   if (typeof tientLaCaisse === 'function' && !tientLaCaisse()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
   const c = calculerCloture(jour);
   if (typeof showConfirmModal === 'function' && !await showConfirmModal({
     icon: '🔒', title: 'Verrouiller la journée ?',
-    message: 'La journée du <strong>' + esc(jour) + '</strong> (' + _fcfa(c.total) + ') sera <strong>gelée sur le plan financier</strong> : plus aucun encaissement, changement de montant ni suppression sur ces dossiers.<br><br>La <strong>saisie des résultats reste possible</strong> — un examen envoyé au labo externe peut être complété et le compte rendu réimprimé après le verrouillage. Seul l\'administrateur pourra rouvrir la journée.',
+    message: 'La journée du <strong>' + esc(jour) + '</strong> (permanence + garde jusqu\'au ' + esc(_jourPlus(jour, 1)) + ' à 8h, ' + _fcfa(c.total) + ') sera <strong>gelée sur le plan financier</strong> : plus aucun encaissement, changement de montant ni suppression sur ces dossiers.<br><br>La <strong>saisie des résultats reste possible</strong> — un examen envoyé au labo externe peut être complété et le compte rendu réimprimé après le verrouillage. Seul l\'administrateur pourra rouvrir la journée.',
     confirmText: '🔒 Verrouiller', cancelText: 'Annuler'
   })) return;
   showLoading('Verrouillage…');
   const { data, error } = await _sb.rpc('verrouiller_journee', { p_token: TK(), p_jour: jour });
   hideLoading();
+  if (data === 'journee_en_cours') { toast('⏳ La garde n\'est pas terminée : la journée du ' + jour + ' ne peut être verrouillée qu\'à partir du ' + _jourPlus(jour, 1) + ' à 8h', 'err'); return; }
   if (error || data !== 'ok') { toast('Échec : ' + (error?.message || data || '?'), 'err'); return; }
   await chargerClotures();
   toast('🔒 Journée du ' + jour + ' verrouillée', 'ok');
@@ -168,17 +174,18 @@ async function verrouillerJournee() {
 // ✅ v13.128 — Verrouiller toutes les journées jusqu'à la date choisie (incluse).
 async function verrouillerJusqua() {
   const champ = document.getElementById('cloture-date');
-  const jour = (champ && champ.value) || _jourLocal();
+  const jour = (champ && champ.value) || _jourServiceCourant();
   if (typeof tientLaCaisse === 'function' && !tientLaCaisse()) { toast('Verrouillage réservé à la caisse', 'err'); return; }
   if (typeof showConfirmModal === 'function' && !await showConfirmModal({
     icon: '🔒', title: 'Tout verrouiller jusqu\'à cette date ?',
     message: 'Toutes les journées <strong>jusqu\'au ' + esc(jour) + ' inclus</strong> seront gelées : plus aucune modification possible sur ces dossiers.<br>'
-      + '<em>Si tu inclus aujourd\'hui, l\'enregistrement de nouveaux patients du jour sera aussi bloqué.</em>',
+      + '<em>Une journée comprend sa garde (jusqu\'au lendemain 8h) : elle ne peut être verrouillée qu\'une fois la garde terminée.</em>',
     confirmText: '🔒 Tout verrouiller', cancelText: 'Annuler'
   })) return;
   showLoading('Verrouillage en cours…');
   const { data, error } = await _sb.rpc('verrouiller_jusqua', { p_token: TK(), p_jour: jour });
   hideLoading();
+  if (data && data.erreur === 'journee_en_cours') { toast('⏳ La garde n\'est pas terminée : verrouillage possible jusqu\'au ' + _jourPlus(_jourServiceCourant(), -1) + ' seulement (la journée du ' + jour + ' finit le ' + _jourPlus(jour, 1) + ' à 8h)', 'err'); return; }
   if (error || !data || data.erreur) { toast('Échec : ' + (error?.message || data?.erreur || '?'), 'err'); return; }
   await chargerClotures();
   toast('🔒 ' + (data.verrouillees || 0) + ' journée(s) verrouillée(s) jusqu\'au ' + jour, 'ok');
@@ -188,7 +195,7 @@ async function verrouillerJusqua() {
 async function deverrouillerJournee() {
   if (typeof isAdmin === 'function' && !isAdmin()) { toast('Déverrouillage réservé à l\'administrateur', 'err'); return; }
   const champ = document.getElementById('cloture-date');
-  const jour = (champ && champ.value) || _jourLocal();
+  const jour = (champ && champ.value) || _jourServiceCourant();
   if (typeof showConfirmModal === 'function' && !await showConfirmModal({
     icon: '🔓', title: 'Déverrouiller la journée ?',
     message: 'La journée du <strong>' + esc(jour) + '</strong> redeviendra modifiable.',
@@ -210,8 +217,12 @@ async function deverrouillerJournee() {
  */
 function calculerCloture(jour) {
   const toutes = (typeof _dbCache !== 'undefined' ? _dbCache : []) || [];
+  // ✅ La clôture suit la GARDE : une journée de service = la permanence du jour
+  //   (8h00 → 16h30) + la garde qui commence à 16h30 et finit à 8h00 le lendemain.
+  //   Un dossier de 02h00 le 13 est donc dans la clôture du 12.
+  const jourDe = (typeof posteInfoDossier === 'function') ? (r => posteInfoDossier(r).jour) : _recDate;
   const duJour = toutes.filter(r =>
-    !r.deletedAt && !r._hardDeleted && _recDate(r) === jour);
+    !r.deletedAt && !r._hardDeleted && jourDe(r) === jour);
 
   // Un dossier verrouillé est exclu de tous les calculs de l'application.
   // On le sort donc de la recette, mais on le compte à part : de l'argent
@@ -321,8 +332,8 @@ function renderCloture() {
   const zone = document.getElementById('cloture-apercu');
   const champ = document.getElementById('cloture-date');
   if (!zone) return;
-  if (champ && !champ.value) champ.value = _jourLocal();
-  const jour = (champ && champ.value) || _jourLocal();
+  if (champ && !champ.value) champ.value = _jourServiceCourant();
+  const jour = (champ && champ.value) || _jourServiceCourant();
 
   const c = calculerCloture(jour);
   const lignesAgent = Object.entries(c.parAgent)
@@ -340,9 +351,12 @@ function renderCloture() {
     + '<div style="font-size:20px;font-weight:800;color:var(--cpmi-dark,#0b2545)">'
     + _fcfa(c.total) + '</div>'
     + '<div style="color:var(--text-muted);margin-bottom:10px">'
-    + c.dossiers + ' dossier(s) encaissé(s) le '
+    + c.dossiers + ' dossier(s) encaissé(s) pour la journée du '
     + new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
-        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + '</div>'
+        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    + '<div style="font-size:11.5px">☀️ permanence 8h00–16h30 + 🌙 garde 16h30 → 8h00 le '
+    + new Date(_jourPlus(jour, 1) + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    + '</div></div>'
     // ✅ v13.127 — Verrouillage de la journée (gel des sommes).
     + (function () {
         const verr = jourVerrouille(jour);
@@ -405,7 +419,7 @@ function renderCloture() {
 /** Construit le document de clôture et lance l'impression. */
 function imprimerCloture() {
   const champ = document.getElementById('cloture-date');
-  const jour = (champ && champ.value) || _jourLocal();
+  const jour = (champ && champ.value) || _jourServiceCourant();
   const c = calculerCloture(jour);
   const now = new Date();
   const jourLong = new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
@@ -436,7 +450,10 @@ function imprimerCloture() {
     + '<div style="font-size:10pt;color:#444">Laboratoire d\'analyses médicales</div>'
     + '<div style="font-size:14pt;font-weight:800;margin-top:8px;letter-spacing:.5px">'
     + 'CLÔTURE DE CAISSE</div>'
-    + '<div style="font-size:11pt;margin-top:2px">' + jourLong + '</div></div>'
+    + '<div style="font-size:11pt;margin-top:2px">Journée du ' + jourLong + '</div>'
+    + '<div style="font-size:9.5pt;color:#555">permanence 8h00–16h30 + garde 16h30 → 8h00 le '
+    + new Date(_jourPlus(jour, 1) + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    + '</div></div>'
     + '<div class="print-header-bar bottom"></div>'
 
     + '<div style="margin-top:16px;text-align:center;border:2px solid #1e3a8a;padding:10px">'

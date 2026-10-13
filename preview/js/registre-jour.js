@@ -227,7 +227,7 @@ async function _regChargerJour(jour) {
 async function imprimerRegistreDepuisHistorique() {
   try {
     const d = document.getElementById('hist-registre-date');
-    const jour = (d && d.value) || _jourLocal();
+    const jour = (d && d.value) || _jourServiceCourant();
     if (d && !d.value) d.value = jour;
     if ((typeof _dbCache === 'undefined' || !Array.isArray(_dbCache) || !_dbCache.length)
         && typeof refreshDB === 'function') {
@@ -276,8 +276,8 @@ async function renderRegistre() {
   const zone = document.getElementById('registre-apercu');
   const champ = document.getElementById('registre-date');
   if (!zone) return;
-  if (champ && !champ.value) champ.value = _jourLocal();
-  const jour = (champ && champ.value) || _jourLocal();
+  if (champ && !champ.value) champ.value = _jourServiceCourant();
+  const jour = (champ && champ.value) || _jourServiceCourant();
 
   zone.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:10px">Chargement des résultats…</p>';
   const recs = await _regChargerJour(jour);
@@ -383,7 +383,7 @@ async function imprimerRegistre(jourArg) {
   const champ = document.getElementById('registre-date');
   const jour = (typeof jourArg === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(jourArg))
     ? jourArg
-    : ((champ && champ.value) || _jourLocal());
+    : ((champ && champ.value) || _jourServiceCourant());
   showLoading('Préparation du registre…');
   const recs = await _regChargerJour(jour);
   hideLoading();
