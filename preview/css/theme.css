@@ -443,4 +443,37 @@ span[style*="background:#ffedd5;color:#9a3412"] { background: var(--accent2-soft
 
 .exam-row input[type=number]:disabled { color: var(--text-muted); opacity: 1; }
 
+/* ── Cartes résumé de l'Historique (journée de service) ────────── */
+html #view-historique .pp-resume {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+html #view-historique .pp-resume .k {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 4px;
+}
+html #view-historique .pp-resume .kl { font-size: 12.5px; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--text-muted); }
+html #view-historique .pp-resume .kn { font-size: 26px; letter-spacing: -0.02em; color: var(--text); margin-top: 0; }
+html #view-historique .pp-resume .kd { font-size: 12px; opacity: 1; color: var(--text-muted); }
+html #view-historique .pp-resume .pp-kn-ok  { color: var(--accent-ink); }
+html #view-historique .pp-resume .pp-kn-att { color: var(--warning); }
+html #view-historique .pp-resume .pp-kn-res { color: var(--accent2-ink); }
+@media (max-width: 640px) {
+  html #view-historique .pp-resume { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  html #view-historique .pp-resume .k { padding: 12px 14px; border-radius: 14px; }
+  html #view-historique .pp-resume .kn { font-size: 21px; }
+  html #view-historique .pp-resume .kd { font-size: 11px; }
+}
+
 } /* fin @media screen */

@@ -1335,11 +1335,13 @@
     #view-historique #history-table thead th{text-transform:uppercase;font-size:10.5px;letter-spacing:.4px}
     #view-historique #history-table tbody tr:hover{background:var(--accent-light)}
   </style>
-  <div class="pp-file-kpis" aria-label="Résumé de la file du jour">
-    <div class="k"><div class="kl">En cours</div><div class="kn pp-kn-enc" id="hist-kpi-attente">—</div><div class="kd">pas encore rendu</div></div>
-    <div class="k"><div class="kl">Urgent</div><div class="kn pp-kn-urg" id="hist-kpi-urgent">—</div><div class="kd">à traiter vite</div></div>
-    <div class="k"><div class="kl">Terminés</div><div class="kn pp-kn-ren" id="hist-kpi-rendu">—</div><div class="kd">résultats rendus</div></div>
-    <div class="k"><div class="kl">Total</div><div class="kn" id="hist-kpi-total">—</div><div class="kd">sur la période</div></div>
+  <!-- TEST — Cartes résumé de la JOURNÉE DE SERVICE en cours (permanence 8h–16h30
+       + garde jusqu'au lendemain 8h), peuplées par majCartesResume(). -->
+  <div class="pp-file-kpis pp-resume" aria-label="Résumé de la journée de service">
+    <div class="k"><div class="kl">Dossiers du jour</div><div class="kn" id="hist-res-jour">—</div><div class="kd" id="hist-res-jour-sub">&nbsp;</div></div>
+    <div class="k"><div class="kl">Encaissé</div><div class="kn pp-kn-ok" id="hist-res-paye">—</div><div class="kd" id="hist-res-paye-sub">&nbsp;</div></div>
+    <div class="k"><div class="kl">À encaisser</div><div class="kn pp-kn-att" id="hist-res-impaye">—</div><div class="kd" id="hist-res-impaye-sub">&nbsp;</div></div>
+    <div class="k"><div class="kl">Résultats attendus</div><div class="kn pp-kn-res" id="hist-res-attendus">—</div><div class="kd">BPN, électrophorèses, sous-traités</div></div>
   </div>
 
   <!-- ✅ v13.171 — Liste hebdomadaire des électrophorèses à faire (accessible
