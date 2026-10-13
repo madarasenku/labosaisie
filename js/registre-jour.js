@@ -155,12 +155,17 @@ function _regSynthese(res) {
   return parts.join(' · ');
 }
 
-// Dossiers actifs de la journée (exclut corbeille et fiches masquées),
+// Dossiers actifs de la JOURNÉE DE SERVICE (exclut corbeille et fiches masquées),
 // triés par heure de saisie — l'ordre d'arrivée des patients.
+// ✅ Une garde (16h30 → 8h le lendemain) compte pour UNE journée : celle où elle
+//   commence. Les dossiers de 0h–8h appartiennent à la garde de la veille.
 function _regDossiersDuJour(jour) {
   const toutes = (typeof _dbCache !== 'undefined' ? _dbCache : []) || [];
+  const jourDe = (typeof posteInfoDossier === 'function')
+    ? r => posteInfoDossier(r).jour
+    : r => _recDate(r);
   return toutes
-    .filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && _recDate(r) === jour)
+    .filter(r => !r.deletedAt && !r._hardDeleted && !r.restrictedBy && jourDe(r) === jour)
     .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')));
 }
 
@@ -222,7 +227,7 @@ async function _regChargerJour(jour) {
 async function imprimerRegistreDepuisHistorique() {
   try {
     const d = document.getElementById('hist-registre-date');
-    const jour = (d && d.value) || _jourLocal();
+    const jour = (d && d.value) || _jourServiceCourant();
     if (d && !d.value) d.value = jour;
     if ((typeof _dbCache === 'undefined' || !Array.isArray(_dbCache) || !_dbCache.length)
         && typeof refreshDB === 'function') {
@@ -235,13 +240,44 @@ async function imprimerRegistreDepuisHistorique() {
   }
 }
 
+// ── Séparation Permanence / Garde ─────────────────────────────────
+// Deux registres distincts pour une même journée de service :
+//   ☀️ Permanence du lundi 12 octobre            (8h00 → 16h30)
+//   🌙 Garde du lundi 12 au mardi 13 octobre      (16h30 → 8h00)
+function _regJourLong(jour, avecAnnee) {
+  return new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
+    avecAnnee ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+              : { weekday: 'long', day: 'numeric', month: 'long' });
+}
+function _regLibellePoste(poste, jour, avecAnnee) {
+  if (poste === 'Permanence') return 'Permanence du ' + _regJourLong(jour, avecAnnee);
+  const fin = _jourPlus(jour, 1);
+  const d1 = new Date(jour + 'T12:00:00'), d2 = new Date(fin + 'T12:00:00');
+  // Même mois : « Garde du lundi 12 au mardi 13 octobre » ; sinon on nomme les deux mois.
+  const j1 = d1.toLocaleDateString('fr-FR', d1.getMonth() === d2.getMonth()
+    ? { weekday: 'long', day: 'numeric' }
+    : { weekday: 'long', day: 'numeric', month: 'long' });
+  return 'Garde du ' + j1 + ' au ' + _regJourLong(fin, avecAnnee);
+}
+function _regHoraire(poste) { return poste === 'Permanence' ? '8h00 – 16h30' : '16h30 – 8h00'; }
+// Sections à produire : celles qui ont des dossiers ; la permanence par défaut
+// si la journée est entièrement vide (pour afficher « Aucun dossier »).
+function _regSections(lignes) {
+  const perm = lignes.filter(l => l.poste === 'Permanence');
+  const garde = lignes.filter(l => l.poste !== 'Permanence');
+  const out = [];
+  if (perm.length || !garde.length) out.push({ poste: 'Permanence', lignes: perm });
+  if (garde.length) out.push({ poste: 'Garde', lignes: garde });
+  return out;
+}
+
 /** Aperçu à l'écran, avant impression. */
 async function renderRegistre() {
   const zone = document.getElementById('registre-apercu');
   const champ = document.getElementById('registre-date');
   if (!zone) return;
-  if (champ && !champ.value) champ.value = _jourLocal();
-  const jour = (champ && champ.value) || _jourLocal();
+  if (champ && !champ.value) champ.value = _jourServiceCourant();
+  const jour = (champ && champ.value) || _jourServiceCourant();
 
   zone.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:10px">Chargement des résultats…</p>';
   const recs = await _regChargerJour(jour);
@@ -249,103 +285,80 @@ async function renderRegistre() {
   if (champ && champ.value && champ.value !== jour) return;
 
   const lignes = recs.map(_regLigne);
-  const rendus = lignes.filter(l => l.rendu).length;
-  const recette = lignes.reduce((s, l) => s + l.montant, 0);
-  const nPerm = lignes.filter(l => l.poste === 'Permanence').length;
-  const nGarde = lignes.length - nPerm;
-  const jourLong = new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
-    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
   if (!lignes.length) {
     zone.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:10px">'
-      + 'Aucun dossier le ' + esc(jourLong) + '.</p>';
+      + 'Aucun dossier pour la journée du ' + esc(_regJourLong(jour, true)) + '.</p>';
     return;
   }
 
-  const corps = lignes.map(l =>
-    '<tr' + (l.externe ? ' style="background:#fff5e0"' : '') + '>'
-    + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
-    + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? ' <span style="color:var(--text-muted);font-size:11px">' + esc(l.meta) + '</span>' : '')
-    + (l.externe ? ' <span style="font-size:10px;font-weight:700;color:#b45309;background:#fde7bf;border-radius:4px;padding:1px 5px">EXTERNE</span>' : '') + '</td>'
-    + '<td style="white-space:nowrap">' + (typeof posteBadge === 'function' ? posteBadge(l.poste) : esc(l.poste)) + '</td>'
-    + '<td style="color:var(--text-muted)">' + esc(l.presc) + '</td>'
-    + '<td style="color:var(--text-muted)">' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
-    + '<td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">' + _regMontant(l.montant) + '</td>'
-    + '</tr>').join('');
-
-  zone.innerHTML =
-    '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);margin-bottom:10px">'
-    + '<span><strong style="color:var(--text-label);font-size:15px">' + lignes.length + '</strong> patient(s)</span>'
-    + '<span>☀️ Permanence : <strong style="color:var(--text-label)">' + nPerm + '</strong></span>'
-    + '<span>🌙 Garde : <strong style="color:var(--text-label)">' + nGarde + '</strong></span>'
-    + '<span><strong style="color:var(--text-label);font-size:15px">' + rendus + '</strong> / ' + lignes.length + ' résultat(s) rendu(s)</span>'
-    + '<span><strong style="color:var(--text-label);font-size:15px">' + _regMontant(recette) + '</strong> F</span>'
-    + '</div>'
-    + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12px">'
-    + '<thead><tr><th>N°</th><th>Patient</th><th>Poste</th><th>Prescripteur</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
-    + '<tbody>' + corps + '</tbody></table></div>';
+  zone.innerHTML = _regSections(lignes).map(sec => {
+    const ls = sec.lignes;
+    const rendus = ls.filter(l => l.rendu).length;
+    const recette = ls.reduce((t, l) => t + l.montant, 0);
+    const corps = ls.length ? ls.map(l =>
+      '<tr' + (l.externe ? ' style="background:#fff5e0"' : '') + '>'
+      + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
+      + '<td><strong>' + esc(l.nom) + '</strong>' + (l.meta ? ' <span style="color:var(--text-muted);font-size:11px">' + esc(l.meta) + '</span>' : '')
+      + (l.externe ? ' <span style="font-size:10px;font-weight:700;color:#b45309;background:#fde7bf;border-radius:4px;padding:1px 5px">EXTERNE</span>' : '') + '</td>'
+      + '<td style="color:var(--text-muted)">' + esc(l.presc) + '</td>'
+      + '<td style="color:var(--text-muted)">' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
+      + '<td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">' + _regMontant(l.montant) + '</td>'
+      + '</tr>').join('')
+      : '<tr><td colspan="5" style="font-style:italic;text-align:center;color:var(--text-muted)">Aucun dossier.</td></tr>';
+    return '<div style="margin-bottom:18px">'
+      + '<div style="font-weight:800;font-size:14px;margin-bottom:6px">'
+      + (sec.poste === 'Permanence' ? '☀️ ' : '🌙 ') + esc(_regLibellePoste(sec.poste, jour, false))
+      + ' <span style="font-weight:600;font-size:11.5px;color:var(--text-muted)">· ' + _regHoraire(sec.poste) + '</span></div>'
+      + '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted);margin-bottom:8px">'
+      + '<span><strong style="color:var(--text-label);font-size:15px">' + ls.length + '</strong> patient(s)</span>'
+      + '<span><strong style="color:var(--text-label);font-size:15px">' + rendus + '</strong> / ' + ls.length + ' résultat(s) rendu(s)</span>'
+      + '<span><strong style="color:var(--text-label);font-size:15px">' + _regMontant(recette) + '</strong> F</span>'
+      + '</div>'
+      + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12px">'
+      + '<thead><tr><th>N°</th><th>Patient</th><th>Prescripteur</th><th>Résultat</th><th style="text-align:right">Prix</th></tr></thead>'
+      + '<tbody>' + corps + '</tbody></table></div></div>';
+  }).join('');
 }
 
-/** Construit le registre imprimable (A4, noir & blanc) et lance l'impression.
- *  ✅ v13.210 — Accepte un jour explicite (bouton « Imprimer le registre » en
- *  haut de l'historique) ; à défaut, le champ de la carte registre ou aujourd'hui. */
-async function imprimerRegistre(jourArg) {
-  const champ = document.getElementById('registre-date');
-  const jour = (typeof jourArg === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(jourArg))
-    ? jourArg
-    : ((champ && champ.value) || _jourLocal());
-  showLoading('Préparation du registre…');
-  const recs = await _regChargerJour(jour);
-  hideLoading();
-
-  const lignes = recs.map(_regLigne);
-  const rendus = lignes.filter(l => l.rendu).length;
-  const recette = lignes.reduce((s, l) => s + l.montant, 0);
-  const nPerm = lignes.filter(l => l.poste === 'Permanence').length;
-  const nGarde = lignes.length - nPerm;
-  const now = new Date();
-  const jourLong = new Date(jour + 'T12:00:00').toLocaleDateString('fr-FR',
-    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
+/** Une PAGE de registre imprimable (permanence OU garde). */
+function _regPageImprimable(sec, jour, now, derniere) {
+  const ls = sec.lignes;
+  const rendus = ls.filter(l => l.rendu).length;
+  const recette = ls.reduce((t, l) => t + l.montant, 0);
   // ✅ Les lignes « externe » sont surlignées (impression : fond gris clair forcé
   //   via print-color-adjust). Un patient de consultation externe ressort ainsi.
   const _extStyle = 'background:#e9e9e9;-webkit-print-color-adjust:exact;print-color-adjust:exact';
-  const corps = lignes.length
-    ? lignes.map(l =>
+  const corps = ls.length
+    ? ls.map(l =>
         '<tr' + (l.externe ? ' style="' + _extStyle + '"' : '') + '>'
         + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
         + '<td><strong>' + esc(l.nom) + '</strong>' + (l.externe ? ' <strong>[EXTERNE]</strong>' : '') + (l.meta ? '<div style="font-size:8.5pt;color:#555">' + esc(l.meta) + '</div>' : '') + '</td>'
-        + '<td style="white-space:nowrap">' + (l.poste === 'Permanence' ? '☀️ Perm.' : '🌙 Garde') + '</td>'
         + '<td>' + esc(l.presc) + '</td>'
         + '<td>' + (l.rendu ? esc(l.synthese) : '<em>en attente</em>') + '</td>'
         + '<td style="text-align:right;white-space:nowrap">' + _regMontant(l.montant) + '</td>'
         + '</tr>').join('')
-    : '<tr><td colspan="6" style="font-style:italic;text-align:center">Aucun dossier ce jour.</td></tr>';
-
-  const html =
-    // ✅ v13.200 — Registre du jour imprimé en PAYSAGE (plus de largeur pour la
-    //   colonne Résultat). @page ne cible qu'ici : le compte-rendu, qui remplace
-    //   ensuite #print-render, retrouve le portrait par défaut (css/app.css).
-    '<style>@media print{@page{size:A4 landscape}}</style>'
+    : '<tr><td colspan="5" style="font-style:italic;text-align:center">Aucun dossier.</td></tr>';
+  const garde = sec.poste !== 'Permanence';
+  return '<div' + (derniere ? '' : ' style="page-break-after:always;break-after:page"') + '>'
     + '<div class="print-header-bar"></div>'
     + '<div style="text-align:center;padding:10px 0 4px">'
     + '<div style="font-size:17pt;font-weight:900">CPMI DE GRAND-BASSAM</div>'
     + '<div style="font-size:10pt;color:#444">Laboratoire d\'analyses médicales</div>'
-    + '<div style="font-size:14pt;font-weight:800;margin-top:8px;letter-spacing:.5px">REGISTRE DU JOUR</div>'
-    + '<div style="font-size:11pt;margin-top:2px">' + esc(jourLong) + '</div></div>'
+    + '<div style="font-size:14pt;font-weight:800;margin-top:8px;letter-spacing:.5px">REGISTRE DU JOUR — ' + (garde ? 'GARDE' : 'PERMANENCE') + '</div>'
+    + '<div style="font-size:11pt;margin-top:2px">' + (garde ? '🌙 ' : '☀️ ') + esc(_regLibellePoste(sec.poste, jour, true))
+    + ' <span style="font-size:9.5pt;color:#555">(' + _regHoraire(sec.poste) + ')</span></div></div>'
     + '<div class="print-header-bar bottom"></div>'
 
     + '<div style="margin-top:10px;font-size:10pt;color:#333;text-align:center">'
-    + '<strong>' + lignes.length + '</strong> patient(s) · ☀️ Permanence <strong>' + nPerm
-    + '</strong> · 🌙 Garde <strong>' + nGarde + '</strong> · <strong>' + rendus + '</strong> / '
-    + lignes.length + ' résultat(s) rendu(s) · Recette : <strong>' + _fcfa(recette) + '</strong></div>'
+    + '<strong>' + ls.length + '</strong> patient(s) · <strong>' + rendus + '</strong> / '
+    + ls.length + ' résultat(s) rendu(s) · Recette : <strong>' + _fcfa(recette) + '</strong></div>'
 
     + '<table class="print-table" style="margin-top:12px;font-size:9.5pt">'
     + '<thead><tr>'
-    + '<th>N° dossier</th><th>Patient</th><th>Poste</th><th>Prescripteur</th>'
+    + '<th>N° dossier</th><th>Patient</th><th>Prescripteur</th>'
     + '<th>Résultat</th><th style="text-align:right">Prix</th>'
     + '</tr></thead><tbody>' + corps + '</tbody>'
-    + '<tfoot><tr><td colspan="5" style="text-align:right;font-weight:800">TOTAL</td>'
+    + '<tfoot><tr><td colspan="4" style="text-align:right;font-weight:800">TOTAL</td>'
     + '<td style="text-align:right;font-weight:800">' + _fcfa(recette) + '</td></tr></tfoot>'
     + '</table>'
 
@@ -358,7 +371,33 @@ async function imprimerRegistre(jourArg) {
     + '<br>par ' + esc((typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '?') + '</div>'
     + '</div>'
     + '<div class="print-confidential">Document interne du laboratoire CPMI Grand-Bassam</div>'
-    + '</div>';
+    + '</div></div>';
+}
+
+/** Construit les registres imprimables (A4 paysage, noir & blanc) et lance l'impression.
+ *  ✅ Permanence et garde sont imprimées sur des PAGES SÉPARÉES (une seule page
+ *  si une seule des deux a des dossiers).
+ *  Accepte un jour explicite (bouton « Imprimer le registre » en haut de
+ *  l'historique) ; à défaut, le champ de la carte registre ou aujourd'hui. */
+async function imprimerRegistre(jourArg) {
+  const champ = document.getElementById('registre-date');
+  const jour = (typeof jourArg === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(jourArg))
+    ? jourArg
+    : ((champ && champ.value) || _jourServiceCourant());
+  showLoading('Préparation du registre…');
+  const recs = await _regChargerJour(jour);
+  hideLoading();
+
+  const lignes = recs.map(_regLigne);
+  const now = new Date();
+  const sections = _regSections(lignes);
+
+  const html =
+    // ✅ v13.200 — Registre du jour imprimé en PAYSAGE (plus de largeur pour la
+    //   colonne Résultat). @page ne cible qu'ici : le compte-rendu, qui remplace
+    //   ensuite #print-render, retrouve le portrait par défaut (css/app.css).
+    '<style>@media print{@page{size:A4 landscape}}</style>'
+    + sections.map((sec, i) => _regPageImprimable(sec, jour, now, i === sections.length - 1)).join('');
 
   let printDiv = document.getElementById('print-render');
   if (!printDiv) {

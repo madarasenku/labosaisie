@@ -1,6 +1,3 @@
-// ⚠ TEST DE LA COPIE /preview (la clôture suit la garde). Hors de tests/ pour que
-//   run.js (CI) ne le lance pas tant que la règle n'est pas en production.
-//   Au passage en prod : le remonter dans tests/ et le faire viser /index.html.
 //
 // ════════════════════════════════════════════════════════════════════
 //  cloture-garde — la clôture de caisse suit la GARDE.
@@ -10,9 +7,9 @@
 //  Le gel d'une journée suit la même règle, et une journée ne peut être
 //  verrouillée qu'une fois sa garde terminée.
 // ════════════════════════════════════════════════════════════════════
-const { serve, openApp, createReporter } = require('../helpers');
+const { serve, openApp, createReporter } = require('./helpers');
 
-const CIBLE = process.env.CIBLE || '/preview/index.html';
+const CIBLE = process.env.CIBLE || '/index.html';
 const p = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 const base = new Date(); base.setHours(12, 0, 0, 0);
