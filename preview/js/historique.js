@@ -499,6 +499,8 @@ async function renderHistory(forceRefresh) {
   const lockBtn = (r) => {
     if (_filterVerrouillees || _filterCorbeille) return ''; // géré par les rows spéciaux
     if (typeof isSpectateur === 'function' && isSpectateur()) return '';
+    // ✅ TEST — Écran agent minimal : pas de cadenas « masquer » sur les lignes.
+    if (_currentUser && _currentUser.role === 'agent') return '';
     // ✅ v13.116 — L'admin masque n'importe quelle fiche ; un agent peut masquer
     // (et démasquer) SES propres fiches. Un agent ne voit pas le bouton sur la
     // fiche d'un autre, ni sur une fiche masquée par l'administrateur.
