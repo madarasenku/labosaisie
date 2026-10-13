@@ -304,7 +304,7 @@ function updateUserBadge() {
   const saisieNavBtn = document.querySelector('header .nav-btn[data-view="saisie"]');
   if (saisieNavBtn) saisieNavBtn.style.display = (isCaissier() || isSpectateur()) ? 'none' : '';
   const exportAllBtn = document.querySelector('header .nav-btn[onclick="exportAllExcel()"]');
-  // ✅ TEST — Agent : écran minimal. On ne garde que « Nouvelle saisie » et
+  // ✅ v13.231 — Agent : écran minimal. On ne garde que « Nouvelle saisie » et
   // « Historique ». L'agent n'a plus besoin des onglets Statistiques, Caisse ni
   // Exporter tout : l'encaissement se fait en cochant dans l'historique, et le
   // bouton « Imprimer » en haut de l'historique sort le registre du jour.
@@ -327,7 +327,7 @@ function updateUserBadge() {
 function restaurerDerniereVue() {
   // Les vues de travail auxquelles CE rôle a droit. Le cahier jaune et les
   // Comptes en sont volontairement absents (voir showView).
-  // ✅ TEST — L'agent n'a que « Nouvelle saisie » et « Historique ». On retire
+  // ✅ v13.231 — L'agent n'a que « Nouvelle saisie » et « Historique ». On retire
   // Stats et Caisse de ses vues permises pour qu'un onglet mémorisé ne le
   // ramène pas sur une page désormais masquée.
   const estAgent = !!_currentUser && _currentUser.role === 'agent';
