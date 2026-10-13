@@ -363,7 +363,7 @@ function renderCahierJaune() {
     + blocST
     + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">'
     + 'Les montants négatifs sont des sorties. Survolez une cellule pour en voir le détail. '
-    + '☀️ = Permanence (8h–16h) · 🌙 = Garde (16h–8h).'
+    + '☀️ = Permanence (8h–16h30) · 🌙 = Garde (16h30–8h).'
     + (_cahierEstNoir() ? '' : ' Les bilans prénatals internes y sont reportés automatiquement.')
     + '</div>';
 }
