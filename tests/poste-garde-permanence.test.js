@@ -27,10 +27,11 @@ const fiche = (id, h, montant) => ({
 });
 
 // Permanence : 08h, 10h, 15h → 1500 + 3000 + 2000 = 6500 (3 dossiers)
-// Garde      : 17h, 22h, 07h → 1000 + 5000 + 4000 = 10000 (3 dossiers)
+// Garde      : 17h, 22h, 23h → 1000 + 5000 + 4000 = 10000 (3 dossiers)
+// (un dossier de 07h appartient à la garde de la VEILLE : voir cloture-garde.test.js)
 const FICHES = [
   fiche(1, 8, 1500), fiche(2, 10, 3000), fiche(3, 15, 2000),
-  fiche(4, 17, 1000), fiche(5, 22, 5000), fiche(6, 7, 4000),
+  fiche(4, 17, 1000), fiche(5, 22, 5000), fiche(6, 23, 4000),
 ];
 const PERM_TOTAL = 6500, GARDE_TOTAL = 10000, TOTAL = 16500;
 
