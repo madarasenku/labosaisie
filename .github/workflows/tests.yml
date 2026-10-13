@@ -31,7 +31,10 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 110 fichiers de tests : la suite dépasse désormais 15 min sur un runner
+    # GitHub (dernier passage complet : 15 min 17 s). Avec 15 min, chaque run
+    # était coupé (« cancelled ») sans résultat depuis le 4 octobre.
+    timeout-minutes: 35
 
     steps:
       - uses: actions/checkout@v4
