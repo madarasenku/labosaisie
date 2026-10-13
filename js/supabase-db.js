@@ -536,7 +536,8 @@ async function flushSyncQueue(silent) {
         if (error) throw error;
         // ✅ v13.28 — insert_resultat retourne jsonb {id, dossier}
         const newId = data?.id || (Array.isArray(data) ? data[0]?.id : null);
-        const saved = { id: newId, type: item.record.type, patient: item.record.patient,
+        const patientSync = _appliquerNumeroServeur(item.record.patient, Array.isArray(data) ? data[0] : data);
+        const saved = { id: newId, type: item.record.type, patient: patientSync,
           resultats: item.record.resultats, savedAt: new Date().toISOString(),
           createdBy: item.record.createdBy || '', montant: item.record.montant || 0,
           prescripteur_id: item.record.prescripteur_id, est_bpn: item.est_bpn };
@@ -581,6 +582,27 @@ async function flushSyncQueue(silent) {
   }
 }
 
+// ✅ v13.236 — Le serveur garantit l'unicité du n° de dossier : s'il était déjà
+//   pris (typiquement un dossier saisi HORS-LIGNE, numéroté localement), il en
+//   attribue un autre. On reporte ce numéro dans la fiche et on prévient l'agent,
+//   pour qu'il corrige le papier remis au patient.
+function _appliquerNumeroServeur(patient, data) {
+  const attribue = data && data.dossier;
+  if (!patient || !attribue || attribue === patient.dossier) return patient;
+  const avant = patient.dossier;
+  const p = Object.assign({}, patient, { dossier: attribue });
+  if (avant) p.dossier_initial = avant;
+  try {
+    toast('⚠️ Le n° ' + (avant || '?') + ' était déjà pris : ' + (p.nom || 'ce dossier')
+      + ' reçoit le n° ' + attribue + '. Corrigez le papier si besoin.', 'err');
+  } catch (e) {}
+  try {
+    const champ = document.getElementById('p_dossier');
+    if (champ && avant && champ.value === avant) champ.value = attribue;
+  } catch (e) {}
+  return p;
+}
+
 async function insertRecordRemote(record) {
   // ✅ v13 — insertion via RPC sécurisée par jeton
   const est_bpn = estDossierBPN(record);
@@ -598,7 +620,9 @@ async function insertRecordRemote(record) {
     if (error) throw error;
     // ✅ v13.28 — insert_resultat retourne jsonb {id, dossier}
     const newId = data?.id || (Array.isArray(data) ? data[0]?.id : null);
-    const saved = { id: newId, type: record.type, patient: record.patient,
+    const patient = _appliquerNumeroServeur(record.patient, Array.isArray(data) ? data[0] : data);
+    if (patient !== record.patient) record.patient = patient;
+    const saved = { id: newId, type: record.type, patient,
       resultats: record.resultats, savedAt: new Date().toISOString(),
       createdBy: record.createdBy || '', montant: record.montant || 0,
       prescripteur_id: record.prescripteur_id, est_bpn: est_bpn };
