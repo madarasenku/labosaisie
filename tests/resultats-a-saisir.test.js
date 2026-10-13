@@ -81,6 +81,36 @@ const TOUS = [A, B, C, D, E, F, G, H];
   r.section('Ouverture depuis l\'Historique');
   await page.evaluate(() => ouvrirResultatsASaisir());
   await page.waitForTimeout(900);
+
+  // ── Par semaine ─────────────────────────────────────────────────────
+  r.section('Par semaine (lundi → dimanche)');
+  const lundiDe = n => { const d = il(n); const j = d.getDay(); d.setDate(d.getDate() - (j === 0 ? 6 : j - 1)); return ymd(d); };
+  const lundiCourant = lundiDe(0);
+  const semaineDe = dos => lundiDe(Math.round((new Date() - new Date(dos.created_at)) / 864e5));
+  const attendus = (lundi) => [A, B, C].filter(x => semaineDe(x) === lundi).map(x => x.id).sort();
+  const avantAttendu = [A, B, C].filter(x => semaineDe(x) < lundiCourant).length;
+  const sem = await page.evaluate(() => ({
+    toutes: _grilleToutesSemaines,
+    label: (document.getElementById('grille-semaine-label') || {}).innerText || '',
+    lignes: [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort(),
+    avant: grilleEnAttenteAvant(),
+    rappel: !!document.getElementById('grille-avant'),
+  }));
+  r.check('ouvre sur la semaine en cours', sem.toutes, false);
+  r.check('libellé « Semaine du lundi … au dimanche … »', /Semaine du lundi .+ au dimanche /.test(sem.label), true);
+  r.check('seulement les dossiers de la semaine', JSON.stringify(sem.lignes), JSON.stringify(attendus(lundiCourant)));
+  r.check('compte des dossiers en attente des semaines précédentes', sem.avant, avantAttendu);
+  r.check('rappel affiché s\'il y en a', sem.rappel, avantAttendu > 0);
+  const prec = await page.evaluate(() => { grilleSemaineDecaler(-1); return [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort(); });
+  const lundiPrec = (() => { const d = new Date(lundiCourant + 'T12:00:00'); d.setDate(d.getDate() - 7); return ymd(d); })();
+  r.check('◀ semaine précédente : ses dossiers', JSON.stringify(prec), JSON.stringify(attendus(lundiPrec)));
+  const retourSem = await page.evaluate(() => { grilleSemaineCourante(); return _grilleBornesSemaine().du; });
+  r.check('« Cette semaine » revient au lundi courant', retourSem, lundiCourant);
+  const badgeTout = await page.evaluate(() => grilleCompteASaisir());
+  r.check('la pastille de l\'Historique compte toujours TOUTES les semaines', badgeTout, 3);
+  await page.evaluate(() => grilleToggleToutesSemaines(true));
+  await page.waitForTimeout(900);
+
   const ouv = await page.evaluate(() => ({
     mode: _grilleModeASaisir, date: _grilleDate,
     titre: document.querySelector('#grille-serie')?.innerText.includes('Résultats à saisir'),
@@ -160,6 +190,8 @@ const TOUS = [A, B, C, D, E, F, G, H];
   r.check('« Saisir » ouvre le formulaire complet du dossier', comp.fa, 906);
   r.check('la grille se referme', comp.vue, 'none');
   await page.evaluate(() => ouvrirResultatsASaisir());
+  await page.waitForTimeout(900);
+  await page.evaluate(() => grilleToggleToutesSemaines(true));
   await page.waitForTimeout(900);
   await page.evaluate(() => grilleSetCategorie('st'));
   await page.evaluate(() => grilleMarquerFait(906, 'ex_ecbu'));
