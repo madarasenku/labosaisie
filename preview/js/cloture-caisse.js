@@ -87,19 +87,46 @@ function renderReductionsMois() {
 
 /* ✅ Poste de travail (laboratoire ouvert 24h/24), déduit de l'heure
    d'ENREGISTREMENT locale du dossier :
-     • Permanence = 08h00 → 16h00
-     • Garde      = le reste (16h00 → 08h00, nuit incluse, passage de minuit)
+     • Permanence = 08h00 → 16h30
+     • Garde      = 16h30 → 08h00 le lendemain (nuit incluse, passage de minuit)
    Côte d'Ivoire = UTC+0 sans heure d'été : l'heure locale est fiable.
    Helper commun, réutilisé par le registre du jour et les cahiers jaune/noire.
-   La coupure de journée reste MINUIT (inchangée) : on étiquette seulement le
-   poste, on ne redéfinit pas la clôture. */
-const POSTE_PERM_DEBUT = 8, POSTE_PERM_FIN = 16;
+   La clôture financière reste coupée à MINUIT (inchangée) : ici on étiquette le
+   poste et on rattache le dossier à sa JOURNÉE DE SERVICE, on ne redéfinit pas
+   la clôture de caisse.
+
+   ✅ Une GARDE compte pour UNE journée : celle où elle commence. Un dossier
+   enregistré à 02h00 le 13 appartient à la « Garde du 12 au 13 ». */
+const POSTE_PERM_DEBUT_MIN = 8 * 60;        // 08h00
+const POSTE_PERM_FIN_MIN   = 16 * 60 + 30;  // 16h30 = début de la garde
+function _minutesDuJour(ts) {
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? null : d.getHours() * 60 + d.getMinutes();
+}
 function posteDepuisHeure(ts) {
   if (!ts) return 'Garde';
-  const d = new Date(ts);
-  if (isNaN(d.getTime())) return 'Garde';
-  const h = d.getHours();
-  return (h >= POSTE_PERM_DEBUT && h < POSTE_PERM_FIN) ? 'Permanence' : 'Garde';
+  const m = _minutesDuJour(ts);
+  if (m === null) return 'Garde';
+  return (m >= POSTE_PERM_DEBUT_MIN && m < POSTE_PERM_FIN_MIN) ? 'Permanence' : 'Garde';
+}
+/** Décale une date AAAA-MM-JJ de n jours (midi : à l'abri des changements d'heure). */
+function _jourPlus(jour, n) {
+  const d = new Date(jour + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return _jourLocal(d);
+}
+/** Poste + journée de service d'un dossier.
+ *    { poste, jour, fin } — pour une garde, `jour` = jour où elle commence et
+ *    `fin` = lendemain ; pour une permanence, fin = jour. */
+function posteInfoDossier(r) {
+  const ts = r && (r.savedAt || r.created_at || r.createdAt);
+  const poste = posteDepuisHeure(ts);
+  let jour = (typeof _recDate === 'function' ? _recDate(r) : '') || '';
+  if (!jour) return { poste, jour: '', fin: '' };
+  // Garde de nuit, APRÈS minuit et avant 08h00 : rattachée à la garde commencée la veille.
+  const m = ts ? _minutesDuJour(ts) : null;
+  if (poste === 'Garde' && m !== null && m < POSTE_PERM_DEBUT_MIN) jour = _jourPlus(jour, -1);
+  return { poste, jour, fin: poste === 'Garde' ? _jourPlus(jour, 1) : jour };
 }
 function posteDossier(r) { return posteDepuisHeure(r && (r.savedAt || r.created_at || r.createdAt)); }
 // Pastille HTML courte pour un poste (réutilisée par registre & cahiers).
@@ -349,8 +376,8 @@ function renderCloture() {
           + '<div style="font-weight:800;font-size:14px;color:' + col + '">' + _fcfa(v.total) + '</div>'
           + '<div style="font-size:10.5px;color:' + col + ';opacity:.8">' + v.nb + ' dossier(s)</div></div>';
         return '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
-          + carte('☀️ Permanence · 8h–16h', pp.Permanence, '#fef9ed', '#92400e')
-          + carte('🌙 Garde · 16h–8h', pp.Garde, '#eef0fb', '#3730a3')
+          + carte('☀️ Permanence · 8h–16h30', pp.Permanence, '#fef9ed', '#92400e')
+          + carte('🌙 Garde · 16h30–8h', pp.Garde, '#eef0fb', '#3730a3')
           + '</div>';
       })()
     + alerte('Monnaie promise non rendue', c.monnaieDue.length, c.totalMonnaieDue, '#b45309')
@@ -433,9 +460,9 @@ function imprimerCloture() {
         '<table style="width:100%;font-size:10.5pt;border-collapse:collapse">'
         + '<thead><tr><th style="text-align:left">Poste</th><th style="text-align:right">Dossiers</th>'
         + '<th style="text-align:right">Montant</th></tr></thead><tbody>'
-        + '<tr><td>☀️ Permanence (8h–16h)</td><td style="text-align:right">' + c.parPoste.Permanence.nb
+        + '<tr><td>☀️ Permanence (8h–16h30)</td><td style="text-align:right">' + c.parPoste.Permanence.nb
         + '</td><td style="text-align:right">' + _fcfa(c.parPoste.Permanence.total) + '</td></tr>'
-        + '<tr><td>🌙 Garde (16h–8h, nuit incluse)</td><td style="text-align:right">' + c.parPoste.Garde.nb
+        + '<tr><td>🌙 Garde (16h30–8h, nuit incluse)</td><td style="text-align:right">' + c.parPoste.Garde.nb
         + '</td><td style="text-align:right">' + _fcfa(c.parPoste.Garde.total) + '</td></tr>'
         + '</tbody><tfoot><tr style="border-top:1.5px solid #000;font-weight:800">'
         + '<td>TOTAL</td><td style="text-align:right">' + c.dossiers

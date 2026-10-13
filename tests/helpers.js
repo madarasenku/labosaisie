@@ -143,7 +143,7 @@ async function openApp(opts = {}) {
   const { role = 'admin', username = 'admin1', userId = 1, rpc = {}, port = 8099,
           // Le portail du soignant est une page distincte : on doit pouvoir
           // l'ouvrir sans passer par l'application du laboratoire.
-          cible = '/index.html', sansSession = false, appels = null } = opts;
+          cible = process.env.CIBLE || '/index.html', sansSession = false, appels = null } = opts;
   // Le sandbox Cowork fournit Chromium à un emplacement figé ; la CI GitHub
   // (et les postes de dev) laissent Playwright installer le sien à son
   // emplacement par défaut. On n'impose donc executablePath QUE si ce binaire
@@ -180,7 +180,7 @@ async function openApp(opts = {}) {
                                 localStorage.removeItem('v2_labo_session_user'); });
   }
   await page.goto(base + cible, { waitUntil: 'load' });
-  await page.waitForTimeout(cible === '/index.html' ? 2500 : 900);
+  await page.waitForTimeout(cible.endsWith('/index.html') ? 2500 : 900);
   return { ctx, page, errors };
 }
 
