@@ -1,7 +1,3 @@
-// ⚠ TEST DE LA COPIE /preview (garde = une journée, 16h30). Hors de tests/ pour que
-//   run.js (CI) ne le lance pas tant que la règle n'est pas en production.
-//   Au passage en prod : le remonter dans tests/, ciblant /index.html, et remplacer
-//   l'ancienne version de ce test.
 // ════════════════════════════════════════════════════════════════════
 //  registre-garde-jour — Permanence et Garde séparées ; une garde = UNE journée.
 //
@@ -15,9 +11,9 @@
 //  redonne la même heure quel que soit le fuseau du runner.
 //  CIBLE=/preview/index.html permet de viser la copie de test.
 // ════════════════════════════════════════════════════════════════════
-const { serve, openApp, createReporter } = require('../helpers');
+const { serve, openApp, createReporter } = require('./helpers');
 
-const CIBLE = process.env.CIBLE || '/preview/index.html';
+const CIBLE = process.env.CIBLE || '/index.html';
 const p = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 const base = new Date(); base.setHours(12, 0, 0, 0);

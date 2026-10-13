@@ -1,14 +1,11 @@
-// ⚠ TEST DE LA COPIE /preview (écran « Résultats à saisir »). Hors de tests/ pour que
-//   run.js (CI) ne le lance pas tant que la fonction n'est pas en production.
-//   Au passage en prod : le remonter dans tests/ et le faire viser /index.html.
 //
 // ════════════════════════════════════════════════════════════════════
 //  resultats-a-saisir — BPN, électrophorèses et examens sous-traités dans UN
 //  seul écran, ouvert depuis l'Historique, toutes dates, sans changer d'onglet.
 // ════════════════════════════════════════════════════════════════════
-const { serve, openApp, createReporter } = require('../helpers');
+const { serve, openApp, createReporter } = require('./helpers');
 
-const CIBLE = process.env.CIBLE || '/preview/index.html';
+const CIBLE = process.env.CIBLE || '/index.html';
 const p = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 const il = n => { const d = new Date(); d.setDate(d.getDate() - n); d.setHours(10, 0, 0, 0); return d; };

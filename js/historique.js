@@ -465,6 +465,7 @@ async function renderHistory(forceRefresh) {
   // défaut de l'agent), les boutons réservés (ex. caisse noire) gardaient l'état
   // par défaut du HTML au lieu d'être masqués selon le rôle.
   if (typeof updateBulkToolbar === 'function') updateBulkToolbar();
+  if (typeof majBoutonASaisir === 'function') majBoutonASaisir();
 
   if (!filtered.length) {
     const hasFilters = (document.getElementById('search-input')?.value||'').trim()
@@ -1916,3 +1917,20 @@ async function saveNote(id) {
 }
 
 
+
+
+// ✅ v13.232 — Bouton « 📥 Résultats à saisir » : visible pour ceux qui saisissent des
+// résultats (ni caissier, ni spectateur) ; la pastille indique combien de dossiers
+// attendent un résultat (BPN, électrophorèse, sous-traités), toutes dates.
+function majBoutonASaisir() {
+  const btn = document.getElementById('btn-a-saisir');
+  if (!btn) return;
+  const peut = !(typeof isSpectateur === 'function' && isSpectateur())
+            && !(typeof isCaissier === 'function' && isCaissier())
+            && typeof grilleCompteASaisir === 'function';
+  btn.style.display = peut ? '' : 'none';
+  if (!peut) return;
+  let n = 0; try { n = grilleCompteASaisir(); } catch (e) {}
+  const b = document.getElementById('a-saisir-badge');
+  if (b) { b.textContent = n; b.style.display = n > 0 ? '' : 'none'; }
+}

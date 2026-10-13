@@ -2,8 +2,8 @@
 //  poste-garde-permanence — labo ouvert 24h/24.
 //
 //  Le poste de travail est déduit de l'HEURE D'ENREGISTREMENT locale :
-//    • Permanence = 08h00 → 16h00
-//    • Garde      = le reste (16h00 → 08h00, nuit incluse)
+//    • Permanence = 08h00 → 16h30
+//    • Garde      = le reste (16h30 → 08h00, nuit incluse)
 //  On vérifie : les bornes de posteDepuisHeure, et surtout que la clôture
 //  répartit la recette par poste SANS changer le total (somme = recette).
 //
@@ -16,7 +16,7 @@ const { serve, openApp, createReporter } = require('./helpers');
 const p = n => String(n).padStart(2, '0');
 const now = new Date();
 const AUJ = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate());
-const atHour = h => new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, 0, 0).toISOString();
+const atHour = (h, m = 0) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0).toISOString();
 
 const pay = (m) => ({ montant_demande: m, montant_recu: m, monnaie: 0, monnaie_rendue: 0, monnaie_remise: true, agent: 'nadia' });
 const fiche = (id, h, montant) => ({
@@ -27,10 +27,10 @@ const fiche = (id, h, montant) => ({
 });
 
 // Permanence : 08h, 10h, 15h → 1500 + 3000 + 2000 = 6500 (3 dossiers)
-// Garde      : 16h, 22h, 07h → 1000 + 5000 + 4000 = 10000 (3 dossiers)
+// Garde      : 17h, 22h, 07h → 1000 + 5000 + 4000 = 10000 (3 dossiers)
 const FICHES = [
   fiche(1, 8, 1500), fiche(2, 10, 3000), fiche(3, 15, 2000),
-  fiche(4, 16, 1000), fiche(5, 22, 5000), fiche(6, 7, 4000),
+  fiche(4, 17, 1000), fiche(5, 22, 5000), fiche(6, 7, 4000),
 ];
 const PERM_TOTAL = 6500, GARDE_TOTAL = 10000, TOTAL = 16500;
 
@@ -39,19 +39,21 @@ const PERM_TOTAL = 6500, GARDE_TOTAL = 10000, TOTAL = 16500;
   const r = createReporter('POSTE — GARDE / PERMANENCE');
 
   const { ctx, page, errors } = await openApp({
-    role: 'admin',
+    role: 'admin', cible: process.env.CIBLE || '/index.html',
     rpc: { get_tarifs: {}, get_examens_custom: [], get_resultats_light: FICHES, get_restriction_status: [] },
   });
 
   // ── Bornes de posteDepuisHeure ──────────────────────────────────────
-  r.section('Découpage horaire (8h–16h = Permanence)');
+  r.section('Découpage horaire (8h00–16h30 = Permanence)');
   const bornes = await page.evaluate((hs) => hs.map(iso => posteDepuisHeure(iso)), [
-    atHour(8), atHour(15), atHour(12), atHour(16), atHour(7), atHour(23), atHour(0),
+    atHour(8), atHour(15), atHour(12), atHour(16, 30), atHour(7), atHour(23), atHour(0), atHour(16), atHour(16, 29),
   ]);
   r.check('08h00 → Permanence', bornes[0], 'Permanence');
   r.check('15h00 → Permanence', bornes[1], 'Permanence');
   r.check('12h00 → Permanence', bornes[2], 'Permanence');
-  r.check('16h00 → Garde (borne exclue)', bornes[3], 'Garde');
+  r.check('16h30 → Garde (début de la garde)', bornes[3], 'Garde');
+  r.check('16h00 → Permanence (la garde ne commence qu\'à 16h30)', bornes[7], 'Permanence');
+  r.check('16h29 → Permanence', bornes[8], 'Permanence');
   r.check('07h00 → Garde', bornes[4], 'Garde');
   r.check('23h00 → Garde', bornes[5], 'Garde');
   r.check('minuit → Garde', bornes[6], 'Garde');
