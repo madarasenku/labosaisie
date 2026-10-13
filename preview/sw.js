@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.231-t6';
-const CACHE = 'cpmi-labo-PREVIEW-v195';
+const APP_VERSION = '13.231-t7';
+const CACHE = 'cpmi-labo-PREVIEW-v196';
 const v = url => url + '?v=' + APP_VERSION;
 
 /* Pré-cacher les fichiers essentiels à l'installation.
@@ -116,8 +116,24 @@ self.addEventListener('fetch', e => {
   /* Ne pas intercepter les appels API Supabase — toujours réseau */
   if (e.request.url.includes('supabase.co')) return;
 
+  /* ✅ v13.233 — Pages HTML (sans ?v=) : TOUJOURS revalidées auprès du serveur.
+     Avant, fetch(e.request) laissait le navigateur servir index.html depuis son
+     cache HTTP (GitHub Pages : jusqu'à 10 min). Après un déploiement, la page
+     s'affichait d'abord dans l'ANCIENNE version, puis la bannière proposait de
+     recharger. « no-cache » = une requête conditionnelle (ETag → 304, quelques
+     centaines d'octets) : la page est toujours la dernière, sans retélécharger.
+     Les actifs versionnés (?v=) gardent le cache normal : leur URL change à
+     chaque version, donc ils ne peuvent pas être périmés. */
+  let versionne = false;
+  try {
+    const u = new URL(e.request.url);
+    versionne = u.searchParams.has('v') || u.origin !== self.location.origin;
+  } catch (err) {}
+  const requete = versionne ? e.request
+    : fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' });
+
   e.respondWith(
-    fetch(e.request)
+    (versionne ? fetch(requete) : requete)
       .then(res => {
         /* Mise en cache de la réponse fraîche */
         if (res.ok) {
