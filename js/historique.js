@@ -868,6 +868,9 @@ function updateBulkToolbar() {
   const cahierNoirBtn = document.getElementById('bulk-cahier-noir-btn');
   if (cahierNoirBtn) cahierNoirBtn.style.display = (accesCaisseNoire() && !_filterCorbeille) ? '' : 'none';
   // ✅ v13.208 — Changer le propriétaire en lot : ADMIN, hors corbeille.
+  // ✅ v13.235 — Impression groupée : hors corbeille.
+  const printBtn = document.getElementById('bulk-print-btn');
+  if (printBtn) printBtn.style.display = _filterCorbeille ? 'none' : '';
   const auteurBtn = document.getElementById('bulk-auteur-btn');
   if (auteurBtn) auteurBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
   // État de la case "tout sélectionner"
@@ -1933,4 +1936,18 @@ function majBoutonASaisir() {
   let n = 0; try { n = grilleCompteASaisir(); } catch (e) {}
   const b = document.getElementById('a-saisir-badge');
   if (b) { b.textContent = n; b.style.display = n > 0 ? '' : 'none'; }
+}
+
+// ✅ v13.235 — Impression GROUPÉE depuis l'Historique : comptes rendus des dossiers
+//   cochés, un par page, dans l'ordre d'arrivée des patients.
+async function bulkImprimer() {
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  if (typeof imprimerDossiersEnLot !== 'function') { toast('Impression indisponible', 'err'); return; }
+  const trouver = id => (typeof recordForOutput === 'function' ? recordForOutput(id) : null)
+                     || getDB().find(x => x.id === id);
+  const ordre = ids.map(trouver).filter(Boolean)
+    .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')))
+    .map(r => r.id);
+  await imprimerDossiersEnLot(ordre, trouver);
 }
