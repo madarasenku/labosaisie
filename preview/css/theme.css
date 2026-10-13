@@ -1,0 +1,479 @@
+/* ═══════════════════════════════════════════════════════════════
+   LaboSaisie — NOUVELLE INTERFACE (lien de test uniquement)
+   Jour « Médical frais » : blanc lumineux, teal, touches de corail.
+   Nuit « Sombre élégant » : bleu nuit, turquoise lumineux, violet.
+   Chargée APRÈS app.css : ne fait que redéfinir couleurs, typographie
+   et formes. Aucun identifiant, aucune classe ni aucun comportement ne
+   change. Les comptes rendus imprimés ne sont pas concernés (@media print
+   intact).
+   ═══════════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../vendor/fonts/plus-jakarta-sans-latin-var.woff2') format('woff2');
+}
+
+/* Tout le thème est limité à l'ÉCRAN : à l'impression, les jetons et la
+   police d'origine s'appliquent (comptes rendus et registre inchangés). */
+@media screen {
+
+/* ── Jetons : JOUR ─────────────────────────────────────────────── */
+:root {
+  --bg:             #F3F8F7;
+  --bg-alt:         #EDF4F3;
+  --surface:        #FFFFFF;
+  --surface-1:      #F7FBFA;
+  --surface-2:      #FFFFFF;
+  --card:           #FFFFFF;
+  --field:          #FFFFFF;
+  --nav-bg:         #FFFFFF;
+  --border:         #D8E5E3;
+  --text:           #10282C;
+  --text-primary:   #10282C;
+  --text-muted:     #4C6569;
+  --text-secondary: #4C6569;
+  --text-label:     #24434A;
+
+  --accent:         #0B7A75;
+  --accent-hover:   #09615D;
+  --accent-light:   #DCF1EE;
+  --accent-ink:     #09615D;
+  --ink-on-accent:  #FFFFFF;
+  --ring:           rgba(11,122,117,.16);
+  --row-hover:      #F2FAF9;
+
+  --accent2:        #D9583E;
+  --accent2-soft:   #FDE9E3;
+  --accent2-ink:    #A63A24;
+
+  --cpmi-deep:      #0B5F5B;
+  --cpmi-mid:       #0B7A75;
+  --cpmi-sky:       #14A39B;
+  --cpmi-teal:      #0B7A75;
+  --cpmi-rose:      #D9583E;
+  --cpmi-gold:      #B45309;
+
+  --danger:         #C2412D;
+  --danger-light:   #FDECE8;
+  --success:        #0B7A75;
+  --success-light:  #DCF1EE;
+  --warning:        #8A4B00;
+  --warning-light:  #FFF1D6;
+
+  --radius:         12px;
+  --radius-lg:      18px;
+  --shadow:         0 1px 2px rgba(16,40,44,.05), 0 10px 30px rgba(16,40,44,.06);
+  --shadow-sm:      0 1px 2px rgba(16,40,44,.07);
+  --shadow-lg:      0 18px 48px rgba(16,40,44,.16), 0 2px 8px rgba(16,40,44,.06);
+}
+
+/* ── Jetons : NUIT ─────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg:             #0C1020;
+  --bg-alt:         #1C2340;
+  --surface:        #151B2F;
+  --surface-1:      #121829;
+  --surface-2:      #151B2F;
+  --card:           #151B2F;
+  --field:          #10162A;
+  --nav-bg:         #10162A;
+  --border:         #283053;
+  --text:           #E8EBF4;
+  --text-primary:   #E8EBF4;
+  --text-muted:     #9AA3BE;
+  --text-secondary: #9AA3BE;
+  --text-label:     #C6CCE0;
+
+  --accent:         #2DD4BF;
+  --accent-hover:   #5EEAD4;
+  --accent-light:   rgba(45,212,191,.14);
+  --accent-ink:     #6EE7D8;
+  --ink-on-accent:  #042420;
+  --ring:           rgba(45,212,191,.22);
+  --row-hover:      rgba(45,212,191,.06);
+
+  --accent2:        #A78BFA;
+  --accent2-soft:   rgba(167,139,250,.16);
+  --accent2-ink:    #C9B8FF;
+
+  --cpmi-deep:      #6EE7D8;
+  --cpmi-mid:       #2DD4BF;
+  --cpmi-sky:       #5EEAD4;
+  --cpmi-teal:      #2DD4BF;
+  --cpmi-soft:      #121829;
+  --cpmi-rose:      #C9B8FF;
+  --cpmi-gold:      #FCD34D;
+
+  --danger:         #FF8F7E;
+  --danger-light:   rgba(251,113,94,.14);
+  --success:        #2DD4BF;
+  --success-light:  rgba(45,212,191,.14);
+  --warning:        #FCD34D;
+  --warning-light:  rgba(251,191,36,.14);
+
+  --shadow:         0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.35);
+  --shadow-sm:      0 1px 2px rgba(0,0,0,.4);
+  --shadow-lg:      0 24px 64px rgba(0,0,0,.55);
+  color-scheme: dark;
+}
+
+/* ── Fond et typographie ───────────────────────────────────────── */
+body,
+[data-theme="dark"] body {
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+}
+body::before { background: var(--bg); }
+#cpmi-bg-canvas { display: none; }
+::selection, [data-theme="dark"] ::selection { background: var(--accent-light); color: var(--text); }
+h1, h2, h3 { letter-spacing: -0.015em; }
+
+/* ── En-tête : barre claire, navigation en pastilles ───────────── */
+header,
+[data-theme="dark"] header {
+  background: var(--nav-bg);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(16,40,44,.02);
+  min-height: 68px;
+}
+header::after { display: none; }
+.logo-icon {
+  background: var(--accent);
+  border: 0;
+  animation: none;
+  backdrop-filter: none;
+}
+.logo:hover .logo-icon { background: var(--accent-hover); border-color: transparent; box-shadow: var(--shadow-sm); }
+.logo-icon svg circle:first-child { fill: rgba(255,255,255,.14); }
+.logo-icon svg g rect { fill: #FFD3C7; }
+[data-theme="dark"] .logo-icon svg path,
+[data-theme="dark"] .logo-icon svg circle:not(:first-child) { fill: var(--ink-on-accent); }
+[data-theme="dark"] .logo-icon svg path[stroke] { fill: none; stroke: var(--ink-on-accent); }
+[data-theme="dark"] .logo-icon svg g rect { fill: #3B1D7A; }
+.logo-name { color: var(--text); text-shadow: none; letter-spacing: -0.01em; }
+.logo-sub { color: var(--text-muted); opacity: 1; letter-spacing: 0; }
+
+#user-badge {
+  background: var(--accent-light);
+  border: 0;
+  color: var(--accent-ink);
+  font-weight: 700;
+  opacity: 1 !important;
+}
+
+header nav {
+  background: var(--bg-alt);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+}
+.nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.nav-btn:hover {
+  background: var(--surface);
+  border-color: transparent;
+  color: var(--text);
+  transform: none;
+}
+.nav-btn.active {
+  background: var(--surface);
+  border-color: transparent;
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+.logout-btn { background: var(--accent2-soft); color: var(--accent2-ink); }
+.logout-btn:hover { background: var(--accent2-soft); color: var(--accent2-ink); filter: brightness(.97); }
+.nav-badge { background: var(--accent2); color: #FFFFFF; }
+[data-theme="dark"] .nav-badge { color: #1A1033; }
+
+/* ── Cartes ────────────────────────────────────────────────────── */
+.card,
+[data-theme="dark"] .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.card:hover,
+[data-theme="dark"] .card:hover {
+  transform: none;
+  box-shadow: var(--shadow);
+  border-color: var(--border);
+}
+.card-title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid var(--border);
+}
+.card-title::before {
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.card-fiche,
+[data-theme="dark"] .card-fiche { border: 1px solid var(--border); }
+
+/* ── Champs ────────────────────────────────────────────────────── */
+label { font-size: 12.5px; font-weight: 700; color: var(--text-label); letter-spacing: 0; }
+input[type=text], input[type=date], input[type=number],
+input[type=password], input[type=datetime-local],
+input[type=tel], input[type=email], input[type=search], input[type=time],
+select, textarea,
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--field);
+  color: var(--text);
+  font-size: 14px;
+  padding: 10px 13px;
+}
+select { padding-right: 32px; }
+input:focus, select:focus, textarea:focus,
+[data-theme="dark"] input:focus, [data-theme="dark"] select:focus, [data-theme="dark"] textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--ring);
+  background-color: var(--field);
+}
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); }
+
+/* ── Boutons ───────────────────────────────────────────────────── */
+.btn {
+  border-radius: 12px;
+  padding: 11px 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  min-height: 42px;
+}
+.btn:hover { transform: none; box-shadow: var(--shadow-sm); }
+.btn-primary {
+  background: var(--accent);
+  color: var(--ink-on-accent);
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary::before { display: none; }
+.btn-primary:hover { background: var(--accent-hover); box-shadow: var(--shadow-sm); }
+.btn-outline {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { background: var(--bg-alt); border-color: var(--border); color: var(--text); }
+.btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid transparent; }
+.btn-danger:hover { background: var(--danger-light); filter: brightness(.97); }
+.btn-success { background: var(--success-light); color: var(--accent-ink); border: 1px solid transparent; }
+.btn-success:hover { background: var(--success-light); filter: brightness(.97); }
+
+/* ── Onglets d'analyses ────────────────────────────────────────── */
+.tabs,
+[data-theme="dark"] .tabs {
+  background: var(--bg-alt);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.tab { border-radius: 10px; font-weight: 600; }
+.tab:hover { color: var(--text); background: var(--surface); }
+.tab.active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+  transform: none;
+}
+.admin-tab-main.active { background: var(--accent); border-color: var(--accent); color: var(--ink-on-accent); }
+
+/* ── Tableaux ──────────────────────────────────────────────────── */
+#history-table, #users-table { font-size: 13px; }
+#history-table th, #users-table th, .result-table th,
+[data-theme="dark"] #history-table th, [data-theme="dark"] #users-table th, [data-theme="dark"] .result-table th {
+  background: var(--bg-alt);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  border-bottom: 1px solid var(--border);
+  padding: 11px 13px;
+}
+#history-table td, #users-table td, .result-table td { border-bottom: 1px solid var(--border); }
+#history-table td, #users-table td { padding: 11px 13px; }
+#history-table tr:hover td, #users-table tr:hover td, .result-table tr:hover td { background: var(--row-hover); }
+
+/* ── Pastilles de statut ───────────────────────────────────────── */
+.badge-rendu, .badge-attente, .badge-encours, .badge-urgent, .badge-afaire {
+  border-color: transparent;
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 3px 10px;
+}
+.badge-rendu   { background: var(--success-light); color: var(--accent-ink); }
+.badge-attente,
+.badge-encours { background: var(--warning-light); color: var(--warning); }
+.badge-urgent  { background: var(--danger-light);  color: var(--danger); }
+.badge-afaire  { background: var(--bg-alt);        color: var(--text-muted); }
+.hist-row-rendu td:first-child    { border-left-color: var(--accent); }
+.hist-row-attente td:first-child  { border-left-color: #D99A1E; }
+.hist-row-en-cours td:first-child { border-left-color: var(--accent2); }
+.hist-row-urgent td:first-child   { border-left-color: var(--danger); }
+
+/* Familles d'analyses : mêmes teintes, adoucies la nuit */
+[data-theme="dark"] .badge-type { border-color: transparent; }
+[data-theme="dark"] .badge-hema     { background: rgba(248,113,113,.16); color: #FCA5A5; }
+[data-theme="dark"] .badge-bio      { background: rgba(251,191,36,.14);  color: #FCD34D; }
+[data-theme="dark"] .badge-bacterio { background: rgba(52,211,153,.14);  color: #6EE7B7; }
+[data-theme="dark"] .badge-sero     { background: rgba(167,139,250,.16); color: #C9B8FF; }
+[data-theme="dark"] .badge-parasito { background: rgba(244,114,182,.15); color: #F9A8D4; }
+[data-theme="dark"] .badge-gs       { background: rgba(251,146,60,.15);  color: #FDBA74; }
+[data-theme="dark"] .badge-bpn      { background: rgba(45,212,191,.14);  color: #6EE7D8; }
+
+/* ── Fenêtres, notifications, statistiques ─────────────────────── */
+.modal-box { background: var(--surface); border-radius: 20px; box-shadow: var(--shadow-lg); }
+#toast, [data-theme="dark"] #toast { border-radius: 14px; font-family: inherit; }
+.stats-kpi,
+[data-theme="dark"] .stats-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.exam-group-card,
+[data-theme="dark"] .exam-group-card { background: var(--surface); border-color: var(--border); border-radius: 14px; }
+
+/* ── Téléphone : bouton menu et barre du bas ───────────────────── */
+@media (max-width: 640px) {
+  html #mobile-menu-btn {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  html #app-root > header > nav {
+    background: var(--nav-bg);
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: var(--shadow-lg);
+  }
+  html #mobile-tabbar { background: var(--nav-bg); border-top-color: var(--border); }
+  html #mobile-tabbar button.on,
+  html #mobile-tabbar .mtb-fab { color: var(--accent); }
+  html #mobile-tabbar .mtb-fab .i { background: var(--accent); color: var(--ink-on-accent); box-shadow: var(--shadow-sm); }
+  html .grille-mob-pick { background: var(--surface); }
+  html .grille-mob-pick select { background: var(--field); color: var(--text); border-color: var(--accent); }
+}
+
+/* ── Barre latérale (poste ≥ 960 px) ───────────────────────────── */
+@media (min-width: 960px) {
+  #app-root > header {
+    border-right: 1px solid var(--border);
+    box-shadow: none;
+  }
+  #app-root > header .logo { border-bottom: 1px solid var(--border); }
+  #app-root > header nav { background: var(--bg-alt); }
+}
+
+/* ── Éléments à couleurs écrites en dur (styles en ligne) ──────── */
+#search-count-bar {
+  background: var(--accent-light) !important;
+  border-color: transparent !important;
+}
+#search-count { color: var(--accent-ink) !important; }
+.fiche-total-bar {
+  background: var(--accent-light) !important;
+  border: 1px solid transparent !important;
+}
+#montant-preview { color: var(--accent-ink) !important; }
+#patient-tranche { background: var(--surface) !important; color: var(--accent-ink) !important; }
+#modeles-rapides-bar { background: var(--bg-alt) !important; border-color: transparent !important; }
+#modeles-rapides-bar > span { color: var(--text) !important; }
+#remise-bloc { border-color: var(--border) !important; }
+.btn-modele {
+  background: var(--surface);
+  color: var(--accent-ink);
+  border: 1px solid var(--border);
+}
+.btn-modele:hover { background: var(--accent-light); border-color: var(--accent); }
+.btn-modele-clear { background: var(--danger-light); color: var(--danger); border-color: transparent; }
+.btn-modele-clear:hover { background: var(--danger-light); filter: brightness(.97); }
+.exam-row input[type=number] { color: var(--accent-ink); background-color: var(--bg-alt) !important; border-color: transparent !important; }
+
+/* Cartes du tableau de bord (Nouvelle saisie) : liseré coloré retiré,
+   valeurs lisibles jour comme nuit. */
+#dashboard-cards > div {
+  border-left: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+#dashboard-cards > div > div:last-child[style*="#0b2545"] { color: var(--text) !important; }
+[data-theme="dark"] #dashboard-cards > div > div:last-child[style*="#0096c7"] { color: #67D4F5 !important; }
+[data-theme="dark"] #dashboard-cards > div > div:last-child[style*="#15803d"] { color: #6EE7B7 !important; }
+[data-theme="dark"] #dashboard-cards > div > div:last-child[style*="#d97706"] { color: #FCD34D !important; }
+
+/* Pastilles Payé / Non payé de l'historique (style en ligne) */
+span[style*="background:#dcfce7;color:#166534"],
+span[style*="background:#fef9c3;color:#854d0e"],
+span[style*="background:#ffedd5;color:#9a3412"] {
+  border-color: transparent !important;
+  border-radius: 999px !important;
+  padding: 3px 9px !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+span[style*="background:#dcfce7;color:#166534"] { background: var(--success-light) !important; color: var(--accent-ink) !important; }
+span[style*="background:#fef9c3;color:#854d0e"] { background: var(--warning-light) !important; color: var(--warning) !important; }
+span[style*="background:#ffedd5;color:#9a3412"] { background: var(--accent2-soft) !important; color: var(--accent2-ink) !important; }
+.badge-rendu, .badge-attente, .badge-encours, .badge-urgent, .badge-afaire { white-space: nowrap; }
+[data-theme="dark"] select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239AA3BE' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
+
+.exam-row input[type=number]:disabled { color: var(--text-muted); opacity: 1; }
+
+/* ── Cartes résumé de l'Historique (journée de service) ────────── */
+html #view-historique .pp-resume {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+html #view-historique .pp-resume .k {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 4px;
+}
+html #view-historique .pp-resume .kl { font-size: 12.5px; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--text-muted); }
+html #view-historique .pp-resume .kn { font-size: 26px; letter-spacing: -0.02em; color: var(--text); margin-top: 0; }
+html #view-historique .pp-resume .kd { font-size: 12px; opacity: 1; color: var(--text-muted); }
+html #view-historique .pp-resume .pp-kn-ok  { color: var(--accent-ink); }
+html #view-historique .pp-resume .pp-kn-att { color: var(--warning); }
+html #view-historique .pp-resume .pp-kn-res { color: var(--accent2-ink); }
+@media (max-width: 640px) {
+  html #view-historique .pp-resume { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  html #view-historique .pp-resume .k { padding: 12px 14px; border-radius: 14px; }
+  html #view-historique .pp-resume .kn { font-size: 21px; }
+  html #view-historique .pp-resume .kd { font-size: 11px; }
+}
+
+} /* fin @media screen */
