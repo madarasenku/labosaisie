@@ -46,7 +46,7 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   // Le HTML doit référencer exactement ces modules, dans l'ordre.
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   // ✅ v13.72 — les URL portent ?v=APP_VERSION, on compare sur le chemin nu.
-  const refs = [...html.matchAll(/<script src="\.\/(js\/[^"?]+)(?:\?[^"]*)?"><\/script>/g)]
+  const refs = [...html.matchAll(/<script src="\.\/(js\/[^"?]+)(?:\?[^"]*)?"[^>]*><\/script>/g)]
     .map(x => x[1]);
   // Pas de nombre figé : ajouter un module ne doit pas faire échouer le test
   // pour une mauvaise raison. Ce qui compte, c'est que les trois listes
