@@ -113,13 +113,15 @@ const A_MOI = 101, A_UN_AUTRE = 104;
     await ctx.close();
   }
 
-  // ── L'agent voit le cadenas sur SES fiches, et les boutons de groupe ──
+  // ── v13.231 — Écran agent minimal : plus de cadenas « masquer » ───────
+  // L'agent n'a plus ni le cadenas par ligne ni les boutons de masquage de
+  // groupe. La suppression (corbeille) lui reste proposée.
   {
     const { ctx, page, errors } = await openApp({
       role: 'agent', username: 'agent1', userId: 2,
       rpc: { get_tarifs: {}, get_examens_custom: [] },
     });
-    r.section('L\'agent dispose du masquage sur ses propres fiches');
+    r.section('Écran agent minimal : pas de masquage (v13.231)');
     await page.evaluate(() => showView('historique'));
     await page.waitForTimeout(1000);
     await page.evaluate(() => setHistPeriode('tout'));
@@ -149,10 +151,9 @@ const A_MOI = 101, A_UN_AUTRE = 104;
                      .filter(b => /softDeleteDossier/.test(b.getAttribute('onclick') || '')).length,
       };
     });
-    r.check('des cadenas sont proposés sur ses fiches', vu.cadenas > 0, true);
-    r.check('aucun cadenas sur la fiche d\'un autre', vu.cadenasSurAutrui, false);
-    r.check('bouton de masquage groupé visible', vu.lot !== 'none', true);
-    r.check('bouton de démasquage groupé visible', vu.lotDe !== 'none', true);
+    r.check('aucun cadenas par ligne pour l\'agent', vu.cadenas, 0);
+    r.check('masquage groupé masqué pour l\'agent', vu.lot, 'none');
+    r.check('démasquage groupé masqué pour l\'agent', vu.lotDe, 'none');
     r.check('suppression groupée (corbeille) proposée à l\'agent', vu.suppr !== 'none', true);
     r.check('la corbeille reste proposée', vu.poubelles > 0, true);
     r.check('aucune erreur JS', errors.length, 0);
