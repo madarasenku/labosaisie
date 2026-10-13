@@ -499,6 +499,8 @@ async function renderHistory(forceRefresh) {
   const lockBtn = (r) => {
     if (_filterVerrouillees || _filterCorbeille) return ''; // géré par les rows spéciaux
     if (typeof isSpectateur === 'function' && isSpectateur()) return '';
+    // ✅ v13.231 — Écran agent minimal : pas de cadenas « masquer » sur les lignes.
+    if (_currentUser && _currentUser.role === 'agent') return '';
     // ✅ v13.116 — L'admin masque n'importe quelle fiche ; un agent peut masquer
     // (et démasquer) SES propres fiches. Un agent ne voit pas le bouton sur la
     // fiche d'un autre, ni sur une fiche masquée par l'administrateur.
@@ -828,7 +830,11 @@ function updateBulkToolbar() {
     delBtn.style.display = (spect || (_filterCorbeille && !isAdmin())) ? 'none' : '';
     delBtn.innerHTML = _filterCorbeille ? '🗑 Supprimer définitivement' : '🗑 Supprimer';
   }
-  const peutMasquer = !(typeof isSpectateur === 'function' && isSpectateur());
+  // ✅ v13.231 — Agent : barre d'actions minimale. On garde Statut (En cours /
+  // Terminé), « 💰 Encaisser » et « 🗑 Supprimer ». On masque pour l'agent le
+  // verrouillage/masquage et la réception seule (fonctions avancées).
+  const estAgent = (typeof _currentUser !== 'undefined') && _currentUser && _currentUser.role === 'agent';
+  const peutMasquer = !(typeof isSpectateur === 'function' && isSpectateur()) && !estAgent;
   // ✅ v13.125 — Réception seule : boutons visibles hors spectateur et hors corbeille.
   ['bulk-recept-on', 'bulk-recept-off'].forEach(idBtn => {
     const b = document.getElementById(idBtn);
