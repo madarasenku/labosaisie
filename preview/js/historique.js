@@ -460,6 +460,12 @@ async function renderHistory(forceRefresh) {
     }
   }
 
+  // ✅ v13.231 — Resynchroniser la barre d'actions groupées avec le rôle courant
+  // à chaque rendu. Sinon, en atterrissant directement sur l'historique (nouveau
+  // défaut de l'agent), les boutons réservés (ex. caisse noire) gardaient l'état
+  // par défaut du HTML au lieu d'être masqués selon le rôle.
+  if (typeof updateBulkToolbar === 'function') updateBulkToolbar();
+
   if (!filtered.length) {
     const hasFilters = (document.getElementById('search-input')?.value||'').trim()
       || document.getElementById('filter-type')?.value
@@ -499,7 +505,7 @@ async function renderHistory(forceRefresh) {
   const lockBtn = (r) => {
     if (_filterVerrouillees || _filterCorbeille) return ''; // géré par les rows spéciaux
     if (typeof isSpectateur === 'function' && isSpectateur()) return '';
-    // ✅ TEST — Écran agent minimal : pas de cadenas « masquer » sur les lignes.
+    // ✅ v13.231 — Écran agent minimal : pas de cadenas « masquer » sur les lignes.
     if (_currentUser && _currentUser.role === 'agent') return '';
     // ✅ v13.116 — L'admin masque n'importe quelle fiche ; un agent peut masquer
     // (et démasquer) SES propres fiches. Un agent ne voit pas le bouton sur la
@@ -830,7 +836,7 @@ function updateBulkToolbar() {
     delBtn.style.display = (spect || (_filterCorbeille && !isAdmin())) ? 'none' : '';
     delBtn.innerHTML = _filterCorbeille ? '🗑 Supprimer définitivement' : '🗑 Supprimer';
   }
-  // ✅ TEST — Agent : barre d'actions minimale. On garde Statut (En cours /
+  // ✅ v13.231 — Agent : barre d'actions minimale. On garde Statut (En cours /
   // Terminé), « 💰 Encaisser » et « 🗑 Supprimer ». On masque pour l'agent le
   // verrouillage/masquage et la réception seule (fonctions avancées).
   const estAgent = (typeof _currentUser !== 'undefined') && _currentUser && _currentUser.role === 'agent';

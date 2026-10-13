@@ -460,6 +460,12 @@ async function renderHistory(forceRefresh) {
     }
   }
 
+  // ✅ v13.231 — Resynchroniser la barre d'actions groupées avec le rôle courant
+  // à chaque rendu. Sinon, en atterrissant directement sur l'historique (nouveau
+  // défaut de l'agent), les boutons réservés (ex. caisse noire) gardaient l'état
+  // par défaut du HTML au lieu d'être masqués selon le rôle.
+  if (typeof updateBulkToolbar === 'function') updateBulkToolbar();
+
   if (!filtered.length) {
     const hasFilters = (document.getElementById('search-input')?.value||'').trim()
       || document.getElementById('filter-type')?.value
