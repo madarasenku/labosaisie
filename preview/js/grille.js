@@ -495,6 +495,8 @@ function grilleDossiers() {
     if (!_grilleInclureReception && r.resultats && r.resultats._reception_seule) return false;
     if (_grilleDate && _dateDossier(r) !== _grilleDate) return false;
     if (!grilleExamsDuDossier(r).length) return false;
+    // ✅ « Résultats à saisir » : on ne garde que les dossiers de la catégorie choisie.
+    if (_grilleModeASaisir) return grilleClesAffichees(r).length > 0;
     return _grilleInclureSaisis ? true : grilleExamsRestants(r).length > 0;
   });
 }
@@ -510,8 +512,225 @@ function grillePendingNFS() { return grillePending('nfs'); }
 // Colonnes affichées = union des examens demandés par les patients listés.
 function grilleColonnes(dossiers) {
   const vus = new Set();
-  dossiers.forEach(r => grilleExamsDuDossier(r).forEach(k => vus.add(k)));
+  dossiers.forEach(r => (_grilleModeASaisir ? grilleClesAffichees(r) : grilleExamsDuDossier(r)).forEach(k => vus.add(k)));
   return GRILLE_ORDRE.filter(k => vus.has(k));
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  « RÉSULTATS À SAISIR » — un seul écran, ouvert depuis l'Historique, pour
+//  les dossiers dont le résultat arrive APRÈS l'enregistrement :
+//    • 🤰 BPN              → tous les composants du bilan, côte à côte
+//    • 🧬 Électrophorèse   → profils rendus par le labo externe
+//    • 📦 Sous-traités     → tous les examens envoyés dehors
+//  Il réutilise la grille (mêmes cases, même enregistrement atomique, même
+//  passage automatique à « Terminé »). En plus : TOUTES les dates (un résultat
+//  sous-traité revient des jours plus tard) et un accès au formulaire complet
+//  pour ce que la grille ne gère pas (cultures, comptes rendus texte).
+// ══════════════════════════════════════════════════════════════════════
+let _grilleModeASaisir = false;
+let _grilleCategorie = '';      // '' = toutes | 'bpn' | 'electro' | 'st'
+let _grilleRetourVue = '';      // vue à rouvrir en quittant (ex. 'historique')
+let _grilleHorsListe = [];      // dossiers à saisir sur le formulaire complet (vérifiés)
+let _grilleHorsEnCours = false; // vérification asynchrone en cours
+
+// Examens envoyés en sous-traitance (identifiants du catalogue).
+const GRILLE_ST_EX = new Set([
+  // Hormones, marqueurs, vitamines
+  'ex_tsh','ex_ft4','ex_psa','ex_cort','ex_acth','ex_lh','ex_fsh','ex_e2','ex_prog','ex_test','ex_prl',
+  'ex_amh','ex_pth','ex_bhcg','ex_vitd','ex_b12','ex_fol','ex_fer','ex_ferr','ex_zinc','ex_cuiv',
+  // Cardiaques, infection, hémostase
+  'ex_trop','ex_bnp','ex_ck','ex_ckmb','ex_myog','ex_pct','ex_ddim','ex_fibr','ex_tp','ex_tca',
+  // Bactériologie
+  'ex_ecbu','ex_hemo','ex_copro','ex_pg','ex_pus',
+  // HbA1c, RAI, microalbuminurie…
+  'ex_hba1c','ex_rai','ex_malb','ex_hbsac','ex_hbcac','ex_ldh','ex_amy','ex_lip',
+]);
+function grilleEstSousTraite(k) { const c = GRILLE_EXAMS[k]; return !!c && GRILLE_ST_EX.has(c.exId); }
+
+// Examens (clés de la grille) d'un dossier qui relèvent d'une catégorie.
+//   restantsSeulement : ignore l'option « déjà saisis » (compteurs, pastille).
+function grilleClesCategorie(r, cat, restantsSeulement) {
+  const liste = (restantsSeulement || !_grilleInclureSaisis) ? grilleExamsRestants(r) : grilleExamsDuDossier(r);
+  if (cat === 'bpn')     return (typeof estBPN === 'function' && estBPN(r)) ? liste : [];
+  if (cat === 'electro') return liste.filter(k => k === 'ephb');
+  if (cat === 'st')      return liste.filter(grilleEstSousTraite);
+  return [];
+}
+// Examens affichés pour un dossier dans l'écran « Résultats à saisir ».
+function grilleClesAffichees(r) {
+  if (_grilleCategorie) return grilleClesCategorie(r, _grilleCategorie);
+  const u = new Set([].concat(grilleClesCategorie(r, 'bpn'), grilleClesCategorie(r, 'electro'), grilleClesCategorie(r, 'st')));
+  return GRILLE_ORDRE.filter(k => u.has(k));
+}
+// Y a-t-il une valeur saisie quelque part dans cet objet de résultats ?
+function _grilleAUneValeur(o) {
+  if (o == null) return false;
+  if (typeof o === 'string') return o.trim() !== '';
+  if (typeof o === 'number') return true;
+  if (Array.isArray(o)) return o.some(_grilleAUneValeur);
+  if (typeof o === 'object') return Object.keys(o).some(k => k.charAt(0) !== '_' && _grilleAUneValeur(o[k]));
+  return false;
+}
+// Examens que la grille NE gère PAS (cultures, parasitologie des selles, RAI…) et pas
+// encore marqués saisis. `st` = envoyé en sous-traitance. Ils se saisissent sur le
+// formulaire complet : sans cette liste, ils n'auraient plus aucun chemin de saisie.
+function grilleHorsSerie(r) {
+  const coches = (r.resultats && r.resultats._examens_coches) || {};
+  const liste = Array.isArray(coches) ? coches : [].concat.apply([], Object.keys(coches).map(t => coches[t] || []));
+  const faits = (r.resultats && r.resultats._st_fait) || {};
+  const couverts = grilleExamsDuDossier(r).map(k => GRILLE_EXAMS[k]);
+  const cat = (typeof CATALOGUE_EXAMENS !== 'undefined') ? CATALOGUE_EXAMENS : [];
+  const out = [];
+  liste.forEach(label => {
+    const ex = cat.find(e => e.label === label);
+    if (!ex || /forfait/i.test(ex.label) || faits[ex.id]) return;     // le forfait n'est pas un examen à saisir
+    if (couverts.some(cfg => cfg.coche.test(label))) return;          // la grille s'en charge
+    out.push({ id: ex.id, label: ex.label, tab: ex.tab, st: GRILLE_ST_EX.has(ex.id) });
+  });
+  return out;
+}
+// Dossiers récents (30 jours) qui ont des examens hors grille — candidats à vérifier.
+function _grilleHorsCandidats() {
+  const d = new Date(); d.setDate(d.getDate() - 30);
+  const pad = n => String(n).padStart(2, '0');
+  const limite = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  return grilleSourceDB().filter(r => isDossierRecord(r) && !r.deletedAt && !r._hardDeleted
+      && !(r.resultats && r.resultats._reception_seule) && _dateDossier(r) >= limite)
+    .map(r => ({ r, ex: grilleHorsSerie(r) })).filter(x => x.ex.length);
+}
+// Vérifie sur le dossier COMPLET (la liste légère n'a pas les résultats) que la
+// culture n'est pas déjà saisie ; ne garde que ce qui reste vraiment à faire.
+async function grilleVerifierHorsSerie() {
+  if (_grilleHorsEnCours) return;
+  _grilleHorsEnCours = true;
+  try {
+    const cand = _grilleHorsCandidats();
+    const out = [];
+    for (let i = 0; i < cand.length; i += 6) {
+      await Promise.all(cand.slice(i, i + 6).map(async x => {
+        try { if (typeof ensureFull === 'function') await ensureFull(x.r); } catch (e) {}
+        const res = x.r.resultats || {};
+        const reste = x.ex.filter(e => {
+          if (e.tab === 'bacterio') return !_grilleAUneValeur(res['Bactériologie']);
+          if (e.tab === 'parasito') return !_grilleAUneValeur(res['Parasitologie']);
+          return true;      // autres (RAI…) : à marquer « déjà saisi » à la main
+        });
+        if (reste.length) out.push({ id: x.r.id, nom: (x.r.patient && x.r.patient.nom) || '—',
+          dossier: (x.r.patient && x.r.patient.dossier) || '', exams: reste });
+      }));
+    }
+    _grilleHorsListe = out;
+  } finally { _grilleHorsEnCours = false; }
+  if (_grilleModeASaisir) grilleRender();
+}
+// Compteurs des pastilles (sur les mêmes dossiers que la grille, toutes catégories).
+function _grilleBaseASaisir(r) {
+  return isDossierRecord(r) && !r.deletedAt && !r._hardDeleted
+    && !(!_grilleInclureReception && r.resultats && r.resultats._reception_seule)
+    && (!_grilleDate || _dateDossier(r) === _grilleDate);
+}
+function grilleCompteurs() {
+  _grilleEnsureAuto();
+  const c = { tous: 0, bpn: 0, electro: 0, st: 0 };
+  grilleSourceDB().forEach(r => {
+    if (!_grilleBaseASaisir(r)) return;
+    const b = grilleClesCategorie(r, 'bpn', true).length > 0;
+    const e = grilleClesCategorie(r, 'electro', true).length > 0;
+    const t = grilleClesCategorie(r, 'st', true).length > 0;
+    if (b) c.bpn++; if (e) c.electro++; if (t) c.st++;
+    if (b || e || t) c.tous++;
+  });
+  // Cultures / hors grille (déjà vérifiées) : comptées avec les sous-traités.
+  _grilleHorsListe.forEach(h => {
+    const r = _grilleDossier(h.id);
+    const dejaSt = !!r && grilleClesCategorie(r, 'st', true).length > 0;
+    const dejaAutre = !!r && (grilleClesCategorie(r, 'bpn', true).length > 0 || grilleClesCategorie(r, 'electro', true).length > 0);
+    if (!dejaSt && h.exams.some(e => e.st)) c.st++;
+    if (!dejaSt && !dejaAutre) c.tous++;
+  });
+  return c;
+}
+// Nombre affiché sur le bouton de l'Historique (dossiers à saisir, toutes dates).
+function grilleCompteASaisir() {
+  const sv = [_grilleDate, _grilleInclureReception];
+  _grilleDate = ''; _grilleInclureReception = false;
+  try { return grilleCompteurs().tous; } finally { _grilleDate = sv[0]; _grilleInclureReception = sv[1]; }
+}
+
+function grilleSetCategorie(cat) { _grilleCategorie = cat || ''; grilleRender(); }
+
+// Ouvre l'écran depuis l'Historique : toutes les dates, rien d'autre à régler.
+async function ouvrirResultatsASaisir(cat) {
+  if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
+  _grilleModeASaisir = true;
+  _grilleCategorie = cat || '';
+  _grilleRetourVue = 'historique';
+  _grilleDate = '';                 // un résultat sous-traité revient des jours plus tard
+  _grilleInclureSaisis = false;
+  _grilleInclureReception = false;
+  _grilleHorsListe = [];
+  try { if (typeof showView === 'function') showView('saisie'); } catch (e) {}
+  await ouvrirGrille(_grilleKey, { aSaisir: true });
+  grilleVerifierHorsSerie();        // cultures : vérifiées en arrière-plan, puis réaffichées
+}
+
+// Formulaire complet pour un dossier hors grille (culture…).
+async function grilleOuvrirComplet(id) {
+  const cont = document.getElementById('grille-serie'); if (cont) cont.style.display = 'none';
+  _grilleModeASaisir = false; _grilleCategorie = ''; _grilleRetourVue = ''; _grilleDate = null;
+  try { if (typeof showView === 'function') showView('saisie'); } catch (e) {}
+  if (typeof fillAllResults === 'function') await fillAllResults(id);
+}
+// Marque un examen hors grille comme déjà saisi (retire le dossier de la liste).
+async function grilleMarquerFait(id, exId) {
+  const rec = _grilleDossier(id); if (!rec) return;
+  try { if (typeof ensureFull === 'function') await ensureFull(rec); } catch (e) {}
+  if (rec._light) { toast('Impossible hors-ligne — réessayez connecté', 'err'); return; }
+  const faits = Object.assign({}, (rec.resultats && rec.resultats._st_fait) || {}, { [exId]: true });
+  rec.resultats = Object.assign({}, rec.resultats || {}, { _st_fait: faits });
+  const ok = await updateRecordRemote(id, rec, { onlyResultats: true });
+  if (ok) {
+    _grilleHorsListe = _grilleHorsListe.map(h => h.id !== id ? h : Object.assign({}, h, { exams: h.exams.filter(e => e.id !== exId) }))
+      .filter(h => h.exams.length);
+    toast('✓ Marqué comme saisi', 'ok');
+    grilleRender();
+  }
+}
+// Bloc « formulaire complet » sous la grille.
+function _grilleHorsHtml() {
+  if (!_grilleModeASaisir || (_grilleCategorie && _grilleCategorie !== 'st')) return '';
+  if (_grilleHorsEnCours && !_grilleHorsListe.length) {
+    return '<div style="margin-top:14px;font-size:12px;color:var(--text-muted)">🦠 Vérification des cultures…</div>';
+  }
+  const vus = _grilleHorsListe
+    .map(h => Object.assign({}, h, { exams: _grilleCategorie === 'st' ? h.exams.filter(e => e.st) : h.exams }))
+    .filter(h => h.exams.length);
+  if (!vus.length) return '';
+  const lignes = vus.map(h =>
+    '<tr data-hors="' + h.id + '"><td style="padding:6px 10px;font-weight:600">' + esc(h.nom)
+    + '<div style="font-size:10.5px;color:var(--text-muted);font-weight:500">N° ' + esc(h.dossier) + '</div></td>'
+    + '<td style="padding:6px 10px">' + h.exams.map(e => esc(e.label)).join(' · ') + '</td>'
+    + '<td style="padding:6px 10px;text-align:right;white-space:nowrap">'
+    + '<button class="btn btn-primary" style="font-size:12px;padding:5px 11px" onclick="grilleOuvrirComplet(' + h.id + ')">↗ Saisir</button> '
+    + h.exams.map(e => '<button class="btn btn-outline" style="font-size:11.5px;padding:4px 9px" title="Retirer de la liste : ' + esc(e.label) + ' est déjà saisi" '
+        + 'onclick="grilleMarquerFait(' + h.id + ',\'' + e.id + '\')">✓ Déjà saisi</button>').join(' ')
+    + '</td></tr>').join('');
+  return '<div id="grille-hors" style="margin-top:16px;border:1px solid #fde68a;background:#fffbeb;border-radius:var(--radius);padding:10px 12px">'
+    + '<div style="font-weight:800;font-size:13px;color:#92400e;margin-bottom:6px">🦠 À saisir sur le formulaire complet (' + vus.length + ')</div>'
+    + '<div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px">Cultures, parasitologie des selles, RAI… : examens à compte rendu libre que la grille ne gère pas.</div>'
+    + '<table style="width:100%;font-size:12.5px;border-collapse:collapse"><tbody>' + lignes + '</tbody></table></div>';
+}
+// Pastilles de catégorie.
+function _grilleChipsHtml() {
+  if (!_grilleModeASaisir) return '';
+  const c = grilleCompteurs();
+  const chip = (cat, lab, n) =>
+    '<button class="btn ' + (_grilleCategorie === cat ? 'btn-primary' : 'btn-outline') + '" data-cat="' + cat + '" '
+    + 'style="font-size:12.5px;padding:6px 13px" onclick="grilleSetCategorie(\'' + cat + '\')">' + lab
+    + ' <span style="opacity:.8;font-weight:700">' + n + '</span></button>';
+  return '<div id="grille-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+    + chip('', 'Tout', c.tous) + chip('bpn', '🤰 BPN', c.bpn)
+    + chip('electro', '🧬 Électrophorèse', c.electro) + chip('st', '📦 Sous-traités', c.st) + '</div>';
 }
 
 // Jour LOCAL (YYYY-MM-DD). ⚠ NE PAS utiliser toISOString() : il renvoie la date
@@ -523,8 +742,13 @@ function _grilleJourLocal() {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
 }
 
-async function ouvrirGrille(key) {
+async function ouvrirGrille(key, opts) {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
+  // Toute entrée AUTRE que « Résultats à saisir » quitte ce mode (et la date « toutes »).
+  if (!(opts && opts.aSaisir)) {
+    if (_grilleModeASaisir && _grilleDate === '') _grilleDate = null;
+    _grilleModeASaisir = false; _grilleCategorie = ''; _grilleRetourVue = '';
+  }
   _grilleFocusId = null;   // entrée normale : liste complète (pas de dossier ciblé)
   if (key && GRILLE_EXAMS[key]) _grilleKey = key;
   if (_grilleDate === null) {
@@ -579,10 +803,17 @@ async function ouvrirGrilleDossier(id) {
 }
 function fermerGrille() {
   _grilleFocusId = null;
+  const retour = _grilleRetourVue;
+  if (_grilleModeASaisir) {                // quitter « Résultats à saisir »
+    if (_grilleDate === '') _grilleDate = null;   // la prochaine grille reprend « aujourd'hui »
+    _grilleModeASaisir = false; _grilleCategorie = ''; _grilleRetourVue = '';
+  }
   const cont = document.getElementById('grille-serie');
   if (cont) cont.style.display = 'none';
   const fiche = document.getElementById('fiche-identification');
   if (fiche) fiche.style.display = '';
+  // Retour là où l'on était (l'Historique), au lieu de laisser sur « Nouvelle saisie ».
+  if (retour && typeof showView === 'function') { try { showView(retour); } catch (e) {} }
 }
 function grilleSetDate(v) { _grilleDate = v || ''; grilleRender(); }
 function grilleToggleReception(on) { _grilleInclureReception = !!on; grilleRender(); }
@@ -678,7 +909,7 @@ function grilleRender() {
 
   const entete = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px">'
     + '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
-    + '<span style="font-size:15px;font-weight:800;color:var(--cpmi-deep)">📋 Saisie en série</span>'
+    + '<span style="font-size:15px;font-weight:800;color:var(--cpmi-deep)">' + (_grilleModeASaisir ? '📥 Résultats à saisir' : '📋 Saisie en série') + '</span>'
     + '<span style="font-size:13px;color:var(--text-muted)">' + doss.length + ' patient(s) · '
     + '<span id="grille-selcount" style="font-weight:700;color:var(--cpmi-deep)">0</span> coché(s)</span></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -687,17 +918,19 @@ function grilleRender() {
         ? '<button class="btn btn-outline" style="font-size:13px;padding:9px 14px" onclick="grilleImprimerLot()">🖨️ Imprimer le lot (' + _grilleDernierLot.length + ')</button>' : '')
     + '<button class="btn btn-outline" style="font-size:13px;padding:9px 14px;border-color:#15803d;color:#15803d" onclick="grilleSaveAndPrint()">💾🖨️ Enreg. + Imprimer</button>'
     + '<button id="grille-save" class="btn btn-primary" style="font-size:14px;padding:9px 20px" onclick="grilleSaveAll()">💾 Enregistrer les cochés</button>'
-    + '</div></div><div style="margin-bottom:12px">' + filtres + '</div>';
+    + '</div></div>' + _grilleChipsHtml() + '<div style="margin-bottom:12px">' + filtres + '</div>';
 
   if (!doss.length) {
     const videMsg = _grilleFocusId != null
       ? 'Ce dossier n\'a pas d\'examen modifiable en saisie en série.<br>'
         + '<span style="font-size:12px">Les examens à saisie libre (cultures, comptes rendus texte…) ne sont pas gérés ici.</span>'
-      : 'Aucun patient à saisir ' + (_grilleDate ? 'pour le ' + esc(_grilleDate) : '(toutes dates)') + '.<br>'
-        + '<span style="font-size:12px">Change la date, choisis « Toutes les dates », ou coche « déjà saisis » pour corriger.</span>';
+      : (_grilleModeASaisir
+          ? '🎉 Rien à saisir dans cette catégorie.<br><span style="font-size:12px">Tous les résultats en attente ont été saisis.</span>'
+          : 'Aucun patient à saisir ' + (_grilleDate ? 'pour le ' + esc(_grilleDate) : '(toutes dates)') + '.<br>'
+            + '<span style="font-size:12px">Change la date, choisis « Toutes les dates », ou coche « déjà saisis » pour corriger.</span>');
     cont.innerHTML = entete + focusBanner
       + '<div style="padding:24px;text-align:center;color:var(--text-muted);background:rgba(255,255,255,.7);border:1px dashed var(--border);border-radius:var(--radius)">'
-      + videMsg + '</div>';
+      + videMsg + '</div>' + _grilleHorsHtml();
     grilleUpdateSelCount();
     return;
   }
@@ -770,7 +1003,8 @@ function grilleRender() {
     //   rester collés en haut.
     + '<div id="grille-scroll" style="overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:var(--radius)">'
     + '<table style="border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px"><thead>'
-    + '<tr>' + h1 + '</tr><tr>' + h2 + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+    + '<tr>' + h1 + '</tr><tr>' + h2 + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + _grilleHorsHtml();
   grilleUpdateHint();
   grilleUpdateSelCount();
   // ✅ v13.150 — Décale la 2ᵉ ligne d'en-tête juste sous la 1ʳᵉ (hauteur mesurée).
