@@ -61,6 +61,11 @@ let _filterVerrouillees = false;
 
 // ✅ v13.128 — Jour d'un dossier verrouillé ? (pour la vue spectateur)
 function _jourDeDossier(r) {
+  // ✅ Journée de SERVICE (une garde = une journée), comme jour_dossier() côté base.
+  if (typeof posteInfoDossier === 'function') {
+    const j = posteInfoDossier(r).jour;
+    if (j) return j;
+  }
   return (r.patient && r.patient.date) || String(r.savedAt || r.created_at || r.createdAt || '').slice(0, 10);
 }
 function _jourDossierVerrouille(r) {

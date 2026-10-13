@@ -85,9 +85,9 @@ function showView(v) {
     // ✅ v13.72 — le bandeau de navigation doit refléter la période active
     // dès l'ouverture de l'onglet, sinon le libellé reste vide.
     if (typeof majNavPeriode === 'function') majNavPeriode();
-    // ✅ v13.210 — Préremplir la date du bouton « Imprimer le registre » (aujourd'hui).
+    // ✅ v13.210 — Préremplir la date du bouton « Imprimer le registre » (journée de service en cours).
     const _hrd = document.getElementById('hist-registre-date');
-    if (_hrd && !_hrd.value && typeof _jourLocal === 'function') _hrd.value = _jourLocal();
+    if (_hrd && !_hrd.value && typeof _jourServiceCourant === 'function') _hrd.value = _jourServiceCourant();
     renderHistory(true);
     // ✅ v13.171 — Liste des électrophorèses de la semaine : réservée à l'ADMIN.
     const _ec = document.getElementById('electro-card');
