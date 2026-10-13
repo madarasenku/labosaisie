@@ -496,7 +496,7 @@ function grilleDossiers() {
     if (_grilleDate && _dateDossier(r) !== _grilleDate) return false;
     if (!grilleExamsDuDossier(r).length) return false;
     // ✅ « Résultats à saisir » : on ne garde que les dossiers de la catégorie choisie.
-    if (_grilleModeASaisir) return grilleClesAffichees(r).length > 0;
+    if (_grilleModeASaisir) return _grilleDansSemaine(r) && grilleClesAffichees(r).length > 0;
     return _grilleInclureSaisis ? true : grilleExamsRestants(r).length > 0;
   });
 }
@@ -532,6 +532,46 @@ let _grilleCategorie = '';      // '' = toutes | 'bpn' | 'electro' | 'st'
 let _grilleRetourVue = '';      // vue à rouvrir en quittant (ex. 'historique')
 let _grilleHorsListe = [];      // dossiers à saisir sur le formulaire complet (vérifiés)
 let _grilleHorsEnCours = false; // vérification asynchrone en cours
+// ✅ v13.233 — Par SEMAINE (lundi → dimanche). null = semaine en cours.
+let _grilleSemaineRef = null;
+let _grilleToutesSemaines = false;
+
+function _grilleYmd(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+function _grilleBornesSemaine() {
+  const x = _grilleSemaineRef ? new Date(_grilleSemaineRef) : new Date();
+  x.setHours(12, 0, 0, 0);
+  const j = x.getDay();                       // dimanche = 0
+  x.setDate(x.getDate() - (j === 0 ? 6 : j - 1));
+  const lundi = new Date(x), dim = new Date(x); dim.setDate(dim.getDate() + 6);
+  return { lundi, dim, du: _grilleYmd(lundi), au: _grilleYmd(dim) };
+}
+// Le dossier tombe-t-il dans la semaine affichée ? (toujours vrai hors « à saisir »)
+function _grilleDansSemaine(r) {
+  if (!_grilleModeASaisir || _grilleToutesSemaines) return true;
+  const b = _grilleBornesSemaine(), d = _dateDossier(r);
+  return d >= b.du && d <= b.au;
+}
+function _grilleLibelleSemaine(b) {
+  const d1 = b.lundi.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  const d2 = b.dim.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return 'Semaine du lundi ' + d1 + ' au dimanche ' + d2;
+}
+function grilleSemaineDecaler(n) {
+  const b = _grilleBornesSemaine(); b.lundi.setDate(b.lundi.getDate() + 7 * n);
+  _grilleSemaineRef = b.lundi; _grilleToutesSemaines = false;
+  _grilleHorsListe = []; grilleRender(); grilleVerifierHorsSerie();
+}
+function grilleSemaineCourante() {
+  _grilleSemaineRef = null; _grilleToutesSemaines = false;
+  _grilleHorsListe = []; grilleRender(); grilleVerifierHorsSerie();
+}
+function grilleToggleToutesSemaines(on) {
+  _grilleToutesSemaines = !!on;
+  _grilleHorsListe = []; grilleRender(); grilleVerifierHorsSerie();
+}
 
 // Examens envoyés en sous-traitance (identifiants du catalogue).
 const GRILLE_ST_EX = new Set([
@@ -592,10 +632,10 @@ function grilleHorsSerie(r) {
 // Dossiers récents (30 jours) qui ont des examens hors grille — candidats à vérifier.
 function _grilleHorsCandidats() {
   const d = new Date(); d.setDate(d.getDate() - 30);
-  const pad = n => String(n).padStart(2, '0');
-  const limite = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const limite = _grilleYmd(d);
+  const garder = r => (_grilleModeASaisir && !_grilleToutesSemaines) ? _grilleDansSemaine(r) : _dateDossier(r) >= limite;
   return grilleSourceDB().filter(r => isDossierRecord(r) && !r.deletedAt && !r._hardDeleted
-      && !(r.resultats && r.resultats._reception_seule) && _dateDossier(r) >= limite)
+      && !(r.resultats && r.resultats._reception_seule) && garder(r))
     .map(r => ({ r, ex: grilleHorsSerie(r) })).filter(x => x.ex.length);
 }
 // Vérifie sur le dossier COMPLET (la liste légère n'a pas les résultats) que la
@@ -627,7 +667,8 @@ async function grilleVerifierHorsSerie() {
 function _grilleBaseASaisir(r) {
   return isDossierRecord(r) && !r.deletedAt && !r._hardDeleted
     && !(!_grilleInclureReception && r.resultats && r.resultats._reception_seule)
-    && (!_grilleDate || _dateDossier(r) === _grilleDate);
+    && (!_grilleDate || _dateDossier(r) === _grilleDate)
+    && _grilleDansSemaine(r);
 }
 function grilleCompteurs() {
   _grilleEnsureAuto();
@@ -650,11 +691,27 @@ function grilleCompteurs() {
   });
   return c;
 }
+// Dossiers en attente AVANT la semaine affichée (grille seulement).
+function grilleEnAttenteAvant() {
+  if (!_grilleModeASaisir || _grilleToutesSemaines) return 0;
+  const du = _grilleBornesSemaine().du;
+  let n = 0;
+  grilleSourceDB().forEach(r => {
+    if (!isDossierRecord(r) || r.deletedAt || r._hardDeleted) return;
+    if (r.resultats && r.resultats._reception_seule) return;
+    if (_dateDossier(r) >= du) return;
+    if (grilleClesCategorie(r, 'bpn', true).length || grilleClesCategorie(r, 'electro', true).length
+        || grilleClesCategorie(r, 'st', true).length) n++;
+  });
+  return n;
+}
 // Nombre affiché sur le bouton de l'Historique (dossiers à saisir, toutes dates).
 function grilleCompteASaisir() {
-  const sv = [_grilleDate, _grilleInclureReception];
-  _grilleDate = ''; _grilleInclureReception = false;
-  try { return grilleCompteurs().tous; } finally { _grilleDate = sv[0]; _grilleInclureReception = sv[1]; }
+  const sv = [_grilleDate, _grilleInclureReception, _grilleToutesSemaines, _grilleHorsListe];
+  _grilleDate = ''; _grilleInclureReception = false; _grilleToutesSemaines = true;
+  if (!_grilleModeASaisir) _grilleHorsListe = [];
+  try { return grilleCompteurs().tous; }
+  finally { _grilleDate = sv[0]; _grilleInclureReception = sv[1]; _grilleToutesSemaines = sv[2]; _grilleHorsListe = sv[3]; }
 }
 
 function grilleSetCategorie(cat) { _grilleCategorie = cat || ''; grilleRender(); }
@@ -669,6 +726,8 @@ async function ouvrirResultatsASaisir(cat) {
   _grilleInclureSaisis = false;
   _grilleInclureReception = false;
   _grilleHorsListe = [];
+  _grilleSemaineRef = null;         // semaine en cours
+  _grilleToutesSemaines = false;
   try { if (typeof showView === 'function') showView('saisie'); } catch (e) {}
   await ouvrirGrille(_grilleKey, { aSaisir: true });
   grilleVerifierHorsSerie();        // cultures : vérifiées en arrière-plan, puis réaffichées
@@ -728,7 +787,24 @@ function _grilleChipsHtml() {
     '<button class="btn ' + (_grilleCategorie === cat ? 'btn-primary' : 'btn-outline') + '" data-cat="' + cat + '" '
     + 'style="font-size:12.5px;padding:6px 13px" onclick="grilleSetCategorie(\'' + cat + '\')">' + lab
     + ' <span style="opacity:.8;font-weight:700">' + n + '</span></button>';
-  return '<div id="grille-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+  const b = _grilleBornesSemaine();
+  const courante = b.du <= _grilleYmd(new Date()) && _grilleYmd(new Date()) <= b.au;
+  const avant = grilleEnAttenteAvant();
+  const nav = '<div id="grille-semaine" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+    + (_grilleToutesSemaines
+        ? '<span style="font-weight:800;font-size:13.5px;color:var(--cpmi-deep)">📅 Toutes les semaines</span>'
+          + '<button class="btn btn-outline" style="font-size:12px;padding:4px 10px" onclick="grilleToggleToutesSemaines(false)">Par semaine</button>'
+        : '<button class="btn btn-outline" style="font-size:13px;padding:4px 11px" title="Semaine précédente" onclick="grilleSemaineDecaler(-1)">◀</button>'
+          + '<span id="grille-semaine-label" style="font-weight:800;font-size:13.5px;color:var(--cpmi-deep);min-width:250px;text-align:center">📅 ' + esc(_grilleLibelleSemaine(b)) + '</span>'
+          + '<button class="btn btn-outline" style="font-size:13px;padding:4px 11px" title="Semaine suivante" onclick="grilleSemaineDecaler(1)">▶</button>'
+          + (courante ? '' : '<button class="btn btn-outline" style="font-size:12px;padding:4px 10px" onclick="grilleSemaineCourante()">Cette semaine</button>')
+          + '<button class="btn btn-outline" style="font-size:12px;padding:4px 10px" onclick="grilleToggleToutesSemaines(true)">Toutes les semaines</button>')
+    + '</div>'
+    + (avant ? '<div id="grille-avant" style="margin:-2px 0 10px;font-size:12.5px;color:#b45309;font-weight:600">⚠ '
+        + avant + ' dossier(s) encore en attente les semaines précédentes — '
+        + '<a href="#" onclick="grilleSemaineDecaler(-1);return false" style="color:#b45309">voir la semaine précédente</a> · '
+        + '<a href="#" onclick="grilleToggleToutesSemaines(true);return false" style="color:#b45309">tout voir</a></div>' : '');
+  return nav + '<div id="grille-chips" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
     + chip('', 'Tout', c.tous) + chip('bpn', '🤰 BPN', c.bpn)
     + chip('electro', '🧬 Électrophorèse', c.electro) + chip('st', '📦 Sous-traités', c.st) + '</div>';
 }
@@ -894,10 +970,11 @@ function grilleRender() {
   }
 
   const filtres = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted)">'
-    + '<label style="display:flex;align-items:center;gap:5px">📅 Date '
+    // « Résultats à saisir » se navigue par semaine : le filtre date n'y a pas sa place.
+    + (_grilleModeASaisir ? '' : '<label style="display:flex;align-items:center;gap:5px">📅 Date '
     + '<input type="date" id="grille-date" value="' + esc(_grilleDate || '') + '" onchange="grilleSetDate(this.value)" '
     + 'style="padding:5px 8px;border:1px solid var(--border);border-radius:8px;font-size:12.5px"></label>'
-    + (_grilleDate ? '<button class="btn btn-outline" style="font-size:11.5px;padding:3px 8px" onclick="grilleSetDate(\'\')">Toutes les dates</button>' : '')
+    + (_grilleDate ? '<button class="btn btn-outline" style="font-size:11.5px;padding:3px 8px" onclick="grilleSetDate(\'\')">Toutes les dates</button>' : ''))
     + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Afficher aussi les patients « réception seule »">'
     + '<input type="checkbox"' + (_grilleInclureReception ? ' checked' : '') + ' onchange="grilleToggleReception(this.checked)" style="width:15px;height:15px"> réception seule</label>'
     + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Réafficher les examens déjà saisis pour les corriger">'
