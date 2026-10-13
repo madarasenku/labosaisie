@@ -1276,13 +1276,19 @@ function startTokenRefresh() {
     if (!TK()) return;
     try {
       const { data, error } = await _sb.rpc('refresh_token', { p_token: TK() });
-      if (error || !data?.token) {
+      // ✅ v13.236 — Une ERREUR (réseau, serveur) ne déconnecte plus : on réessaie
+      //   au tour suivant. Avant, la fonction serveur était en panne (« token
+      //   ambiguous ») et chaque tentative, toutes les 20 min, déconnectait l'agent.
+      //   Seul un refus explicite du serveur (session inconnue/expirée) déconnecte.
+      if (error) { console.warn('[LaboSaisie] refresh_token:', error.message || error); return; }
+      const tok = Array.isArray(data) ? (data[0] && data[0].token) : (data && data.token);
+      if (!tok) {
         clearInterval(_tokenRefreshInterval);
         toast('⏱ Session expirée — reconnexion requise', 'error');
         setTimeout(() => { doLogout(); }, 2000);
         return;
       }
-      setToken(data.token);
+      setToken(tok);
     } catch (e) { console.warn('[LaboSaisie] refresh_token:', e); }
   }, 20 * 60 * 1000); // toutes les 20 minutes
 }
