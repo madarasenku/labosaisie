@@ -1309,12 +1309,23 @@ async function grilleSaveAndPrint() {
 // Impression des comptes rendus du dernier lot enregistré.
 async function grilleImprimerLot() {
   if (!_grilleDernierLot.length) { toast('Aucun lot récent à imprimer', 'err'); return; }
+  const db = grilleSourceDB();   // ✅ v13.148 — inclut les fiches masquées saisies
+  await imprimerDossiersEnLot(_grilleDernierLot, id => db.find(x => String(x.id) === String(id)));
+}
+
+// ✅ v13.235 — Impression GROUPÉE (comptes rendus de plusieurs dossiers, un par page),
+//   commune à la saisie en série (« Imprimer le lot ») et à l'Historique (dossiers
+//   cochés). Mêmes règles que l'impression d'un seul dossier :
+//     • pas d'impression d'un dossier NON ENCAISSÉ (sauf administrateur, informé) ;
+//     • les dossiers sans aucun résultat sont écartés (rien à remettre au patient).
+async function imprimerDossiersEnLot(ids, trouver) {
   if (typeof printLot !== 'function') { toast('Impression indisponible', 'err'); return; }
+  if (!ids || !ids.length) { toast('Aucun dossier à imprimer', 'err'); return; }
   showLoading('Préparation de l\'impression…');
   try {
-    const db = grilleSourceDB(); const records = []; let nonCharges = 0; // ✅ v13.148 — inclut les fiches masquées saisies
-    for (const id of _grilleDernierLot) {
-      const rec = db.find(x => String(x.id) === String(id));
+    const records = []; let nonCharges = 0;
+    for (const id of ids) {
+      const rec = trouver(id);
       if (!rec) continue;
       try { await ensureFull(rec); } catch (e) {}
       if (rec._light) { nonCharges++; continue; }
@@ -1324,27 +1335,37 @@ async function grilleImprimerLot() {
     if (!records.length) { toast(nonCharges ? 'Impression impossible hors-ligne' : 'Dossiers introuvables', 'err'); return; }
     if (nonCharges) toast('⚠️ ' + nonCharges + ' fiche(s) ignorée(s) (hors-ligne)', 'err');
 
+    // Dossiers sans aucun résultat saisi : rien à imprimer.
+    const avecResultat = records.filter(r => {
+      const res = r.resultats || {};
+      return Object.keys(res).some(k => k.charAt(0) !== '_' && _grilleAUneValeur(res[k]));
+    });
+    const vides = records.length - avecResultat.length;
+    if (!avecResultat.length) { toast('Aucun des dossiers choisis n\'a de résultat saisi', 'err'); return; }
+
     // ✅ v13.210 — VERROU : pas d'impression EN SÉRIE sans encaissement.
-    //   Imprimer le lot juste après la saisie, sans passer par la caisse, était
-    //   une faille (résultat remis sans paiement). On n'imprime donc en série que
-    //   les dossiers ENCAISSÉS. L'administrateur garde la main (réimpression,
-    //   corrections) et imprime tout, mais en est informé.
+    //   Imprimer le lot sans passer par la caisse était une faille (résultat remis
+    //   sans paiement). On n'imprime en série que les dossiers ENCAISSÉS.
+    //   L'administrateur garde la main (réimpression, corrections), informé.
     const _estPaye = r => (typeof getPaiementStatus === 'function' && getPaiementStatus(r.id) === 'paye')
                        || !!(r.patient && r.patient.paiement_status === 'paye');
     const _admin = typeof isAdmin === 'function' && isAdmin();
+    let aImprimer = avecResultat;
+    const notes = [];
+    if (vides) notes.push(vides + ' sans résultat');
     if (!_admin) {
-      const payes = records.filter(_estPaye);
-      const exclus = records.length - payes.length;
-      if (!payes.length) {
-        toast('🔒 Impression en série bloquée : encaissez d\'abord les dossiers (caisse).', 'err');
+      aImprimer = avecResultat.filter(_estPaye);
+      const exclus = avecResultat.length - aImprimer.length;
+      if (!aImprimer.length) {
+        toast('🔒 Impression bloquée : encaissez d\'abord les dossiers (caisse).', 'err');
         return;
       }
-      if (exclus) toast('🔒 ' + exclus + ' dossier(s) non encaissé(s) exclu(s) — seuls les encaissés sont imprimés.', 'err');
-      await printLot(payes);
-      return;
+      if (exclus) notes.push(exclus + ' non encaissé(s)');
+    } else {
+      const nonPayes = avecResultat.filter(r => !_estPaye(r)).length;
+      if (nonPayes) toast('ℹ️ ' + nonPayes + ' dossier(s) non encaissé(s) inclus (administrateur).', 'ok');
     }
-    const exclusAdmin = records.filter(r => !_estPaye(r)).length;
-    if (exclusAdmin) toast('ℹ️ ' + exclusAdmin + ' dossier(s) non encaissé(s) inclus (administrateur).', 'ok');
-    await printLot(records);
+    if (notes.length) toast('🖨 ' + aImprimer.length + ' compte(s) rendu(s) imprimé(s) · exclus : ' + notes.join(', '), 'err');
+    await printLot(aImprimer);
   } catch (e) { hideLoading(); toast('Erreur d\'impression', 'err'); }
 }
