@@ -19,9 +19,9 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjM4IiBmaWxsPSIjMWE0NDgwIi8+PHBhdGggZD0iTTk2IDU0Yy0xNiAwLTMwIDEyLjYtMzAgMzEuNSAwIDE0LjQgOC43IDI3IDIxIDMzLjl2MTAuMmMtMTMuNSAzLTI0IDEwLjgtMjguMiAyMWg3NC40Yy00LjItMTAuMi0xNS0xOC0yOC44LTIxdi0xMC4yYzEyLjMtNi45IDIxLTE5LjUgMjEtMzMuOUMxMjYgNjYuNiAxMTIgNTQgOTYgNTR6IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI0MiIgcj0iMTAiIGZpbGw9IiNmZmYiLz48ZyBmaWxsPSIjZmJiZjI0Ij48cmVjdCB4PSIxMzgiIHk9IjEyMCIgd2lkdGg9IjkuNiIgaGVpZ2h0PSIzMyIgcng9IjMuNiIvPjxyZWN0IHg9IjEyNCIgeT0iMTMzIiB3aWR0aD0iMzMiIGhlaWdodD0iOS42IiByeD0iMy42Ii8+PC9nPjwvc3ZnPg==">
 <link id="pwa-manifest" rel="manifest">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.237-t1">
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.237-t2">
 <!-- ✅ v13.69 — bibliothèque hébergée localement (voir vendor/ et le commentaire d'index.html) -->
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.237-t1"></script>
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.237-t2"></script>
 
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -621,6 +621,42 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
   }
+}
+</style>
+<!-- TEST — nouvelle interface : page de connexion (jour « Médical frais ») -->
+<style id="theme-test-login">
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url('./vendor/fonts/plus-jakarta-sans-latin-var.woff2') format('woff2'); }
+@media screen {
+  html { background: #F3F8F7; }
+  body { font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif; background: #F3F8F7; color: #10282C; }
+  ::selection { background: #DCF1EE; color: #10282C; }
+  .panel-brand { background: #0B7A75; }
+  .panel-brand::before, .panel-brand::after { background: rgba(255,255,255,.06); }
+  .brand-circle { background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.12), rgba(255,255,255,0)); }
+  .brand-icon-wrap { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.22); }
+  .brand-eyebrow-line { background: #FFD3C7; }
+  .brand-eyebrow-text { color: #FFE4DC; }
+  .brand-badge { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.2); color: #FFFFFF; }
+  .deco-cross { opacity: .22; }
+  .btn-login .btn-accent { display: none; }
+  .panel-form { background: #F3F8F7; }
+  .panel-form::before { display: none; }
+  .form-eyebrow { color: #A63A24; }
+  .form-eyebrow::before { background: #D9583E; }
+  .form-title { color: #10282C; letter-spacing: -0.02em; }
+  .form-sub { color: #4C6569; }
+  .field label { color: #24434A; }
+  .field input { background: #FFFFFF; border: 1px solid #D8E5E3; border-radius: 12px; color: #10282C; }
+  .field input:focus { border-color: #0B7A75; box-shadow: 0 0 0 4px rgba(11,122,117,.16); }
+  .field:focus-within label, .field:focus-within .field-icon { color: #0B7A75; }
+  .pwd-toggle:hover { color: #0B7A75; background: rgba(11,122,117,.08); }
+  .btn-login { background: #0B7A75; border-radius: 14px; text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 800; box-shadow: 0 1px 2px rgba(16,40,44,.07); }
+  .btn-login::after { display: none; }
+  .btn-login:hover:not(:disabled) { background: #09615D; box-shadow: 0 1px 2px rgba(16,40,44,.07); filter: none; }
+  .btn-login:focus-visible, .pwd-toggle:focus-visible { outline-color: #0B7A75; }
+  .form-security-line { background: #D8E5E3; }
+  .form-security-text { color: #4C6569; }
 }
 </style>
 </head>
