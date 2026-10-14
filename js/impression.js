@@ -449,7 +449,7 @@ async function buildRecordPrintHTMLLegacy(r) {
   // ✅ v12.4 — Composition BPN (forfait fixe)
   if (Array.isArray(res['_bpn_inclus']) && res['_bpn_inclus'].length) {
     html += `<div class="print-section">
-      <div class="print-section-title">Composition du bilan prénatal — forfait ${(r.montant||20000).toLocaleString('fr-FR')} FCFA</div>
+      <div class="print-section-title">Composition du bilan prénatal</div>
       <table class="print-table"><tbody>
       ${res['_bpn_inclus'].map(l => `<tr><td style="width:26px;text-align:center;color:#111">☑</td><td>${escHTML(l)}</td></tr>`).join('')}
       </tbody></table></div>`;

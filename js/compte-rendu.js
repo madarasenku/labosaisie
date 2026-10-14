@@ -13,7 +13,8 @@
 //   · Valeurs anormales : gras + fond gris
 //   · Ligne d'interprétation en italique pleine largeur si nécessaire
 //   · Examen demandé mais non saisi : affiché avec « — » et mention
-//   · Pied de page répété : CPMI · Édité le · Montant · signature · QR
+//   · Pied de page répété : CPMI · Édité le · signature · QR (aucun montant :
+//     document médical ; le prix figure seulement sur le reçu de caisse)
 //
 //  Tout le texte est échappé (aucune injection possible depuis les
 //  champs libres : observations, germe, commentaires…).
@@ -475,7 +476,7 @@ async function crBuildHTML(record) {
     }
   } catch (e) { seroOrd = null; }
 
-  // ✅ v13.146 — Détection BPN dès ici (utilisée pour non-réalisés ET montant)
+  // ✅ v13.146 — Détection BPN dès ici (utilisée pour les examens non réalisés)
   const _estBPN = labels.some(l => /pr[ée]natal/i.test(l));
 
   // Ligne « RÉSULTAT : … » — noms courts des examens demandés
@@ -571,8 +572,6 @@ async function crBuildHTML(record) {
   const tech = (typeof nomTechnicien === 'function' ? nomTechnicien() : ((typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '')) || '—';
   const now = new Date();
   const dateFr = d => { try { return new Date(d).toLocaleDateString('fr-FR'); } catch (e) { return '—'; } };
-  const _montantReel = Number(record && record.montant) || 0;
-  const montant = _estBPN ? Math.max(20000, _montantReel) : _montantReel;
 
   // ── Entête FIXE (position:fixed) : répétée en haut de chaque feuille ──
   const HEAD = '<div class="cr-head">'
@@ -584,8 +583,7 @@ async function crBuildHTML(record) {
 
   // ── Pied FIXE (position:fixed) : répété en bas de chaque feuille ──
   const PIED = '<div class="cr-foot"><div class="cr-foot-grid">'
-    + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR'))
-    +   '<br><b>Montant : ' + montant.toLocaleString('fr-FR') + ' FCFA</b></div>'
+    + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR')) + '</div>'
     + '<div class="cr-foot-c">Signature du technicien :<div class="cr-sigbox"></div>'
     +   '<div style="font-size:8pt;color:#444">TBM ' + crEsc(tech.toUpperCase()) + ' · Technicien Biologiste Médical</div></div>'
     + '<div class="cr-foot-r">' + qr + '</div>'
