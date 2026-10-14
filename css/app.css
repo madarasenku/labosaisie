@@ -1722,3 +1722,13 @@ body.fill-all-mode #zone-saisie .result-table td:first-child {
 .grille-fiche-panel > .card:has(> .btn-row:only-child) { display: none !important; }
 .grille-fiche-panel { display: block !important; }
 .grille-fiche-panel > .card:hover { transform: none; }
+
+/* ✅ Antibiogramme : boutons S / I / R (le menu reste pour la collecte, masqué). */
+.abg-row select { display: none; }
+.abg-btns { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.abg-b { min-width: 34px; min-height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface, #fff);
+  color: var(--text-muted); font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; padding: 0 8px; }
+.abg-b:hover { border-color: var(--text-muted); }
+.abg-row.S .abg-bS { background: #15803d; border-color: #15803d; color: #fff; }
+.abg-row.I .abg-bI { background: #b45309; border-color: #b45309; color: #fff; }
+.abg-row.R .abg-bR { background: #b91c1c; border-color: #b91c1c; color: #fff; }

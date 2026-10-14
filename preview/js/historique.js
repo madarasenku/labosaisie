@@ -1926,7 +1926,7 @@ async function saveNote(id) {
 // ✅ v13.232 — Bouton « 📥 Résultats à saisir » : visible pour ceux qui saisissent des
 // résultats (ni caissier, ni spectateur) ; la pastille indique combien de dossiers
 // attendent un résultat (BPN, électrophorèse, sous-traités), toutes dates.
-// TEST — Cartes résumé de l'Historique : journée de SERVICE en cours
+// Cartes résumé de l'Historique : journée de SERVICE en cours
 //   (permanence 8h–16h30 + garde 16h30 → lendemain 8h), indépendamment des
 //   filtres de la liste. Dossiers supprimés exclus.
 function majCartesResume() {

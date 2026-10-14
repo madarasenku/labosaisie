@@ -1684,13 +1684,17 @@ function buildAbgGrid(containerId, antibioList) {
     const d = document.createElement('div');
     d.className = 'abg-row nd';
     d.id = (containerId === 'abg-grid' ? 'abg_' : 'afg_') + ab.replace(/[^a-z]/gi,'_');
+    // ✅ Boutons S / I / R à toucher (le menu reste, caché, pour la collecte).
     d.innerHTML = `<span class="abg-name">${ab}</span>
-      <select onchange="updateAbgColor(this,'${ab}')">
+      <select onchange="updateAbgColor(this,'${ab}')" aria-label="${ab}">
         <option value="nd">N/D</option>
         <option value="S">S</option>
         <option value="I">I</option>
         <option value="R">R</option>
-      </select>`;
+      </select>
+      <span class="abg-btns" role="group" aria-label="${ab}">
+        <button type="button" class="abg-b abg-bS" onclick="abgChoisir(this,'S')" title="Sensible">S</button><button type="button" class="abg-b abg-bI" onclick="abgChoisir(this,'I')" title="Intermédiaire">I</button><button type="button" class="abg-b abg-bR" onclick="abgChoisir(this,'R')" title="Résistant">R</button>
+      </span>`;
     g.appendChild(d);
   });
 }
@@ -1700,6 +1704,13 @@ function buildAbg() {
   buildAbgGrid('afg-grid', AFG_ANTIFONGIQUES);
 }
 
+// Bouton S / I / R : un 2ᵉ appui sur le choix actif le remet à « N/D ».
+function abgChoisir(btn, v) {
+  const row = btn.closest('.abg-row'); const sel = row && row.querySelector('select');
+  if (!sel) return;
+  sel.value = (sel.value === v) ? 'nd' : v;
+  updateAbgColor(sel);
+}
 function updateAbgColor(sel, ab) {
   const row = sel.closest('.abg-row');
   row.className = 'abg-row ' + sel.value;
