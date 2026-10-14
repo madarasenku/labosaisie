@@ -1739,6 +1739,9 @@ function appliquerVerrouEncaissement(record) {
 
 async function editRecord(id, typeOverride) {
   if (isCaissier() || isSpectateur()) { toast('Accès lecture seule — modification impossible', 'err'); return; }
+  // ✅ TOUT PAR LA SÉRIE : la saisie « directe » (formulaire d'un patient)
+  //   n'existe plus ; les résultats se saisissent et se corrigent dans la série.
+  if (typeof ouvrirGrilleDossier === 'function') return ouvrirGrilleDossier(id);
   let record = getDB().find(x => x.id === id);
   if (!record) {
     await refreshDB();
@@ -1853,6 +1856,8 @@ async function editRecord(id, typeOverride) {
 // résultat vers sa bonne analyse (voir saveRecordAll).
 async function fillAllResults(id) {
   if (isCaissier() || isSpectateur()) { toast('Accès lecture seule — modification impossible', 'err'); return; }
+  // ✅ TOUT PAR LA SÉRIE (voir editRecord).
+  if (typeof ouvrirGrilleDossier === 'function') return ouvrirGrilleDossier(id);
   let record = getDB().find(x => x.id === id);
   if (!record) { await refreshDB(); record = getDB().find(x => x.id === id); }
   if (!record) { toast('Fiche introuvable', 'err'); return; }

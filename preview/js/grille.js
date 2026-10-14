@@ -216,7 +216,10 @@ const GRILLE_EXAMS = {
     // ✅ v13.228 — Ac anti-HBs RETIRÉ de la grille série : un BPN ne fait que
     //   l'Ag HBs (dépistage). L'Ac anti-HBs reste saisissable/facturable via le
     //   formulaire complet (examen « Ac anti-HBs » commandé séparément).
-    label: 'BPN · Hépatite B (Ag HBs)', type: 'Immuno-Sérologie', exId: 'ex_hbs', coche: /HBs|Hépatite B/i,
+    // ✅ TOUT PAR LA SÉRIE — `coche` limité à l'ANTIGÈNE : /HBs/ captait aussi
+    //   « Ac anti-HBs », qui n'avait alors AUCUNE case (ni ici ni ailleurs). Il a
+    //   désormais sa propre colonne chiffrée (UI/L), créée automatiquement.
+    label: 'BPN · Hépatite B (Ag HBs)', type: 'Immuno-Sérologie', exId: 'ex_hbs', coche: /Ag ?HBs|H[ée]patite B/i,
     filled: s => s['Ag HBs'] && s['Ag HBs'].resultat,
     cols: [
       { k: 'hbsag', lab: 'Ag HBs', dom: 'sr_hbsag', kind: 'sel', opts: _SERO_OPTS },
@@ -340,11 +343,16 @@ function _dateDossier(r) {
 }
 
 
+// « Non réalisé » est la valeur PAR DÉFAUT de certains menus (Widal) : elle ne
+// doit jamais écraser un résultat saisi. Sans ça, un Widal suivi d'une autre
+// sérologie sur la même ligne repartait « Non réalisé » à l'enregistrement
+// (la collecte de la sérologie suivante relisait les menus Widal remis à zéro).
+const _grilleDefaut = x => { const t = String(x).trim(); return t === '' || t === 'Non réalisé'; };
 function _grilleValVide(v) {
   if (v == null) return true;
-  if (typeof v === 'string') return v.trim() === '';
+  if (typeof v === 'string') return _grilleDefaut(v);
   if (typeof v === 'object') {
-    return !['valeur', 'resultat', 'titre', 'pct'].some(f => v[f] != null && String(v[f]).trim() !== '');
+    return !['valeur', 'resultat', 'titre', 'pct'].some(f => v[f] != null && !_grilleDefaut(v[f]));
   }
   return false;
 }
@@ -487,6 +495,18 @@ function _grilleEnsureAuto() {
 function grilleExamsDuDossier(r) {
   _grilleEnsureAuto();
   const coches = (r.resultats && r.resultats._examens_coches) || {};
+  // ✅ Dossier abîmé (versions anciennes) : résultats présents mais liste des
+  //   examens demandés perdue → examens déduits des résultats, pour pouvoir le
+  //   rouvrir et le corriger dans la série (l'ancien « mode récupération »).
+  const aucunCoche = Array.isArray(coches) ? !coches.length
+    : !Object.keys(coches).some(t => (coches[t] || []).length);
+  if (aucunCoche) {
+    const res = r.resultats || {};
+    return GRILLE_ORDRE.filter(k => {
+      const cfg = GRILLE_EXAMS[k], t = cfg && res[cfg.type];
+      try { return !!(t && typeof t === 'object' && cfg.filled && cfg.filled(t)); } catch (e) { return false; }
+    });
+  }
   return GRILLE_ORDRE.filter(k => {
     const cfg = GRILLE_EXAMS[k]; if (!cfg) return false;
     const liste = coches[cfg.type] || [];
@@ -649,11 +669,15 @@ function grilleClesCategorie(r, cat, restantsSeulement) {
   if (cat === 'st')      return liste.filter(grilleEstSousTraite);
   return [];
 }
+// Examens « à fiche » (cultures, selles) encore à saisir pour ce dossier.
+function _grilleFichesRestantes(r) {
+  return grilleExamsRestants(r).filter(k => GRILLE_EXAMS[k] && GRILLE_EXAMS[k].fiche);
+}
 // Examens affichés pour un dossier dans l'écran « Résultats à saisir ».
 function grilleClesAffichees(r) {
   if (_grilleCategorie) return grilleClesCategorie(r, _grilleCategorie);
   // Cultures et selles : résultat qui arrive après coup → toujours dans « Tout ».
-  const fiches = grilleExamsRestants(r).filter(k => GRILLE_EXAMS[k] && GRILLE_EXAMS[k].fiche);
+  const fiches = _grilleFichesRestantes(r);
   const u = new Set([].concat(grilleClesCategorie(r, 'bpn'), grilleClesCategorie(r, 'electro'), grilleClesCategorie(r, 'st'), fiches));
   return GRILLE_ORDRE.filter(k => u.has(k));
 }
@@ -774,8 +798,9 @@ function grilleCompteurs() {
     const b = grilleClesCategorie(r, 'bpn', true).length > 0;
     const e = grilleClesCategorie(r, 'electro', true).length > 0;
     const t = grilleClesCategorie(r, 'st', true).length > 0;
+    const f = _grilleFichesRestantes(r).length > 0;      // cultures, selles
     if (b) c.bpn++; if (e) c.electro++; if (t) c.st++;
-    if (b || e || t) c.tous++;
+    if (b || e || t || f) c.tous++;
   });
   // Cultures / hors grille (déjà vérifiées) : comptées avec les sous-traités.
   _grilleHorsListe.forEach(h => {
@@ -797,7 +822,7 @@ function grilleEnAttenteAvant() {
     if (r.resultats && r.resultats._reception_seule) return;
     if (_dateDossier(r) >= du) return;
     if (grilleClesCategorie(r, 'bpn', true).length || grilleClesCategorie(r, 'electro', true).length
-        || grilleClesCategorie(r, 'st', true).length) n++;
+        || grilleClesCategorie(r, 'st', true).length || _grilleFichesRestantes(r).length) n++;
   });
   return n;
 }
@@ -956,6 +981,8 @@ function ouvrirGrilleNFS() { ouvrirGrille('nfs'); }
 async function ouvrirGrilleDossier(id) {
   if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
   let rec = null; try { rec = getDB().find(r => r.id === id) || null; } catch (e) {}
+  // Détail complet d'abord : un dossier abîmé se reconnaît à ses résultats.
+  if (rec) { try { if (typeof ensureFull === 'function') await ensureFull(rec); } catch (e) {} }
   _grilleFocusId = id;
   _grilleInclureSaisis = true;            // rouvrir les valeurs déjà enregistrées
   _grilleInclureReception = true;         // ne pas exclure un dossier « réception seule »
@@ -971,6 +998,9 @@ async function ouvrirGrilleDossier(id) {
   try { if (typeof showView === 'function') showView('saisie'); } catch (e) {}
   await ouvrirGrille(_grilleKey);
   _grilleFocusId = id;                     // ouvrirGrille l'a remis à null : on le repose
+  // ouvrirGrille a rechargé la liste (fiches « légères ») : redonner le détail
+  // à ce dossier, sans quoi un dossier abîmé n'aurait plus d'examen visible.
+  try { const r2 = getDB().find(r => r.id === id); if (r2 && typeof ensureFull === 'function') await ensureFull(r2); } catch (e) {}
   grilleRender();
 }
 function fermerGrille() {

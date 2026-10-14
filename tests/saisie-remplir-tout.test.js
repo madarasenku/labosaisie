@@ -5,11 +5,10 @@
 // éditer l'Hématologie cachait le champ CRP (rangé sous l'onglet
 // Immuno-Sérologie) → « je ne vois pas le champ CRP ».
 //
-// Nouveau comportement : fillAllResults() empile TOUTES les analyses cochées
-// sur une page (plusieurs panneaux visibles), masque la barre d'onglets, et
-// un seul bouton enregistre le tout en routant chaque résultat vers sa bonne
-// analyse. Ce test vérifie le point qui coinçait : le champ CRP est visible et
-// remplissable en même temps que la NFS.
+// Comportement actuel (« tout par la série ») : fillAllResults() ouvre la saisie
+// en série centrée sur le dossier ; tous ses examens sont alignés sur sa ligne.
+// Ce test vérifie le point qui coinçait : la CRP est remplissable en même temps
+// que la NFS.
 const { serve, openApp, createReporter } = require('./helpers');
 
 const DOSSIER_ID = 999;
@@ -36,7 +35,7 @@ const LIGHT_ROW = {
 };
 
 (async () => {
-  const r = createReporter('SAISIE — REMPLIR TOUT SUR UNE PAGE');
+  const r = createReporter('SAISIE — COMPLÉTER UN DOSSIER (SÉRIE)');
   const srv = await serve(8106);
   let ctx;
   try {
@@ -50,38 +49,35 @@ const LIGHT_ROW = {
     ctx = app.ctx;
     const { page, errors } = app;
 
-    r.section('Ouverture en mode « remplir tout »');
+    // ✅ TOUT PAR LA SÉRIE — la page « un patient » n'existe plus : compléter un
+    //   dossier ouvre la SÉRIE centrée sur lui, avec TOUS ses examens sur la même
+    //   ligne (le bug d'origine : la CRP n'était pas visible avec la NFS).
+    r.section('Compléter un dossier = la série, tous les examens sur une ligne');
     await page.evaluate((id) => window.fillAllResults(id), DOSSIER_ID);
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(900);
 
-    const état = await page.evaluate(() => {
+    const état = await page.evaluate((id) => {
       const vis = el => !!(el && el.offsetParent !== null);
-      const tabs = document.querySelector('.tabs');
-      const secCrp = document.getElementById('sec-crp');
-      // un champ remplissable dans la section CRP ?
-      const champsCrp = secCrp
-        ? [...secCrp.querySelectorAll('input, select, textarea')].filter(e => !e.disabled && e.type !== 'checkbox')
-        : [];
+      const champ = k => [...document.querySelectorAll('#grow_' + id + ' td[data-exam="' + k + '"] input, #grow_' + id + ' td[data-exam="' + k + '"] select')]
+        .filter(e => !e.disabled && e.type !== 'hidden');
       return {
-        fillAllClass: document.body.classList.contains('fill-all-mode'),
-        hemaActive: document.getElementById('panel-hema')?.classList.contains('active'),
-        seroActive: document.getElementById('panel-sero')?.classList.contains('active'),
-        tabsHidden: tabs ? getComputedStyle(tabs).display === 'none' : false,
-        crpVisible: vis(secCrp),
-        crpChecked: !!document.getElementById('ex_crp')?.checked,
-        crpRemplissable: champsCrp.length > 0,
-        nfsVisible: vis(document.getElementById('sec-nfs')),
+        serie: vis(document.getElementById('grille-serie')),
+        focus: _grilleFocusId,
+        ligne: !!document.getElementById('grow_' + id),
+        pageUnPatient: document.body.classList.contains('fill-all-mode'),
+        nfs: champ('nfs').length,
+        ge: champ('ge').length,
+        crp: champ('crp').length,
       };
-    });
+    }, DOSSIER_ID);
 
-    r.check('mode « remplir tout » actif',            état.fillAllClass, true);
-    r.check('panneau Hématologie affiché',            état.hemaActive, true);
-    r.check('panneau Immuno-Sérologie affiché aussi', état.seroActive, true);
-    r.check('barre d\'onglets masquée',               état.tabsHidden, true);
-    r.check('section NFS visible',                     état.nfsVisible, true);
-    r.check('CRP encore coché (restauré)',            état.crpChecked, true);
-    r.check('section CRP VISIBLE (le bug)',           état.crpVisible, true);
-    r.check('champ CRP remplissable',                 état.crpRemplissable, true);
+    r.check('la série s\'ouvre',                     état.serie, true);
+    r.check('centrée sur ce dossier',                 état.focus, DOSSIER_ID);
+    r.check('la ligne du patient est là',             état.ligne, true);
+    r.check('plus de page « un patient »',            état.pageUnPatient, false);
+    r.check('cases NFS remplissables',                état.nfs > 0, true);
+    r.check('case GE remplissable',                   état.ge > 0, true);
+    r.check('case CRP remplissable (le bug)',         état.crp > 0, true);
     r.check('aucune erreur JS',                        errors.length, 0);
 
     const s = r.summary();

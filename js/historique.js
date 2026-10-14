@@ -1934,6 +1934,8 @@ function majBoutonASaisir() {
   btn.style.display = peut ? '' : 'none';
   if (!peut) return;
   let n = 0; try { n = grilleCompteASaisir(); } catch (e) {}
+  // Cultures / selles déjà saisies hors série : vérifiées en arrière-plan (le badge se recalcule).
+  if (typeof grilleVerifierFiches === 'function') { try { grilleVerifierFiches(); } catch (e) {} }
   const b = document.getElementById('a-saisir-badge');
   if (b) { b.textContent = n; b.style.display = n > 0 ? '' : 'none'; }
 }
