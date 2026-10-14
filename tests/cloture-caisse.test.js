@@ -16,7 +16,9 @@ const { serve, openApp, createReporter } = require('./helpers');
 // Dates relatives — voir tests/README.md, jamais de date en dur.
 const p = n => String(n).padStart(2, '0');
 const jourLocal = d => d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
-const AUJ = jourLocal(new Date());
+// Journée de SERVICE (avant 08h00 on est encore dans la garde de la veille) : sinon
+// la suite échoue lorsqu'elle tourne entre minuit et 8h.
+const AUJ = jourLocal(new Date(Date.now() - 8 * 3600 * 1000));
 
 // Jeu taillé pour que chaque rubrique ait une valeur distincte : si deux
 // totaux se ressemblent, un calcul faux peut passer pour juste.

@@ -13,7 +13,7 @@ const { serve, openApp, createReporter } = require('./helpers');
   const res = await page.evaluate(async () => {
     window.__printed = null;
     window.print = () => { window.__printed = (document.getElementById('print-render') || {}).innerHTML || ''; };
-    const d = new Date().toISOString().slice(0, 10);
+    const d = new Date(Date.now() - 8 * 3600 * 1000).toISOString().slice(0, 10);
     _sb.rpc = async (n) => ({ data: n === 'get_resultat_full'
       ? [{ resultats: { 'Hématologie': { 'Globules blancs (GB)': { valeur: '6.4', unite: '10³/µL' } } } }] : [], error: null });
     _dbCache = [
