@@ -235,8 +235,10 @@ function crBlocsBacterio(B) {
   out += crTable('Bactériologie' + (prel ? ' — ' + prel : ''), pleins([
     L('Site / précision', 'Site / Précision'), L('Aspect', 'Aspect'), L('Couleur', 'Couleur'),
     L('Odeur', 'Odeur'), L('pH', 'pH')]), { unite: false });
+  // Leucocytes / hématies : nombre (unité /mm³) OU appréciation (« Rares »…) sans unité.
+  const LN = (nom, cle) => { const v = lib(cle); return { nom, val: v, unite: /^\s*\d/.test(v) ? '/mm³' : '', ref: '' }; };
   out += crTable('État frais — cytologie', pleins([
-    L('Leucocytes', 'Leucocytes (/mm³)', '/mm³'), L('Hématies', 'Hématies (/mm³)', '/mm³'),
+    LN('Leucocytes', 'Leucocytes (/mm³)'), LN('Hématies', 'Hématies (/mm³)'),
     L('Cellules épithéliales', 'Cellules épithéliales'), L('Cylindres', 'Cylindres'), L('Cristaux', 'Cristaux'),
     L('Bactéries', 'Bactéries (état frais)'), L('Levures', 'Levures'), L('Parasites', 'Parasites'),
     L('Spermatozoïdes', 'Spermatozoïdes')]));

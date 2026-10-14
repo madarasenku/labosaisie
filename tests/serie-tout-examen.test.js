@@ -181,8 +181,19 @@ const doss = (id, nom, coches, extra) => Object.assign({
   r.section('Compte rendu');
   const cr = await page.evaluate(async () => {
     const txt = async id => { const rec = getDB().find(x => x.id === id); await ensureFull(rec); const h = await crBuildHTML(rec); const d = document.createElement('div'); d.innerHTML = h; d.querySelectorAll('style').forEach(s => s.remove()); return d.textContent; };
-    return { bact: await txt(51), eps: await txt(52), rai: await txt(53) };
+    // Leucocytes en APPRÉCIATION (pas de numération) : imprimés tels quels, sans unité.
+    const quali = { id: 77, type: 'Dossier', patient: { nom: 'Q', dossier: 'Q1' }, resultats: {
+      _examens_coches: { 'Bactériologie': ['ECBU'] },
+      'Bactériologie': { 'Type de prélèvement': 'ECBU', 'Leucocytes (/mm³)': 'Rares', 'Hématies (/mm³)': '3000', 'Culture': 'neg' } } };
+    const hq = await crBuildHTML(quali); const dq = document.createElement('div'); dq.innerHTML = hq; dq.querySelectorAll('style').forEach(s => s.remove());
+    // Alerte : une appréciation forte compte comme significative.
+    document.getElementById('ef_leuco').value = 'Très nombreux'; interpretEtatFrais('leuco');
+    const alerte = document.getElementById('ef_i_leuco').textContent;
+    return { bact: await txt(51), eps: await txt(52), rai: await txt(53), quali: dq.textContent, alerte };
   });
+  r.check('leucocytes « Rares » imprimés sans unité', /Leucocytes\s*Rares(?!\s*\/mm)/.test(cr.quali), true);
+  r.check('hématies chiffrées gardent /mm³', /Hématies\s*3000\s*\/mm³/.test(cr.quali), true);
+  r.check('« Très nombreux » → alerte leucocyturie', /Leucocyturie/.test(cr.alerte), true);
   r.check('ECBU : germe imprimé', /Escherichia coli/.test(cr.bact), true);
   r.check('ECBU : antibiogramme imprimé', /Ceftriaxone\s*Sensible/.test(cr.bact) && /Amoxicilline\s*Résistant/.test(cr.bact), true);
   r.check('ECBU : antibiotiques non testés absents', /Vancomycine/.test(cr.bact), false);

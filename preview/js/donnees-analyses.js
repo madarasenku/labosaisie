@@ -1714,21 +1714,42 @@ function adaptBacterioForm() {
   if (macroCard) macroCard.style.display = isECBU ? '' : 'none';
 }
 
+// ✅ Leucocytes / hématies : appréciation (« Rares », « Nombreux »…) OU nombre.
+//   La numération n'est souvent pas faite ; une appréciation forte compte comme
+//   significative pour l'alerte d'infection urinaire.
+function _efAbondant(v) { return /nombreu|\+\+/i.test(String(v || '')) && !/assez|quelques|rares/i.test(String(v || '')); }
+function _efLeucoSignificatif(v) {
+  const n = parseInt(v, 10);
+  return (!isNaN(n) && /^\s*\d/.test(String(v))) ? n >= 10000 : _efAbondant(v);
+}
 function interpretEtatFrais(type) {
   if (type === 'leuco') {
-    const val = parseInt(document.getElementById('ef_leuco')?.value || '0');
+    const brut = document.getElementById('ef_leuco')?.value || '';
+    const val = /^\s*\d/.test(brut) ? parseInt(brut, 10) : NaN;
     const el = document.getElementById('ef_i_leuco');
     if (!el) return;
-    if (!val || isNaN(val)) { el.textContent = ''; el.style.color = ''; return; }
+    if (isNaN(val)) {
+      if (_efAbondant(brut)) { el.textContent = '⚠ Leucocyturie importante'; el.style.color = '#b91c1c'; }
+      else { el.textContent = ''; el.style.color = ''; }
+      checkBacteriurie();
+      return;
+    }
+    if (!val) { el.textContent = ''; el.style.color = ''; return; }
     if (val >= 10000) { el.textContent = '⚠ Pyurie significative (≥10 000/mm³)'; el.style.color = '#b91c1c'; }
     else if (val >= 5000) { el.textContent = '⚠ Pyurie modérée'; el.style.color = '#d97706'; }
     else { el.textContent = '✓ Normal (< 5 000/mm³)'; el.style.color = '#15803d'; }
     checkBacteriurie();
   } else if (type === 'hematies') {
-    const val = parseInt(document.getElementById('ef_hematies')?.value || '0');
+    const brut = document.getElementById('ef_hematies')?.value || '';
+    const val = /^\s*\d/.test(brut) ? parseInt(brut, 10) : NaN;
     const el = document.getElementById('ef_i_hematies');
     if (!el) return;
-    if (!val || isNaN(val)) { el.textContent = ''; el.style.color = ''; return; }
+    if (isNaN(val)) {
+      if (_efAbondant(brut)) { el.textContent = '⚠ Hématurie importante'; el.style.color = '#b91c1c'; }
+      else { el.textContent = ''; el.style.color = ''; }
+      return;
+    }
+    if (!val) { el.textContent = ''; el.style.color = ''; return; }
     if (val >= 10000) { el.textContent = '⚠ Hématurie significative'; el.style.color = '#b91c1c'; }
     else if (val >= 3000) { el.textContent = 'Hématurie modérée'; el.style.color = '#d97706'; }
     else { el.textContent = '✓ Normal'; el.style.color = '#15803d'; }
@@ -1738,15 +1759,15 @@ function interpretEtatFrais(type) {
 function checkBacteriurie() {
   const alertEl = document.getElementById('bacteriurie-alert');
   if (!alertEl) return;
-  const leuco = parseInt(document.getElementById('ef_leuco')?.value || '0');
+  const leucoSig = _efLeucoSignificatif(document.getElementById('ef_leuco')?.value || '');
   const bacteries = document.getElementById('ef_bacteries')?.value || '';
   const numeration = document.getElementById('bac_numeration')?.value || '';
 
-  if (leuco >= 10000 && (bacteries.includes('Nombreuses') || numeration.includes('≥ 10⁵'))) {
+  if (leucoSig && (bacteries.includes('Nombreuses') || numeration.includes('≥ 10⁵'))) {
     alertEl.style.display = 'block';
     alertEl.style.background = '#fde8e8'; alertEl.style.color = '#b91c1c'; alertEl.style.border = '1px solid #b91c1c';
     alertEl.textContent = '⚠ INFECTION URINAIRE PROBABLE — Pyurie significative + bactériurie importante. Identification et antibiogramme recommandés.';
-  } else if (leuco >= 10000) {
+  } else if (leucoSig) {
     alertEl.style.display = 'block';
     alertEl.style.background = '#fef3c7'; alertEl.style.color = '#b45309'; alertEl.style.border = '1px solid #d97706';
     alertEl.textContent = '⚠ Pyurie significative sans bactériurie évidente — Tuberculose urinaire ou urétrite à éliminer.';

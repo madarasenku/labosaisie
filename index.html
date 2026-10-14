@@ -887,14 +887,16 @@
           <tbody>
             <tr>
               <td>Leucocytes</td>
-              <td><input type="number" id="ef_leuco" placeholder="ex. 50000" style="width:110px" oninput="interpretEtatFrais('leuco')"></td>
-              <td>/mm³</td>
+              <td><input type="text" id="ef_leuco" list="ef-quali-leuco" autocomplete="off" placeholder="Rares, nombreux… ou un nombre" style="width:190px" oninput="interpretEtatFrais('leuco')" onchange="interpretEtatFrais('leuco')">
+                <datalist id="ef-quali-leuco"><option value="Absents"><option value="Rares"><option value="Quelques"><option value="Assez nombreux"><option value="Nombreux"><option value="Très nombreux"></datalist></td>
+              <td>/mm³ <span style="font-size:10.5px;color:var(--text-muted)">(si chiffré)</span></td>
               <td><span id="ef_i_leuco" style="font-weight:600"></span></td>
             </tr>
             <tr>
               <td>Hématies</td>
-              <td><input type="number" id="ef_hematies" placeholder="ex. 5000" style="width:110px" oninput="interpretEtatFrais('hematies')"></td>
-              <td>/mm³</td>
+              <td><input type="text" id="ef_hematies" list="ef-quali-hematies" autocomplete="off" placeholder="Rares, nombreuses… ou un nombre" style="width:190px" oninput="interpretEtatFrais('hematies')" onchange="interpretEtatFrais('hematies')">
+                <datalist id="ef-quali-hematies"><option value="Absentes"><option value="Rares"><option value="Quelques"><option value="Assez nombreuses"><option value="Nombreuses"><option value="Très nombreuses"></datalist></td>
+              <td>/mm³ <span style="font-size:10.5px;color:var(--text-muted)">(si chiffré)</span></td>
               <td><span id="ef_i_hematies" style="font-weight:600"></span></td>
             </tr>
             <tr>
