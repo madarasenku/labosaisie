@@ -1952,6 +1952,10 @@ function majCartesResume() {
   const peut = !(typeof isCaissier === 'function' && isCaissier()) && typeof grilleCompteASaisir === 'function';
   if (peut) { try { n = grilleCompteASaisir(); } catch (e) {} }
   el('hist-res-attendus').textContent = n;
+  const total = somme(duJour), prog = el('hist-res-prog');
+  if (prog) prog.style.width = (total ? Math.round(100 * somme(payes) / total) : 0) + '%';
+  const carte = el('hist-res-carte');
+  if (carte) carte.classList.toggle('en-attente', typeof n === 'number' && n > 0);
 }
 
 function majBoutonASaisir() {
