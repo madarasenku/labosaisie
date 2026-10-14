@@ -361,6 +361,9 @@ function _grilleFusionType(baseType, res) {
 
 // Fiches validées dans la fenêtre, en attente d'enregistrement : { dossier: { examen: résultats } }.
 let _grilleFiches = {};
+// Examens à fiche / RAI trouvés déjà remplis (ancien formulaire), par dossier :
+// mémorisé pour survivre aux rafraîchissements de la liste légère.
+const _grilleFichesSaisies = new Map();
 function _grilleCellules(cfg, dossId, examKey) {
   const cells = {};
   cfg.cols.forEach(c => { const el = document.getElementById('g_' + dossId + '_' + examKey + '_' + c.k); cells[c.k] = el ? String(el.value).trim() : ''; });
@@ -500,6 +503,8 @@ function grilleExamsSaisis(r) {
     // Examens à fiche / RAI : remplis autrement (ancien formulaire) ou marqués « déjà saisi ».
     if (!cfg || !(cfg.fiche || cfg.build)) return false;
     if (st[cfg.exId]) return true;
+    const memo = _grilleFichesSaisies.get(r.id);
+    if (memo && memo.has(k)) return true;
     const t = res[cfg.type];
     try { return !!(t && typeof t === 'object' && cfg.filled && cfg.filled(t)); } catch (e) { return false; }
   });
@@ -647,7 +652,9 @@ function grilleClesCategorie(r, cat, restantsSeulement) {
 // Examens affichés pour un dossier dans l'écran « Résultats à saisir ».
 function grilleClesAffichees(r) {
   if (_grilleCategorie) return grilleClesCategorie(r, _grilleCategorie);
-  const u = new Set([].concat(grilleClesCategorie(r, 'bpn'), grilleClesCategorie(r, 'electro'), grilleClesCategorie(r, 'st')));
+  // Cultures et selles : résultat qui arrive après coup → toujours dans « Tout ».
+  const fiches = grilleExamsRestants(r).filter(k => GRILLE_EXAMS[k] && GRILLE_EXAMS[k].fiche);
+  const u = new Set([].concat(grilleClesCategorie(r, 'bpn'), grilleClesCategorie(r, 'electro'), grilleClesCategorie(r, 'st'), fiches));
   return GRILLE_ORDRE.filter(k => u.has(k));
 }
 // Y a-t-il une valeur saisie quelque part dans cet objet de résultats ?
@@ -688,7 +695,48 @@ function _grilleHorsCandidats() {
 }
 // Vérifie sur le dossier COMPLET (la liste légère n'a pas les résultats) que la
 // culture n'est pas déjà saisie ; ne garde que ce qui reste vraiment à faire.
+// ✅ TOUT PAR LA SÉRIE — Une culture, des selles ou une RAI déjà saisies avec
+//   l'ancien formulaire ne sont pas marquées « saisi en série », et la liste
+//   légère n'a pas le détail des résultats : on charge ces dossiers-là en
+//   arrière-plan, puis on réaffiche (ils sortent alors de « à saisir »).
+const _grilleFichesVerifiees = new Set();
+let _grilleFichesEnCours = null;
+function _grilleFichesCandidats() {
+  let db; try { db = grilleSourceDB(); } catch (e) { return []; }
+  return db.filter(r => r && r._light && !_grilleFichesVerifiees.has(r.id) && !r.deletedAt && !r._hardDeleted
+    && (typeof isDossierRecord !== 'function' || isDossierRecord(r))
+    && grilleExamsRestants(r).some(k => GRILLE_EXAMS[k] && (GRILLE_EXAMS[k].fiche || GRILLE_EXAMS[k].build)));
+}
+function grilleVerifierFiches() {
+  if (_grilleFichesEnCours) return _grilleFichesEnCours;
+  const cand = _grilleFichesCandidats();
+  if (!cand.length) return Promise.resolve(false);
+  _grilleFichesEnCours = (async () => {
+    let change = false;
+    for (let i = 0; i < cand.length; i += 6) {
+      await Promise.all(cand.slice(i, i + 6).map(async r => {
+        const avant = grilleExamsRestants(r).length;
+        try { if (typeof ensureFull === 'function') await ensureFull(r); } catch (e) {}
+        if (r._light) return;                       // détail indisponible (hors-ligne) : on réessaiera
+        _grilleFichesVerifiees.add(r.id);
+        const faits = new Set(grilleExamsSaisis(r).filter(k => GRILLE_EXAMS[k] && (GRILLE_EXAMS[k].fiche || GRILLE_EXAMS[k].build)));
+        if (faits.size) _grilleFichesSaisies.set(r.id, faits);
+        if (grilleExamsRestants(r).length !== avant) change = true;
+      }));
+    }
+    return change;
+  })();
+  _grilleFichesEnCours.then(change => {
+    _grilleFichesEnCours = null;
+    if (!change) return;
+    const cont = document.getElementById('grille-serie');
+    if (cont && cont.style.display !== 'none') { try { grilleRender(); } catch (e) {} }
+    if (typeof majBoutonASaisir === 'function') { try { majBoutonASaisir(); } catch (e) {} }
+  }, () => { _grilleFichesEnCours = null; });
+  return _grilleFichesEnCours;
+}
 async function grilleVerifierHorsSerie() {
+  grilleVerifierFiches();
   if (_grilleHorsEnCours) return;
   _grilleHorsEnCours = true;
   try {
@@ -1162,6 +1210,7 @@ function grilleRender() {
   //   « se vider ». Asynchrone (charge le détail des fiches) : on ne bloque pas
   //   le rendu.
   if (_grilleInclureSaisis) { try { grillePrefillSaisis(doss); } catch (e) {} }
+  try { grilleVerifierFiches(); } catch (e) {}
 }
 
 // ✅ v13.154 — Pré-remplissage des valeurs déjà saisies (mode correction).

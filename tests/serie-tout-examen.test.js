@@ -27,12 +27,16 @@ const doss = (id, nom, coches, extra) => Object.assign({
     doss(51, 'KONE AWA', { 'Bactériologie': ['ECBU'] }),
     doss(52, 'YAO MARIE', { 'Parasitologie': ['EPS — Examen parasitologique des selles'] }),
     doss(53, 'BAMBA FATOU', { 'Groupe sanguin': ['Groupe sanguin ABO / Rhésus', 'RAI + Phénotypage érythrocytaire'] }),
+    // ECBU déjà saisi avec l'ANCIEN formulaire (pas de marque « saisi en série »).
+    doss(54, 'DIALLO ROKIA', { 'Bactériologie': ['ECBU'] }),
   ];
+  D[3].resultats['Bactériologie'] = { 'Culture': 'neg', 'Leucocytes (/mm³)': '2000' };
   await page.evaluate(data => {
     window.__maj = [];
     window.toast = () => {};
     _sb.rpc = async (nom, p) => {
-      if (nom === 'get_resultats_light' || nom === 'get_resultats') return { data, error: null };
+      // Liste LÉGÈRE : seulement les métadonnées « _… », comme le vrai serveur.
+      if (nom === 'get_resultats_light' || nom === 'get_resultats') return { data: data.map(d => Object.assign({}, d, { resultats: Object.fromEntries(Object.entries(d.resultats).filter(([k]) => k[0] === '_')) })), error: null };
       if (nom === 'get_resultat_full') { const x = data.find(d => d.id === p.p_id); return { data: [{ resultats: x ? x.resultats : {} }], error: null }; }
       if (nom === 'update_resultat') {
         window.__maj.push(p);
@@ -142,6 +146,28 @@ const doss = (id, nom, coches, extra) => Object.assign({
   r.check('phénotype enregistré', rai.pheno, 'C+ c+ E- e+ K-');
   r.check('groupe ABO conservé', rai.abo, 'O');
 
+  // ── 4 bis. Saisi avec l'ancien formulaire → sort de « à saisir » ──
+  r.section('Culture déjà saisie hors série');
+  const anc = await page.evaluate(async () => {
+    const rec = () => getDB().find(x => x.id === 54);
+    // Repartir d'un poste qui n'a encore rien vérifié (la série l'a fait plus haut).
+    _grilleFichesSaisies.delete(54); _grilleFichesVerifiees.delete(54);
+    await refreshDB(true);
+    const avant = grilleExamsRestants(rec()).indexOf('bact') >= 0;
+    _grilleModeASaisir = true; _grilleToutesSemaines = true;
+    const eps52 = grilleClesAffichees({ id: 999, resultats: { _examens_coches: {
+      'Parasitologie': ['EPS — Examen parasitologique des selles'] } } }).indexOf('eps') >= 0;
+    _grilleModeASaisir = false;
+    await grilleVerifierFiches();
+    const apres = grilleExamsRestants(rec()).indexOf('bact') >= 0;
+    await refreshDB(true);                         // liste légère rechargée : le résultat est mémorisé
+    return { avant, apres, apresRefresh: grilleExamsRestants(rec()).indexOf('bact') >= 0, eps52 };
+  });
+  r.check('liste légère : paraît « à saisir »', anc.avant, true);
+  r.check('après vérification : sorti de « à saisir »', anc.apres, false);
+  r.check('… et le reste après rechargement de la liste', anc.apresRefresh, false);
+  r.check('selles (EPS) dans « Résultats à saisir »', anc.eps52, true);
+
   // ── 5. Plus rien hors série ───────────────────────────────────────
   r.section('Couverture');
   const couv = await page.evaluate(() => {
@@ -154,7 +180,7 @@ const doss = (id, nom, coches, extra) => Object.assign({
   // ── 6. Compte rendu ───────────────────────────────────────────────
   r.section('Compte rendu');
   const cr = await page.evaluate(async () => {
-    const txt = async id => { const h = await crBuildHTML(getDB().find(x => x.id === id)); const d = document.createElement('div'); d.innerHTML = h; d.querySelectorAll('style').forEach(s => s.remove()); return d.textContent; };
+    const txt = async id => { const rec = getDB().find(x => x.id === id); await ensureFull(rec); const h = await crBuildHTML(rec); const d = document.createElement('div'); d.innerHTML = h; d.querySelectorAll('style').forEach(s => s.remove()); return d.textContent; };
     return { bact: await txt(51), eps: await txt(52), rai: await txt(53) };
   });
   r.check('ECBU : germe imprimé', /Escherichia coli/.test(cr.bact), true);
