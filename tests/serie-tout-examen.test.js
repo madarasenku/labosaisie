@@ -20,9 +20,9 @@ const doss = (id, nom, coches, extra) => Object.assign({
 
 (async () => {
   const srv = await serve(8267);
-  const r = createReporter('TOUT PAR LA SÉRIE (preview)');
+  const r = createReporter('TOUT PAR LA SÉRIE');
   const { ctx, page, errors } = await openApp({ role: 'agent', username: 'YERIGUE', port: 8267,
-                                                cible: '/preview/index.html' });
+                                                cible: process.env.CIBLE || '/index.html' });
   const D = [
     doss(51, 'KONE AWA', { 'Bactériologie': ['ECBU'] }),
     doss(52, 'YAO MARIE', { 'Parasitologie': ['EPS — Examen parasitologique des selles'] }),

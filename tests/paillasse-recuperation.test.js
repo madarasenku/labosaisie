@@ -1,7 +1,6 @@
 // ✅ v13.135 — Récupération d'un dossier corrompu (sans « _examens_coches »,
-// résultats présents) ouvert dans la paillasse : les panneaux réapparaissent,
-// les examens ayant des données sont re-cochés, et tout est éditable pour
-// permettre la correction / complétion puis un ré-enregistrement réparateur.
+// résultats présents) : la série le rouvre quand même, les examens ayant des
+// données sont retrouvés, éditables, et la correction se ré-enregistre.
 const { serve, openApp, createReporter } = require('./helpers');
 
 // Dossier tel que corrompu par une version antérieure : CRP saisie, aucune
@@ -21,7 +20,7 @@ const corrompu = {
 };
 
 (async () => {
-  const r = createReporter('PAILLASSE — RÉCUPÉRATION DOSSIER CORROMPU');
+  const r = createReporter('SÉRIE — RÉCUPÉRATION DOSSIER CORROMPU');
   const srv = await serve(8136);
   let ctx;
   try {
@@ -40,18 +39,26 @@ const corrompu = {
     await page.evaluate(() => refreshDB(true));
     await page.waitForTimeout(300);
 
-    // Ouvrir le dossier corrompu dans la paillasse (chemin réel : benchOpenRecord → fillAllResults).
+    // ✅ TOUT PAR LA SÉRIE — Ouvrir le dossier corrompu (chemin réel : benchOpenRecord
+    //   → fillAllResults → série centrée sur le dossier).
     await page.evaluate(() => { if (typeof benchOpenRecord === 'function') return benchOpenRecord(995); return fillAllResults(995); });
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(1200);
 
-    r.check('CRP re-cochée depuis les données', await page.evaluate(() => !!document.getElementById('ex_crp')?.checked), true);
-    r.check('valeur CRP chargée (neg)', await page.evaluate(() => document.getElementById('crp_valeur')?.value), 'neg');
-    r.check('champ CRP éditable', await page.evaluate(() => document.getElementById('crp_valeur')?.disabled === false), true);
-    r.check('mode récupération : verrous désactivés', await page.evaluate(() => (typeof _locksDisabled !== 'undefined') ? _locksDisabled : null), true);
-    r.check('panneau sérologie révélé', await page.evaluate(() => document.getElementById('panel-sero')?.classList.contains('active')), true);
-    // On peut ré-ajouter un examen perdu (ex. NFS) : le panneau héma est visible.
-    r.check('panneau héma visible (ré-ajout possible)', await page.evaluate(() => document.getElementById('panel-hema')?.classList.contains('active')), true);
-    r.check('case NFS présente et cochable', await page.evaluate(() => { const c = document.getElementById('ex_nfs'); return !!c && c.disabled === false; }), true);
+    r.check('dossier rouvert dans la série', await page.evaluate(() => _grilleFocusId), 995);
+    r.check('CRP retrouvée depuis les données', await page.evaluate(() => !!document.getElementById('g_995_crp_crp')), true);
+    r.check('valeur CRP chargée (neg)', await page.evaluate(() => document.getElementById('g_995_crp_crp')?.value), 'neg');
+    r.check('case CRP éditable', await page.evaluate(() => document.getElementById('g_995_crp_crp')?.disabled === false), true);
+    // Correction : on change la valeur et on ré-enregistre (écriture réparatrice).
+    const maj = await page.evaluate(async () => {
+      window.__p = null;
+      const prec = _sb.rpc;
+      _sb.rpc = async (n, p) => { if (n === 'update_resultat') { window.__p = p; return { data: Object.assign({ id: 995, created_at: 'x' }, { patient: {}, resultats: p.p_resultats }), error: null }; } return prec(n, p); };
+      const el = document.getElementById('g_995_crp_crp'); el.value = '12'; el.dispatchEvent(new Event('change', { bubbles: true }));
+      const sel = document.getElementById('gsel_995'); if (sel && !sel.checked) { sel.checked = true; grilleSelToggle(995); }
+      await grilleSaveAll();
+      return window.__p && window.__p.p_resultats && window.__p.p_resultats['Immuno-Sérologie'] && window.__p.p_resultats['Immuno-Sérologie']['CRP - Valeur'];
+    });
+    r.check('correction enregistrée', maj, '12');
 
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 6));

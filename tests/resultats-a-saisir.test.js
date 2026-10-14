@@ -45,7 +45,7 @@ const TOUS = [A, B, C, D, E, F, G, H];
 
   await page.evaluate(([data, completes]) => {
     window.__u = []; window.showConfirmModal = async () => true;
-    window.fillAllResults = async id => { window.__fa = id; };
+    window.__fa = null; window.fillAllResults = async id => { window.__fa = id; };
     _sb.rpc = async (nom, params) => {
       if (nom === 'get_resultats_light') {
         // Comme le serveur : la liste légère ne garde que les clés « _ ».
@@ -75,7 +75,9 @@ const TOUS = [A, B, C, D, E, F, G, H];
     return { visible: !!b && b.offsetParent !== null, badge: bd ? bd.textContent : '' };
   });
   r.check('bouton visible pour l\'agent', btn.visible, true);
-  r.check('pastille = dossiers à saisir (BPN + électro + sous-traités)', btn.badge, '3');
+  // Tout par la série : BPN, électro, sous-traités + culture (906) et selles (908) ;
+  // la culture déjà saisie avec l'ancien formulaire (907) est reconnue et exclue.
+  r.check('pastille = dossiers à saisir (BPN, électro, sous-traités, culture, selles)', btn.badge, '5');
 
   // ── Ouverture : toutes dates, sans rien régler ──────────────────────
   r.section('Ouverture depuis l\'Historique');
@@ -87,12 +89,13 @@ const TOUS = [A, B, C, D, E, F, G, H];
   const lundiDe = n => { const d = il(n); const j = d.getDay(); d.setDate(d.getDate() - (j === 0 ? 6 : j - 1)); return ymd(d); };
   const lundiCourant = lundiDe(0);
   const semaineDe = dos => lundiDe(Math.round((new Date() - new Date(dos.created_at)) / 864e5));
-  const attendus = (lundi) => [A, B, C].filter(x => semaineDe(x) === lundi).map(x => x.id).sort();
-  const avantAttendu = [A, B, C].filter(x => semaineDe(x) < lundiCourant).length;
+  const AFAIRE = [A, B, C, F, H];
+  const attendus = (lundi) => AFAIRE.filter(x => semaineDe(x) === lundi).map(x => x.id).sort((a, b) => a - b);
+  const avantAttendu = AFAIRE.filter(x => semaineDe(x) < lundiCourant).length;
   const sem = await page.evaluate(() => ({
     toutes: _grilleToutesSemaines,
     label: (document.getElementById('grille-semaine-label') || {}).innerText || '',
-    lignes: [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort(),
+    lignes: [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort((a, b) => a - b),
     avant: grilleEnAttenteAvant(),
     rappel: !!document.getElementById('grille-avant'),
   }));
@@ -101,51 +104,48 @@ const TOUS = [A, B, C, D, E, F, G, H];
   r.check('seulement les dossiers de la semaine', JSON.stringify(sem.lignes), JSON.stringify(attendus(lundiCourant)));
   r.check('compte des dossiers en attente des semaines précédentes', sem.avant, avantAttendu);
   r.check('rappel affiché s\'il y en a', sem.rappel, avantAttendu > 0);
-  const prec = await page.evaluate(() => { grilleSemaineDecaler(-1); return [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort(); });
+  const prec = await page.evaluate(() => { grilleSemaineDecaler(-1); return [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort((a, b) => a - b); });
   const lundiPrec = (() => { const d = new Date(lundiCourant + 'T12:00:00'); d.setDate(d.getDate() - 7); return ymd(d); })();
   r.check('◀ semaine précédente : ses dossiers', JSON.stringify(prec), JSON.stringify(attendus(lundiPrec)));
   const retourSem = await page.evaluate(() => { grilleSemaineCourante(); return _grilleBornesSemaine().du; });
   r.check('« Cette semaine » revient au lundi courant', retourSem, lundiCourant);
   const badgeTout = await page.evaluate(() => grilleCompteASaisir());
-  r.check('la pastille de l\'Historique compte toujours TOUTES les semaines', badgeTout, 3);
+  r.check('la pastille de l\'Historique compte toujours TOUTES les semaines', badgeTout, 5);
   await page.evaluate(() => grilleToggleToutesSemaines(true));
   await page.waitForTimeout(900);
 
   const ouv = await page.evaluate(() => ({
     mode: _grilleModeASaisir, date: _grilleDate,
     titre: document.querySelector('#grille-serie')?.innerText.includes('Résultats à saisir'),
-    lignes: [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort(),
+    lignes: [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort((a, b) => a - b),
     chips: [...document.querySelectorAll('#grille-chips button')].map(b => b.dataset.cat + ':' + b.innerText.replace(/\D+/g, '')),
   }));
   r.check('mode « à saisir » actif', ouv.mode, true);
   r.check('toutes les dates (aucun filtre date)', ouv.date, '');
   r.check('titre « Résultats à saisir »', ouv.titre, true);
-  r.check('dossiers : BPN (il y a 20 j), électro, sous-traités', JSON.stringify(ouv.lignes), '[901,902,903]');
+  r.check('dossiers : BPN (il y a 20 j), électro, sous-traités, culture, selles', JSON.stringify(ouv.lignes), '[901,902,903,906,908]');
   r.check('NFS seule (904) et BPN déjà saisi (905) exclus', ouv.lignes.includes(904) || ouv.lignes.includes(905), false);
-  r.check('pastilles : tout/BPN/électro/sous-traités (+ culture et EPS vérifiées)', ouv.chips.join(' '), ':5 bpn:1 electro:2 st:2');
+  r.check('pastilles : tout/BPN/électro/sous-traités', ouv.chips.join(' '), ':5 bpn:1 electro:2 st:2');
+  r.check('culture déjà saisie hors série (907) exclue', ouv.lignes.includes(907), false);
 
-  // ── Cultures : vérifiées sur le dossier complet ─────────────────────
-  r.section('Formulaire complet pour les cultures');
-  const hors = await page.evaluate(() => ({
-    liste: _grilleHorsListe.map(h => h.id),
-    bloc: !!document.getElementById('grille-hors'),
-    bouton: !!document.querySelector('#grille-hors button[onclick="grilleOuvrirComplet(906)"]'),
+  // ── Cultures et selles : dans la série (fenêtre « Saisir ») ─────────
+  r.section('Cultures et selles dans la série');
+  const fiches = await page.evaluate(() => ({
+    bact: !!document.getElementById('gbtn_906_bact'),
+    eps: !!document.getElementById('gbtn_908_eps'),
+    blocAncien: !!document.getElementById('grille-hors'),
   }));
-  r.check('culture (906) et EPS (908) sans résultat listées ; culture déjà saisie (907) exclue', JSON.stringify(hors.liste.sort()), '[906,908]');
-  r.check('bloc « formulaire complet » affiché', hors.bloc, true);
-  r.check('bouton « Saisir » présent', hors.bouton, true);
-
-  const toutHors = await page.evaluate(() => [...document.querySelectorAll('#grille-hors tr[data-hors]')].map(tr => Number(tr.dataset.hors)).sort());
-  r.check('« Tout » : culture ET parasitologie des selles proposées', JSON.stringify(toutHors), '[906,908]');
+  r.check('culture (906) : case « Saisir » dans sa ligne', fiches.bact, true);
+  r.check('selles (908) : case « Saisir » dans sa ligne', fiches.eps, true);
+  r.check('plus de bloc « formulaire complet »', fiches.blocAncien, false);
 
   // ── Catégories ──────────────────────────────────────────────────────
   r.section('Pastilles de catégorie');
   const cat = async c => page.evaluate(k => {
     grilleSetCategorie(k);
     return {
-      lignes: [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort(),
+      lignes: [...document.querySelectorAll('#grille-serie tr[data-doss]')].map(tr => Number(tr.dataset.doss)).sort((a, b) => a - b),
       cols: [...new Set([...document.querySelectorAll('#grille-serie thead th.gr-h1')].map(th => th.dataset.exam))],
-      hors: !!document.getElementById('grille-hors'),
     };
   }, c);
   const bpn = await cat('bpn');
@@ -156,12 +156,8 @@ const TOUS = [A, B, C, D, E, F, G, H];
   r.check('Électrophorèse : BPN + dossier seul', JSON.stringify(el.lignes), '[901,902]');
   r.check('Électrophorèse : une seule colonne (ephb)', JSON.stringify(el.cols), '["ephb"]');
   const st = await cat('st');
-  r.check('Sous-traités : le dossier TSH / vitamine D', JSON.stringify(st.lignes), '[903]');
-  r.check('Sous-traités : colonnes TSH et vitamine D', st.cols.sort().join(','), 'auto_tsh,auto_vitd');
-  r.check('Sous-traités : bloc cultures visible', st.hors, true);
-  const stHors = await page.evaluate(() => [...document.querySelectorAll('#grille-hors tr[data-hors]')].map(tr => Number(tr.dataset.hors)));
-  r.check('Sous-traités : la culture, pas l\'EPS (non sous-traité)', JSON.stringify(stHors), '[906]');
-  r.check('BPN : bloc cultures masqué', bpn.hors, false);
+  r.check('Sous-traités : TSH / vitamine D + la culture (pas l\'EPS, non sous-traité)', JSON.stringify(st.lignes), '[903,906]');
+  r.check('Sous-traités : colonnes TSH, vitamine D et bactériologie', st.cols.sort().join(','), 'auto_tsh,auto_vitd,bact');
 
   // ── Saisie et enregistrement ────────────────────────────────────────
   r.section('Saisir un résultat sous-traité et enregistrer');
@@ -182,26 +178,21 @@ const TOUS = [A, B, C, D, E, F, G, H];
   r.check('TSH marquée « saisie en série »', !!sauve && sauve.marque, true);
   r.check('la vitamine D (non saisie) reste à faire', !!sauve && sauve.vitd, false);
 
-  // ── Hors grille : ouvrir / marquer ──────────────────────────────────
-  r.section('Culture : formulaire complet et « déjà saisi »');
-  await page.evaluate(() => { window.__fa = null; grilleOuvrirComplet(906); });
-  await page.waitForTimeout(300);
-  const comp = await page.evaluate(() => ({ fa: window.__fa, vue: document.getElementById('grille-serie').style.display, mode: _grilleModeASaisir }));
-  r.check('« Saisir » ouvre le formulaire complet du dossier', comp.fa, 906);
-  r.check('la grille se referme', comp.vue, 'none');
-  await page.evaluate(() => ouvrirResultatsASaisir());
-  await page.waitForTimeout(900);
-  await page.evaluate(() => grilleToggleToutesSemaines(true));
-  await page.waitForTimeout(900);
-  await page.evaluate(() => grilleSetCategorie('st'));
-  await page.evaluate(() => grilleMarquerFait(906, 'ex_ecbu'));
-  await page.waitForTimeout(500);
-  const fait = await page.evaluate(() => {
-    const u = window.__u.filter(x => x.p_id === 906).pop();
-    return { marque: !!(u && u.p_resultats._st_fait && u.p_resultats._st_fait.ex_ecbu), liste: _grilleHorsListe.map(h => h.id) };
-  });
-  r.check('« Déjà saisi » enregistre le marquage', fait.marque, true);
-  r.check('le dossier marqué quitte la liste (l\'EPS reste)', JSON.stringify(fait.liste), '[908]');
+  // ── Culture : la fenêtre de saisie s'ouvre sans quitter la série ─────
+  r.section('Culture : fenêtre de saisie');
+  await page.evaluate(() => grilleSetCategorie(''));
+  await page.evaluate(() => grilleOuvrirFiche(906, 'bact'));
+  await page.waitForTimeout(400);
+  const fen = await page.evaluate(() => ({
+    fenetre: !!document.getElementById('grille-fiche-modal'),
+    fiche: !!document.querySelector('#grille-fiche-modal #panel-bacterio'),
+    serie: document.getElementById('grille-serie').style.display !== 'none',
+    fa: window.__fa,
+  }));
+  r.check('« Saisir » ouvre la fiche dans une fenêtre', fen.fenetre && fen.fiche, true);
+  r.check('la série reste ouverte derrière', fen.serie, true);
+  r.check('aucun formulaire « un patient »', fen.fa, null);
+  await page.evaluate(() => document.getElementById('grille-fiche-annuler').click());
 
   // ── Retour à l'Historique ───────────────────────────────────────────
   r.section('Quitter : retour à l\'Historique, grille normale intacte');

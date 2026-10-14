@@ -2,7 +2,7 @@
 // Créatinine, Transaminases, CT/HDL/LDL/TG, ionogramme, acide urique, et les
 // sérologies (Ag HBs qual ET quant, Ac anti-HBc qual ET quant, Ac anti-HBs
 // quant, Ac anti-VHC, Toxo, Rubéole, VIH, BW/TPHA, ASLO — majoritairement
-// qualitatives). Saisie complète via le formulaire, enregistrement, impression.
+// qualitatives). Saisie complète dans la SÉRIE, enregistrement, impression.
 const { serve, openApp, createReporter } = require('./helpers');
 
 const COCHES = {
@@ -63,46 +63,31 @@ const doss = {
     r.check('Rubéole IgG qual', defauts.rubig, 'qual');
     r.check('ASLO qual', defauts.aso, 'qual');
 
-    // Ouvrir la fiche complète et tout saisir
+    // ✅ TOUT PAR LA SÉRIE — compléter le dossier ouvre la série centrée sur lui ;
+    //   on remplit TOUTES ses cases sur sa ligne, puis on enregistre.
     await page.evaluate(() => fillAllResults(3001));
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1400);
 
-    r.section('Saisie de tous les examens');
+    r.section('Saisie de tous les examens (série)');
     const saisie = await page.evaluate(() => {
-      const num = (id, v) => { const el = document.getElementById(id); if (!el) return 'ABSENT:' + id; el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); return 'ok'; };
-      const sel = (id, v) => { const el = document.getElementById(id); if (!el) return 'ABSENT:' + id; el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; };
-      const mode = (id, m) => { const el = document.getElementById('smode_' + id); if (!el) return 'ABSENT:mode_' + id; el.value = m; el.dispatchEvent(new Event('change', { bubbles: true })); if (typeof toggleSeroMode === 'function') toggleSeroMode(id); return 'ok'; };
       const o = {};
-      // Hématologie
-      ['gbc:7.5','gr:4.8','hb:14.2','ht:43','plt:280','pnn:55','pne:3','pnb:1','lymp:35','mono:6']
-        .forEach(p => { const [k, v] = p.split(':'); o['v_' + k] = num('v_' + k, v); });
-      // GE + TDR commandés → cases cochées (la collecte GE/TDR est gardée par la coche).
-      ['ex_ge','ex_tdr'].forEach(id => { const c = document.getElementById(id); if (c) c.checked = true; });
-      o.ge = sel('ge_result', 'Négatif'); o.tdr = sel('ge_tdr', 'Négatif');
-      // Biochimie
-      [['gly','0.95'],['uree','0.30'],['crea','11'],['ua','45'],['asat','28'],['alat','31'],
-       ['chol','1.85'],['hdl','0.55'],['trig','1.20'],['k','4.2'],['cl','102']]
-        .forEach(([k, v]) => { o['v_' + k] = num('v_' + k, v); });
-      // CRP + Widal
-      o.crp = sel('crp_valeur', '24');
-      o.widal_to = sel('widal_to', '1/160'); o.widal_th = sel('widal_th', 'Négatif');
-      // Sérologies QUALITATIVES
-      [['vih1','Négatif'],['hcv','Négatif'],['syphil','Négatif'],
-       ['toxo','Positif'],['toxoig','Négatif'],['rubig','Positif'],['aso','Négatif']]
-        .forEach(([id, v]) => { o['mode_' + id] = mode(id, 'qual'); o['sr_' + id] = sel('sr_' + id, v); });
-      // Ag HBs en QUANTITATIF (le mode doit rester libre hors BPN)
-      o.mode_hbsag = mode('hbsag', 'quant'); o.sv_hbsag = num('sv_hbsag', '3.2');
-      // Ac anti-HBc en QUALITATIF
-      o.mode_hbcac = mode('hbcac', 'qual'); o.sr_hbcac = sel('sr_hbcac', 'Positif');
-      // Ac anti-HBs en QUANTITATIF
-      o.mode_hbsac = mode('hbsac', 'quant'); o.sv_hbsac = num('sv_hbsac', '125');
+      const set = (k, v) => { const el = document.getElementById('g_3001_' + k); if (!el) { o[k] = 'ABSENT'; return; }
+        el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); o[k] = 'ok'; };
+      [['nfs_gbc','7.5'],['nfs_gr','4.8'],['nfs_hb','14.2'],['nfs_ht','43'],['nfs_plt','280'],['nfs_pnn','55'],['nfs_lymp','35'],['nfs_mono','6'],
+       ['ge_geres','Négatif'],['tdr_tdr','Négatif'],
+       ['gly_gly','0.95'],['crea_crea','11'],['ua_ua','45'],['transa_asat','28'],['transa_alat','31'],
+       ['lipides_chol','1.85'],['lipides_hdl','0.55'],['lipides_trig','1.20'],['iono_k','4.2'],['iono_cl','102'],
+       ['crp_crp','24'],['widal_wto','1/160'],['widal_wth','Négatif'],
+       ['vih_vih1','Négatif'],['hcv_hcv','Négatif'],['tpha_syphil','Négatif'],['toxo_toxo','Positif'],['toxo_toxoig','Négatif'],
+       ['rube_rubig','Positif'],['aslo_aso','Négatif'],['hbs_hbsag','Positif'],['auto_hbcac_hbcac','Positif'],['auto_hbsac_hbsac','125'],
+      ].forEach(([k, v]) => set(k, v));
+      const sel = document.getElementById('gsel_3001'); if (sel && !sel.checked) { sel.checked = true; grilleSelToggle(3001); }
       return o;
     });
     const absents = Object.keys(saisie).filter(k => saisie[k] !== 'ok');
-    r.check('tous les champs présents et remplis', absents.length ? absents.join(',') : 'aucun manquant', 'aucun manquant');
+    r.check('toutes les cases présentes dans la série', absents.length ? absents.join(',') : 'aucun manquant', 'aucun manquant');
 
-    await page.waitForTimeout(300);
-    await page.evaluate(() => saveAllTabs());
+    await page.evaluate(() => grilleSaveAll());
     await page.waitForTimeout(1800);
 
     r.section('Contenu enregistré');
@@ -121,7 +106,8 @@ const doss = {
     r.check('Toxo IgG QUALITATIF', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Toxoplasmose IgG'].resultat, 'Positif');
     r.check('Rubéole IgG QUALITATIF', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Rubéole IgG'].resultat, 'Positif');
     r.check('ASLO qualitatif', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['ASLO (Antistreptolysines)'].resultat, 'Négatif');
-    r.check('Ag HBs QUANTITATIF conservé', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Ag HBs'].valeur, '3.2');
+    // Dans la série, l'Ag HBs est un dépistage QUALITATIF ; l'Ac anti-HBs (immunité) est chiffré.
+    r.check('Ag HBs qualitatif', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Ag HBs'].resultat, 'Positif');
     r.check('Ac anti-HBc qualitatif', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Ac anti-HBc total'].resultat, 'Positif');
     r.check('Ac anti-HBs quantitatif', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Ac anti-HBs'].valeur, '125');
     r.check('Widal TO', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['Widal - Salmonella typhi O (TO)'].titre, '1/160');
@@ -141,9 +127,7 @@ const doss = {
     r.check('ionogramme', /Biochimie — Ionogramme/.test(txt), true);
     r.check('fonction rénale', /Biochimie — Fonction rénale/.test(txt), true);
     r.check('aucun examen faussement « non réalisé »', /non réalisés/.test(txt), false);
-    // ✅ v13.145 — Ag HBs saisi en QUANTITATIF doit figurer au compte rendu
-    // (l'ancienne version ne lisait que le résultat qualitatif : il disparaissait).
-    r.check('Ag HBs quantitatif imprimé', /Ag HBs \(antigène de surface\)[\s\S]{0,80}3\.2 UI\/L/.test(txt), true);
+    r.check('Ag HBs imprimé', /Ag HBs \(antigène de surface\)[\s\S]{0,80}Positif/.test(txt), true);
     r.check('Ac anti-HBs quantitatif imprimé', /125 UI\/L/.test(txt), true);
     r.check('Ac anti-HBc qualitatif imprimé', /Ac anti-HBc total \(contact viral\)[\s\S]{0,60}Positif/.test(txt), true);
     // Acide urique : bornes en mg/L (réf. homme adulte 35–70 alignée sur le

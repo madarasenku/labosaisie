@@ -3,8 +3,8 @@
 // chaque poste. La caisse encaissait sur son ordinateur ; le poste de saisie
 // voyait « non payé », refusait l'enregistrement ET basculait vers la caisse —
 // les résultats tapés étaient perdus.
-// Attendu désormais : on revérifie auprès du serveur, et on ne quitte JAMAIS la
-// vue de saisie (les valeurs restent à l'écran).
+// Attendu désormais (« tout par la série ») : les valeurs tapées dans la série
+// sont enregistrées, encaissé ou non, sans jamais basculer vers la caisse.
 const { serve, openApp, createReporter } = require('./helpers');
 
 const mk = (paye) => ({
@@ -40,19 +40,20 @@ async function scenario(page, payeCoteServeur) {
   }, mk(payeCoteServeur));
   await page.evaluate(() => refreshDB(true));
   await page.waitForTimeout(300);
+  // ✅ TOUT PAR LA SÉRIE : compléter le dossier ouvre la série centrée sur lui.
   await page.evaluate(() => fillAllResults(984));
   await page.waitForTimeout(900);
   await page.evaluate(() => {
     const set = (id, v) => { const el = document.getElementById(id); if (el && !el.disabled) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } };
-    set('v_gbc', '7.2'); set('v_gr', '4.5'); set('v_hb', '13'); set('crp_valeur', '48');
+    ['gbc', 'gr', 'hb', 'ht', 'plt', 'pnn', 'lymp', 'mono'].forEach((k, i) => set('g_984_nfs_' + k, ['7.2', '4.5', '13', '39', '250', '60', '30', '8'][i]));
+    set('g_984_crp_crp', '48');
+    set('g_984_ge_geres', 'Négatif');
   });
   await page.evaluate(() => { window.__vues = []; });
-  await page.evaluate(() => saveAllTabs());
+  await page.evaluate(() => grilleSaveAll());
   await page.waitForTimeout(1200);
   return page.evaluate(() => ({
     payload: window.__payload,
-    gbcEcran: document.getElementById('v_gbc')?.value,
-    crpEcran: document.getElementById('crp_valeur')?.value,
     allaCaisse: window.__vues.indexOf('caisse') >= 0,
   }));
 }
@@ -65,20 +66,18 @@ async function scenario(page, payeCoteServeur) {
     const app = await openApp({ role: 'admin', port: 8151 });
     ctx = app.ctx; const { page, errors } = app;
 
-    r.section('Dossier NON encaissé');
-    const a = await scenario(page, false);
-    r.check('aucun enregistrement (règle métier respectée)', a.payload, null);
-    r.check('valeur GB conservée à l\'écran', a.gbcEcran, '7.2');
-    r.check('valeur CRP conservée à l\'écran', a.crpEcran, '48');
-    r.check('on NE quitte PAS la saisie', a.allaCaisse, false);
-
-    r.section('Dossier encaissé (serveur)');
-    const b = await scenario(page, true);
-    r.check('enregistrement émis', !!b.payload, true);
-    const R = b.payload ? b.payload.p_resultats : {};
-    r.check('GB enregistré', R['Hématologie'] && R['Hématologie']['Globules blancs (GB)'] && R['Hématologie']['Globules blancs (GB)'].valeur, '7.2');
-    r.check('CRP enregistrée', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['CRP - Valeur'], '48');
-    r.check('examens demandés intacts', Object.keys(R._examens_coches || {}).length, 2);
+    // Dans la série, les résultats s'enregistrent même si le dossier n'est pas
+    // encore encaissé : c'est la REMISE (impression) qui exige l'encaissement.
+    for (const [titre, paye] of [['Dossier NON encaissé', false], ['Dossier encaissé (serveur)', true]]) {
+      r.section(titre);
+      const b = await scenario(page, paye);
+      r.check('enregistrement émis', !!b.payload, true);
+      const R = b.payload ? b.payload.p_resultats : {};
+      r.check('GB enregistré', R['Hématologie'] && R['Hématologie']['Globules blancs (GB)'] && R['Hématologie']['Globules blancs (GB)'].valeur, '7.2');
+      r.check('CRP enregistrée', R['Immuno-Sérologie'] && R['Immuno-Sérologie']['CRP - Valeur'], '48');
+      r.check('examens demandés intacts', Object.keys(R._examens_coches || {}).length, 2);
+      r.check('on ne bascule PAS vers la caisse', b.allaCaisse, false);
+    }
 
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   JS:', errors.slice(0, 6));
