@@ -89,7 +89,8 @@ const doss = {
     r.check('Ag HBs Positif anormal', /class="cr-val cr-ano">Positif/.test(h), true);
 
     r.section('Pied de page');
-    r.check('montant', /Montant : 50 500 FCFA/.test(txt.replace(/ | /g, ' ')), true);
+    // Document médical : aucun prix (il figure seulement sur le reçu de caisse).
+    r.check('aucun montant imprimé', /Montant|FCFA/.test(txt), false);
     // ✅ v13.158 — La case « Signature du technicien » reste présente mais VIDE
     //   (à signer à la main à la sortie) : plus de signature numérique pré-imprimée.
     r.check('case signature présente (vide)', /Signature du technicien/.test(txt), true);

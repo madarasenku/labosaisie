@@ -115,10 +115,11 @@ const doss = {
     r.check('Hématologie + Groupe AVANT Biochimie', Math.max(iNFS, iGroupe) < iBio, true);
     r.check('Hépatite B présent', /Bilan Hépatite B/.test(txt), true);
 
-    // ✅ v13.147 — Forfait affiché à 20 000 même si 10 000 saisi en caisse.
-    r.section('Forfait affiché à 20 000 FCFA');
-    r.check('montant CR forcé à 20 000', /Montant : 20 000 FCFA/.test(txt), true);
-    r.check('le 10 000 saisi n\'apparaît pas', /Montant : 10 000 FCFA/.test(txt), false);
+    // Le compte rendu est un document médical : aucun prix n'y figure
+    // (ni le forfait BPN, ni le montant saisi en caisse).
+    r.section('Aucun montant sur le compte rendu');
+    r.check('pas de « Montant »', /Montant/.test(txt), false);
+    r.check('aucun prix en FCFA', /FCFA/.test(txt), false);
 
     // ✅ v13.157 — BPN : un examen demandé mais non saisi n'est PAS listé (ni
     //   « à compléter » ni « non réalisé ») — il peut revenir après coup (ECBU…).

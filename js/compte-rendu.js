@@ -13,7 +13,8 @@
 //   · Valeurs anormales : gras + fond gris
 //   · Ligne d'interprétation en italique pleine largeur si nécessaire
 //   · Examen demandé mais non saisi : affiché avec « — » et mention
-//   · Pied de page répété : CPMI · Édité le · Montant · signature · QR
+//   · Pied de page répété : CPMI · Édité le · signature · QR (aucun montant :
+//     document médical ; le prix figure seulement sur le reçu de caisse)
 //
 //  Tout le texte est échappé (aucune injection possible depuis les
 //  champs libres : observations, germe, commentaires…).
@@ -200,8 +201,82 @@ function crBlocSerologies(res, seroOrd) {
 
 function crBlocGroupe(res) {
   const abo = crV(res['Groupe ABO']), rh = crV(res['Rhésus']);
-  if (!abo && !rh) return '';
-  return crTable('Groupe sanguin', [{ nom: 'Groupe ABO / Rhésus', val: (abo + ' ' + rh).trim(), ref: '' }], { unite: false });
+  const rai = crV(res['RAI']), pheno = crV(res['Phénotype érythrocytaire']);
+  const rows = [];
+  if (abo || rh) rows.push({ nom: 'Groupe ABO / Rhésus', val: (abo + ' ' + rh).trim(), ref: '' });
+  if (rai) rows.push({ nom: 'RAI (agglutinines irrégulières)', val: rai, ano: /Positi/i.test(rai), ref: 'Négative' });
+  if (pheno) rows.push({ nom: 'Phénotype érythrocytaire', val: pheno, ref: '' });
+  if (!rows.length) return '';
+  return crTable('Groupe sanguin', rows, { unite: false });
+}
+
+// ✅ Bactériologie (ECBU, hémoculture, coproculture, prélèvements) : jusqu'ici
+//   un examen rempli n'apparaissait PAS sur le compte rendu (« Aucun résultat
+//   saisi »). Prélèvement, macroscopie, état frais, Gram, culture, puis
+//   antibiogramme — seuls les antibiotiques testés (S / I / R) sont imprimés.
+function crBlocsBacterio(B) {
+  if (!B || typeof B !== 'object' || !Object.keys(B).length) return '';
+  // Certains menus de la fiche enregistrent un CODE : on imprime le libellé.
+  const LIB = {
+    'Type de prélèvement': { ECBU: 'ECBU (examen cytobactériologique des urines)', PG: 'Prélèvement de gorge',
+      PGU: 'Prélèvement génito-urinaire', LCR: 'LCR (liquide céphalo-rachidien)', Pus: 'Pus / suppuration',
+      Crachat: 'Crachat / expectorations', Plaie: 'Prélèvement de plaie' },
+    'Coloration de Gram': { neg: 'Absence de germe', 'coc_G+': 'Cocci Gram + en amas (staphylocoques)',
+      'coc_G+_ch': 'Cocci Gram + en chaînettes (streptocoques)', 'coc_G+_dp': 'Cocci Gram + en diplocoques (pneumocoques)',
+      'coc_G-': 'Cocci Gram − en diplocoques', 'bac_G+': 'Bacilles Gram +', 'bac_G-': 'Bacilles Gram −',
+      'bac_G-_e': 'Bacilles Gram − (entérobactéries)', lev: 'Levures / filaments', poly: 'Flore polymorphe' },
+    'Culture': { pos: 'Positive', neg: 'Négative / stérile', contam: 'Contamination (> 3 germes)' },
+  };
+  const lib = cle => { const v = crV(B[cle]); return (LIB[cle] && LIB[cle][v]) || v; };
+  const L = (nom, cle, unite) => ({ nom, val: lib(cle), unite: unite || '', ref: '' });
+  const pleins = rows => rows.filter(r => r.val !== '');
+  const prel = lib('Type de prélèvement');
+  let out = '';
+  out += crTable('Bactériologie' + (prel ? ' — ' + prel : ''), pleins([
+    L('Site / précision', 'Site / Précision'), L('Aspect', 'Aspect'), L('Couleur', 'Couleur'),
+    L('Odeur', 'Odeur'), L('pH', 'pH')]), { unite: false });
+  // Leucocytes / hématies : nombre (unité /mm³) OU appréciation (« Rares »…) sans unité.
+  const LN = (nom, cle) => { const v = lib(cle); return { nom, val: v, unite: /^\s*\d/.test(v) ? '/mm³' : '', ref: '' }; };
+  out += crTable('État frais — cytologie', pleins([
+    LN('Leucocytes', 'Leucocytes (/mm³)'), LN('Hématies', 'Hématies (/mm³)'),
+    L('Cellules épithéliales', 'Cellules épithéliales'), L('Cylindres', 'Cylindres'), L('Cristaux', 'Cristaux'),
+    L('Bactéries', 'Bactéries (état frais)'), L('Levures', 'Levures'), L('Parasites', 'Parasites'),
+    L('Spermatozoïdes', 'Spermatozoïdes')]));
+  out += crTable('Coloration de Gram', pleins([
+    L('Résultat', 'Coloration de Gram'), L('Abondance', 'Gram - Abondance'), L('Commentaire', 'Gram - Commentaire')]),
+    { unite: false });
+  const culture = pleins([
+    L('Culture', 'Culture'), L('Numération bactérienne', 'Numération bactérienne'),
+    L('Germe identifié', 'Germe identifié'), L('2ᵉ germe', '2ème germe'),
+    L('Milieux de culture', 'Milieux de culture'), L('Observations', 'Observations')]);
+  culture.forEach(r => { if (r.nom === 'Culture' && /Positive/i.test(r.val)) r.ano = true; });
+  out += crTable('Culture & identification', culture, { unite: false });
+  const afg = B['Mode: ABG/AFG'] === 'afg';
+  const pref = afg ? 'AFG_' : 'ABG_';
+  const MOT = { S: 'Sensible', I: 'Intermédiaire', R: 'Résistant' };
+  const abg = Object.keys(B).filter(k => k.indexOf(pref) === 0 && MOT[B[k]])
+    .map(k => ({ nom: k.slice(pref.length), val: MOT[B[k]], ano: B[k] === 'R', ref: '' }));
+  if (abg.length && crV(B['Commentaire antibiogramme'])) abg.push({ interpretation: 'Commentaire : ' + crV(B['Commentaire antibiogramme']) });
+  out += crTable(afg ? 'Antifongigramme' : 'Antibiogramme', abg, { unite: false });
+  return out;
+}
+
+// ✅ Parasitologie (examen des selles…) : même oubli que la bactériologie.
+function crBlocParasito(P) {
+  if (!P || typeof P !== 'object' || !Object.keys(P).length) return '';
+  const rows = [];
+  const add = (nom, v, extra) => { if (crV(v) !== '') rows.push(Object.assign({ nom, val: crV(v), ref: '' }, extra || {})); };
+  add('Examen', P["Type d'examen"]);
+  add('Résultat', P['Résultat global'], { ano: /Positif/i.test(P['Résultat global'] || '') });
+  (typeof PARA_EPS !== 'undefined' ? PARA_EPS : []).forEach(n =>
+    add(n, P[n], { ano: /Positif/i.test(P[n] || ''), ref: 'Négatif' }));
+  add('Espèce plasmodiale', P['Espèce plasmodiale']);
+  add('Densité parasitaire', P['Densité parasitaire /µL']);
+  add('Parasitémie (%)', P['Parasitémie (%)']);
+  add('Stade parasitaire', P['Stade parasitaire']);
+  if (!rows.length && crV(P['Observations']) === '') return '';
+  if (crV(P['Observations']) !== '') rows.push({ interpretation: 'Observations : ' + crV(P['Observations']) });
+  return crTable('Parasitologie', rows, { unite: false });
 }
 
 // ⚠ `const` au niveau global n'est PAS exposé sur window : on référence donc
@@ -275,8 +350,13 @@ function crExamFait(label, R) {
     // compte rendu (ni résultat, ni « non réalisé »), car le fallback plus bas
     // renvoie « true » pour tout examen inconnu. Un ECBU de bilan prénatal revient
     // souvent après coup : il DOIT figurer en « non réalisé » tant qu'il est vide.
-    [/ECBU|Bact[eé]riolog|Cytobact/i, () => ['Culture','Germe identifié','Numération bactérienne',
-                                    'Leucocytes (/mm³)','Aspect'].some(n => crV(Bac[n]) !== '')],
+    [/ECBU|Bact[eé]riolog|Cytobact|H[ée]moculture|Coproculture|gorge|\bpus\b|plaie/i,
+                                  () => ['Culture','Germe identifié','Numération bactérienne',
+                                    'Leucocytes (/mm³)','Aspect','Coloration de Gram'].some(n => crV(Bac[n]) !== '')],
+    [/\bEPS\b|parasitologique des selles/i, () => { const P = (R['Parasitologie'] || {});
+                                    return crV(P['Résultat global']) !== '' || crV(P['Observations']) !== ''
+                                      || (typeof PARA_EPS !== 'undefined' && PARA_EPS.some(n => crV(P[n]) !== '')); }],
+    [/\bRAI\b/i,                  () => crV(G['RAI']) !== ''],
   ];
   for (const [rx, ok] of T) { if (rx.test(label)) { try { return !!ok(); } catch (e) { return false; } } }
   // Biochimie et autres : le libellé correspond au nom du paramètre.
@@ -475,7 +555,7 @@ async function crBuildHTML(record) {
     }
   } catch (e) { seroOrd = null; }
 
-  // ✅ v13.146 — Détection BPN dès ici (utilisée pour non-réalisés ET montant)
+  // ✅ v13.146 — Détection BPN dès ici (utilisée pour les examens non réalisés)
   const _estBPN = labels.some(l => /pr[ée]natal/i.test(l));
 
   // Ligne « RÉSULTAT : … » — noms courts des examens demandés
@@ -496,6 +576,13 @@ async function crBuildHTML(record) {
   pushCourt(/Toxo/i, 'Toxoplasmose');
   pushCourt(/Rubéole/i, 'Rubéole');
   pushCourt(/Groupe|ABO/i, 'Groupe sanguin');
+  pushCourt(/\bRAI\b/i, 'RAI');
+  pushCourt(/ECBU/i, 'ECBU');
+  pushCourt(/H[ée]moculture/i, 'Hémoculture');
+  pushCourt(/Coproculture/i, 'Coproculture');
+  pushCourt(/gorge/i, 'Prélèvement de gorge');
+  pushCourt(/\bpus\b|plaie/i, 'Pus / plaie');
+  pushCourt(/\bEPS\b|parasitologique des selles/i, 'EPS');
   pushCourt(/Électro|Electro|Hémoglobine/i, 'Électrophorèse Hb');
   if (Object.keys(bio).some(k => crV(bio[k] && bio[k].valeur) !== '')) {
     if (courts.indexOf('Biochimie') < 0) courts.push('Biochimie');
@@ -528,7 +615,7 @@ async function crBuildHTML(record) {
   if (estCoche(/Goutte|TDR|Palud|\bGE\b/i)) pushT(blocsHema, crBlocGE(hema));
   // Groupe sanguin : uniquement s'il a été demandé (le mini-GS de contexte de
   // l'onglet Sérologie ne doit pas s'imprimer sur un rendu qui ne le demande pas).
-  if (estCoche(/Groupe|ABO|Rh[ée]sus/i)) pushT(blocsHema, crBlocGroupe(Object.keys(gs).length ? gs : sero));
+  if (estCoche(/Groupe|ABO|Rh[ée]sus|\bRAI\b/i)) pushT(blocsHema, crBlocGroupe(Object.keys(gs).length ? gs : sero));
 
   const blocsBio = [];
   // ✅ v13.162 — Le bilan prénatal n'inclut PAS de CRP : on ne l'affiche pas en BPN.
@@ -544,6 +631,8 @@ async function crBuildHTML(record) {
   pushT(blocsBio, crBlocVHB(sero, seroOrd));
   pushT(blocsBio, crBlocSerologies(sero, seroOrd));
   pushT(blocsBio, crBlocsBiochimie(bio, profile, autorises));
+  pushT(blocsBio, crBlocsBacterio(sub('Bactériologie')));
+  pushT(blocsBio, crBlocParasito(sub('Parasitologie')));
   // Examens demandés dont aucun résultat n'a été saisi (sauf BPN).
   const nonFaits = _estBPN ? [] : labels.filter(l => !crExamFait(String(l), R));
   pushT(blocsBio, crBlocNonRealises(nonFaits));
@@ -571,8 +660,6 @@ async function crBuildHTML(record) {
   const tech = (typeof nomTechnicien === 'function' ? nomTechnicien() : ((typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '')) || '—';
   const now = new Date();
   const dateFr = d => { try { return new Date(d).toLocaleDateString('fr-FR'); } catch (e) { return '—'; } };
-  const _montantReel = Number(record && record.montant) || 0;
-  const montant = _estBPN ? Math.max(20000, _montantReel) : _montantReel;
 
   // ── Entête FIXE (position:fixed) : répétée en haut de chaque feuille ──
   const HEAD = '<div class="cr-head">'
@@ -584,8 +671,7 @@ async function crBuildHTML(record) {
 
   // ── Pied FIXE (position:fixed) : répété en bas de chaque feuille ──
   const PIED = '<div class="cr-foot"><div class="cr-foot-grid">'
-    + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR'))
-    +   '<br><b>Montant : ' + montant.toLocaleString('fr-FR') + ' FCFA</b></div>'
+    + '<div class="cr-foot-l"><b>CPMI de Grand-Bassam</b><br>Édité le ' + crEsc(now.toLocaleDateString('fr-FR')) + '</div>'
     + '<div class="cr-foot-c">Signature du technicien :<div class="cr-sigbox"></div>'
     +   '<div style="font-size:8pt;color:#444">TBM ' + crEsc(tech.toUpperCase()) + ' · Technicien Biologiste Médical</div></div>'
     + '<div class="cr-foot-r">' + qr + '</div>'

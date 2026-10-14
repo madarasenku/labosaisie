@@ -700,6 +700,13 @@ input:focus, select:focus, textarea:focus { transition: border-color .2s, box-sh
   .card:hover, .btn-primary:hover, html #view-historique .pp-resume .k:hover { transform: none; }
 }
 
+/* ── Fenêtre « fiche » de la série (cultures, selles) ───────────── */
+.grille-fiche-box { background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-lg); }
+.grille-fiche-panel .btn-row, .grille-fiche-panel .card-actions,
+.grille-fiche-panel > .card:has(> .btn-row:only-child) { display: none !important; }
+.grille-fiche-panel > .card { box-shadow: none; }
+.grille-fiche-panel { display: block !important; }
+
 } /* fin @media screen */
 
 /* Bandeau d'accueil : jamais à l'impression. */
