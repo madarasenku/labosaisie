@@ -291,6 +291,36 @@ const GRILLE_EXAMS = {
       { k: 'rh', lab: 'Rhésus', dom: 'gs_rh', kind: 'sel', opts: [['', '—'], ['Positif', 'Positif'], ['Négatif', 'Négatif']] },
     ],
   },
+  // ✅ TOUT PAR LA SÉRIE — il n'y a plus de saisie « directe » (formulaire d'un
+  //   patient). Les examens à compte rendu détaillé (cultures, selles) ont une
+  //   case « Saisir » qui ouvre leur fiche dans une FENÊTRE, sans quitter la
+  //   série ; la RAI a ses propres colonnes.
+  bact: {
+    label: 'Bactériologie', type: 'Bactériologie', exId: 'ex_ecbu',
+    coche: /ECBU|H[ée]moculture|Coproculture|Pr[ée]l[èe]vement de gorge|\bpus\b|plaie|Bact[ée]riolog|Cytobact/i,
+    fiche: { panel: 'panel-bacterio', tab: 'bacterio', titre: '🦠 Bactériologie' },
+    filled: b => ['Culture', 'Germe identifié', 'Leucocytes (/mm³)', 'Aspect', 'Coloration de Gram'].some(n => b[n]),
+    cols: [{ k: 'fiche', lab: 'Fiche', kind: 'fiche' }],
+  },
+  eps: {
+    label: 'Parasitologie des selles', type: 'Parasitologie', exId: 'ex_eps',
+    coche: /\bEPS\b|parasitologique des selles/i,
+    fiche: { panel: 'panel-parasito', tab: 'parasito', titre: '🦟 Parasitologie des selles' },
+    filled: p => !!(p['Résultat global'] || p['Observations']
+      || (typeof PARA_EPS !== 'undefined' && PARA_EPS.some(n => p[n]))),
+    cols: [{ k: 'fiche', lab: 'Fiche', kind: 'fiche' }],
+  },
+  rai: {
+    label: 'RAI + Phénotypage', type: 'Groupe sanguin', exId: 'ex_rai', coche: /\bRAI\b/i,
+    filled: g => g['RAI'],
+    cols: [
+      { k: 'rai', lab: 'RAI', kind: 'sel', opts: [['', '—'], ['Négative', 'Négative'], ['Positive', 'Positive']] },
+      { k: 'pheno', lab: 'Phénotype', kind: 'txt', opt: true },
+    ],
+    // Pas de champ de formulaire : le résultat est construit depuis les cases.
+    build: c => ({ 'RAI': c.rai || '', 'Phénotype érythrocytaire': c.pheno || '' }),
+    load: g => ({ rai: g['RAI'] || '', pheno: g['Phénotype érythrocytaire'] || '' }),
+  },
 };
 
 const _TYPE_TO_TAB = { 'Hématologie': 'hema', 'Biochimie': 'bio', 'Immuno-Sérologie': 'sero', 'Parasitologie': 'parasito', 'Groupe sanguin': 'gs' };
@@ -329,7 +359,16 @@ function _grilleFusionType(baseType, res) {
   return out;
 }
 
+// Fiches validées dans la fenêtre, en attente d'enregistrement : { dossier: { examen: résultats } }.
+let _grilleFiches = {};
+function _grilleCellules(cfg, dossId, examKey) {
+  const cells = {};
+  cfg.cols.forEach(c => { const el = document.getElementById('g_' + dossId + '_' + examKey + '_' + c.k); cells[c.k] = el ? String(el.value).trim() : ''; });
+  return cells;
+}
 function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
+  if (cfg.fiche) return Object.assign({}, (_grilleFiches[dossId] || {})[examKey || _grilleKey] || {});
+  if (cfg.build) return cfg.build(_grilleCellules(cfg, dossId, examKey || _grilleKey));
   const tab = _TYPE_TO_TAB[cfg.type] || 'hema';
   if (typeof ensurePanelBuilt === 'function') ensurePanelBuilt(tab);
   const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
@@ -372,7 +411,7 @@ function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
 // ══════════════════════════════════════════════════════════════
 
 // Ordre d'affichage des examens dans la grille.
-const GRILLE_ORDRE = ['nfs','vs','ge','tdr','ephb','gly','uree','crea','ua','transa','coag','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs'];
+const GRILLE_ORDRE = ['nfs','vs','ge','tdr','ephb','gly','uree','crea','ua','transa','coag','lipides','iono','crp','widal','aslo','vih','hbs','hcv','tpha','toxo','rube','gs','rai','bact','eps'];
 
 // ✅ Couverture COMPLÈTE du catalogue en saisie en série.
 //   Historiquement seuls ~20 examens figuraient dans GRILLE_EXAMS ; un dossier
@@ -453,8 +492,17 @@ function grilleExamsDuDossier(r) {
 }
 // Examens déjà enregistrés en série pour ce dossier.
 function grilleExamsSaisis(r) {
-  const m = (r.resultats && r.resultats._saisi_serie) || {};
-  return GRILLE_ORDRE.filter(k => m[k]);
+  const res = r.resultats || {};
+  const m = res._saisi_serie || {}, st = res._st_fait || {};
+  return GRILLE_ORDRE.filter(k => {
+    if (m[k]) return true;
+    const cfg = GRILLE_EXAMS[k];
+    // Examens à fiche / RAI : remplis autrement (ancien formulaire) ou marqués « déjà saisi ».
+    if (!cfg || !(cfg.fiche || cfg.build)) return false;
+    if (st[cfg.exId]) return true;
+    const t = res[cfg.type];
+    try { return !!(t && typeof t === 'object' && cfg.filled && cfg.filled(t)); } catch (e) { return false; }
+  });
 }
 // Examens restant à saisir.
 function grilleExamsRestants(r) {
@@ -999,8 +1047,8 @@ function grilleRender() {
 
   if (!doss.length) {
     const videMsg = _grilleFocusId != null
-      ? 'Ce dossier n\'a pas d\'examen modifiable en saisie en série.<br>'
-        + '<span style="font-size:12px">Les examens à saisie libre (cultures, comptes rendus texte…) ne sont pas gérés ici.</span>'
+      ? 'Ce dossier n\'a pas d\'examen à saisir.<br>'
+        + '<span style="font-size:12px">Vérifiez les examens cochés sur la fiche du patient.</span>'
       : (_grilleModeASaisir
           ? '🎉 Rien à saisir dans cette catégorie.<br><span style="font-size:12px">Tous les résultats en attente ont été saisis.</span>'
           : 'Aucun patient à saisir ' + (_grilleDate ? 'pour le ' + esc(_grilleDate) : '(toutes dates)') + '.<br>'
@@ -1036,6 +1084,19 @@ function grilleRender() {
       return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px"><select id="g_' + id + '_' + k + '_' + c.k + '" '
         + 'onchange="grilleCellChange(' + id + ')" style="min-width:118px;' + base + '">'
         + (c.opts || []).map(o => '<option value="' + o[0] + '">' + esc(o[1]) + '</option>').join('') + '</select></td>';
+    }
+    if (c.kind === 'txt') {
+      return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px"><input type="text" '
+        + 'id="g_' + id + '_' + k + '_' + c.k + '" oninput="grilleCellChange(' + id + ')" '
+        + 'style="width:130px;' + base + '"></td>';
+    }
+    if (c.kind === 'fiche') {
+      const pret = !!((_grilleFiches[id] || {})[k]);
+      return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px;text-align:center">'
+        + '<input type="hidden" id="g_' + id + '_' + k + '_' + c.k + '" value="' + (pret ? 'ok' : '') + '">'
+        + '<button type="button" class="btn ' + (pret ? 'btn-success' : 'btn-primary') + ' grille-fiche-btn" id="gbtn_' + id + '_' + k + '" '
+        + 'style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="grilleOuvrirFiche(' + id + ',\'' + k + '\')">'
+        + (pret ? '✓ Rempli · modifier' : '✏️ Saisir') + '</button></td>';
     }
     return '<td data-exam="' + k + '" data-lab="' + esc(c.lab) + '" style="padding:3px 4px"><input type="text" step="any" inputmode="decimal" '
       + 'id="g_' + id + '_' + k + '_' + c.k + '" oninput="grilleCellChange(' + id + ')" '
@@ -1128,6 +1189,17 @@ async function grillePrefillSaisis(doss) {
       const res = getRecordResultats(r, type);
       if (res && typeof loadResultsIntoForm === 'function') { try { loadResultsIntoForm(type, res); } catch (e) {} }
       parType[type].forEach(k => {
+        const cfgK = GRILLE_EXAMS[k];
+        if (cfgK.fiche) {                       // fiche déjà remplie : bouton « modifier »
+          const btn = document.getElementById('gbtn_' + r.id + '_' + k);
+          if (btn && !(_grilleFiches[r.id] || {})[k]) btn.textContent = '✓ Rempli · modifier';
+          return;
+        }
+        if (cfgK.load) {                        // RAI : valeurs relues directement
+          const v = cfgK.load(res || {});
+          cfgK.cols.forEach(c => { const cell = document.getElementById('g_' + r.id + '_' + k + '_' + c.k); if (cell && v[c.k]) { cell.value = v[c.k]; prefilled = true; } });
+          return;
+        }
         GRILLE_EXAMS[k].cols.forEach(c => {
           const cell = document.getElementById('g_' + r.id + '_' + k + '_' + c.k);
           const src = c.dom ? document.getElementById(c.dom) : null;
@@ -1273,6 +1345,7 @@ async function grilleSaveAll() {
         }, { onlyResultats: true });
         if (saved) {
           ok++; savedIds.push(record.id);
+          delete _grilleFiches[record.id];
           if (rowComplete) completeIds.push(record.id);
         } else err++;
       } catch (e) { err++; }
@@ -1368,4 +1441,125 @@ async function imprimerDossiersEnLot(ids, trouver) {
     if (notes.length) toast('🖨 ' + aImprimer.length + ' compte(s) rendu(s) imprimé(s) · exclus : ' + notes.join(', '), 'err');
     await printLot(aImprimer);
   } catch (e) { hideLoading(); toast('Erreur d\'impression', 'err'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  FENÊTRE « FICHE » (bactériologie, parasitologie des selles) ouverte depuis
+//  une ligne de la série. Elle réutilise le vrai formulaire de l'analyse
+//  (mêmes champs, même collecte) déplacé le temps de la saisie dans une
+//  fenêtre ; « Valider » garde le résultat pour l'enregistrement de la série.
+// ══════════════════════════════════════════════════════════════════════
+function _grilleViderPanel(panel) {
+  panel.querySelectorAll('input, select, textarea').forEach(el => {
+    if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+    else if (el.tagName === 'SELECT') {            // option vide si elle existe, sinon la 1ʳᵉ (« N/D »…)
+      const i = [...el.options].findIndex(o => o.value === '');
+      el.selectedIndex = i >= 0 ? i : 0;
+    } else if (el.type !== 'button' && el.type !== 'hidden') el.value = '';
+  });
+  panel.querySelectorAll('.abg-row').forEach(x => { x.className = 'abg-row nd'; });
+}
+// La parasitologie n'a pas de rechargeur dans le formulaire : on remet ses champs ici.
+function _grilleChargerParasito(res) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  set('para_type', res["Type d'examen"]); set('para_resultat', res['Résultat global']);
+  set('para_coloration', res['Coloration']); set('para_espece', res['Espèce plasmodiale']);
+  set('para_parasitemie', res['Parasitémie (%)']); set('para_densite', res['Densité parasitaire /µL']);
+  set('para_stade', res['Stade parasitaire']); set('para_indice', res['Indice érythrocytaire']);
+  set('para_tdr', res['TDR paludisme']); set('para_obs', res['Observations']);
+  if (typeof PARA_EPS !== 'undefined') PARA_EPS.forEach(pa => set('pe_' + pa.replace(/[^a-z]/gi, '_'), res[pa]));
+}
+async function grilleOuvrirFiche(id, k) {
+  const cfg = GRILLE_EXAMS[k], r = _grilleDossier(id);
+  if (!cfg || !cfg.fiche || !r) return;
+  if (typeof isSpectateur === 'function' && isSpectateur()) { toast('Lecture seule', 'err'); return; }
+  try { if (typeof ensurePanelBuilt === 'function') ensurePanelBuilt(cfg.fiche.tab); } catch (e) {}
+  const panel = document.getElementById(cfg.fiche.panel);
+  if (!panel) { toast('Fiche indisponible', 'err'); return; }
+  try { if (typeof ensureFull === 'function') await ensureFull(r); } catch (e) {}
+
+  // Champs déverrouillés et visibles (le formulaire masque ce qui n'est pas coché).
+  try { if (typeof unlockAllFields === 'function') unlockAllFields(); } catch (e) {}
+  panel.querySelectorAll('tr').forEach(tr => { tr.style.display = ''; });
+  try { getCatalogueComplet().forEach(ex => { const sec = ex.section && document.getElementById(ex.section); if (sec && panel.contains(sec)) sec.style.display = ''; }); } catch (e) {}
+
+  // Contenu : brouillon de cette série, sinon le résultat déjà enregistré.
+  _grilleViderPanel(panel);
+  if (cfg.type === 'Bactériologie' && typeof setAbgMode === 'function') { try { setAbgMode('abg'); } catch (e) {} }
+  const brouillon = (_grilleFiches[id] || {})[k];
+  const res = brouillon || (typeof getRecordResultats === 'function' ? getRecordResultats(r, cfg.type) : null) || {};
+  if (res && Object.keys(res).length) {
+    try {
+      if (cfg.type === 'Parasitologie') _grilleChargerParasito(res);
+      else if (typeof loadResultsIntoForm === 'function') loadResultsIntoForm(cfg.type, res);
+    } catch (e) {}
+  }
+  // Bactériologie : type de prélèvement déduit de l'examen demandé.
+  if (cfg.type === 'Bactériologie') {
+    const t = document.getElementById('bac_type');
+    if (t && !(res && res['Type de prélèvement'])) {
+      const coches = (r.resultats && r.resultats._examens_coches) || {};
+      const labs = (Array.isArray(coches) ? coches : [].concat.apply([], Object.values(coches))).join(' | ');
+      const PRE = [[/ECBU/i, 'ECBU'], [/H[ée]moculture/i, 'Hémoculture'], [/Coproculture/i, 'Coproculture'],
+                   [/gorge/i, 'PG'], [/plaie/i, 'Plaie'], [/\bpus\b/i, 'Pus']];
+      const hit = PRE.find(([rx]) => rx.test(labs));
+      if (hit && [...t.options].some(o => (o.value || o.textContent) === hit[1])) t.value = hit[1];
+    }
+  }
+  // Selles : type d'examen proposé d'office.
+  if (cfg.type === 'Parasitologie') {
+    const t = document.getElementById('para_type');
+    if (t && !(res && res["Type d'examen"])) { const o = [...t.options].find(x => /selles/i.test(x.textContent)); if (o) t.value = o.value || o.textContent; }
+  }
+
+  const ancien = document.getElementById('grille-fiche-modal'); if (ancien) ancien.remove();
+  const bd = document.createElement('div');
+  bd.id = 'grille-fiche-modal';
+  bd.className = 'modal-backdrop';
+  bd.style.cssText = 'position:fixed;inset:0;z-index:3500;background:rgba(11,37,69,.5);display:flex;align-items:flex-start;justify-content:center;padding:18px 12px;overflow-y:auto';
+  const nom = esc((r.patient && r.patient.nom) || '—'), dn = esc((r.patient && r.patient.dossier) || '');
+  bd.innerHTML = '<div class="modal-box grille-fiche-box" role="dialog" aria-modal="true" aria-label="' + esc(cfg.fiche.titre) + '" '
+    + 'style="max-width:980px;width:100%;max-height:none;padding:0;overflow:visible">'
+    + '<div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;'
+    + 'background:var(--surface,#fff);border-bottom:1px solid var(--border);border-radius:16px 16px 0 0">'
+    + '<div style="display:flex;flex-direction:column"><b style="font-size:16px">' + esc(cfg.fiche.titre) + '</b>'
+    + '<span style="font-size:12.5px;color:var(--text-muted)">' + nom + (dn ? ' · N° ' + dn : '') + '</span></div>'
+    + '<span style="margin-left:auto;display:flex;gap:8px">'
+    + '<button type="button" class="btn btn-outline" id="grille-fiche-annuler">Annuler</button>'
+    + '<button type="button" class="btn btn-primary" id="grille-fiche-valider">✓ Valider</button></span></div>'
+    + '<div id="grille-fiche-corps" style="padding:14px 16px 18px"></div></div>';
+  document.body.appendChild(bd);
+
+  // Le formulaire est DÉPLACÉ dans la fenêtre, puis remis exactement à sa place.
+  const repere = document.createComment('fiche-' + cfg.fiche.panel);
+  panel.parentNode.insertBefore(repere, panel);
+  const etaitActif = panel.classList.contains('active');
+  document.getElementById('grille-fiche-corps').appendChild(panel);
+  panel.classList.add('active', 'grille-fiche-panel');
+
+  const fermer = () => {
+    panel.classList.remove('grille-fiche-panel');
+    if (!etaitActif) panel.classList.remove('active');
+    if (repere.parentNode) { repere.parentNode.insertBefore(panel, repere); repere.remove(); }
+    bd.remove();
+    document.removeEventListener('keydown', echap);
+  };
+  const echap = e => { if (e.key === 'Escape') fermer(); };
+  document.addEventListener('keydown', echap);
+  document.getElementById('grille-fiche-annuler').onclick = fermer;
+  document.getElementById('grille-fiche-valider').onclick = () => {
+    let data = {};
+    try { data = collectResults(cfg.type) || {}; } catch (e) { toast('Lecture de la fiche impossible', 'err'); return; }
+    const rempli = typeof cfg.filled === 'function' ? !!cfg.filled(data) : _grilleAUneValeur(data);
+    if (!rempli) { toast('Rien de saisi sur la fiche', 'err'); return; }
+    (_grilleFiches[id] = _grilleFiches[id] || {})[k] = data;
+    fermer();
+    const cell = document.getElementById('g_' + id + '_' + k + '_fiche');
+    if (cell) cell.value = 'ok';
+    const btn = document.getElementById('gbtn_' + id + '_' + k);
+    if (btn) { btn.textContent = '✓ Rempli · modifier'; btn.className = 'btn btn-success grille-fiche-btn'; }
+    grilleCellChange(id);
+    toast('✓ Fiche prête — enregistrez la série pour la valider', 'ok');
+  };
+  setTimeout(() => { const f = panel.querySelector('select, input:not([type=hidden])'); if (f) try { f.focus(); } catch (e) {} }, 60);
 }
