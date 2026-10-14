@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-//  TEST — Ambiance animée (lien de test /preview uniquement)
+//  Ambiance animée
 //    • Bandeau d'accueil : salutation, écran ouvert, poste en cours
 //      (permanence / garde du X au Y) et horloge.
 //    • Entrée animée des cartes à chaque changement d'écran.

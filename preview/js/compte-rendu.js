@@ -40,14 +40,15 @@ const CR_COURTS = {
 function crTable(titre, rows, opts) {
   opts = opts || {};
   const avecUnite = opts.unite !== false;
+  const avecRef = opts.ref !== false;          // bactériologie : pas de valeurs normales
   if (!rows || !rows.length) return '';
   const ths = ['<th class="cr-th-nom">' + crEsc(titre) + '</th>',
                '<th class="cr-th-c">Résultat</th>']
     .concat(avecUnite ? ['<th class="cr-th-c cr-u">Unité</th>'] : [])
-    .concat(['<th class="cr-th-c">Valeurs normales</th>']).join('');
+    .concat(avecRef ? ['<th class="cr-th-c">Valeurs normales</th>'] : []).join('');
   const trs = rows.map(r => {
     if (r.interpretation) {
-      return '<tr><td class="cr-interp" colspan="' + (avecUnite ? 4 : 3) + '">'
+      return '<tr><td class="cr-interp" colspan="' + (2 + (avecUnite ? 1 : 0) + (avecRef ? 1 : 0)) + '">'
         + crEsc(r.interpretation) + '</td></tr>';
     }
     const val = crV(r.val) === '' ? '—' : r.val;
@@ -55,7 +56,7 @@ function crTable(titre, rows, opts) {
     return '<tr><td class="cr-nom">' + crEsc(r.nom) + '</td>'
       + '<td class="' + clsVal + '">' + crEsc(val) + '</td>'
       + (avecUnite ? '<td class="cr-unite">' + crEsc(r.unite || '') + '</td>' : '')
-      + '<td class="cr-ref">' + crEsc(r.ref || '') + '</td></tr>';
+      + (avecRef ? '<td class="cr-ref">' + crEsc(r.ref || '') + '</td>' : '') + '</tr>';
   }).join('');
   return '<table class="cr-t"><thead><tr>' + ths + '</tr></thead><tbody>' + trs + '</tbody></table>';
 }
@@ -234,30 +235,30 @@ function crBlocsBacterio(B) {
   let out = '';
   out += crTable('Bactériologie' + (prel ? ' — ' + prel : ''), pleins([
     L('Site / précision', 'Site / Précision'), L('Aspect', 'Aspect'), L('Couleur', 'Couleur'),
-    L('Odeur', 'Odeur'), L('pH', 'pH')]), { unite: false });
+    L('Odeur', 'Odeur'), L('pH', 'pH')]), { unite: false, ref: false });
   // Leucocytes / hématies : nombre (unité /mm³) OU appréciation (« Rares »…) sans unité.
   const LN = (nom, cle) => { const v = lib(cle); return { nom, val: v, unite: /^\s*\d/.test(v) ? '/mm³' : '', ref: '' }; };
   out += crTable('État frais — cytologie', pleins([
     LN('Leucocytes', 'Leucocytes (/mm³)'), LN('Hématies', 'Hématies (/mm³)'),
     L('Cellules épithéliales', 'Cellules épithéliales'), L('Cylindres', 'Cylindres'), L('Cristaux', 'Cristaux'),
     L('Bactéries', 'Bactéries (état frais)'), L('Levures', 'Levures'), L('Parasites', 'Parasites'),
-    L('Spermatozoïdes', 'Spermatozoïdes')]));
+    L('Spermatozoïdes', 'Spermatozoïdes')]), { ref: false });
   out += crTable('Coloration de Gram', pleins([
     L('Résultat', 'Coloration de Gram'), L('Abondance', 'Gram - Abondance'), L('Commentaire', 'Gram - Commentaire')]),
-    { unite: false });
+    { unite: false, ref: false });
   const culture = pleins([
     L('Culture', 'Culture'), L('Numération bactérienne', 'Numération bactérienne'),
     L('Germe identifié', 'Germe identifié'), L('2ᵉ germe', '2ème germe'),
     L('Milieux de culture', 'Milieux de culture'), L('Observations', 'Observations')]);
   culture.forEach(r => { if (r.nom === 'Culture' && /Positive/i.test(r.val)) r.ano = true; });
-  out += crTable('Culture & identification', culture, { unite: false });
+  out += crTable('Culture & identification', culture, { unite: false, ref: false });
   const afg = B['Mode: ABG/AFG'] === 'afg';
   const pref = afg ? 'AFG_' : 'ABG_';
   const MOT = { S: 'Sensible', I: 'Intermédiaire', R: 'Résistant' };
   const abg = Object.keys(B).filter(k => k.indexOf(pref) === 0 && MOT[B[k]])
     .map(k => ({ nom: k.slice(pref.length), val: MOT[B[k]], ano: B[k] === 'R', ref: '' }));
   if (abg.length && crV(B['Commentaire antibiogramme'])) abg.push({ interpretation: 'Commentaire : ' + crV(B['Commentaire antibiogramme']) });
-  out += crTable(afg ? 'Antifongigramme' : 'Antibiogramme', abg, { unite: false });
+  out += crTable(afg ? 'Antifongigramme' : 'Antibiogramme', abg, { unite: false, ref: false });
   return out;
 }
 

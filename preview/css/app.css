@@ -1714,3 +1714,21 @@ body.fill-all-mode #zone-saisie .result-table td:has(input, select, textarea) { 
 body.fill-all-mode #zone-saisie .panel.active { gap: 10px !important; }
 body.fill-all-mode #zone-saisie .result-table td:first-child {
   white-space: normal !important; overflow: visible !important; word-break: normal; }
+
+/* ✅ Fenêtre « fiche » de la saisie en série (bactériologie, selles) : le
+   formulaire de l'analyse y est déplacé le temps de la saisie. */
+.grille-fiche-box { background: var(--surface, #fff); border-radius: 18px; box-shadow: var(--shadow-lg); }
+.grille-fiche-panel .btn-row, .grille-fiche-panel .card-actions,
+.grille-fiche-panel > .card:has(> .btn-row:only-child) { display: none !important; }
+.grille-fiche-panel { display: block !important; }
+.grille-fiche-panel > .card:hover { transform: none; }
+
+/* ✅ Antibiogramme : boutons S / I / R (le menu reste pour la collecte, masqué). */
+.abg-row select { display: none; }
+.abg-btns { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.abg-b { min-width: 34px; min-height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface, #fff);
+  color: var(--text-muted); font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; padding: 0 8px; }
+.abg-b:hover { border-color: var(--text-muted); }
+.abg-row.S .abg-bS { background: #15803d; border-color: #15803d; color: #fff; }
+.abg-row.I .abg-bI { background: #b45309; border-color: #b45309; color: #fff; }
+.abg-row.R .abg-bR { background: #b91c1c; border-color: #b91c1c; color: #fff; }

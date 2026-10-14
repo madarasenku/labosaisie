@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.239';
-const CACHE = 'cpmi-labo-v198';
+const APP_VERSION = '13.240';
+const CACHE = 'cpmi-labo-v199';
 const v = url => url + '?v=' + APP_VERSION;
 
 /* Pré-cacher les fichiers essentiels à l'installation.
@@ -43,6 +43,7 @@ const PRECACHE = [
   './login.html',
   './soignant.html',
   v('./css/app.css'),
+  v('./css/theme.css'),
   // ✅ v13.70 — modules extraits de index.html. L'ORDRE n'a pas d'importance
   // ici (simple mise en cache) mais il est critique dans index.html.
   v('./js/periode-nav.js'),
@@ -53,6 +54,7 @@ const PRECACHE = [
   v('./js/navigation.js'),
   v('./js/supabase-db.js'),
   v('./js/historique.js'),
+  v('./js/ambiance.js'),
   v('./js/export-excel.js'),
   v('./js/prescripteurs.js'),
   v('./js/saisie.js'),
@@ -77,6 +79,7 @@ const PRECACHE = [
   v('./vendor/jspdf-2.5.1.umd.min.js'),
   v('./vendor/jspdf-autotable-3.8.2.min.js'),
   v('./vendor/fonts/poppins.css'),
+  v('./vendor/fonts/plus-jakarta-sans-latin-var.woff2'),
   v('./vendor/fonts/poppins-latin-400-normal.woff2'),
   v('./vendor/fonts/poppins-latin-500-normal.woff2'),
   v('./vendor/fonts/poppins-latin-600-normal.woff2'),

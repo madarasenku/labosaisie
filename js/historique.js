@@ -407,6 +407,7 @@ async function renderHistory(forceRefresh) {
     setK('hist-kpi-urgent', nUrg);
     setK('hist-kpi-rendu', nRen);   setK('hist-kpi-total', filtered.length);
   } catch (e) {}
+  try { majCartesResume(); } catch (e) {}
 
   const sortDateEl    = document.getElementById('sort-date');
   const sortNomEl     = document.getElementById('sort-nom');
@@ -1925,6 +1926,38 @@ async function saveNote(id) {
 // ✅ v13.232 — Bouton « 📥 Résultats à saisir » : visible pour ceux qui saisissent des
 // résultats (ni caissier, ni spectateur) ; la pastille indique combien de dossiers
 // attendent un résultat (BPN, électrophorèse, sous-traités), toutes dates.
+// Cartes résumé de l'Historique : journée de SERVICE en cours
+//   (permanence 8h–16h30 + garde 16h30 → lendemain 8h), indépendamment des
+//   filtres de la liste. Dossiers supprimés exclus.
+function majCartesResume() {
+  const el = id => document.getElementById(id);
+  if (!el('hist-res-jour')) return;
+  const jour = typeof _jourServiceCourant === 'function' ? _jourServiceCourant() : '';
+  const infos = r => (typeof posteInfoDossier === 'function') ? posteInfoDossier(r) : { poste: '', jour: '' };
+  const estPaye = r => (typeof getPaiementStatus === 'function' && getPaiementStatus(r.id) === 'paye')
+                    || (r.patient && r.patient.paiement_status === 'paye');
+  const duJour = getDB().filter(r => !r.deletedAt && !r._hardDeleted && infos(r).jour === jour);
+  const nGarde = duJour.filter(r => infos(r).poste === 'Garde').length;
+  const payes = duJour.filter(estPaye), impayes = duJour.filter(r => !estPaye(r));
+  const somme = l => l.reduce((t, r) => t + (Number(r.montant) || 0), 0);
+  const F = n => n.toLocaleString('fr-FR') + ' F';
+  const pl = (n, mot) => n + ' ' + mot + (n > 1 ? 's' : '');
+  el('hist-res-jour').textContent = duJour.length;
+  el('hist-res-jour-sub').textContent = (duJour.length - nGarde) + ' en permanence · ' + nGarde + ' en garde';
+  el('hist-res-paye').textContent = F(somme(payes));
+  el('hist-res-paye-sub').textContent = pl(payes.length, 'dossier') + ' payé' + (payes.length > 1 ? 's' : '');
+  el('hist-res-impaye').textContent = F(somme(impayes));
+  el('hist-res-impaye-sub').textContent = impayes.length ? pl(impayes.length, 'dossier') + ' en attente' : 'tout est encaissé';
+  let n = '—';
+  const peut = !(typeof isCaissier === 'function' && isCaissier()) && typeof grilleCompteASaisir === 'function';
+  if (peut) { try { n = grilleCompteASaisir(); } catch (e) {} }
+  el('hist-res-attendus').textContent = n;
+  const total = somme(duJour), prog = el('hist-res-prog');
+  if (prog) prog.style.width = (total ? Math.round(100 * somme(payes) / total) : 0) + '%';
+  const carte = el('hist-res-carte');
+  if (carte) carte.classList.toggle('en-attente', typeof n === 'number' && n > 0);
+}
+
 function majBoutonASaisir() {
   const btn = document.getElementById('btn-a-saisir');
   if (!btn) return;

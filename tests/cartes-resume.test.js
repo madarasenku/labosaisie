@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-//  Cartes résumé de l'Historique (lien de test /preview)
+//  Cartes résumé de l'Historique
 //    Journée de SERVICE en cours = permanence 8h–16h30 + garde 16h30 →
 //    lendemain 8h. La veille et les dossiers supprimés ne comptent pas.
 // ════════════════════════════════════════════════════════════════════
@@ -7,9 +7,8 @@ const { serve, openApp, createReporter } = require('./helpers');
 
 (async () => {
   const srv = await serve(8266);
-  const r = createReporter('CARTES RÉSUMÉ DE L\'HISTORIQUE (preview)');
-  const { ctx, page, errors } = await openApp({ role: 'agent', username: 'YERIGUE', port: 8266,
-                                                cible: '/preview/index.html' });
+  const r = createReporter('CARTES RÉSUMÉ DE L\'HISTORIQUE');
+  const { ctx, page, errors } = await openApp({ role: 'agent', username: 'YERIGUE', port: 8266 });
 
   const res = await page.evaluate(async () => {
     const j = _jourServiceCourant(), lendemain = _jourPlus(j, 1), veille = _jourPlus(j, -1);
