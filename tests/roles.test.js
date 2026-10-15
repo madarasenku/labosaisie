@@ -1,7 +1,12 @@
 // Cloisonnement par rôle : admin, caissier, agent.
 // Vérifie qu'un agent ne voit que ses propres fiches et que le caissier
 // n'a pas accès à la saisie.
-const { serve, openApp, createReporter, numeric, FICHES, ATTENDU } = require('./helpers');
+const { serve, openApp, createReporter, numeric, FICHES, ATTENDU, rows } = require('./helpers');
+
+// « Total encaissé » ne compte que les dossiers PAYÉS : on en paie une partie.
+const PAYES = new Set(FICHES.filter(f => f[0] % 2 === 0).map(f => f[0]));
+const rpcPayes = { get_resultats_light: rows().map(x => PAYES.has(x.id)
+  ? Object.assign({}, x, { patient: Object.assign({}, x.patient, { paiement_status: 'paye' }) }) : x) };
 
 const parAgent = a => FICHES.filter(f => f[4] === a);
 const agent1Mois = parAgent('agent1').filter(f => f[1].startsWith(ATTENDU.moisCourantPrefixe));
@@ -41,7 +46,7 @@ const agent1Mois = parAgent('agent1').filter(f => f[1].startsWith(ATTENDU.moisCo
   // jamais écrits en dur : les dates du jeu de données bougent avec la
   // date du jour (voir l'avertissement en tête de helpers.js).
   {
-    const { ctx, page, errors } = await openApp({ role:'agent', username:'agent1', userId:2 });
+    const { ctx, page, errors } = await openApp({ role:'agent', username:'agent1', userId:2, rpc: rpcPayes });
     r.section('Agent');
     r.check('isAdmin()',    await page.evaluate(() => isAdmin()), false);
     r.check('isCaissier()', await page.evaluate(() => isCaissier()), false);
@@ -56,7 +61,7 @@ const agent1Mois = parAgent('agent1').filter(f => f[1].startsWith(ATTENDU.moisCo
     const n = numeric(await page.evaluate(() => document.getElementById('ucaisse-kpi-nb').textContent));
     const t = numeric(await page.evaluate(() => document.getElementById('ucaisse-kpi-total').textContent));
     r.check('caisse perso mois courant (nb/total)', `${n}/${t}`,
-            `${agent1Mois.length}/${agent1Mois.reduce((s, f) => s + f[2], 0)}`);
+            `${agent1Mois.length}/${agent1Mois.filter(f => PAYES.has(f[0])).reduce((s, f) => s + f[2], 0)}`);
     allErrors = allErrors.concat(errors);
     await ctx.close();
   }

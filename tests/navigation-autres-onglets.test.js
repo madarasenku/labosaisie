@@ -4,7 +4,15 @@
 // Le composant est partagé (js/periode-nav.js) : ces tests vérifient que
 // chaque onglet le branche correctement — le décalage doit rester propre à
 // l'onglet, et le filtrage doit réellement suivre.
-const { serve, openApp, createReporter, numeric, ATTENDU, FICHES } = require('./helpers');
+const { serve, openApp, createReporter, numeric, ATTENDU, FICHES, rows } = require('./helpers');
+
+// « Total encaissé » ne compte que les dossiers PAYÉS (v13.241) : on en paie
+// une partie (identifiants pairs) pour que total encaissé ≠ total facturé.
+const PAYES = new Set(FICHES.filter(f => f[0] % 2 === 0).map(f => f[0]));
+const encaisse = l => l.filter(f => PAYES.has(f[0])).reduce((s, f) => s + f[2], 0);
+const enAttente = l => l.filter(f => !PAYES.has(f[0])).length;
+const rpcPayes = { get_resultats_light: rows().map(x => PAYES.has(x.id)
+  ? Object.assign({}, x, { patient: Object.assign({}, x.patient, { paiement_status: 'paye' }) }) : x) };
 
 const parMois = p => FICHES.filter(f => f[1].startsWith(p));
 const moisPrec = parMois(ATTENDU.moisPrecedentPrefixe);
@@ -61,7 +69,7 @@ const agent1Prec = moisPrec.filter(f => f[4] === 'agent1');
 
   // ─────────────── CAISSE (admin) ───────────────
   {
-    const { ctx, page, errors } = await openApp({ role: 'admin' });
+    const { ctx, page, errors } = await openApp({ role: 'admin', rpc: rpcPayes });
     await page.evaluate(() => showView('caisse'));
     await page.waitForTimeout(1500);
 
@@ -73,8 +81,11 @@ const agent1Prec = moisPrec.filter(f => f[4] === 'agent1');
     await page.waitForTimeout(1800);
     r.check('mois courant — nb', numeric(await page.evaluate(
       () => document.getElementById('caisse-kpi-nb').textContent)), ATTENDU.caisseMois.nb);
-    r.check('mois courant — total', numeric(await page.evaluate(
-      () => document.getElementById('caisse-kpi-total').textContent)), ATTENDU.caisseMois.total);
+    const ficheMois = parMois(ATTENDU.moisCourantPrefixe);
+    r.check('mois courant — total ENCAISSÉ', numeric(await page.evaluate(
+      () => document.getElementById('caisse-kpi-total').textContent)), encaisse(ficheMois));
+    r.check('mois courant — en attente de paiement', numeric(await page.evaluate(
+      () => document.getElementById('caisse-kpi-attente').textContent)), enAttente(ficheMois));
 
     await page.evaluate(() => decalerCaisse(-1));
     await page.waitForTimeout(1800);
@@ -82,7 +93,7 @@ const agent1Prec = moisPrec.filter(f => f[4] === 'agent1');
       () => document.getElementById('caisse-kpi-nb').textContent)), moisPrec.length);
     r.check('mois précédent — total', numeric(await page.evaluate(
       () => document.getElementById('caisse-kpi-total').textContent)),
-      moisPrec.reduce((s, f) => s + f[2], 0));
+      encaisse(moisPrec));
     r.check('bouton « Actuel » apparu', await page.evaluate(() => {
       const b = document.getElementById('caisse-nav-retour');
       return !!b && b.offsetParent !== null;
@@ -114,7 +125,7 @@ const agent1Prec = moisPrec.filter(f => f[4] === 'agent1');
 
   // ─────────────── CAISSE PERSONNELLE (agent) ───────────────
   {
-    const { ctx, page, errors } = await openApp({ role:'agent', username:'agent1', userId:2 });
+    const { ctx, page, errors } = await openApp({ role:'agent', username:'agent1', userId:2, rpc: rpcPayes });
     await page.evaluate(() => showView('caisse'));
     await page.waitForTimeout(1500);
 
@@ -134,7 +145,10 @@ const agent1Prec = moisPrec.filter(f => f[4] === 'agent1');
       () => document.getElementById('ucaisse-kpi-nb').textContent)), agent1Prec.length);
     r.check('mois précédent — total', numeric(await page.evaluate(
       () => document.getElementById('ucaisse-kpi-total').textContent)),
-      agent1Prec.reduce((s, f) => s + f[2], 0));
+      encaisse(agent1Prec));
+    r.check('mois précédent — en attente de paiement', numeric(await page.evaluate(
+      () => document.getElementById('ucaisse-kpi-attente').textContent)),
+      enAttente(agent1Prec));
     r.check('toujours cloisonné à ses fiches', await page.evaluate(
       () => getCalcDB().every(x => x.createdBy === 'agent1')), true);
 

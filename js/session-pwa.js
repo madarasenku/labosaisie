@@ -1090,17 +1090,9 @@ function refreshMedecinDatalist() {
     const m = (r.patient?.medecin || '').trim();
     if (m) noms.add(m);
   });
+  // ✅ v13.241 — La liste vient de get_prescripteurs (RPC à jeton) : plus de
+  //   lecture directe de la table, qui exposait téléphones et taux de ristourne.
   (_prescripteurs || []).forEach(p => { if (p?.nom) noms.add(String(p.nom).trim()); });
-  // Complément asynchrone via la table prescripteurs (best-effort)
-  if (_sb && TK()) {
-    _sb.from('labo_prescripteurs').select('nom').then(({ data }) => {
-      if (Array.isArray(data)) {
-        let added = false;
-        data.forEach(row => { if (row?.nom && !noms.has(row.nom.trim())) { noms.add(row.nom.trim()); added = true; } });
-        if (added) _writeMedecinDatalist(dl, noms);
-      }
-    }).catch(() => {});
-  }
   _writeMedecinDatalist(dl, noms);
 }
 function _writeMedecinDatalist(dl, nomsSet) {
@@ -1472,10 +1464,13 @@ async function renderCaisse() {
   const labelEl = document.getElementById('caisse-periode-label');
   if (labelEl) labelEl.textContent = (from || '…') + ' → ' + (to || '…');
 
-  const total = rows.reduce((s, r) => s + (r.montant || 0), 0);
+  // ✅ v13.241 — « Total encaissé » = dossiers PAYÉS (comptait tout le facturé) ;
+  //   « en attente de paiement » = non payés (comptait les résultats non rendus).
+  const _paye = r => getPaiementStatus(r.id) === 'paye';
+  const total = rows.filter(_paye).reduce((s, r) => s + (r.montant || 0), 0);
   const nb = rows.length;
-  const moy = nb ? Math.round(total / nb) : 0;
-  const attente = rows.filter(r => getStatut(r.id) === 'attente').length;
+  const moy = nb ? Math.round(rows.reduce((s, r) => s + (r.montant || 0), 0) / nb) : 0;
+  const attente = rows.filter(r => !_paye(r) && (Number(r.montant) || 0) > 0).length;
   // ✅ v13.33 — Compte-à-rebours animé sur les KPI
   animateCount(document.getElementById('caisse-kpi-total'),   total,   700, true);
   animateCount(document.getElementById('caisse-kpi-nb'),      nb,      500, false);
@@ -1651,10 +1646,11 @@ function renderUserCaisse() {
   if (labelEl) labelEl.textContent = (from || '…') + ' → ' + (to || '…');
 
   // KPI avec compte-à-rebours animé ✅ v13.33
-  const total   = rows.reduce((s, r) => s + (r.montant || 0), 0);
+  const _paye   = r => getPaiementStatus(r.id) === 'paye';
+  const total   = rows.filter(_paye).reduce((s, r) => s + (r.montant || 0), 0);
   const nb      = rows.length;
-  const moy     = nb ? Math.round(total / nb) : 0;
-  const attente = rows.filter(r => getStatut(r.id) === 'attente').length;
+  const moy     = nb ? Math.round(rows.reduce((s, r) => s + (r.montant || 0), 0) / nb) : 0;
+  const attente = rows.filter(r => !_paye(r) && (Number(r.montant) || 0) > 0).length;
   animateCount(document.getElementById('ucaisse-kpi-total'),   total,   700, true);
   animateCount(document.getElementById('ucaisse-kpi-nb'),      nb,      500, false);
   animateCount(document.getElementById('ucaisse-kpi-moy'),     moy,     600, true);
