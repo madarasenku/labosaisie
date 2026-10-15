@@ -517,13 +517,14 @@ async function lancerAuditSecurite() {
  * par ne plus être lue.
  */
 async function majBandeauSauvegarde() {
-  const zone = document.getElementById('sauvegarde-etat');
-  if (!zone || !isAdmin()) return;
+  const zone = document.getElementById('sauvegarde-etat') || document.createElement('div');
+  if (!isAdmin()) return;
   if (!navigator.onLine || typeof _sb === 'undefined' || !_sb) return;
 
   try {
     const { data, error } = await _sb.rpc('derniere_sauvegarde', { p_token: TK() });
     if (error || !data) return;
+    _majRappelAccueil(data);
 
     if (data.jamais) {
       zone.innerHTML = '<span style="color:#b45309;font-weight:700">⚠ Aucune sauvegarde effectuée</span>'
@@ -544,4 +545,26 @@ async function majBandeauSauvegarde() {
         + '<span style="color:var(--text-muted)">' + detail + '</span>';
     }
   } catch (e) { /* sans réseau, on n'affiche rien plutôt qu'une fausse alerte */ }
+}
+
+/**
+ * ✅ v13.242 — Rappel sur l'Accueil de l'admin. Le bandeau ci-dessus vit dans
+ * Comptes › Configuration, où personne ne le voyait : la dernière copie datait
+ * de deux mois. Le rappel n'apparaît que lorsqu'une sauvegarde est due.
+ */
+function _majRappelAccueil(data) {
+  const el = document.getElementById('kio-sauvegarde');
+  if (!el) return;
+  const jours = Number(data.jours) || 0;
+  const due = !!data.jamais || jours >= SAUVEGARDE_ALERTE_JOURS;
+  el.hidden = !due;
+  if (!due) return;
+  const nouvelles = (Number(data.fiches_actuelles) || 0) - (Number(data.nb_fiches) || 0);
+  const titre = document.getElementById('kio-sauv-titre');
+  const detail = document.getElementById('kio-sauv-detail');
+  if (titre) titre.textContent = data.jamais ? 'Aucune sauvegarde effectuée'
+                                             : 'Dernière sauvegarde il y a ' + jours + ' jours';
+  if (detail) detail.textContent = (data.jamais ? (data.fiches_actuelles || 0) + ' fiches en base'
+                                                : (nouvelles > 0 ? nouvelles + ' fiche' + (nouvelles > 1 ? 's' : '') + ' non sauvegardée' + (nouvelles > 1 ? 's' : '') : ''))
+    + ' · Le fichier se télécharge sur ce poste : rangez-le dans votre Google Drive.';
 }
