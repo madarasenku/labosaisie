@@ -118,9 +118,34 @@ function estCompteNadia() {
 function accesCaisseNoire() {
   return estCompteNadia() || isAdmin();
 }
+// ✅ v13.244 — Compte « Administrateur » au périmètre du contrat : techniquement
+//   un SPECTATEUR (lecture seule, périmètre restreint côté serveur) qui porte un
+//   titre affiché et le droit de gérer les comptes (hors admin / Nadia).
+//   Profil lu sur le serveur (mon_profil) et gardé dans la session.
+function gereComptes() {
+  return isSpectateur() && !!(_currentUser && _currentUser.gereComptes);
+}
+let _profilEnCours = false;
+async function chargerProfil() {
+  if (!isSpectateur() || _profilEnCours || typeof _sb === 'undefined' || !_sb || !TK()) return;
+  _profilEnCours = true;
+  try {
+    const { data, error } = await _sb.rpc('mon_profil', { p_token: TK() });
+    if (error || !data || data.erreur) return;
+    const titre = data.titre || null, gere = !!data.gere_comptes;
+    if (_currentUser.titre === titre && !!_currentUser.gereComptes === gere) return;
+    _currentUser.titre = titre; _currentUser.gereComptes = gere;
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(_currentUser)); } catch (e) {}
+    updateUserBadge();
+  } catch (e) {} finally { _profilEnCours = false; }
+}
 // Lecture seule stricte (spectateur) : bloque toute action. Retourne true si bloqué.
 function blockIfSpectateur() {
-  if (isSpectateur()) { toast('👁 Compte spectateur — lecture seule, aucune action possible', 'err'); return true; }
+  if (isSpectateur()) {
+    toast(_currentUser.titre ? '🔒 Action non disponible pour ce compte'
+                             : '👁 Compte spectateur — lecture seule, aucune action possible', 'err');
+    return true;
+  }
   return false;
 }
 
@@ -267,7 +292,8 @@ function enterApp() {
 function updateUserBadge() {
   const el = document.getElementById('user-badge');
   if (el && _currentUser) {
-    const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier' : isSpectateur() ? '👁 Spectateur' : '🔬 Agent';
+    const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier'
+      : isSpectateur() ? (_currentUser.titre ? '👑 ' + _currentUser.titre : '👁 Spectateur') : '🔬 Agent';
     el.textContent = `${_currentUser.username} · ${roleLabel}`;
   }
   // ✅ v13.33 — btn-clear-history supprimé ; btn-masquees géré par updateMasqueesBtn()
@@ -277,7 +303,8 @@ function updateUserBadge() {
   // ✅ v13.127 — Charger la liste des journées verrouillées.
   if (typeof chargerClotures === 'function') chargerClotures();
   const usersNavBtn = document.getElementById('btn-nav-users');
-  if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
+  if (usersNavBtn) usersNavBtn.style.display = (isAdmin() || gereComptes()) ? '' : 'none';
+  if (isSpectateur()) chargerProfil();
   // ✅ Tableau de bord Kiosque : réservé à l'admin.
   const accueilNavBtn = document.getElementById('btn-nav-accueil');
   if (accueilNavBtn) accueilNavBtn.style.display = isAdmin() ? '' : 'none';
@@ -484,7 +511,7 @@ async function renderAuditLog() {
 async function renderUsersList() {
   const b = document.getElementById('users-body');
   if (!b) return;
-  if (!isAdmin()) {
+  if (!isAdmin() && !gereComptes()) {
     b.innerHTML = `<tr><td colspan="4"><div class="empty-state">Accès réservé aux administrateurs</div></td></tr>`;
     return;
   }
@@ -501,7 +528,9 @@ async function renderUsersList() {
   }
   b.innerHTML = data.map(u => {
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
+    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier'
+      : u.role === 'spectateur' ? (u.gere_comptes ? '👑 ' + escHTML(u.titre || 'Administrateur') + ' <span style="font-weight:400;opacity:.75">(périmètre du contrat)</span>' : '👁 Spectateur')
+      : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
     return `
@@ -511,7 +540,7 @@ async function renderUsersList() {
       <td data-label="Créé le">${dateStr}</td>
       <td data-label="Actions">
         <button class="btn" style="padding:4px 10px;font-size:11px" onclick="editUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}', '${u.role}')">✏ Modifier</button>
-        <button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:#eef7fb;color:#0b2545;border:1px solid #bfe0ef" onclick="ouvrirSignatureCompte('${u.username.replace(/'/g, "\\'")}')" title="Dessiner ou modifier la signature">✍️ Signature</button>
+        ${isAdmin() ? `<button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:#eef7fb;color:#0b2545;border:1px solid #bfe0ef" onclick="ouvrirSignatureCompte('${u.username.replace(/'/g, "\\'")}')" title="Dessiner ou modifier la signature">✍️ Signature</button>` : ''}
         ${(isSelf || isProtected) ? '' : `<button class="btn btn-danger" style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="deleteUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}')">🗑</button>`}
       </td>
     </tr>`;
@@ -603,7 +632,18 @@ async function createUserAccount() {
   });
 }
 
+// ✅ v13.244 — Le gestionnaire de comptes ne propose que agent / caissier / spectateur.
+function _limiterRolesProposes() {
+  ['nu_role', 'um_role'].forEach(idSel => {
+    const sel = document.getElementById(idSel); if (!sel) return;
+    [...sel.options].forEach(o => {
+      const interdit = gereComptes() && (o.value === 'admin' || o.value === 'prescripteur');
+      o.hidden = interdit; o.disabled = interdit;
+    });
+  });
+}
 function editUserAccount(id, username, currentRole) {
+  _limiterRolesProposes();
   // ✅ v13.7 — modale (remplace confirm + prompt, peu ergonomiques sur mobile)
   document.getElementById('um_id').value = id;
   document.getElementById('um_name').textContent = 'Compte : ' + username;

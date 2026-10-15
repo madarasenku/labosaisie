@@ -11,7 +11,7 @@ function showView(v) {
   if (v !== 'saisie') _caisseNewPatientMode = false;
   // ✅ v13.33 — Le caissier ne peut pas accéder à la saisie ni aux comptes
   // ✅ v13.37 — Le spectateur non plus (lecture caisse uniquement)
-  if (isSpectateur() && (v === 'saisie' || v === 'comptes')) return;
+  if (isSpectateur() && (v === 'saisie' || (v === 'comptes' && !(typeof gereComptes === 'function' && gereComptes())))) return;
   if (isCaissier() && v === 'comptes') return;
   // Caissier : saisie autorisée UNIQUEMENT pour enregistrer un nouveau patient
   // (facture), via le bouton dédié de la caisse.
@@ -95,7 +95,7 @@ function showView(v) {
     if (_ec) _ec.style.display = _ecAdmin ? '' : 'none';
     if (_ecAdmin && typeof renderElectro === 'function') renderElectro();
   }
-  if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors();
+  if (v === 'comptes') { _comptesSelonProfil(); renderUsersList(); populateMoisAnneeSelectors();
     if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
   if (v === 'stats') renderStats();
   if (v === 'caisse') renderCaisse();
@@ -114,6 +114,19 @@ function showView(v) {
   if (['saisie','historique','stats','caisse'].includes(v)) {
     try { localStorage.setItem('labo_vue_courante', v); } catch (e) {}
   }
+}
+
+// ✅ v13.244 — Le gestionnaire de comptes ne voit que « Comptes › Utilisateurs » :
+//   ni Configuration, ni Journal, ni Prescripteurs (taux de ristourne).
+function _comptesSelonProfil() {
+  const gest = !isAdmin() && typeof gereComptes === 'function' && gereComptes();
+  document.querySelectorAll('#view-comptes .admin-tab-main').forEach((b, i) => { b.style.display = (gest && i > 0) ? 'none' : ''; });
+  document.querySelectorAll('#ac-comptes .admin-tab-sub').forEach((b, i) => { b.style.display = (gest && i > 0) ? 'none' : ''; });
+  if (gest) {
+    const m = document.querySelector('#view-comptes .admin-tab-main'); if (m) adminShowMain('ac-comptes', m);
+    const s = document.querySelector('#ac-comptes .admin-tab-sub'); if (s) adminShowSub('ac-users', s);
+  }
+  if (typeof _limiterRolesProposes === 'function') _limiterRolesProposes();
 }
 
 // ════════ Tableau de bord Kiosque (admin) ════════
