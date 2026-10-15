@@ -1300,27 +1300,50 @@ function _grilleDossier(id) { try { return grilleSourceDB().find(x => String(x.i
 // « Prêt » = tout examen COMMENCÉ est entièrement rempli (et au moins un l'est).
 // Le travail est progressif : on saisit la NFS le matin et la CRP plus tard ;
 // exiger que TOUS les examens du patient soient remplis bloquerait ce flux.
+// État d'un examen dans la grille : 'vide' (rien tapé), 'partiel' ou 'complet'.
+function _grilleEtatExamen(id, k) {
+  const cfg = GRILLE_EXAMS[k];
+  const cells = {};
+  cfg.cols.forEach(c => {
+    const el = document.getElementById('g_' + id + '_' + k + '_' + c.k);
+    cells[c.k] = el ? String(el.value).trim() : '';
+  });
+  if (!Object.keys(cells).some(kk => cells[kk] !== '')) return 'vide';
+  // ✅ v13.157 — Complétude : prédicat spécifique si défini, sinon toutes les
+  //   colonnes NON optionnelles doivent être remplies (colonnes opt exclues).
+  const ok = (typeof cfg.complet === 'function')
+    ? cfg.complet(cells)
+    : cfg.cols.filter(c => !c.opt).every(c => cells[c.k] !== '');
+  return ok ? 'complet' : 'partiel';
+}
 function grilleRowComplete(id) {
   const r = _grilleDossier(id); if (!r) return false;
   let commences = 0, complets = 0;
   grilleExamsEditables(r).forEach(k => {
-    const cfg = GRILLE_EXAMS[k];
-    const cells = {};
-    cfg.cols.forEach(c => {
-      const el = document.getElementById('g_' + id + '_' + k + '_' + c.k);
-      cells[c.k] = el ? String(el.value).trim() : '';
-    });
-    const some = Object.keys(cells).some(kk => cells[kk] !== '');
-    if (!some) return;
+    const e = _grilleEtatExamen(id, k);
+    if (e === 'vide') return;
     commences++;
-    // ✅ v13.157 — Complétude : prédicat spécifique si défini, sinon toutes les
-    //   colonnes NON optionnelles doivent être remplies (colonnes opt exclues).
-    const ok = (typeof cfg.complet === 'function')
-      ? cfg.complet(cells)
-      : cfg.cols.filter(c => !c.opt).every(c => cells[c.k] !== '');
-    if (ok) complets++;
+    if (e === 'complet') complets++;
   });
   return commences > 0 && commences === complets;
+}
+// ✅ v13.243 — « Terminé » automatique seulement si TOUT le dossier est fait :
+//   chaque examen demandé est déjà enregistré ou entièrement rempli dans la
+//   grille. grilleRowComplete (« prêt à enregistrer ») ne regarde que les
+//   examens COMMENCÉS : NFS + CRP saisies, GE et TDR pas encore faits → le
+//   dossier passait « Terminé » (KOUKO, DJAKO, BB DOLOU le 15/10).
+//   Examen demandé que la grille ne connaît pas, ou liste des examens perdue :
+//   pas de décision automatique, le dossier reste « En cours ».
+function grilleDossierComplet(id) {
+  const r = _grilleDossier(id); if (!r) return false;
+  const coches = (r.resultats && r.resultats._examens_coches) || {};
+  if (Array.isArray(coches)) return false;
+  const types = Object.keys(coches).filter(t => (coches[t] || []).length);
+  if (!types.length) return false;
+  const horsGrille = types.some(t => coches[t].some(l => !GRILLE_ORDRE.some(k =>
+    GRILLE_EXAMS[k] && GRILLE_EXAMS[k].type === t && GRILLE_EXAMS[k].coche.test(l))));
+  if (horsGrille) return false;
+  return grilleExamsRestants(r).every(k => _grilleEtatExamen(id, k) === 'complet');
 }
 function grilleRowHasAny(id) {
   const r = _grilleDossier(id); if (!r) return false;
@@ -1417,7 +1440,7 @@ async function grilleSaveAll() {
         // plus jugée complète. Si tous les examens éditables sont remplis, le
         // dossier est « Terminé ».
         let rowComplete = false;
-        try { rowComplete = grilleRowComplete(id); } catch (e) {}
+        try { rowComplete = grilleDossierComplet(id); } catch (e) {}
         const saved = await updateRecordRemote(record.id, {
           patient: record.patient, type: 'Dossier', resultats: newRes,
           montant: record.montant || 0, prescripteur_id: record.prescripteur_id || null,

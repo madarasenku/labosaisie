@@ -733,11 +733,26 @@ function renderCaisseAEncaisser() {
 
 
 
-function cycleStatut(id) {
+async function cycleStatut(id) {
   if (blockIfSpectateur()) return;
   const order = ['attente','rendu','urgent'];
   const cur = order.indexOf(getStatut(id));
   const next = order[(cur < 0 ? 0 : cur + 1) % order.length];
+  // ✅ v13.243 — Un clic sur « En cours » ne doit pas finir un dossier incomplet
+  //   sans le dire : on nomme les examens qui manquent et on demande.
+  if (next === 'rendu' && typeof grilleExamsRestants === 'function') {
+    const r = (typeof _dbCache !== 'undefined' ? _dbCache : []).find(x => x.id === id);
+    let manquants = [];
+    try { manquants = r ? grilleExamsRestants(r).map(k => (GRILLE_EXAMS[k] && GRILLE_EXAMS[k].label) || k) : []; } catch (e) {}
+    if (manquants.length && typeof showConfirmModal === 'function') {
+      const ok = await showConfirmModal({
+        icon: '⚠️', title: 'Dossier incomplet',
+        message: 'Pas encore saisi : ' + manquants.join(', ') + '. Marquer quand même « Terminé » ?',
+        confirmText: 'Marquer Terminé', cancelText: 'Laisser en cours',
+      });
+      if (!ok) return;
+    }
+  }
   setStatut(id, next);
 }
 
