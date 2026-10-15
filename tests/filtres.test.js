@@ -90,13 +90,15 @@ const { serve, openApp, createReporter, histRows, setField, numeric, ATTENDU } =
   r.section('Caisse');
   await page.evaluate(() => showView('caisse'));
   await page.waitForTimeout(1200);
-  for (const [p, nb, total] of [['mois', ATTENDU.caisseMois.nb, ATTENDU.caisseMois.total],
-                                ['jour', ATTENDU.caisseJour.nb, ATTENDU.caisseJour.total]]) {
+  // Aucune fiche du jeu n'est payée : « Total encaissé » vaut 0 et toutes
+  // attendent leur paiement (v13.241 — le total comptait tout le facturé).
+  for (const [p, nb] of [['mois', ATTENDU.caisseMois.nb], ['jour', ATTENDU.caisseJour.nb]]) {
     await page.evaluate(x => setCaissePeriode(x), p);
     await page.waitForTimeout(1600);
     const t = numeric(await page.evaluate(() => document.getElementById('caisse-kpi-total').textContent));
     const n = numeric(await page.evaluate(() => document.getElementById('caisse-kpi-nb').textContent));
-    r.check(`« ${p} » nb/total`, `${n}/${t}`, `${nb}/${total}`);
+    const a = numeric(await page.evaluate(() => document.getElementById('caisse-kpi-attente').textContent));
+    r.check(`« ${p} » nb/encaissé/en attente`, `${n}/${t}/${a}`, `${nb}/0/${nb}`);
   }
 
   r.section('Ristournes — mois courant ET mois passé (régression v13.68)');

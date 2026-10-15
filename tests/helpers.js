@@ -158,6 +158,13 @@ async function openApp(opts = {}) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
 
+  // Filet de sécurité : TOUT appel vers Supabase qui n'est pas un RPC simulé
+  // (lecture directe d'une table, auth…) reçoit une réponse vide au lieu de
+  // partir vers la vraie base. Déclaré AVANT la route RPC, qui reste prioritaire.
+  // (Jusqu'en v13.240, la lecture directe des prescripteurs atteignait la
+  //  base de production à chaque test : ~7 800 requêtes par jour.)
+  await page.route(/\.supabase\.co\//, route => route.fulfill({
+    status: 200, contentType: 'application/json', body: '[]' }));
   const responses = rpcResponses(rpc);
   await page.route('**/rest/v1/rpc/**', route => {
     const fn = route.request().url().split('/rpc/')[1].split('?')[0];

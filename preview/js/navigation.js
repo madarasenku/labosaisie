@@ -122,7 +122,8 @@ function _accueilFill() {
   const hello = document.getElementById('kio-hello');
   if (hello) {
     const nom = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '';
-    hello.textContent = nom ? ('Bonjour ' + nom + ' 👋') : 'Tableau de bord';
+    const h = new Date().getHours();
+    hello.textContent = nom ? ((h >= 5 && h < 18 ? 'Bonjour ' : 'Bonsoir ') + nom + ' 👋') : 'Tableau de bord';
   }
   const dEl = document.getElementById('kio-date');
   if (dEl) { try { dEl.textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); } catch (e) {} }
