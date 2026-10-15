@@ -145,6 +145,7 @@ function _accueilFill() {
 }
 function renderAccueil() {
   _accueilFill();
+  if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde();
   // Le cache peut être vide juste après la connexion : on rafraîchit puis on
   // recalcule une fois (sans reboucler sur renderAccueil).
   if (typeof refreshDB === 'function') {

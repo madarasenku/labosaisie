@@ -14,8 +14,7 @@ const etat = jours => ({ jamais: false, le: '2026-08-09T22:49:00Z', par: 'admin'
   const r = createReporter('RAPPEL DE SAUVEGARDE — ACCUEIL');
   let erreurs = [];
   const ouvrir = async (rpc) => {
-    const o = await openApp({ role: 'admin', port: 8311, rpc,
-                               cible: process.env.CIBLE || '/preview/index.html' });
+    const o = await openApp({ role: 'admin', port: 8311, rpc });
     await o.page.evaluate(() => showView('accueil'));
     await o.page.waitForTimeout(1200);
     return o;

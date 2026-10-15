@@ -14,8 +14,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mes patients">
-<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.241">
-<script src="./vendor/supabase-2.39.7.umd.js?v=13.241"></script>
+<link rel="stylesheet" href="./vendor/fonts/poppins.css?v=13.242">
+<script src="./vendor/supabase-2.39.7.umd.js?v=13.242"></script>
 <style>
   /* Page volontairement autonome : elle ne charge NI app.css NI les modules
      du laboratoire. Un soignant qui ouvre son portail sur un téléphone en
@@ -95,6 +95,74 @@
     .fiche{box-shadow:none;border:1px solid #ccc;break-inside:avoid}
     .fiche-corps{display:block!important}
   }
+</style>
+<!-- Nouvelle interface : portail soignant (jour « Médical frais », nuit
+     « Sombre élégant » selon le réglage du téléphone). Écran seulement. -->
+<style id="theme-soignant">
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url('./vendor/fonts/plus-jakarta-sans-latin-var.woff2') format('woff2'); }
+@media screen {
+  :root {
+    --s-bg: #F3F8F7; --s-surface: #FFFFFF; --s-border: #D8E5E3; --s-text: #10282C; --s-muted: #4C6569;
+    --s-accent: #0B7A75; --s-accent-2: #14A39B; --s-accent-soft: #DCF1EE; --s-ring: rgba(11,122,117,.16);
+    --s-pill: #EDF4F3; --s-pill-ink: #24434A; --s-line: #EDF4F3;
+    --s-ok: #0B7A75; --s-ok-soft: #DCF1EE; --s-ok-ink: #09615D;
+    --s-att: #B45309; --s-att-soft: #FFF1D6; --s-att-ink: #8A4B00;
+    --s-shadow: 0 1px 2px rgba(16,40,44,.05), 0 10px 30px rgba(16,40,44,.06);
+    --s-head: linear-gradient(140deg, #0B7A75, #13A39A 50%, #134A6B);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --s-bg: #0C1020; --s-surface: #151B2F; --s-border: #283053; --s-text: #E8EBF4; --s-muted: #9AA3BE;
+      --s-accent: #2DD4BF; --s-accent-2: #5EEAD4; --s-accent-soft: rgba(45,212,191,.14); --s-ring: rgba(45,212,191,.22);
+      --s-pill: #1C2340; --s-pill-ink: #C6CCE0; --s-line: #1F2745;
+      --s-ok: #2DD4BF; --s-ok-soft: rgba(45,212,191,.14); --s-ok-ink: #6EE7D8;
+      --s-att: #FCD34D; --s-att-soft: rgba(251,191,36,.14); --s-att-ink: #FCD34D;
+      --s-shadow: 0 1px 2px rgba(0,0,0,.35), 0 12px 32px rgba(0,0,0,.35);
+      --s-head: linear-gradient(140deg, #1E1B4B, #3730A3 55%, #0F766E);
+      color-scheme: dark;
+    }
+  }
+  html, body { background: var(--s-bg); }
+  body { font-family: 'Plus Jakarta Sans', Poppins, system-ui, sans-serif; color: var(--s-text);
+         background:
+           radial-gradient(40% 30% at 90% 0%, color-mix(in srgb, var(--s-accent) 12%, transparent), transparent 70%),
+           radial-gradient(35% 30% at 0% 100%, rgba(217,88,62,.08), transparent 70%), var(--s-bg);
+         background-attachment: fixed; min-height: 100vh; }
+  ::selection { background: var(--s-accent-soft); color: var(--s-text); }
+  header { background: var(--s-head); background-size: 220% 220%; animation: sgDegrade 14s ease-in-out infinite alternate;
+           box-shadow: 0 8px 24px -12px rgba(11,60,58,.45); }
+  header h1 { font-weight: 800; letter-spacing: -0.01em; }
+  header .logo { border-radius: 12px; }
+  header button { border-radius: 10px; font-weight: 700; }
+  .stat-pill { background: var(--s-surface); border-color: var(--s-border); border-radius: 14px; box-shadow: var(--s-shadow); color: var(--s-muted); }
+  .stat-pill .num { font-weight: 800; }
+  .stat-pill.total .num { color: var(--s-text); }
+  .stat-pill.cours .num { color: var(--s-att); }
+  .stat-pill.rendu .num { color: var(--s-ok); }
+  .barre input, .barre select { background: var(--s-surface); border: 1px solid var(--s-border); border-radius: 12px; color: var(--s-text); }
+  .barre input:focus, .barre select:focus { border-color: var(--s-accent); box-shadow: 0 0 0 4px var(--s-ring); }
+  .fiche { background: var(--s-surface); border-color: var(--s-border); border-radius: 16px; box-shadow: var(--s-shadow);
+           animation: sgEntre .45s cubic-bezier(.2,.7,.2,1) both; }
+  .fiche:nth-child(2) { animation-delay: .04s; } .fiche:nth-child(3) { animation-delay: .08s; }
+  .fiche:nth-child(4) { animation-delay: .12s; } .fiche:nth-child(n+5) { animation-delay: .16s; }
+  .fiche:hover { border-color: var(--s-accent); box-shadow: 0 14px 30px -14px rgba(11,122,117,.35); transform: translateY(-1px); }
+  .fiche { transition: border-color .15s, box-shadow .2s, transform .2s; }
+  .fiche.cours .fiche-en-tete { border-left-color: var(--s-att); }
+  .fiche.rendu .fiche-en-tete { border-left-color: var(--s-ok); }
+  .fiche .meta, .recap-table th, .vide { color: var(--s-muted); }
+  .b-rendu { background: var(--s-ok-soft); color: var(--s-ok-ink); }
+  .b-cours { background: var(--s-att-soft); color: var(--s-att-ink); }
+  .exam-pill { background: var(--s-pill); color: var(--s-pill-ink); border-radius: 8px; }
+  .fiche-corps, .recap-table th, .recap-table td { border-color: var(--s-line); }
+  .recap-table td.valeur { color: var(--s-text); }
+  .pas-encore, .fiche-corps-chargement { color: var(--s-muted); }
+  .avert { background: var(--s-att-soft); border-color: color-mix(in srgb, var(--s-att) 40%, transparent); color: var(--s-att-ink); }
+  .avert strong:not(:first-child) { display: inline; margin: 0; }
+  @keyframes sgDegrade { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+  @keyframes sgEntre { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { header, .fiche { animation: none; } }
+}
 </style>
 </head>
 <body>
