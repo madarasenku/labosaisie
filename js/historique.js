@@ -515,7 +515,11 @@ async function renderHistory(forceRefresh) {
     const uid = _currentUser?.username;
     const owner = r.createdBy === uid;
     const lockedByAdminOther = !!r.restrictedBy && r.restrictedBy !== uid;
-    if (!isAdmin() && (!owner || lockedByAdminOther)) return '';
+    // ✅ v13.244 — Le responsable masque/démasque toute fiche de son périmètre
+    //   (les fiches des agents sous lui), comme l'admin. Le serveur borne de
+    //   toute façon à son périmètre (jamais les fiches du propriétaire/Nadia).
+    const estResp = typeof isResponsable === 'function' && isResponsable();
+    if (!isAdmin() && !estResp && (!owner || lockedByAdminOther)) return '';
     const locked = !!r.restrictedBy;
     const style = locked
       ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
