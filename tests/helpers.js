@@ -143,7 +143,8 @@ async function openApp(opts = {}) {
   const { role = 'admin', username = 'admin1', userId = 1, rpc = {}, port = 8099,
           // Le portail du soignant est une page distincte : on doit pouvoir
           // l'ouvrir sans passer par l'application du laboratoire.
-          cible = process.env.CIBLE || '/index.html', sansSession = false, appels = null } = opts;
+          cible = process.env.CIBLE || '/index.html', sansSession = false, appels = null,
+          connexion = '/login.html' } = opts;
   // Le sandbox Cowork fournit Chromium à un emplacement figé ; la CI GitHub
   // (et les postes de dev) laissent Playwright installer le sien à son
   // emplacement par défaut. On n'impose donc executablePath QUE si ce binaire
@@ -174,7 +175,7 @@ async function openApp(opts = {}) {
   });
 
   const base = `http://127.0.0.1:${port}`;
-  await page.goto(base + '/login.html');
+  await page.goto(base + connexion);
   // Le site secondaire préfixe ses clés (« v2_… ») pour ne pas partager le
   // localStorage du site principal, qui vit sur le même domaine. On pose les
   // deux : le même helper sert alors aux deux dépôts sans divergence.

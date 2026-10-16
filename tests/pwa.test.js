@@ -4,13 +4,22 @@ const { serve, openApp, createReporter } = require('./helpers');
 const fs = require('fs');
 const path = require('path');
 
+// La même suite tourne sur la production (/) et sur le lien de test (/preview/,
+// CIBLE=/preview/index.html). Le lien de test a son propre service worker,
+// son propre cache (cpmi-labo-PREVIEW-…) et ses fichiers sous /preview/ : tout
+// est lu et vérifié depuis le dossier de la cible.
+const CIBLE = process.env.CIBLE || '/index.html';
+const BASE = CIBLE.replace(/\/[^/]*$/, '');            // '' ou '/preview'
+const DOSSIER = path.join(__dirname, '..', BASE);
 const CACHE = /const CACHE = '([^']+)'/.exec(
-  fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8'))[1];
+  fs.readFileSync(path.join(DOSSIER, 'sw.js'), 'utf8'))[1];
 
 (async () => {
   const srv = await serve();
   const r = createReporter('PWA / SERVICE WORKER');
-  const { ctx, page, errors } = await openApp({ role: 'admin' });
+  // Connexion depuis le même site que la cible : sinon le service worker de
+  // l'autre site contrôle la page et la bannière de mise à jour s'affiche.
+  const { ctx, page, errors } = await openApp({ role: 'admin', cible: CIBLE, connexion: BASE + '/login.html' });
 
   r.section('Enregistrement et pré-cache');
   const reg = await page.evaluate(async () => {
@@ -18,7 +27,7 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
     return x && x.active ? x.active.state : 'absent';
   });
   r.check('service worker actif', reg, 'activated');
-  r.check('nom du cache', (await page.evaluate(() => caches.keys()))[0], CACHE);
+  r.check('nom du cache', (await page.evaluate(() => caches.keys())).includes(CACHE) ? CACHE : 'absent', CACHE);
 
   // pathname ignore la query : un actif versionné reste comparable.
   const cached = await page.evaluate(async c => {
@@ -31,7 +40,7 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
                    '/vendor/supabase-2.39.7.umd.js', '/vendor/chart-4.4.1.umd.js',
                    '/vendor/exceljs-4.4.0.min.js', '/vendor/jspdf-2.5.1.umd.min.js',
                    '/vendor/fonts/poppins.css']) {
-    r.check('pré-caché ' + f, cached.includes(f), true);
+    r.check('pré-caché ' + BASE + f, cached.includes(BASE + f), true);
   }
   r.check('aucune ressource externe pré-cachée',
           cached.every(u => u.startsWith('/')), true);
@@ -39,12 +48,12 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   // ✅ v13.70 — tous les modules extraits de index.html doivent être
   // pré-cachés : il en manquerait un et l'application serait inutilisable
   // hors-ligne, avec une erreur difficile à diagnostiquer sur le terrain.
-  const modules = fs.readdirSync(path.join(__dirname, '..', 'js')).filter(f => f.endsWith('.js'));
-  const manquants = modules.filter(f => !cached.includes('/js/' + f));
+  const modules = fs.readdirSync(path.join(DOSSIER, 'js')).filter(f => f.endsWith('.js'));
+  const manquants = modules.filter(f => !cached.includes(BASE + '/js/' + f));
   r.check('tous les modules pré-cachés', manquants.join(',') || 'aucun manquant', 'aucun manquant');
 
   // Le HTML doit référencer exactement ces modules, dans l'ordre.
-  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(DOSSIER, 'index.html'), 'utf8');
   // ✅ v13.72 — les URL portent ?v=APP_VERSION, on compare sur le chemin nu.
   const refs = [...html.matchAll(/<script src="\.\/(js\/[^"?]+)(?:\?[^"]*)?"[^>]*><\/script>/g)]
     .map(x => x[1]);
@@ -70,7 +79,7 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
 
   // Simule un déploiement : la signature du fichier (ETag / Last-Modified) change.
   await new Promise(x => setTimeout(x, 1200));
-  const idx = path.join(__dirname, '..', 'index.html');
+  const idx = path.join(DOSSIER, 'index.html');
   const now = new Date();
   fs.utimesSync(idx, now, now);
 
