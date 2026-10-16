@@ -12,9 +12,9 @@ const COMPTES = [
   { id: 21, username: 'YERIGUE', role: 'agent', created_at: '2026-08-01T10:00:00Z' },
   { id: 50, username: 'Patron', role: 'responsable', created_at: '2026-10-16T10:00:00Z' },
 ];
-// Le rôle « Responsable » n'existe pour l'instant que sur le lien de test :
-// ce test vise donc /preview/ par défaut, jusqu'à sa mise en production.
-const CIBLE = process.env.CIBLE || '/preview/index.html';
+// Le rôle « Responsable » est en production depuis v13.244 : ce test vise donc
+// la racine par défaut. (CIBLE=/preview/index.html pour tester le lien de test.)
+const CIBLE = process.env.CIBLE || '/index.html';
 
 (async () => {
   const srv = await serve(8312);
@@ -75,6 +75,22 @@ const CIBLE = process.env.CIBLE || '/preview/index.html';
     r.check('admin : option Responsable disponible', await page.evaluate(() => document.querySelector('#nu_role option[value="responsable"]').disabled), false);
     r.check('admin : Configuration visible', await page.evaluate(() =>
       [...document.querySelectorAll('#view-comptes .admin-tab-main')].every(b => b.style.display !== 'none')), true);
+    r.check('admin : bouton « masquer au responsable » sur l\'agent', await page.evaluate(() =>
+      /Visible au resp\.|Caché au resp\./.test(document.getElementById('users-body').textContent)), true);
+    r.check('admin : pas de bouton sur le responsable lui-même', await page.evaluate(() => {
+      const tr = [...document.querySelectorAll('#users-body tr')].find(t => /Patron/.test(t.textContent));
+      return tr ? /resp\./.test(tr.textContent) : null;
+    }), false);
+    erreurs = erreurs.concat(errors); await ctx.close();
+  }
+  {
+    r.section('Le responsable n\'a pas ce bouton');
+    const { ctx, page, errors } = await openApp({ role: 'responsable', username: 'Patron', userId: 50, port: 8312,
+      cible: CIBLE, rpc: { list_users_admin: [COMPTES[0]] } });
+    await page.evaluate(() => showView('comptes'));
+    await page.waitForTimeout(800);
+    r.check('aucun bouton « masquer au responsable »', await page.evaluate(() =>
+      /au resp\./.test(document.getElementById('users-body').textContent)), false);
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {

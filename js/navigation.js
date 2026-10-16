@@ -95,8 +95,10 @@ function showView(v) {
     if (_ec) _ec.style.display = _ecAdmin ? '' : 'none';
     if (_ecAdmin && typeof renderElectro === 'function') renderElectro();
   }
-  if (v === 'comptes') { renderUsersList(); populateMoisAnneeSelectors();
-    if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde(); if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); renderAuditLog(); } }
+  if (v === 'comptes') { _comptesSelonProfil(); renderUsersList(); populateMoisAnneeSelectors();
+    if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde();
+    if (isAdmin() || (typeof isResponsable === 'function' && isResponsable())) { buildAdminExamensGrid(); buildRefsEditor(); }
+    if (isAdmin()) renderAuditLog(); }
   if (v === 'stats') renderStats();
   if (v === 'caisse') renderCaisse();
   if (v === 'cahier') {
@@ -113,6 +115,20 @@ function showView(v) {
   // ni surtout le Cahier jaune — le restaurer révélerait la seconde porte.
   if (['saisie','historique','stats','caisse'].includes(v)) {
     try { localStorage.setItem('labo_vue_courante', v); } catch (e) {}
+  }
+}
+
+// ✅ v13.244 — Le responsable ne voit, dans « Comptes », que « Utilisateurs » :
+//   ni Configuration (tarifs, examens, réglages), ni Journal, ni Prescripteurs.
+function _comptesSelonProfil() {
+  const resp = typeof isResponsable === 'function' && isResponsable() && !isAdmin();
+  // Le responsable voit Comptes (0) et Configuration (1) ; le Journal (2) reste
+  //   fermé (il révélerait l'activité du propriétaire et de Nadia).
+  document.querySelectorAll('#view-comptes .admin-tab-main').forEach((btn, i) => { btn.style.display = (resp && i > 1) ? 'none' : ''; });
+  document.querySelectorAll('#ac-comptes .admin-tab-sub').forEach((btn, i) => { btn.style.display = (resp && i > 0) ? 'none' : ''; });
+  if (resp) {
+    const m = document.querySelector('#view-comptes .admin-tab-main'); if (m) adminShowMain('ac-comptes', m);
+    const s = document.querySelector('#ac-comptes .admin-tab-sub'); if (s) adminShowSub('ac-users', s);
   }
 }
 
