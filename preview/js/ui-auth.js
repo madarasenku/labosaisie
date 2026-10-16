@@ -514,14 +514,20 @@ async function renderUsersList() {
     const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'responsable' ? '💼 Responsable' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
+    // ✅ v13.244 — Réservé au propriétaire : masquer un compte (et ses fiches) au
+    //   responsable, comme Nadia. Pas sur l'admin ni les prescripteurs/responsables.
+    const horsResp = !!u.hors_responsable;
+    const peutMasquerResp = isAdmin() && u.role !== 'admin' && u.role !== 'responsable' && u.role !== 'prescripteur';
+    const badgeHors = horsResp ? ' <span title="Caché au responsable" style="color:#92400e;font-size:11px">🙈</span>' : '';
     return `
     <tr>
-      <td data-label="Nom d'utilisateur"><strong>${u.username}</strong>${isSelf ? ' <span style="color:var(--text-muted);font-size:11px">(vous)</span>' : ''}${isProtected ? ' <span title="Compte protégé, ne peut pas être supprimé ni rétrogradé" style="color:var(--text-muted);font-size:11px">🔒</span>' : ''}</td>
+      <td data-label="Nom d'utilisateur"><strong>${u.username}</strong>${isSelf ? ' <span style="color:var(--text-muted);font-size:11px">(vous)</span>' : ''}${isProtected ? ' <span title="Compte protégé, ne peut pas être supprimé ni rétrogradé" style="color:var(--text-muted);font-size:11px">🔒</span>' : ''}${badgeHors}</td>
       <td data-label="Rôle"><span class="badge-type">${roleLabel}</span></td>
       <td data-label="Créé le">${dateStr}</td>
       <td data-label="Actions">
         <button class="btn" style="padding:4px 10px;font-size:11px" onclick="editUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}', '${u.role}')">✏ Modifier</button>
         ${isAdmin() ? `<button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:#eef7fb;color:#0b2545;border:1px solid #bfe0ef" onclick="ouvrirSignatureCompte('${u.username.replace(/'/g, "\\'")}')" title="Dessiner ou modifier la signature">✍️ Signature</button>` : ''}
+        ${peutMasquerResp ? `<button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:${horsResp ? '#fef3c7;color:#92400e;border:1px solid #fbbf24' : '#f1f5f9;color:#475569;border:1px solid #cbd5e1'}" onclick="setCompteHorsResponsable(${u.id}, ${!horsResp}, '${u.username.replace(/'/g, "\\'")}')" title="${horsResp ? 'Rendre ce compte visible au responsable' : 'Masquer ce compte et ses fiches au responsable (comme Nadia)'}">${horsResp ? '🙈 Caché au resp.' : '👁 Visible au resp.'}</button>` : ''}
         ${(isSelf || isProtected) ? '' : `<button class="btn btn-danger" style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="deleteUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}')">🗑</button>`}
       </td>
     </tr>`;
@@ -690,6 +696,17 @@ async function deleteUserAccount(id, username) {
     return;
   }
   toast('Compte "' + username + '" supprimé', 'ok');
+  renderUsersList();
+}
+
+// ✅ v13.244 — Propriétaire : masquer / rendre visible un compte au responsable.
+async function setCompteHorsResponsable(id, value, username) {
+  if (!isAdmin()) return;
+  if (value && !confirm('Masquer « ' + username +' » (et ses fiches) au responsable, comme Nadia ?')) return;
+  const { data, error } = await _sb.rpc('set_compte_hors_responsable', { p_token: TK(), p_target_id: id, p_value: value });
+  if (error) { console.error('set_compte_hors_responsable:', error); toast('Erreur serveur', 'err'); return; }
+  if (data !== 'ok') { toast('Erreur : ' + data, 'err'); return; }
+  toast(value ? '🙈 « ' + username + ' » caché au responsable' : '👁 « ' + username + ' » visible au responsable', 'ok');
   renderUsersList();
 }
 
