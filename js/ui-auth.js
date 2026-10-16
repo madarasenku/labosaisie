@@ -107,14 +107,6 @@ function isCaissier() {
 function isSpectateur() {
   return !!_currentUser && _currentUser.role === 'spectateur';
 }
-// ✅ v13.244 — Rôle « Responsable » : un gérant de site, affiché comme tel.
-//   Pouvoirs d'exploitation (saisir, encaisser, masquer, clôturer) et gestion
-//   du personnel, DANS SON PÉRIMÈTRE. Le serveur lui cache les comptes
-//   admin/Nadia, la caisse noire, le coffre, et les fiches du propriétaire
-//   (créées ou masquées par admin/Nadia). Ce n'est pas un administrateur.
-function isResponsable() {
-  return !!_currentUser && _currentUser.role === 'responsable';
-}
 // ✅ v13.211 — La CAISSE NOIRE est réservée au seul compte « nadia » (identifié
 // par son nom d'utilisateur, pas par un rôle). Aucun autre agent, caissier,
 // spectateur ni même l'administrateur n'y a accès.
@@ -275,8 +267,7 @@ function enterApp() {
 function updateUserBadge() {
   const el = document.getElementById('user-badge');
   if (el && _currentUser) {
-    const roleLabel = isAdmin() ? '👑 Admin' : isResponsable() ? '💼 Responsable'
-      : isCaissier() ? '💰 Caissier' : isSpectateur() ? '👁 Spectateur' : '🔬 Agent';
+    const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier' : isSpectateur() ? '👁 Spectateur' : '🔬 Agent';
     el.textContent = `${_currentUser.username} · ${roleLabel}`;
   }
   // ✅ v13.33 — btn-clear-history supprimé ; btn-masquees géré par updateMasqueesBtn()
@@ -286,7 +277,7 @@ function updateUserBadge() {
   // ✅ v13.127 — Charger la liste des journées verrouillées.
   if (typeof chargerClotures === 'function') chargerClotures();
   const usersNavBtn = document.getElementById('btn-nav-users');
-  if (usersNavBtn) usersNavBtn.style.display = (isAdmin() || isResponsable()) ? '' : 'none';
+  if (usersNavBtn) usersNavBtn.style.display = isAdmin() ? '' : 'none';
   // ✅ Tableau de bord Kiosque : réservé à l'admin.
   const accueilNavBtn = document.getElementById('btn-nav-accueil');
   if (accueilNavBtn) accueilNavBtn.style.display = isAdmin() ? '' : 'none';
@@ -307,7 +298,7 @@ function updateUserBadge() {
   if (typeof chargerAccesCahier === 'function') chargerAccesCahier();
   // ✅ v13.33 — tarifs-config-card et refs-config-card sont dans des sous-onglets,
   // leur visibilité est gérée par adminShowSub — rien à faire ici.
-  if (isAdmin() || isResponsable()) { buildAdminExamensGrid(); buildRefsEditor(); }
+  if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); }
 
   // ✅ v13.33 — Caissier : masquer la nav "Nouvelle saisie" et afficher un message
   const saisieNavBtn = document.querySelector('header .nav-btn[data-view="saisie"]');
@@ -493,11 +484,10 @@ async function renderAuditLog() {
 async function renderUsersList() {
   const b = document.getElementById('users-body');
   if (!b) return;
-  if (!isAdmin() && !isResponsable()) {
+  if (!isAdmin()) {
     b.innerHTML = `<tr><td colspan="4"><div class="empty-state">Accès réservé aux administrateurs</div></td></tr>`;
     return;
   }
-  _limiterRolesProposes();
   b.innerHTML = `<tr><td colspan="4"><div class="empty-state">Chargement…</div></td></tr>`;
   const { data, error } = await _sb.rpc('list_users_admin', { p_token: TK() });
   if (error) {
@@ -511,7 +501,7 @@ async function renderUsersList() {
   }
   b.innerHTML = data.map(u => {
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'responsable' ? '💼 Responsable' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
+    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
     return `
@@ -521,7 +511,7 @@ async function renderUsersList() {
       <td data-label="Créé le">${dateStr}</td>
       <td data-label="Actions">
         <button class="btn" style="padding:4px 10px;font-size:11px" onclick="editUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}', '${u.role}')">✏ Modifier</button>
-        ${isAdmin() ? `<button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:#eef7fb;color:#0b2545;border:1px solid #bfe0ef" onclick="ouvrirSignatureCompte('${u.username.replace(/'/g, "\\'")}')" title="Dessiner ou modifier la signature">✍️ Signature</button>` : ''}
+        <button class="btn" style="padding:4px 10px;font-size:11px;margin-left:4px;background:#eef7fb;color:#0b2545;border:1px solid #bfe0ef" onclick="ouvrirSignatureCompte('${u.username.replace(/'/g, "\\'")}')" title="Dessiner ou modifier la signature">✍️ Signature</button>
         ${(isSelf || isProtected) ? '' : `<button class="btn btn-danger" style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="deleteUserAccount(${u.id}, '${u.username.replace(/'/g, "\\'")}')">🗑</button>`}
       </td>
     </tr>`;
@@ -613,20 +603,7 @@ async function createUserAccount() {
   });
 }
 
-// ✅ v13.244 — Le responsable ne propose que agent / caissier / spectateur.
-function _limiterRolesProposes() {
-  const limite = !isAdmin() && isResponsable();
-  ['nu_role', 'um_role'].forEach(idSel => {
-    const sel = document.getElementById(idSel); if (!sel) return;
-    [...sel.options].forEach(o => {
-      const interdit = limite && (o.value === 'admin' || o.value === 'prescripteur' || o.value === 'responsable');
-      o.hidden = interdit; o.disabled = interdit;
-    });
-    if (limite && sel.selectedOptions[0] && sel.selectedOptions[0].disabled) sel.value = 'agent';
-  });
-}
 function editUserAccount(id, username, currentRole) {
-  _limiterRolesProposes();
   // ✅ v13.7 — modale (remplace confirm + prompt, peu ergonomiques sur mobile)
   document.getElementById('um_id').value = id;
   document.getElementById('um_name').textContent = 'Compte : ' + username;

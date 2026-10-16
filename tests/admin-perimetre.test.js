@@ -12,7 +12,9 @@ const COMPTES = [
   { id: 21, username: 'YERIGUE', role: 'agent', created_at: '2026-08-01T10:00:00Z' },
   { id: 50, username: 'Patron', role: 'responsable', created_at: '2026-10-16T10:00:00Z' },
 ];
-const CIBLE = process.env.CIBLE || '/index.html';
+// Le rôle « Responsable » n'existe pour l'instant que sur le lien de test :
+// ce test vise donc /preview/ par défaut, jusqu'à sa mise en production.
+const CIBLE = process.env.CIBLE || '/preview/index.html';
 
 (async () => {
   const srv = await serve(8312);
