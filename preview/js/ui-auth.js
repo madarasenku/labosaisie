@@ -107,6 +107,14 @@ function isCaissier() {
 function isSpectateur() {
   return !!_currentUser && _currentUser.role === 'spectateur';
 }
+// ✅ v13.244 — Rôle « Responsable » : un gérant de site, affiché comme tel.
+//   Pouvoirs d'exploitation (saisir, encaisser, masquer, clôturer) et gestion
+//   du personnel, DANS SON PÉRIMÈTRE. Le serveur lui cache les comptes
+//   admin/Nadia, la caisse noire, le coffre, et les fiches du propriétaire
+//   (créées ou masquées par admin/Nadia). Ce n'est pas un administrateur.
+function isResponsable() {
+  return !!_currentUser && _currentUser.role === 'responsable';
+}
 // ✅ v13.211 — La CAISSE NOIRE est réservée au seul compte « nadia » (identifié
 // par son nom d'utilisateur, pas par un rôle). Aucun autre agent, caissier,
 // spectateur ni même l'administrateur n'y a accès.
@@ -118,34 +126,9 @@ function estCompteNadia() {
 function accesCaisseNoire() {
   return estCompteNadia() || isAdmin();
 }
-// ✅ v13.244 — Compte « Administrateur » au périmètre du contrat : techniquement
-//   un SPECTATEUR (lecture seule, périmètre restreint côté serveur) qui porte un
-//   titre affiché et le droit de gérer les comptes (hors admin / Nadia).
-//   Profil lu sur le serveur (mon_profil) et gardé dans la session.
-function gereComptes() {
-  return isSpectateur() && !!(_currentUser && _currentUser.gereComptes);
-}
-let _profilEnCours = false;
-async function chargerProfil() {
-  if (!isSpectateur() || _profilEnCours || typeof _sb === 'undefined' || !_sb || !TK()) return;
-  _profilEnCours = true;
-  try {
-    const { data, error } = await _sb.rpc('mon_profil', { p_token: TK() });
-    if (error || !data || data.erreur) return;
-    const titre = data.titre || null, gere = !!data.gere_comptes;
-    if (_currentUser.titre === titre && !!_currentUser.gereComptes === gere) return;
-    _currentUser.titre = titre; _currentUser.gereComptes = gere;
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify(_currentUser)); } catch (e) {}
-    updateUserBadge();
-  } catch (e) {} finally { _profilEnCours = false; }
-}
 // Lecture seule stricte (spectateur) : bloque toute action. Retourne true si bloqué.
 function blockIfSpectateur() {
-  if (isSpectateur()) {
-    toast(_currentUser.titre ? '🔒 Action non disponible pour ce compte'
-                             : '👁 Compte spectateur — lecture seule, aucune action possible', 'err');
-    return true;
-  }
+  if (isSpectateur()) { toast('👁 Compte spectateur — lecture seule, aucune action possible', 'err'); return true; }
   return false;
 }
 
@@ -292,8 +275,8 @@ function enterApp() {
 function updateUserBadge() {
   const el = document.getElementById('user-badge');
   if (el && _currentUser) {
-    const roleLabel = isAdmin() ? '👑 Admin' : isCaissier() ? '💰 Caissier'
-      : isSpectateur() ? (_currentUser.titre ? '👑 ' + _currentUser.titre : '👁 Spectateur') : '🔬 Agent';
+    const roleLabel = isAdmin() ? '👑 Admin' : isResponsable() ? '💼 Responsable'
+      : isCaissier() ? '💰 Caissier' : isSpectateur() ? '👁 Spectateur' : '🔬 Agent';
     el.textContent = `${_currentUser.username} · ${roleLabel}`;
   }
   // ✅ v13.33 — btn-clear-history supprimé ; btn-masquees géré par updateMasqueesBtn()
@@ -303,8 +286,7 @@ function updateUserBadge() {
   // ✅ v13.127 — Charger la liste des journées verrouillées.
   if (typeof chargerClotures === 'function') chargerClotures();
   const usersNavBtn = document.getElementById('btn-nav-users');
-  if (usersNavBtn) usersNavBtn.style.display = (isAdmin() || gereComptes()) ? '' : 'none';
-  if (isSpectateur()) chargerProfil();
+  if (usersNavBtn) usersNavBtn.style.display = (isAdmin() || isResponsable()) ? '' : 'none';
   // ✅ Tableau de bord Kiosque : réservé à l'admin.
   const accueilNavBtn = document.getElementById('btn-nav-accueil');
   if (accueilNavBtn) accueilNavBtn.style.display = isAdmin() ? '' : 'none';
@@ -511,10 +493,11 @@ async function renderAuditLog() {
 async function renderUsersList() {
   const b = document.getElementById('users-body');
   if (!b) return;
-  if (!isAdmin() && !gereComptes()) {
+  if (!isAdmin() && !isResponsable()) {
     b.innerHTML = `<tr><td colspan="4"><div class="empty-state">Accès réservé aux administrateurs</div></td></tr>`;
     return;
   }
+  _limiterRolesProposes();
   b.innerHTML = `<tr><td colspan="4"><div class="empty-state">Chargement…</div></td></tr>`;
   const { data, error } = await _sb.rpc('list_users_admin', { p_token: TK() });
   if (error) {
@@ -528,9 +511,7 @@ async function renderUsersList() {
   }
   b.innerHTML = data.map(u => {
     const dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('fr-FR') : '—';
-    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'caissier' ? '💰 Caissier'
-      : u.role === 'spectateur' ? (u.gere_comptes ? '👑 ' + escHTML(u.titre || 'Administrateur') + ' <span style="font-weight:400;opacity:.75">(périmètre du contrat)</span>' : '👁 Spectateur')
-      : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
+    const roleLabel = u.role === 'admin' ? '👑 Administrateur' : u.role === 'responsable' ? '💼 Responsable' : u.role === 'caissier' ? '💰 Caissier' : u.role === 'spectateur' ? '👁 Spectateur' : u.role === 'prescripteur' ? '🩺 Prescripteur' : '🔬 Agent';
     const isSelf = u.id === _currentUser.id;
     const isProtected = u.username === 'admin';
     return `
@@ -632,14 +613,16 @@ async function createUserAccount() {
   });
 }
 
-// ✅ v13.244 — Le gestionnaire de comptes ne propose que agent / caissier / spectateur.
+// ✅ v13.244 — Le responsable ne propose que agent / caissier / spectateur.
 function _limiterRolesProposes() {
+  const limite = !isAdmin() && isResponsable();
   ['nu_role', 'um_role'].forEach(idSel => {
     const sel = document.getElementById(idSel); if (!sel) return;
     [...sel.options].forEach(o => {
-      const interdit = gereComptes() && (o.value === 'admin' || o.value === 'prescripteur');
+      const interdit = limite && (o.value === 'admin' || o.value === 'prescripteur' || o.value === 'responsable');
       o.hidden = interdit; o.disabled = interdit;
     });
+    if (limite && sel.selectedOptions[0] && sel.selectedOptions[0].disabled) sel.value = 'agent';
   });
 }
 function editUserAccount(id, username, currentRole) {

@@ -11,7 +11,7 @@ function showView(v) {
   if (v !== 'saisie') _caisseNewPatientMode = false;
   // ✅ v13.33 — Le caissier ne peut pas accéder à la saisie ni aux comptes
   // ✅ v13.37 — Le spectateur non plus (lecture caisse uniquement)
-  if (isSpectateur() && (v === 'saisie' || (v === 'comptes' && !(typeof gereComptes === 'function' && gereComptes())))) return;
+  if (isSpectateur() && (v === 'saisie' || v === 'comptes')) return;
   if (isCaissier() && v === 'comptes') return;
   // Caissier : saisie autorisée UNIQUEMENT pour enregistrer un nouveau patient
   // (facture), via le bouton dédié de la caisse.
@@ -116,17 +116,16 @@ function showView(v) {
   }
 }
 
-// ✅ v13.244 — Le gestionnaire de comptes ne voit que « Comptes › Utilisateurs » :
-//   ni Configuration, ni Journal, ni Prescripteurs (taux de ristourne).
+// ✅ v13.244 — Le responsable ne voit, dans « Comptes », que « Utilisateurs » :
+//   ni Configuration (tarifs, examens, réglages), ni Journal, ni Prescripteurs.
 function _comptesSelonProfil() {
-  const gest = !isAdmin() && typeof gereComptes === 'function' && gereComptes();
-  document.querySelectorAll('#view-comptes .admin-tab-main').forEach((b, i) => { b.style.display = (gest && i > 0) ? 'none' : ''; });
-  document.querySelectorAll('#ac-comptes .admin-tab-sub').forEach((b, i) => { b.style.display = (gest && i > 0) ? 'none' : ''; });
-  if (gest) {
+  const resp = typeof isResponsable === 'function' && isResponsable() && !isAdmin();
+  document.querySelectorAll('#view-comptes .admin-tab-main').forEach((btn, i) => { btn.style.display = (resp && i > 0) ? 'none' : ''; });
+  document.querySelectorAll('#ac-comptes .admin-tab-sub').forEach((btn, i) => { btn.style.display = (resp && i > 0) ? 'none' : ''; });
+  if (resp) {
     const m = document.querySelector('#view-comptes .admin-tab-main'); if (m) adminShowMain('ac-comptes', m);
     const s = document.querySelector('#ac-comptes .admin-tab-sub'); if (s) adminShowSub('ac-users', s);
   }
-  if (typeof _limiterRolesProposes === 'function') _limiterRolesProposes();
 }
 
 // ════════ Tableau de bord Kiosque (admin) ════════
