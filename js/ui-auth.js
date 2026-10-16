@@ -307,7 +307,7 @@ function updateUserBadge() {
   if (typeof chargerAccesCahier === 'function') chargerAccesCahier();
   // ✅ v13.33 — tarifs-config-card et refs-config-card sont dans des sous-onglets,
   // leur visibilité est gérée par adminShowSub — rien à faire ici.
-  if (isAdmin()) { buildAdminExamensGrid(); buildRefsEditor(); }
+  if (isAdmin() || isResponsable()) { buildAdminExamensGrid(); buildRefsEditor(); }
 
   // ✅ v13.33 — Caissier : masquer la nav "Nouvelle saisie" et afficher un message
   const saisieNavBtn = document.querySelector('header .nav-btn[data-view="saisie"]');

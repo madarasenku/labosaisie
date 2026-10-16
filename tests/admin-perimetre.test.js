@@ -34,8 +34,12 @@ const CIBLE = process.env.CIBLE || '/index.html';
     await page.evaluate(() => showView('comptes'));
     await page.waitForTimeout(700);
     r.check('écran Comptes ouvert', await page.evaluate(() => document.getElementById('view-comptes').style.display !== 'none'), true);
-    r.check('Configuration et Journal masqués', await page.evaluate(() =>
-      [...document.querySelectorAll('#view-comptes .admin-tab-main')].slice(1).every(b => b.style.display === 'none')), true);
+    r.check('onglet Configuration visible', await page.evaluate(() =>
+      [...document.querySelectorAll('#view-comptes .admin-tab-main')][1].style.display !== 'none'), true);
+    r.check('onglet Journal masqué', await page.evaluate(() =>
+      [...document.querySelectorAll('#view-comptes .admin-tab-main')][2].style.display === 'none'), true);
+    r.check('sous-onglet Valeurs de référence présent', await page.evaluate(() =>
+      !!document.querySelector('#ac-config .admin-tab-sub')), true);
     r.check('Prescripteurs masqué', await page.evaluate(() =>
       [...document.querySelectorAll('#ac-comptes .admin-tab-sub')].slice(1).every(b => b.style.display === 'none')), true);
     r.check('liste du personnel affichée', await page.evaluate(() => /YERIGUE/.test(document.getElementById('users-body').textContent)), true);
