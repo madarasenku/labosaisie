@@ -51,6 +51,22 @@ const CIBLE = process.env.CIBLE || '/preview/index.html';
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {
+    r.section('Peut masquer (verrouiller) la fiche d\'un agent sous lui');
+    const AUJ = new Date().toISOString().slice(0, 10);
+    const fiche = { id: 777, type: 'Dossier', montant: 3000, created_at: AUJ + 'T09:00:00Z',
+      patient: { nom: 'PATIENT AGENT', dossier: '0777-1026', date: AUJ, statut: 'attente' },
+      resultats: {}, created_by: 'YERIGUE', prescripteur_id: 1, est_bpn: false, restricted_by: null, deleted_at: null };
+    const { ctx, page, errors } = await openApp({ role: 'responsable', username: 'Patron', userId: 50, port: 8312,
+      cible: CIBLE, rpc: { get_resultats_light: [fiche], get_restriction_status: [], get_deleted_status: [] } });
+    await page.evaluate(() => showView('historique'));
+    await page.waitForTimeout(900);
+    await page.evaluate(() => { if (typeof setHistPeriode === 'function') setHistPeriode('tout'); });
+    await page.waitForTimeout(700);
+    r.check('la fiche de l\'agent est visible', await page.evaluate(() => /PATIENT AGENT/.test(document.getElementById('history-body').textContent)), true);
+    r.check('cadenas « masquer » présent sur la fiche de l\'agent', await page.evaluate(() => !!document.getElementById('lock-btn-777')), true);
+    erreurs = erreurs.concat(errors); await ctx.close();
+  }
+  {
     r.section('Vu par l\'admin');
     const { ctx, page, errors } = await openApp({ role: 'admin', port: 8312, cible: CIBLE, rpc: { list_users_admin: COMPTES } });
     await page.evaluate(() => showView('comptes'));
