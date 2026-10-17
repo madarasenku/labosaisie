@@ -67,20 +67,34 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {
-    r.section('Caisse : vue complète avec clôture, sans ristournes');
-    const { ctx, page, errors } = await openApp({ ...RESP,
+    r.section('Caisse : vue complète, ristournes, annulation, déverrouillage');
+    const appels = [];
+    const { ctx, page, errors } = await openApp({ ...RESP, appels,
       rpc: { get_resultats_light: [fiche(731, 'YERIGUE', null)], get_restriction_status: [], get_deleted_status: [],
-             caissier_exists: true } });
+             caissier_exists: true, deverrouiller_journee: 'ok', set_taux_ristourne: 'ok',
+             get_prescripteurs: [{ id: 5, nom: 'Dr TEST', specialite: '', structure: '', taux_ristourne: 10, actif: true }] } });
     await page.evaluate(() => showView('caisse'));
     await page.waitForTimeout(900);
     r.check('caisse complète affichée', await page.evaluate(() => document.getElementById('view-caisse').style.display !== 'none'), true);
     r.check('vue agent simplifiée masquée', await page.evaluate(() => document.getElementById('view-caisse-user').style.display), 'none');
     r.check('carte de clôture visible', await page.evaluate(() =>
       getComputedStyle(document.getElementById('cloture-card')).display !== 'none'), true);
-    r.check('ristournes prescripteurs masquées', await page.evaluate(() =>
-      getComputedStyle(document.getElementById('caisse-ristournes-card')).display), 'none');
+    r.check('ristournes prescripteurs visibles', await page.evaluate(() =>
+      getComputedStyle(document.getElementById('caisse-ristournes-card')).display !== 'none'), true);
     r.check('peut clôturer (tientLaCaisse)', await page.evaluate(() => tientLaCaisse()), true);
-    r.check('ne peut pas annuler un paiement', await page.evaluate(() => peutAnnulerPaiement()), false);
+    r.check('peut annuler un paiement', await page.evaluate(() => peutAnnulerPaiement()), true);
+    await page.evaluate(async () => { window.showConfirmModal = async () => true; await deverrouillerJournee(); });
+    await page.waitForTimeout(300);
+    r.check('déverrouillage envoyé au serveur', appels.includes('deverrouiller_journee'), true);
+    const taux = await page.evaluate(async () => {
+      window._prescripteurs = [{ id: 5, nom: 'Dr TEST', taux_ristourne: 10 }];
+      if (typeof _prescripteurs !== 'undefined') _prescripteurs = window._prescripteurs;
+      const inp = document.createElement('input'); inp.id = 'rist_taux_5'; inp.value = '15'; document.body.appendChild(inp);
+      await saveRistourneTaux();
+      return _prescripteurs[0].taux_ristourne;
+    });
+    r.check('taux de ristourne envoyé (set_taux_ristourne)', appels.includes('set_taux_ristourne'), true);
+    r.check('taux mis à jour', taux, 15);
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {

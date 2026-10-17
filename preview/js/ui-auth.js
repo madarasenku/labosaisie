@@ -169,9 +169,8 @@ function agentFaitCaisse() {
 // autant tenir la caisse (pas de clôture). La clôture n'est réouvrable que par
 // l'admin : on ne l'ouvre donc pas à tout agent.
 function tientLaCaisse() {
-  // ✅ v13.245 — Le responsable (gérant du site) tient la caisse : vue complète
-  //   et clôture de journée (verrouiller_journee l'autorise). L'annulation d'un
-  //   paiement reste réservée (peutAnnulerPaiement, inchangé).
+  // ✅ v13.245 — Le responsable (gérant du site) tient la caisse : vue complète,
+  //   ristournes, clôture et déverrouillage de journée, annulation de paiement.
   if (isAdmin() || isCaissier() || isResponsable()) return true;
   if (isSpectateur()) return false;
   return window._noCaissier === true;
@@ -181,7 +180,9 @@ function tientLaCaisse() {
 // séparation des tâches (prendre l'argent ≠ le rendre). Miroir côté serveur
 // dans update_dossier_patient (RETURN 'forbidden_annulation').
 function peutAnnulerPaiement() {
-  return isAdmin() || (typeof isCaissier === 'function' && isCaissier());
+  // ✅ v13.245 — Le responsable annule aussi (update_dossier_patient l'autorise,
+  //   toujours limité aux fiches de son équipe).
+  return isAdmin() || isResponsable() || (typeof isCaissier === 'function' && isCaissier());
 }
 async function chargerEtatCaissier() {
   try {

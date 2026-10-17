@@ -1448,9 +1448,9 @@ async function renderCaisse() {
   // ✅ v13.210 — La caissière a une vue MINIMALE : pas d'analyse ni de ristournes.
   //   (L'admin et l'agent qui tient la caisse gardent la vue complète.)
   try {
-    // ✅ v13.245 — Le responsable a la même caisse que la caissière (sans
-    //   ristournes prescripteurs ni analyse par période).
-    const _minimal = ((typeof isCaissier === 'function' && isCaissier()) || isResponsable())
+    // ✅ v13.245 — Le responsable garde la caisse complète (ristournes et
+    //   analyse par période comprises) ; seule la caissière a la vue minimale.
+    const _minimal = (typeof isCaissier === 'function' && isCaissier())
                   && !(typeof isAdmin === 'function' && isAdmin());
     document.body.classList.toggle('caisse-min', _minimal);
   } catch (e) {}
@@ -1803,7 +1803,7 @@ function _previewRistourne(id, brut) {
   if (cell) cell.textContent = _fmtF(Math.round(brut * taux / 100)) + ' F';
 }
 async function saveRistourneTaux() {
-  if (!isAdmin()) { toast('Action réservée aux administrateurs', 'err'); return; }
+  if (!isAdmin() && !isResponsable()) { toast('Action non autorisée pour ce compte', 'err'); return; }
   showLoading('Enregistrement des taux…');
   let errCount = 0;
   for (const p of (_prescripteurs || [])) {
@@ -1812,10 +1812,10 @@ async function saveRistourneTaux() {
     const nouveauTaux = Number(inp.value) || 0;
     if (nouveauTaux === (p.taux_ristourne || 0)) continue; // pas de changement
     // ✅ v13.29 — persister en base via RPC (synchronise Statistiques + Caisse)
-    const { data, error } = await _sb.rpc('update_prescripteur_admin', {
-      p_token: TK(), p_id: p.id,
-      p_nom: p.nom, p_specialite: p.specialite || '',
-      p_structure: p.structure || '', p_taux_ristourne: nouveauTaux,
+    // ✅ v13.245 — RPC dédiée au taux seul (admin et responsable). L'ancien
+    //   appel passait « p_id » au lieu de « p_prescr_id » : il échouait toujours.
+    const { data, error } = await _sb.rpc('set_taux_ristourne', {
+      p_token: TK(), p_prescr_id: p.id, p_taux: nouveauTaux,
     });
     if (error || (data && data !== 'ok')) { errCount++; }
     else { p.taux_ristourne = nouveauTaux; } // mise à jour locale immédiate
