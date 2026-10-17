@@ -512,14 +512,9 @@ async function renderHistory(forceRefresh) {
     // ✅ v13.116 — L'admin masque n'importe quelle fiche ; un agent peut masquer
     // (et démasquer) SES propres fiches. Un agent ne voit pas le bouton sur la
     // fiche d'un autre, ni sur une fiche masquée par l'administrateur.
-    const uid = _currentUser?.username;
-    const owner = r.createdBy === uid;
-    const lockedByAdminOther = !!r.restrictedBy && r.restrictedBy !== uid;
-    // ✅ v13.244 — Le responsable masque/démasque toute fiche de son périmètre
-    //   (les fiches des agents sous lui), comme l'admin. Le serveur borne de
-    //   toute façon à son périmètre (jamais les fiches du propriétaire/Nadia).
-    const estResp = typeof isResponsable === 'function' && isResponsable();
-    if (!isAdmin() && !estResp && (!owner || lockedByAdminOther)) return '';
+    // ✅ v13.245 — Le responsable masque/démasque les fiches de son équipe.
+    //   Règle commune : peutMasquerFiche (ui-auth.js).
+    if (!peutMasquerFiche(r)) return '';
     const locked = !!r.restrictedBy;
     const style = locked
       ? 'background:#fef3c7;color:#92400e;border:1px solid #fbbf24'
@@ -551,8 +546,10 @@ async function renderHistory(forceRefresh) {
     if (_filterVerrouillees) {
       const lockedBy  = r.restrictedBy || '?';
       const montantStr2 = r.montant ? r.montant.toLocaleString('fr-FR') + ' F' : '—';
+      // ✅ v13.245 — Le responsable démasque aussi les fiches de son équipe.
       const _uidM = _currentUser && _currentUser.username;
-      const peutDemasquer = isAdmin() || r.restrictedBy === _uidM;
+      const peutDemasquer = isAdmin() || r.restrictedBy === _uidM
+        || (isResponsable() && peutMasquerFiche(r));
       return '<tr style="background:#fffbeb;border-left:3px solid #fbbf24">'
         // ✅ v13.90 — La case était désactivée : l'admin ne pouvait donc rien
         // faire en masse sur les fiches verrouillées, alors que c'est
@@ -1387,7 +1384,8 @@ async function bulkLock() {
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
     if (!r || r.restrictedBy) return false;
-    if (!isAdmin() && r.createdBy !== uid) { ignoreesAutrui++; return false; }
+    // ✅ v13.245 — Règle commune (le responsable masque les fiches de son équipe).
+    if (!isAdmin() && !(isResponsable() ? peutMasquerFiche(r) : r.createdBy === uid)) { ignoreesAutrui++; return false; }
     return true;
   });
   if (!eligible.length) {
@@ -1428,7 +1426,8 @@ async function bulkUnlock() {
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
     if (!r || !r.restrictedBy) return false;
-    if (!isAdmin() && r.restrictedBy !== uid) { ignoreesAutrui++; return false; }
+    // ✅ v13.245 — Règle commune (le responsable démasque les fiches de son équipe).
+    if (!isAdmin() && !(isResponsable() ? peutMasquerFiche(r) : r.restrictedBy === uid)) { ignoreesAutrui++; return false; }
     return true;
   });
   if (!eligible.length) {
