@@ -1376,7 +1376,6 @@ async function submitReportNoir() {
 
 async function bulkLock() {
   if (blockIfSpectateur()) return;
-  const uid = _currentUser?.username;
   const ids = [..._selectedIds];
   if (!ids.length) return;
   // ✅ v13.116 — Un agent ne masque QUE ses propres fiches ; l'admin masque tout.
@@ -1384,8 +1383,8 @@ async function bulkLock() {
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
     if (!r || r.restrictedBy) return false;
-    // ✅ v13.245 — Règle commune (le responsable masque les fiches de son équipe).
-    if (!isAdmin() && !(isResponsable() ? peutMasquerFiche(r) : r.createdBy === uid)) { ignoreesAutrui++; return false; }
+    // ✅ v13.246 — Règle commune à tous les rôles : peutMasquerFiche (ui-auth.js).
+    if (!peutMasquerFiche(r)) { ignoreesAutrui++; return false; }
     return true;
   });
   if (!eligible.length) {
@@ -1418,7 +1417,6 @@ async function bulkLock() {
 
 async function bulkUnlock() {
   if (blockIfSpectateur()) return;
-  const uid = _currentUser?.username;
   const ids = [..._selectedIds];
   if (!ids.length) return;
   // ✅ v13.116 — Un agent ne lève QUE ses propres restrictions ; l'admin lève tout.
@@ -1426,8 +1424,8 @@ async function bulkUnlock() {
   const eligible = ids.filter(id => {
     const r = _dbCache.find(x => x.id === id);
     if (!r || !r.restrictedBy) return false;
-    // ✅ v13.245 — Règle commune (le responsable démasque les fiches de son équipe).
-    if (!isAdmin() && !(isResponsable() ? peutMasquerFiche(r) : r.restrictedBy === uid)) { ignoreesAutrui++; return false; }
+    // ✅ v13.246 — Règle commune à tous les rôles : peutMasquerFiche (ui-auth.js).
+    if (!peutMasquerFiche(r)) { ignoreesAutrui++; return false; }
     return true;
   });
   if (!eligible.length) {

@@ -6,8 +6,8 @@
 // ════════════════════════════════════════════════════════════════════
 const { serve, openApp, createReporter } = require('./helpers');
 const PORT = 8331;
-// En production depuis v13.245 : la racine par défaut (CIBLE=/preview/index.html pour le lien de test).
-const CIBLE = process.env.CIBLE || '/index.html';
+// Contrôles v13.246 : sur le lien de test d'abord, la racine suit à la mise en production.
+const CIBLE = process.env.CIBLE || '/preview/index.html';
 const AUJ = new Date().toISOString().slice(0, 10);
 
 const fiche = (id, par, masquePar) => ({
@@ -134,6 +134,47 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
       return t + '|' + getExamensCustom().map(e => e.id).join(',');
     });
     r.check('tarif et catalogue restaurés', res, '3000|a');
+    erreurs = erreurs.concat(errors); await ctx.close();
+  }
+  {
+    r.section('v13.246 — Refus : grille réaffichée, catalogue d\'abord, normes restaurées');
+    const appels = [];
+    const { ctx, page, errors } = await openApp({ ...RESP, appels,
+      rpc: { get_tarifs: {}, save_tarifs: 'forbidden', save_examens_custom: 'forbidden', save_refs_config: 'forbidden',
+             set_taux_ristourne: null, list_users_admin: [] } });
+    const res = await page.evaluate(async () => {
+      window.toast = () => {};
+      showView('comptes'); buildAdminExamensGrid();
+      localStorage.setItem('tarifs_ref', JSON.stringify({ ex_nfs: 3000 })); _tarifsRefCache = null;
+      buildAdminExamensGrid();
+      const champ = document.getElementById('adm_px_ex_nfs');
+      if (!champ) return 'pas de champ NFS';
+      champ.value = '999';
+      await saveAdminTarifs();
+      const grille = document.getElementById('adm_px_ex_nfs').value;
+      // Catalogue refusé : les tarifs ne doivent même pas partir.
+      window.__nbTarifs = 0;
+      document.getElementById('new_ex_label') && (document.getElementById('new_ex_label').value = 'Examen test');
+      return grille;
+    });
+    r.check('grille réaffichée avec le prix en vigueur', res, '3000');
+    const avantTarifs = appels.filter(a => a === 'save_tarifs').length;
+    await page.evaluate(async () => { window.showConfirmModal = async () => true;
+      localStorage.setItem('examens_custom', JSON.stringify([{ id: 'x1', label: 'X1', prix: 5, tab: 'hema', groupe: 'g', custom: true }]));
+      _examensCustomCache = null; await removeExamenCustom('x1'); });
+    r.check('catalogue refusé → tarifs non envoyés', appels.filter(a => a === 'save_tarifs').length, avantTarifs);
+    r.check('catalogue restauré', await page.evaluate(() => getExamensCustom().map(e => e.id).join(',')), 'x1');
+    r.check('normes restaurées après refus', await page.evaluate(async () => {
+      localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { ref: '12-17', lo: 12, hi: 17, unit: 'g/dL' } }));
+      _customRefsCache = null; buildRefsEditor();
+      const el = document.getElementById('rref_hb'); if (el) el.value = '1-2';
+      await saveRefsConfig();
+      return getCustomRefs().hb && getCustomRefs().hb.ref;
+    }), '12-17');
+    r.check('taux : réponse vide comptée en échec', await page.evaluate(async () => {
+      _prescripteurs = [{ id: 5, nom: 'Dr TEST', taux_ristourne: 10 }];
+      const inp = document.createElement('input'); inp.id = 'rist_taux_5'; inp.value = '15'; document.body.appendChild(inp);
+      await saveRistourneTaux(); return _prescripteurs[0].taux_ristourne; }), 10);
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {

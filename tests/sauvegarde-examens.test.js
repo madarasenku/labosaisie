@@ -52,7 +52,7 @@ const EXAMENS_BASE = [
       role: 'agent', username: 'agent1', userId: 2,
       rpc: { get_examens_custom: [], save_examens_custom: 'forbidden', get_tarifs: {} },
     });
-    r.section('Seul un administrateur modifie le catalogue');
+    r.section('Un agent ne modifie pas le catalogue');
     const message = await page.evaluate(async () => {
       let capté = '';
       const vrai = window.toast;
@@ -61,7 +61,7 @@ const EXAMENS_BASE = [
       window.toast = vrai;
       return capté;
     });
-    r.check('refus signalé', /administrateur/i.test(message), true);
+    r.check('refus signalé', /administrateur|non autorisée/i.test(message), true);
     r.check('aucune erreur JS', errors.length, 0);
     await ctx.close();
   }

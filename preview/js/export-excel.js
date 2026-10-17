@@ -1000,33 +1000,40 @@ async function chargerTarifsDepuisBase() {
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
-/** Enregistre la grille en base ; le cache local suit. */
-async function saveTarifsRef(t) {
-  // ✅ v13.245 — Un REFUS du serveur annule la modification sur ce poste :
-  //   sinon le poste garde des prix que les autres n'ont pas. Le cache local
-  //   ne sert que hors-ligne / serveur injoignable.
-  //   getTarifsRef() rend le cache PAR RÉFÉRENCE et les appelants le modifient
-  //   avant d'appeler : on restaure donc depuis la copie texte du poste.
-  let avantLocal = null;
-  try { avantLocal = localStorage.getItem('tarifs_ref'); } catch (e) {}
-  const annuler = () => {
-    try {
-      if (avantLocal === null) { localStorage.removeItem('tarifs_ref'); _tarifsRefCache = null; }
-      else { localStorage.setItem('tarifs_ref', avantLocal); _tarifsRefCache = JSON.parse(avantLocal); }
-    } catch (e) { _tarifsRefCache = null; }
-  };
-  _tarifsRefCache = t;
-  try { localStorage.setItem('tarifs_ref', JSON.stringify(t)); } catch (e) {}
-  if (typeof _sb === 'undefined' || !_sb) return;
+// ✅ v13.246 — Enregistrement commun d'une configuration partagée (tarifs,
+//   catalogue, valeurs de référence). Le poste est écrit d'abord, puis le
+//   serveur. Un REFUS explicite remet le poste exactement à l'état d'avant
+//   (copie texte prise AVANT : les getters rendent le cache par référence et
+//   les appelants le modifient avant d'appeler). Un serveur injoignable garde
+//   la valeur locale (cache hors-ligne). Renvoie false seulement sur refus.
+async function _enregistrerConfig({ cle, valeur, setCache, rpc, params, libelles }) {
+  let avant = null;
+  try { avant = localStorage.getItem(cle); } catch (e) {}
+  setCache(valeur);
+  try { localStorage.setItem(cle, JSON.stringify(valeur)); } catch (e) {}
+  if (typeof _sb === 'undefined' || !_sb) return true;
+  let data, error;
+  try { ({ data, error } = await _sb.rpc(rpc, params)); }
+  catch (e) { toast(libelles.horsLigne, 'err'); return true; }
+  if (error) { toast(libelles.injoignable, 'err'); return true; }
+  if (data === 'ok') { if (libelles.ok) toast(libelles.ok, 'ok'); return true; }
   try {
-    const { data, error } = await _sb.rpc('save_tarifs', { p_token: TK(), p_grille: t });
-    if (error)            { toast('Tarifs enregistrés sur ce poste seulement (serveur injoignable)', 'err'); return; }
-    if (data === 'forbidden') { annuler(); toast('Seul un administrateur peut modifier les tarifs', 'err'); return; }
-    if (data !== 'ok')    { annuler(); toast('Tarifs non enregistrés : ' + data, 'err'); return; }
-    toast('Tarifs enregistrés pour tous les postes', 'ok');
-  } catch (e) {
-    toast('Tarifs enregistrés sur ce poste seulement (hors-ligne)', 'err');
-  }
+    if (avant === null) localStorage.removeItem(cle); else localStorage.setItem(cle, avant);
+    setCache(avant === null ? null : JSON.parse(avant));
+  } catch (e) { setCache(null); }
+  toast(libelles.refus + (data === 'forbidden' ? ' : modification non autorisée pour ce compte' : ' : ' + data), 'err');
+  return false;
+}
+
+/** Enregistre la grille en base ; le cache local suit. Renvoie false si refusé. */
+function saveTarifsRef(t) {
+  return _enregistrerConfig({
+    cle: 'tarifs_ref', valeur: t, setCache: v => { _tarifsRefCache = v; },
+    rpc: 'save_tarifs', params: { p_token: TK(), p_grille: t },
+    libelles: { ok: 'Tarifs enregistrés pour tous les postes', refus: 'Tarifs non enregistrés',
+                injoignable: 'Tarifs enregistrés sur ce poste seulement (serveur injoignable)',
+                horsLigne: 'Tarifs enregistrés sur ce poste seulement (hors-ligne)' },
+  });
 }
 
 function buildTarifsRefDefault() {
@@ -1066,28 +1073,14 @@ async function chargerExamensCustomDepuisBase() {
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
-async function saveExamensCustom(list) {
-  // ✅ v13.245 — Un refus du serveur annule la modification sur ce poste.
-  let avantLocal = null;
-  try { avantLocal = localStorage.getItem('examens_custom'); } catch (e) {}
-  const annuler = () => {
-    try {
-      if (avantLocal === null) { localStorage.removeItem('examens_custom'); _examensCustomCache = null; }
-      else { localStorage.setItem('examens_custom', avantLocal); _examensCustomCache = JSON.parse(avantLocal); }
-    } catch (e) { _examensCustomCache = null; }
-  };
-  _examensCustomCache = list;
-  try { localStorage.setItem('examens_custom', JSON.stringify(list)); } catch (e) {}
-  if (typeof _sb === 'undefined' || !_sb) return;
-  try {
-    const { data, error } = await _sb.rpc('save_examens_custom', { p_token: TK(), p_liste: list });
-    if (error)                { toast('Examen enregistré sur ce poste seulement (serveur injoignable)', 'err'); return; }
-    if (data === 'forbidden') { annuler(); toast('Seul un administrateur peut modifier le catalogue', 'err'); return; }
-    if (data !== 'ok')        { annuler(); toast('Examen non enregistré : ' + data, 'err'); return; }
-    toast('Catalogue mis à jour pour tous les postes', 'ok');
-  } catch (e) {
-    toast('Examen enregistré sur ce poste seulement (hors-ligne)', 'err');
-  }
+function saveExamensCustom(list) {
+  return _enregistrerConfig({
+    cle: 'examens_custom', valeur: list, setCache: v => { _examensCustomCache = v; },
+    rpc: 'save_examens_custom', params: { p_token: TK(), p_liste: list },
+    libelles: { ok: 'Catalogue mis à jour pour tous les postes', refus: 'Catalogue non enregistré',
+                injoignable: 'Examen enregistré sur ce poste seulement (serveur injoignable)',
+                horsLigne: 'Examen enregistré sur ce poste seulement (hors-ligne)' },
+  });
 }
 
 // Catalogue complet = défauts + personnalisés
@@ -1128,8 +1121,11 @@ async function addExamenPersonnalise() {
 
   // ✅ v13.77 — les deux écritures partent en base ; saveExamensCustom et
   // saveTarifsRef signalent eux-mêmes le succès ou l'échec.
-  await saveExamensCustom(custom);
-  await saveTarifsRef(ref);
+  // ✅ v13.246 — Catalogue d'abord : s'il est refusé, on n'écrit pas les
+  //   tarifs (le prix d'un examen absent du catalogue n'a pas de sens) et on
+  //   relit la grille du poste, que getTarifsRef() a déjà modifiée en mémoire.
+  if (await saveExamensCustom(custom)) await saveTarifsRef(ref);
+  else _tarifsRefCache = null;
 
   document.getElementById('add-examen-modal').style.display = 'none';
   document.getElementById('new_ex_label').value = '';
@@ -1150,8 +1146,9 @@ async function removeExamenCustom(id) {
   const custom = getExamensCustom().filter(x => x.id !== id);
   const ref = getTarifsRef();
   delete ref[id];
-  await saveExamensCustom(custom);
-  await saveTarifsRef(ref);
+  // ✅ v13.246 — Même ordre qu'à l'ajout : tarifs seulement si le catalogue passe.
+  if (await saveExamensCustom(custom)) await saveTarifsRef(ref);
+  else _tarifsRefCache = null;
   buildAdminExamensGrid();
   buildFicheExamens();
 }
@@ -1212,7 +1209,8 @@ async function saveAdminTarifs() {
   // ✅ v13.76 — on attend la confirmation du serveur avant de rafraîchir la
   // fiche : saveTarifsRef signale lui-même le succès ou l'échec, inutile
   // d'annoncer « enregistré » avant d'en être sûr.
-  await saveTarifsRef(ref);
+  // ✅ v13.246 — Sur refus, la grille réaffiche les prix réellement en vigueur.
+  if (!await saveTarifsRef(ref)) buildAdminExamensGrid();
   rechargeFichePrix();
 }
 
