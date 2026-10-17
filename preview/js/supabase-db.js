@@ -2345,12 +2345,12 @@ async function toggleRestriction(id) {
   const record = _dbCache.find(r => r.id === id);
   if (!record) { toast('Fiche introuvable', 'err'); return; }
 
-  // ✅ v13.116 — Un agent peut masquer/démasquer SES propres fiches ; l'admin,
-  // toutes. Un agent ne peut pas lever une restriction posée par l'admin.
-  const uid = _currentUser?.username;
-  if (!isAdmin()) {
-    if (record.createdBy !== uid) { toast('Vous ne pouvez masquer que vos propres fiches', 'err'); return; }
-    if (record.restrictedBy && record.restrictedBy !== uid) { toast('Fiche masquée par l\'administrateur', 'err'); return; }
+  // ✅ v13.116/245 — Règle commune : voir peutMasquerFiche (ui-auth.js).
+  if (!peutMasquerFiche(record)) {
+    if (isResponsable()) toast('Cette fiche ne peut pas être modifiée depuis votre compte', 'err');
+    else if (record.createdBy !== _currentUser?.username) toast('Vous ne pouvez masquer que vos propres fiches', 'err');
+    else toast('Fiche masquée par l\'administrateur', 'err');
+    return;
   }
 
   const isRestricted = !!record.restrictedBy;

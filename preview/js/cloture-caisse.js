@@ -193,7 +193,7 @@ async function verrouillerJusqua() {
 }
 
 async function deverrouillerJournee() {
-  if (typeof isAdmin === 'function' && !isAdmin()) { toast('Déverrouillage réservé à l\'administrateur', 'err'); return; }
+  if (typeof isAdmin === 'function' && !isAdmin()) { toast('Déverrouillage réservé à la direction', 'err'); return; }
   const champ = document.getElementById('cloture-date');
   const jour = (champ && champ.value) || _jourServiceCourant();
   if (typeof showConfirmModal === 'function' && !await showConfirmModal({
@@ -365,7 +365,7 @@ function renderCloture() {
         if (verr) {
           action = (typeof isAdmin === 'function' && isAdmin())
             ? '<button class="btn btn-outline" style="font-size:12px;padding:4px 12px" onclick="deverrouillerJournee()">🔓 Déverrouiller</button>'
-            : '<span style="font-size:11.5px;color:#92400e">déverrouillage réservé à l\'administrateur</span>';
+            : '<span style="font-size:11.5px;color:#92400e">déverrouillage réservé à la direction</span>';
         } else if (peut) {
           action = '<button class="btn" style="font-size:12px;padding:4px 12px;background:#92400e;color:#fff" onclick="verrouillerJournee()">🔒 Verrouiller cette journée</button>';
         }

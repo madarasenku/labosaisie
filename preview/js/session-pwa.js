@@ -1448,7 +1448,9 @@ async function renderCaisse() {
   // ✅ v13.210 — La caissière a une vue MINIMALE : pas d'analyse ni de ristournes.
   //   (L'admin et l'agent qui tient la caisse gardent la vue complète.)
   try {
-    const _minimal = (typeof isCaissier === 'function' && isCaissier())
+    // ✅ v13.245 — Le responsable a la même caisse que la caissière (sans
+    //   ristournes prescripteurs ni analyse par période).
+    const _minimal = ((typeof isCaissier === 'function' && isCaissier()) || isResponsable())
                   && !(typeof isAdmin === 'function' && isAdmin());
     document.body.classList.toggle('caisse-min', _minimal);
   } catch (e) {}

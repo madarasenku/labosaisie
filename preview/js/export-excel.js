@@ -1002,14 +1002,27 @@ async function chargerTarifsDepuisBase() {
 
 /** Enregistre la grille en base ; le cache local suit. */
 async function saveTarifsRef(t) {
+  // ✅ v13.245 — Un REFUS du serveur annule la modification sur ce poste :
+  //   sinon le poste garde des prix que les autres n'ont pas. Le cache local
+  //   ne sert que hors-ligne / serveur injoignable.
+  //   getTarifsRef() rend le cache PAR RÉFÉRENCE et les appelants le modifient
+  //   avant d'appeler : on restaure donc depuis la copie texte du poste.
+  let avantLocal = null;
+  try { avantLocal = localStorage.getItem('tarifs_ref'); } catch (e) {}
+  const annuler = () => {
+    try {
+      if (avantLocal === null) { localStorage.removeItem('tarifs_ref'); _tarifsRefCache = null; }
+      else { localStorage.setItem('tarifs_ref', avantLocal); _tarifsRefCache = JSON.parse(avantLocal); }
+    } catch (e) { _tarifsRefCache = null; }
+  };
   _tarifsRefCache = t;
   try { localStorage.setItem('tarifs_ref', JSON.stringify(t)); } catch (e) {}
   if (typeof _sb === 'undefined' || !_sb) return;
   try {
     const { data, error } = await _sb.rpc('save_tarifs', { p_token: TK(), p_grille: t });
     if (error)            { toast('Tarifs enregistrés sur ce poste seulement (serveur injoignable)', 'err'); return; }
-    if (data === 'forbidden') { toast('Seul un administrateur peut modifier les tarifs', 'err'); return; }
-    if (data !== 'ok')    { toast('Tarifs non enregistrés : ' + data, 'err'); return; }
+    if (data === 'forbidden') { annuler(); toast('Seul un administrateur peut modifier les tarifs', 'err'); return; }
+    if (data !== 'ok')    { annuler(); toast('Tarifs non enregistrés : ' + data, 'err'); return; }
     toast('Tarifs enregistrés pour tous les postes', 'ok');
   } catch (e) {
     toast('Tarifs enregistrés sur ce poste seulement (hors-ligne)', 'err');
@@ -1054,14 +1067,23 @@ async function chargerExamensCustomDepuisBase() {
 }
 
 async function saveExamensCustom(list) {
+  // ✅ v13.245 — Un refus du serveur annule la modification sur ce poste.
+  let avantLocal = null;
+  try { avantLocal = localStorage.getItem('examens_custom'); } catch (e) {}
+  const annuler = () => {
+    try {
+      if (avantLocal === null) { localStorage.removeItem('examens_custom'); _examensCustomCache = null; }
+      else { localStorage.setItem('examens_custom', avantLocal); _examensCustomCache = JSON.parse(avantLocal); }
+    } catch (e) { _examensCustomCache = null; }
+  };
   _examensCustomCache = list;
   try { localStorage.setItem('examens_custom', JSON.stringify(list)); } catch (e) {}
   if (typeof _sb === 'undefined' || !_sb) return;
   try {
     const { data, error } = await _sb.rpc('save_examens_custom', { p_token: TK(), p_liste: list });
     if (error)                { toast('Examen enregistré sur ce poste seulement (serveur injoignable)', 'err'); return; }
-    if (data === 'forbidden') { toast('Seul un administrateur peut modifier le catalogue', 'err'); return; }
-    if (data !== 'ok')        { toast('Examen non enregistré : ' + data, 'err'); return; }
+    if (data === 'forbidden') { annuler(); toast('Seul un administrateur peut modifier le catalogue', 'err'); return; }
+    if (data !== 'ok')        { annuler(); toast('Examen non enregistré : ' + data, 'err'); return; }
     toast('Catalogue mis à jour pour tous les postes', 'ok');
   } catch (e) {
     toast('Examen enregistré sur ce poste seulement (hors-ligne)', 'err');
