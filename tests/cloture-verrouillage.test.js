@@ -63,7 +63,7 @@ const { serve, openApp, createReporter } = require('./helpers');
       window.toast = vrai;
       return { captured, encoreVerrou: window.__locked.has('2026-08-23') };
     });
-    r.check('refus déverrouillage agent', /administrateur|direction/i.test(agentBlocked.captured), true);
+    r.check('refus déverrouillage agent', /direction/i.test(agentBlocked.captured), true);
     r.check('journée reste verrouillée', agentBlocked.encoreVerrou, true);
     r.check('aucune erreur JS', errors.length, 0);
     if (errors.length) console.log('   ', errors.slice(0, 5));

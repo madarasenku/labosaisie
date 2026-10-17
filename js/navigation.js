@@ -118,14 +118,21 @@ function showView(v) {
   }
 }
 
-// ✅ v13.244 — Le responsable ne voit, dans « Comptes », que « Utilisateurs » :
-//   ni Configuration (tarifs, examens, réglages), ni Journal, ni Prescripteurs.
+// ✅ v13.244/245 — Dans « Comptes », le responsable voit l'onglet Comptes
+//   (sous-onglet Utilisateurs seulement) et l'onglet Configuration (tarifs,
+//   examens, valeurs de référence). Le Journal et les Prescripteurs restent
+//   fermés. LISTE BLANCHE par cible (et non par position) : un onglet ajouté
+//   plus tard reste fermé au responsable tant qu'on ne l'ajoute pas ici.
+const _ONGLETS_RESPONSABLE = ['ac-comptes', 'ac-config', 'ac-users', 'ac-tarifs', 'ac-refs'];
+function _cibleOnglet(btn) {
+  const m = /admin(?:ShowMain|ShowSub)\('([^']+)'/.exec(btn.getAttribute('onclick') || '');
+  return m ? m[1] : '';
+}
 function _comptesSelonProfil() {
-  const resp = typeof isResponsable === 'function' && isResponsable() && !isAdmin();
-  // Le responsable voit Comptes (0) et Configuration (1) ; le Journal (2) reste
-  //   fermé (il révélerait l'activité du propriétaire et de Nadia).
-  document.querySelectorAll('#view-comptes .admin-tab-main').forEach((btn, i) => { btn.style.display = (resp && i > 1) ? 'none' : ''; });
-  document.querySelectorAll('#ac-comptes .admin-tab-sub').forEach((btn, i) => { btn.style.display = (resp && i > 0) ? 'none' : ''; });
+  const resp = isResponsable() && !isAdmin();
+  document.querySelectorAll('#view-comptes .admin-tab-main, #view-comptes .admin-tab-sub').forEach(btn => {
+    btn.style.display = (resp && !_ONGLETS_RESPONSABLE.includes(_cibleOnglet(btn))) ? 'none' : '';
+  });
   if (resp) {
     const m = document.querySelector('#view-comptes .admin-tab-main'); if (m) adminShowMain('ac-comptes', m);
     const s = document.querySelector('#ac-comptes .admin-tab-sub'); if (s) adminShowSub('ac-users', s);
@@ -143,6 +150,10 @@ function _accueilFill() {
   }
   const dEl = document.getElementById('kio-date');
   if (dEl) { try { dEl.textContent = new Date().toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }); } catch (e) {} }
+  // ✅ v13.245 — La tuile décrit ce que le profil trouve réellement derrière.
+  const subComptes = document.getElementById('kio-comptes-sub');
+  if (subComptes) subComptes.textContent = (isResponsable() && !isAdmin())
+    ? 'Utilisateurs, tarifs, valeurs de référence' : 'Utilisateurs, tarifs, prescripteurs';
 
   const today = (typeof _jourLocal === 'function') ? _jourLocal() : new Date().toISOString().slice(0,10);
   const calcDB = (typeof getCalcDB === 'function' ? getCalcDB() : (typeof _dbCache !== 'undefined' ? _dbCache : [])) || [];

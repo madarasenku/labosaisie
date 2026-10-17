@@ -115,6 +115,21 @@ function isSpectateur() {
 function isResponsable() {
   return !!_currentUser && _currentUser.role === 'responsable';
 }
+
+// ✅ v13.245 — Qui peut masquer / démasquer une fiche (miroir de toggle_restriction).
+//   Admin : toutes. Responsable : toute fiche de son équipe, jamais celles
+//   créées ou masquées par la direction. Les autres : leurs propres fiches,
+//   et seulement si c'est eux qui les ont masquées. Le serveur reste juge.
+function _estCompteDirection(nom) {
+  return ['admin', 'nadia'].includes(String(nom || '').trim().toLowerCase());
+}
+function peutMasquerFiche(r) {
+  if (!r || !_currentUser) return false;
+  if (isAdmin()) return true;
+  if (isResponsable()) return !_estCompteDirection(r.createdBy) && !_estCompteDirection(r.restrictedBy);
+  const moi = _currentUser.username;
+  return r.createdBy === moi && (!r.restrictedBy || r.restrictedBy === moi);
+}
 // ✅ v13.211 — La CAISSE NOIRE est réservée au seul compte « nadia » (identifié
 // par son nom d'utilisateur, pas par un rôle). Aucun autre agent, caissier,
 // spectateur ni même l'administrateur n'y a accès.
@@ -154,7 +169,9 @@ function agentFaitCaisse() {
 // autant tenir la caisse (pas de clôture). La clôture n'est réouvrable que par
 // l'admin : on ne l'ouvre donc pas à tout agent.
 function tientLaCaisse() {
-  if (isAdmin() || isCaissier()) return true;
+  // ✅ v13.245 — Le responsable (gérant du site) tient la caisse : vue complète,
+  //   ristournes, clôture et déverrouillage de journée, annulation de paiement.
+  if (isAdmin() || isCaissier() || isResponsable()) return true;
   if (isSpectateur()) return false;
   return window._noCaissier === true;
 }
@@ -163,7 +180,9 @@ function tientLaCaisse() {
 // séparation des tâches (prendre l'argent ≠ le rendre). Miroir côté serveur
 // dans update_dossier_patient (RETURN 'forbidden_annulation').
 function peutAnnulerPaiement() {
-  return isAdmin() || (typeof isCaissier === 'function' && isCaissier());
+  // ✅ v13.245 — Le responsable annule aussi (update_dossier_patient l'autorise,
+  //   toujours limité aux fiches de son équipe).
+  return isAdmin() || isResponsable() || (typeof isCaissier === 'function' && isCaissier());
 }
 async function chargerEtatCaissier() {
   try {
@@ -598,7 +617,10 @@ async function createUserAccount() {
     return;
   }
   if (data === 'forbidden') {
-    errEl.textContent = 'Action réservée aux administrateurs.';
+    // ✅ v13.245 — Le responsable crée aussi des comptes : message neutre.
+    errEl.textContent = isResponsable()
+      ? 'Ce type de compte ne peut pas être créé depuis votre compte.'
+      : 'Action réservée aux administrateurs.';
     return;
   }
   if (data !== 'ok') {
@@ -612,6 +634,9 @@ async function createUserAccount() {
   renderUsersList();
 
   // ✅ v13.49 — Proposer de dessiner la signature du nouveau compte
+  // ✅ v13.245 — Réservé à l'admin, comme le bouton « Signature » de la liste
+  //   (set_user_signature le refuse aux autres profils).
+  if (!isAdmin()) return;
   ouvrirPadSignatureGenerique({
     titre: '✍️ Signature de ' + escHTML(username),
     sousTitre: 'Dessinez la signature de ' + escHTML(username) + '. Elle apparaîtra automatiquement sous les résultats du patient quand cette personne se connecte. (Vous pourrez la modifier plus tard.)',
@@ -632,11 +657,13 @@ function _limiterRolesProposes() {
   });
 }
 function editUserAccount(id, username, currentRole) {
-  _limiterRolesProposes();
   // ✅ v13.7 — modale (remplace confirm + prompt, peu ergonomiques sur mobile)
   document.getElementById('um_id').value = id;
   document.getElementById('um_name').textContent = 'Compte : ' + username;
   document.getElementById('um_role').value = currentRole;
+  // ✅ v13.245 — Filtrer APRÈS avoir posé le rôle actuel : sinon la liste
+  //   pouvait rester sur une option masquée et interdite.
+  _limiterRolesProposes();
   document.getElementById('um_password').value = '';
   document.getElementById('um-error').textContent = '';
   document.getElementById('user-modal').dataset.username = username;
@@ -666,6 +693,7 @@ async function submitUserModal() {
   if (error) { console.error('Erreur update_user_admin:', error); errEl.textContent = 'Erreur serveur.'; return; }
   if (data === 'cannot_demote_self') { errEl.textContent = 'Vous ne pouvez pas retirer vos propres droits administrateur.'; return; }
   if (data === 'protected_account')  { errEl.textContent = 'Le compte « admin » est protégé : son rôle ne peut pas être changé.'; return; }
+  if (data === 'forbidden')          { errEl.textContent = 'Ce compte ne peut pas être modifié depuis votre compte.'; return; }
   if (data !== 'ok') { errEl.textContent = 'Erreur : ' + data; return; }
   closeUserModal();
   // ✅ Reset admin : un mot de passe temporaire a été posé → l'utilisateur devra
@@ -802,8 +830,11 @@ function refsSections() {
 function buildRefsEditor() {
   const card = document.getElementById('ac-refs');  // ✅ v13.33 — le sous-onglet remplace l'ancienne carte cachée
   if (!card) return;
-  card.style.display = isAdmin() ? '' : 'none';
-  if (!isAdmin()) return;
+  // ✅ v13.245 — Le responsable règle aussi les valeurs de référence
+  //   (save_refs_config l'autorise) : sans cela, le sous-onglet restait vide.
+  const peutConfigurer = isAdmin() || isResponsable();
+  card.style.display = peutConfigurer ? '' : 'none';
+  if (!peutConfigurer) return;
 
   const custom = getCustomRefs();
 
@@ -912,6 +943,11 @@ const _SECTION_PARAMS = {
 };
 
 function saveRefsConfig() {
+  // ✅ v13.245 — Copie d'avant (getCustomRefs rend le cache par référence) :
+  //   un refus du serveur remet ce poste à l'état précédent, au lieu de garder
+  //   des valeurs de référence que les autres postes n'ont pas.
+  let avantLocal = null;
+  try { avantLocal = localStorage.getItem(LABO_REFS_KEY); } catch (e) {}
   const custom = getCustomRefs();
   _ALL_REF_IDS.forEach(id => {
     const refEl  = document.getElementById('rref_'  + id);
@@ -932,9 +968,20 @@ function saveRefsConfig() {
   // Persister en Supabase pour sync tous les postes
   if (_currentUser?.id) {
     _sb.rpc('save_refs_config', { p_token: TK(), p_refs: custom })
-      .then(({ error }) => {
-        if (!error) toast('✓ Valeurs de référence synchronisées sur tous les postes du labo', 'ok');
-        else toast('✓ Valeurs enregistrées localement (sync Supabase indisponible)', 'ok');
+      .then(({ data, error }) => {
+        if (error) { toast('✓ Valeurs enregistrées localement (sync Supabase indisponible)', 'ok'); return; }
+        if (data !== 'ok') {
+          try {
+            if (avantLocal === null) localStorage.removeItem(LABO_REFS_KEY);
+            else localStorage.setItem(LABO_REFS_KEY, avantLocal);
+          } catch (e) {}
+          _customRefsCache = null;
+          updateAllRefs();
+          buildRefsEditor();
+          toast('Valeurs de référence non enregistrées' + (data === 'forbidden' ? ' : modification non autorisée' : ' : ' + data), 'err');
+          return;
+        }
+        toast('✓ Valeurs de référence synchronisées sur tous les postes du labo', 'ok');
       }).catch(() => toast('✓ Valeurs enregistrées localement', 'ok'));
   } else {
     toast('✓ Valeurs de référence enregistrées sur ce poste', 'ok');
