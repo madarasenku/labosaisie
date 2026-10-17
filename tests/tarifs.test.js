@@ -66,7 +66,7 @@ const { serve, openApp, createReporter } = require('./helpers');
       role: 'agent', username: 'agent1', userId: 2,
       rpc: { get_tarifs: {}, save_tarifs: 'forbidden' },
     });
-    r.section('Seul un administrateur modifie les tarifs');
+    r.section('Un agent ne modifie pas les tarifs');
     const message = await page.evaluate(async () => {
       let capté = '';
       const vrai = window.toast;
@@ -76,7 +76,7 @@ const { serve, openApp, createReporter } = require('./helpers');
       return capté;
     });
     r.check('refus signalé à l\'utilisateur',
-            /administrateur/i.test(message), true);
+            /administrateur|non autorisée/i.test(message), true);
     r.check('aucune erreur JS', errors.length, 0);
     await ctx.close();
   }
