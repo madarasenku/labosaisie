@@ -1006,16 +1006,30 @@ async function chargerTarifsDepuisBase() {
 //   (copie texte prise AVANT : les getters rendent le cache par référence et
 //   les appelants le modifient avant d'appeler). Un serveur injoignable garde
 //   la valeur locale (cache hors-ligne). Renvoie false seulement sur refus.
-async function _enregistrerConfig({ cle, valeur, setCache, rpc, params, libelles }) {
+// ✅ v13.247 — Une file par clé : deux enregistrements rapprochés (double
+//   clic) passent l'un après l'autre. Sinon le second prenait pour « état
+//   d'avant » la valeur encore non confirmée du premier, et un double refus
+//   laissait sur le poste des valeurs jamais acceptées par le serveur.
+const _fileConfig = {};
+function _enregistrerConfig(opts) {
+  const precedent = _fileConfig[opts.cle] || Promise.resolve();
+  const suivant = precedent.catch(() => {}).then(() => _enregistrerConfigUnique(opts));
+  _fileConfig[opts.cle] = suivant;
+  return suivant;
+}
+async function _enregistrerConfigUnique({ cle, valeur, setCache, rpc, params, libelles, apresLocal }) {
   let avant = null;
   try { avant = localStorage.getItem(cle); } catch (e) {}
   setCache(valeur);
   try { localStorage.setItem(cle, JSON.stringify(valeur)); } catch (e) {}
-  if (typeof _sb === 'undefined' || !_sb) return true;
+  // ✅ v13.247 — L'écran suit tout de suite la valeur locale, sans attendre le serveur.
+  if (apresLocal) { try { apresLocal(); } catch (e) {} }
+  // Enregistrement local seulement : message neutre (ni succès ni erreur).
+  if (typeof _sb === 'undefined' || !_sb) { toast(libelles.horsLigne, ''); return true; }
   let data, error;
   try { ({ data, error } = await _sb.rpc(rpc, params)); }
-  catch (e) { toast(libelles.horsLigne, 'err'); return true; }
-  if (error) { toast(libelles.injoignable, 'err'); return true; }
+  catch (e) { toast(libelles.horsLigne, ''); return true; }
+  if (error) { toast(libelles.injoignable, ''); return true; }
   if (data === 'ok') { if (libelles.ok) toast(libelles.ok, 'ok'); return true; }
   try {
     if (avant === null) localStorage.removeItem(cle); else localStorage.setItem(cle, avant);
@@ -1124,8 +1138,11 @@ async function addExamenPersonnalise() {
   // ✅ v13.246 — Catalogue d'abord : s'il est refusé, on n'écrit pas les
   //   tarifs (le prix d'un examen absent du catalogue n'a pas de sens) et on
   //   relit la grille du poste, que getTarifsRef() a déjà modifiée en mémoire.
-  if (await saveExamensCustom(custom)) await saveTarifsRef(ref);
-  else _tarifsRefCache = null;
+  //   Si le catalogue passe et que les tarifs sont refusés (mêmes droits :
+  //   cas théorique), l'examen garde le prix saisi, qu'il porte lui-même.
+  // ✅ v13.247 — Refusé : la fenêtre reste ouverte avec la saisie intacte.
+  if (!await saveExamensCustom(custom)) { _tarifsRefCache = null; return; }
+  await saveTarifsRef(ref);
 
   document.getElementById('add-examen-modal').style.display = 'none';
   document.getElementById('new_ex_label').value = '';
@@ -1147,6 +1164,8 @@ async function removeExamenCustom(id) {
   const ref = getTarifsRef();
   delete ref[id];
   // ✅ v13.246 — Même ordre qu'à l'ajout : tarifs seulement si le catalogue passe.
+  //   (Catalogue accepté mais tarifs refusés : il reste un prix orphelin,
+  //   sans effet puisque plus aucun examen ne le lit.)
   if (await saveExamensCustom(custom)) await saveTarifsRef(ref);
   else _tarifsRefCache = null;
   buildAdminExamensGrid();
