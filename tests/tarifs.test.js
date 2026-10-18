@@ -76,7 +76,7 @@ const { serve, openApp, createReporter } = require('./helpers');
       return capté;
     });
     r.check('refus signalé à l\'utilisateur',
-            /administrateur|non autorisée/i.test(message), true);
+            /non autorisée/i.test(message), true);
     r.check('aucune erreur JS', errors.length, 0);
     await ctx.close();
   }
