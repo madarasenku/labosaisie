@@ -945,8 +945,9 @@ const _SECTION_PARAMS = {
   bpn_sero:['bpnsero_hbsac','bpnsero_toxog','bpnsero_rubg'],
 };
 
-async function saveRefsConfig() {
-  const custom = getCustomRefs();
+function saveRefsConfig() { return _uneSeuleFois('saveRefsConfig', _saveRefsConfig); }
+async function _saveRefsConfig() {
+  const custom = { ...getCustomRefs() };            // ✅ v13.248 — copie
   _ALL_REF_IDS.forEach(id => {
     const refEl  = document.getElementById('rref_'  + id);
     const loEl   = document.getElementById('rlo_'   + id);
@@ -962,22 +963,23 @@ async function saveRefsConfig() {
   });
   if (!_currentUser?.id) {
     saveCustomRefs(custom);
+    updateAllRefs(); buildRefsEditor();
     toast('✓ Valeurs de référence enregistrées sur ce poste', 'ok');
-  } else {
-    // ✅ v13.246 — Même mécanique que les tarifs (_enregistrerConfig) : un refus
-    //   du serveur remet ce poste à l'identique.
-    await _enregistrerConfig({
-      cle: LABO_REFS_KEY, valeur: custom, setCache: v => { _customRefsCache = v; },
-      apresLocal: () => { updateAllRefs(); buildRefsEditor(); },
-      rpc: 'save_refs_config', params: { p_token: TK(), p_refs: custom },
-      libelles: { ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
-                  refus: 'Valeurs de référence non enregistrées',
-                  injoignable: 'Valeurs enregistrées sur ce poste seulement (serveur injoignable)',
-                  horsLigne: 'Valeurs enregistrées sur ce poste seulement (hors-ligne)' },
-    });
+    return;
   }
-  updateAllRefs();
-  buildRefsEditor();
+  // ✅ v13.246/248 — Même mécanique que les tarifs. L'éditeur est redessiné
+  //   UNE fois, tout de suite (marqueurs ✎ à jour) ; il ne l'est de nouveau
+  //   qu'après un refus, pour afficher les valeurs restaurées.
+  const res = await _enregistrerConfig({
+    cle: LABO_REFS_KEY, valeur: custom, setCache: v => { _customRefsCache = v; },
+    apresLocal: () => { updateAllRefs(); buildRefsEditor(); },
+    rpc: 'save_refs_config', params: { p_token: TK(), p_refs: custom },
+    libelles: { ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
+                refus: 'Valeurs de référence non enregistrées',
+                injoignable: 'Valeurs enregistrées sur ce poste seulement (serveur injoignable)',
+                horsLigne: 'Valeurs enregistrées sur ce poste seulement (hors-ligne)' },
+  });
+  if (res === 'refus') { updateAllRefs(); buildRefsEditor(); }
 }
 
 function resetSectionRefs(sectionId) {

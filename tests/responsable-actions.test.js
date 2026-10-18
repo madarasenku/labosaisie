@@ -6,8 +6,8 @@
 // ════════════════════════════════════════════════════════════════════
 const { serve, openApp, createReporter } = require('./helpers');
 const PORT = 8331;
-// En production depuis v13.247 : la racine par défaut (CIBLE=/preview/index.html pour le lien de test).
-const CIBLE = process.env.CIBLE || '/index.html';
+// Contrôles v13.248 : sur le lien de test d'abord, la racine suit à la mise en production.
+const CIBLE = process.env.CIBLE || '/preview/index.html';
 const AUJ = new Date().toISOString().slice(0, 10);
 
 const fiche = (id, par, masquePar) => ({
@@ -70,7 +70,7 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
     r.section('Caisse : vue complète, ristournes, annulation, déverrouillage');
     const appels = [];
     const { ctx, page, errors } = await openApp({ ...RESP, appels,
-      rpc: { get_resultats_light: [fiche(731, 'YERIGUE', null)], get_restriction_status: [], get_deleted_status: [],
+      rpc: { get_resultats_light: [{ ...fiche(731, 'YERIGUE', null), prescripteur_id: 5 }], get_restriction_status: [], get_deleted_status: [],
              caissier_exists: true, deverrouiller_journee: 'ok', set_taux_ristourne: 'ok',
              get_prescripteurs: [{ id: 5, nom: 'Dr TEST', specialite: '', structure: '', taux_ristourne: 10, actif: true }] } });
     await page.evaluate(() => showView('caisse'));
@@ -86,12 +86,13 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
     await page.evaluate(async () => { window.showConfirmModal = async () => true; await deverrouillerJournee(); });
     await page.waitForTimeout(300);
     r.check('déverrouillage envoyé au serveur', appels.includes('deverrouiller_journee'), true);
+    r.check('ligne de ristourne affichée', await page.evaluate(() => !!document.getElementById('rist_taux_5')), true);
     const taux = await page.evaluate(async () => {
-      window._prescripteurs = [{ id: 5, nom: 'Dr TEST', taux_ristourne: 10 }];
-      if (typeof _prescripteurs !== 'undefined') _prescripteurs = window._prescripteurs;
-      const inp = document.createElement('input'); inp.id = 'rist_taux_5'; inp.value = '15'; document.body.appendChild(inp);
-      await saveRistourneTaux();
-      return _prescripteurs[0].taux_ristourne;
+      window.toast = () => {};
+      document.getElementById('rist_taux_5').value = '15';
+      document.querySelector('[onclick="saveRistourneTaux()"]').click();
+      for (let i = 0; i < 100 && _actionsEnCours.saveRistourneTaux; i++) await new Promise(r => setTimeout(r, 30));
+      return _prescripteurs.find(p => p.id === 5).taux_ristourne;
     });
     r.check('taux de ristourne envoyé (set_taux_ristourne)', appels.includes('set_taux_ristourne'), true);
     r.check('taux mis à jour', taux, 15);
@@ -118,100 +119,133 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {
-    r.section('Un refus du serveur n\'est pas gardé sur le poste');
+    r.section('v13.248 — Configuration par les vrais boutons');
+    const PRESC = [{ id: 5, nom: 'Dr CINQ', specialite: '', structure: '', taux_ristourne: 10, actif: true },
+                   { id: 6, nom: 'Dr SIX',  specialite: '', structure: '', taux_ristourne: 20, actif: true }];
     const { ctx, page, errors } = await openApp({ ...RESP,
-      rpc: { get_tarifs: {}, save_tarifs: 'forbidden', save_examens_custom: 'forbidden' } });
-    const res = await page.evaluate(async () => {
-      window.toast = () => {};
-      localStorage.setItem('tarifs_ref', JSON.stringify({ ex_nfs: 3000 }));
-      _tarifsRefCache = null;
-      const ref = getTarifsRef(); ref.ex_nfs = 999;          // l'appelant modifie le cache par référence
-      await saveTarifsRef(ref);
-      const t = getTarifsRef().ex_nfs;
-      localStorage.setItem('examens_custom', JSON.stringify([{ id: 'a', label: 'A', prix: 1 }]));
-      _examensCustomCache = null;
-      await saveExamensCustom([{ id: 'b', label: 'B', prix: 2 }]);
-      return t + '|' + getExamensCustom().map(e => e.id).join(',');
+      rpc: { get_tarifs: {}, list_users_admin: [], get_restriction_status: [], get_deleted_status: [], caissier_exists: true,
+             get_prescripteurs: PRESC,
+             get_resultats_light: [{ ...fiche(741, 'YERIGUE', null), prescripteur_id: 5 }, { ...fiche(742, 'YERIGUE', null), prescripteur_id: 6 }] } });
+    // Banc d'essai : réponses du serveur pilotées appel par appel, messages capturés.
+    await page.evaluate(() => {
+      window.__appels = []; window.__rep = {}; window.__msgs = [];
+      window.toast = (m, t) => { window.__msgs.push([t, m]); };
+      window.showConfirmModal = async () => true;
+      const vrai = _sb.rpc.bind(_sb);
+      _sb.rpc = (nom, params) => { window.__appels.push(nom);
+        return window.__rep[nom] ? window.__rep[nom](params) : vrai(nom, params); };
+      window.__lent = (rep, ms = 250) => () => new Promise(r => setTimeout(() => r(rep), ms));
+      window.__fin = async (nom) => { await new Promise(r => setTimeout(r, 20));
+        for (let i = 0; i < 200 && _actionsEnCours[nom]; i++) await new Promise(r => setTimeout(r, 25)); };
+      window.__nb = (nom) => window.__appels.filter(a => a === nom).length;
+      window.__dernier = () => window.__msgs[window.__msgs.length - 1] || [];
+      window.__grille = () => { localStorage.setItem('tarifs_ref', JSON.stringify({ ex_nfs: 3000 }));
+        _tarifsRefCache = null; showView('comptes'); buildAdminExamensGrid(); };
+      window.__clic = (sel) => document.querySelector(sel).click();
     });
-    r.check('tarif et catalogue restaurés', res, '3000|a');
-    erreurs = erreurs.concat(errors); await ctx.close();
-  }
-  {
-    r.section('v13.246 — Refus : grille réaffichée, catalogue d\'abord, normes restaurées');
-    const appels = [];
-    const { ctx, page, errors } = await openApp({ ...RESP, appels,
-      rpc: { get_tarifs: {}, save_tarifs: 'forbidden', save_examens_custom: 'forbidden', save_refs_config: 'forbidden',
-             set_taux_ristourne: null, list_users_admin: [] } });
-    const res = await page.evaluate(async () => {
-      window.toast = () => {};
-      showView('comptes'); buildAdminExamensGrid();
-      localStorage.setItem('tarifs_ref', JSON.stringify({ ex_nfs: 3000 })); _tarifsRefCache = null;
-      buildAdminExamensGrid();
-      const champ = document.getElementById('adm_px_ex_nfs');
-      if (!champ) return 'pas de champ NFS';
-      champ.value = '999';
-      await saveAdminTarifs();
-      const grille = document.getElementById('adm_px_ex_nfs').value;
-      // Catalogue refusé : les tarifs ne doivent même pas partir.
-      window.__nbTarifs = 0;
-      document.getElementById('new_ex_label') && (document.getElementById('new_ex_label').value = 'Examen test');
-      return grille;
-    });
-    r.check('grille réaffichée avec le prix en vigueur', res, '3000');
-    const avantTarifs = appels.filter(a => a === 'save_tarifs').length;
-    await page.evaluate(async () => { window.showConfirmModal = async () => true;
-      localStorage.setItem('examens_custom', JSON.stringify([{ id: 'x1', label: 'X1', prix: 5, tab: 'hema', groupe: 'g', custom: true }]));
-      _examensCustomCache = null; await removeExamenCustom('x1'); });
-    r.check('catalogue refusé → tarifs non envoyés', appels.filter(a => a === 'save_tarifs').length, avantTarifs);
-    r.check('catalogue restauré', await page.evaluate(() => getExamensCustom().map(e => e.id).join(',')), 'x1');
-    r.check('normes restaurées après refus', await page.evaluate(async () => {
+    const OK = { data: 'ok', error: null, status: 200 };
+    const REFUS = { data: 'forbidden', error: null, status: 200 };
+    const ERREUR = { data: null, error: { message: 'exception SQL' }, status: 500 };
+    const RESEAU = { data: null, error: { message: 'FetchError: Failed to fetch' }, status: 0 };
+
+    // — Tarifs —
+    for (const [nom, rep, attendu, type] of [['refus', REFUS, '3000', 'err'], ['erreur du serveur', ERREUR, '3000', 'err'],
+                                             ['réseau coupé', RESEAU, '999', '']]) {
+      const res = await page.evaluate(async (rep) => {
+        __grille(); __rep.save_tarifs = () => Promise.resolve(rep);
+        document.getElementById('adm_px_ex_nfs').value = '999';
+        __clic('[onclick="saveAdminTarifs()"]'); await __fin('saveAdminTarifs');
+        return [document.getElementById('adm_px_ex_nfs').value, JSON.parse(localStorage.getItem('tarifs_ref')).ex_nfs,
+                getTarifsRef().ex_nfs, __dernier()[0]];
+      }, rep);
+      r.check('tarifs, ' + nom + ' : écran / poste / mémoire / message', res.join('|'), [attendu, attendu, attendu, type].join('|'));
+    }
+    r.check('tarifs : double clic → un seul envoi', await page.evaluate(async (ok) => {
+      __grille(); __appels.length = 0; __rep.save_tarifs = __lent(ok);
+      const b = document.querySelector('[onclick="saveAdminTarifs()"]');
+      b.click(); const desactive = b.disabled; b.click();
+      await __fin('saveAdminTarifs');
+      return __nb('save_tarifs') + '|' + desactive + '|' + b.disabled;
+    }, OK), '1|true|false');
+
+    // — Catalogue —
+    r.check('ajout refusé : fenêtre ouverte, saisie gardée, rien d\'écrit', await page.evaluate(async (refus) => {
+      localStorage.setItem('examens_custom', '[]'); _examensCustomCache = null; __grille();
+      __appels.length = 0; __rep.save_examens_custom = () => Promise.resolve(refus);
+      showAddExamenModal();
+      document.getElementById('new_ex_label').value = 'Examen X'; document.getElementById('new_ex_prix').value = '4500';
+      __clic('[onclick="addExamenPersonnalise()"]'); await __fin('addExamenPersonnalise');
+      const m = document.getElementById('add-examen-modal');
+      return [m.style.display, document.getElementById('new_ex_label').value, getExamensCustom().length,
+              Object.keys(getTarifsRef()).some(k => k.startsWith('custom_')), __nb('save_tarifs')].join('|');
+    }, REFUS), 'flex|Examen X|0|false|0');
+    r.check('ajout : double clic → un seul examen, un seul message', await page.evaluate(async (ok) => {
+      localStorage.setItem('examens_custom', '[]'); _examensCustomCache = null; __grille();
+      __appels.length = 0; __msgs.length = 0;
+      __rep.save_examens_custom = __lent(ok); __rep.save_tarifs = __lent(ok);
+      showAddExamenModal();
+      document.getElementById('new_ex_label').value = 'Examen Y'; document.getElementById('new_ex_prix').value = '1500';
+      const b = document.querySelector('[onclick="addExamenPersonnalise()"]'); b.click(); b.click();
+      await __fin('addExamenPersonnalise');
+      return [getExamensCustom().filter(e => e.label === 'Examen Y').length, __nb('save_examens_custom'),
+              document.getElementById('add-examen-modal').style.display, __msgs.length].join('|');
+    }, OK), '1|1|none|1');
+
+    // — Valeurs de référence —
+    const prepNormes = () => page.evaluate(() => {
       localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { ref: '12-17', lo: 12, hi: 17, unit: 'g/dL' } }));
-      _customRefsCache = null; buildRefsEditor();
-      const el = document.getElementById('rref_hb'); if (el) el.value = '1-2';
-      await saveRefsConfig();
-      return getCustomRefs().hb && getCustomRefs().hb.ref;
-    }), '12-17');
-    r.check('taux : réponse vide comptée en échec', await page.evaluate(async () => {
-      _prescripteurs = [{ id: 5, nom: 'Dr TEST', taux_ristourne: 10 }];
-      const inp = document.createElement('input'); inp.id = 'rist_taux_5'; inp.value = '15'; document.body.appendChild(inp);
-      await saveRistourneTaux(); return _prescripteurs[0].taux_ristourne; }), 10);
-    erreurs = erreurs.concat(errors); await ctx.close();
-  }
-  {
-    r.section('v13.247 — Double clic, fenêtre d\'ajout, ristournes, sans serveur');
-    const { ctx, page, errors } = await openApp({ ...RESP,
-      rpc: { get_tarifs: {}, save_tarifs: 'forbidden', save_examens_custom: 'forbidden', list_users_admin: [] } });
-    r.check('double clic + double refus : prix d\'origine', await page.evaluate(async () => {
-      window.toast = () => {};
-      localStorage.setItem('tarifs_ref', JSON.stringify({ ex_nfs: 3000 })); _tarifsRefCache = null;
-      const a = saveTarifsRef({ ex_nfs: 111 });
-      const b = saveTarifsRef({ ex_nfs: 222 });
-      await Promise.all([a, b]);
-      return JSON.parse(localStorage.getItem('tarifs_ref')).ex_nfs + '/' + getTarifsRef().ex_nfs;
-    }), '3000/3000');
-    r.check('ajout refusé : fenêtre ouverte, saisie gardée', await page.evaluate(async () => {
-      window.toast = () => {};
-      const m = document.getElementById('add-examen-modal'); m.style.display = 'flex';
-      document.getElementById('new_ex_label').value = 'Examen X';
-      document.getElementById('new_ex_prix').value = '4500';
-      await addExamenPersonnalise();
-      return m.style.display + '|' + document.getElementById('new_ex_label').value + '|' + document.getElementById('new_ex_prix').value;
-    }), 'flex|Examen X|4500');
-    r.check('ristournes : plantage → chargement refermé, taux locaux gardés', await page.evaluate(async () => {
-      window.toast = () => {};
-      localStorage.setItem(RISTOURNE_TAUX_KEY, '{"5":15}');
-      _prescripteurs = [{ id: 5, nom: 'Dr TEST', taux_ristourne: 10 }];
-      const inp = document.createElement('input'); inp.id = 'rist_taux_5'; inp.value = '15'; document.body.appendChild(inp);
-      const vrai = _sb.rpc; _sb.rpc = () => { throw new Error('réseau'); };
-      try { await saveRistourneTaux(); } finally { _sb.rpc = vrai; }
-      return document.getElementById('loading-overlay').classList.contains('active') + '|' + localStorage.getItem(RISTOURNE_TAUX_KEY);
-    }), 'false|{"5":15}');
+      _customRefsCache = null; showView('comptes'); buildRefsEditor(); });
+    await prepNormes();
+    r.check('normes refusées : restaurées à l\'écran et en mémoire', await page.evaluate(async (refus) => {
+      __rep.save_refs_config = () => Promise.resolve(refus);
+      document.getElementById('rref_hb').value = '1-2';
+      __clic('[onclick="saveRefsConfig()"]'); await __fin('saveRefsConfig');
+      return getCustomRefs().hb.ref + '|' + document.getElementById('rref_hb').value + '|' + __dernier()[0];
+    }, REFUS), '12-17|12-17|err');
+    await prepNormes();
+    r.check('normes acceptées : ce qu\'on tape pendant l\'envoi n\'est pas effacé', await page.evaluate(async (ok) => {
+      __rep.save_refs_config = __lent(ok, 300);
+      document.getElementById('rref_hb').value = '13-18';
+      __clic('[onclick="saveRefsConfig()"]');
+      await new Promise(r => setTimeout(r, 60));
+      const autre = [...document.querySelectorAll('#ac-refs input[id^="rref_"]')].find(i => i.id !== 'rref_hb');
+      autre.value = 'tapé'; await __fin('saveRefsConfig');
+      return getCustomRefs().hb.ref + '|' + document.getElementById(autre.id).value;
+    }, OK), '13-18|tapé');
+
+    // — Ristournes (vrai tableau, vrai bouton) —
+    await page.evaluate(() => { _prescripteurs.length || (_prescripteurs = []); showView('caisse'); });
+    await page.waitForTimeout(700);
+    r.check('ristournes : deux lignes affichées', await page.evaluate(() =>
+      !!document.getElementById('rist_taux_5') && !!document.getElementById('rist_taux_6')), true);
+    r.check('ristournes : refus + réseau → les deux signalés, saisies gardées, chargement refermé', await page.evaluate(async ([refus, reseau]) => {
+      __rep.set_taux_ristourne = (p) => Promise.resolve(p.p_prescr_id === 5 ? refus : reseau);
+      document.getElementById('rist_taux_5').value = '15'; document.getElementById('rist_taux_6').value = '25';
+      __clic('[onclick="saveRistourneTaux()"]'); await __fin('saveRistourneTaux');
+      const [type, msg] = __dernier();
+      return [document.getElementById('rist_taux_5').value, document.getElementById('rist_taux_6').value,
+              _prescripteurs.find(p => p.id === 5).taux_ristourne, type, /refusé/.test(msg) && /connexion/.test(msg),
+              document.getElementById('loading-overlay').classList.contains('active')].join('|');
+    }, [REFUS, RESEAU]), '15|25|10|err|true|false');
+    r.check('ristournes : plantage réseau → chargement refermé', await page.evaluate(async () => {
+      __rep.set_taux_ristourne = () => { throw new Error('réseau'); };
+      document.getElementById('rist_taux_5').value = '16';
+      __clic('[onclick="saveRistourneTaux()"]'); await __fin('saveRistourneTaux');
+      return document.getElementById('loading-overlay').classList.contains('active') + '|' + document.getElementById('rist_taux_5').value;
+    }), 'false|16');
+    r.check('ristournes : accepté → taux en vigueur', await page.evaluate(async (ok) => {
+      __rep.set_taux_ristourne = () => Promise.resolve(ok);
+      document.getElementById('rist_taux_5').value = '17';
+      __clic('[onclick="saveRistourneTaux()"]'); await __fin('saveRistourneTaux');
+      return _prescripteurs.find(p => p.id === 5).taux_ristourne + '|' + __dernier()[0];
+    }, OK), '17|ok');
+
+    // — Sans client serveur : message neutre, valeur gardée sur le poste —
     r.check('sans serveur : message neutre', await page.evaluate(async () => {
-      let msg = null, type = null; window.toast = (m, t) => { msg = m; type = t; };
       const vrai = _sb; _sb = null;
-      try { await saveTarifsRef({ ex_nfs: 3000 }); } finally { _sb = vrai; }
-      return type + '|' + /poste seulement/.test(msg);
-    }), '|true');
+      try { await saveTarifsRef({ ex_nfs: 3100 }); } finally { _sb = vrai; }
+      return __dernier()[0] + '|' + /poste seulement/.test(__dernier()[1]) + '|' + getTarifsRef().ex_nfs;
+    }), '|true|3100');
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {
