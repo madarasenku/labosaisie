@@ -6,8 +6,8 @@
 // ════════════════════════════════════════════════════════════════════
 const { serve, openApp, createReporter } = require('./helpers');
 const PORT = 8331;
-// En production depuis v13.246 : la racine par défaut (CIBLE=/preview/index.html pour le lien de test).
-const CIBLE = process.env.CIBLE || '/index.html';
+// Contrôles v13.247 : sur le lien de test d'abord, la racine suit à la mise en production.
+const CIBLE = process.env.CIBLE || '/preview/index.html';
 const AUJ = new Date().toISOString().slice(0, 10);
 
 const fiche = (id, par, masquePar) => ({
@@ -175,6 +175,43 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
       _prescripteurs = [{ id: 5, nom: 'Dr TEST', taux_ristourne: 10 }];
       const inp = document.createElement('input'); inp.id = 'rist_taux_5'; inp.value = '15'; document.body.appendChild(inp);
       await saveRistourneTaux(); return _prescripteurs[0].taux_ristourne; }), 10);
+    erreurs = erreurs.concat(errors); await ctx.close();
+  }
+  {
+    r.section('v13.247 — Double clic, fenêtre d\'ajout, ristournes, sans serveur');
+    const { ctx, page, errors } = await openApp({ ...RESP,
+      rpc: { get_tarifs: {}, save_tarifs: 'forbidden', save_examens_custom: 'forbidden', list_users_admin: [] } });
+    r.check('double clic + double refus : prix d\'origine', await page.evaluate(async () => {
+      window.toast = () => {};
+      localStorage.setItem('tarifs_ref', JSON.stringify({ ex_nfs: 3000 })); _tarifsRefCache = null;
+      const a = saveTarifsRef({ ex_nfs: 111 });
+      const b = saveTarifsRef({ ex_nfs: 222 });
+      await Promise.all([a, b]);
+      return JSON.parse(localStorage.getItem('tarifs_ref')).ex_nfs + '/' + getTarifsRef().ex_nfs;
+    }), '3000/3000');
+    r.check('ajout refusé : fenêtre ouverte, saisie gardée', await page.evaluate(async () => {
+      window.toast = () => {};
+      const m = document.getElementById('add-examen-modal'); m.style.display = 'flex';
+      document.getElementById('new_ex_label').value = 'Examen X';
+      document.getElementById('new_ex_prix').value = '4500';
+      await addExamenPersonnalise();
+      return m.style.display + '|' + document.getElementById('new_ex_label').value + '|' + document.getElementById('new_ex_prix').value;
+    }), 'flex|Examen X|4500');
+    r.check('ristournes : plantage → chargement refermé, taux locaux gardés', await page.evaluate(async () => {
+      window.toast = () => {};
+      localStorage.setItem(RISTOURNE_TAUX_KEY, '{"5":15}');
+      _prescripteurs = [{ id: 5, nom: 'Dr TEST', taux_ristourne: 10 }];
+      const inp = document.createElement('input'); inp.id = 'rist_taux_5'; inp.value = '15'; document.body.appendChild(inp);
+      const vrai = _sb.rpc; _sb.rpc = () => { throw new Error('réseau'); };
+      try { await saveRistourneTaux(); } finally { _sb.rpc = vrai; }
+      return document.getElementById('loading-overlay').classList.contains('active') + '|' + localStorage.getItem(RISTOURNE_TAUX_KEY);
+    }), 'false|{"5":15}');
+    r.check('sans serveur : message neutre', await page.evaluate(async () => {
+      let msg = null, type = null; window.toast = (m, t) => { msg = m; type = t; };
+      const vrai = _sb; _sb = null;
+      try { await saveTarifsRef({ ex_nfs: 3000 }); } finally { _sb = vrai; }
+      return type + '|' + /poste seulement/.test(msg);
+    }), '|true');
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {

@@ -968,6 +968,7 @@ async function saveRefsConfig() {
     //   du serveur remet ce poste à l'identique.
     await _enregistrerConfig({
       cle: LABO_REFS_KEY, valeur: custom, setCache: v => { _customRefsCache = v; },
+      apresLocal: () => { updateAllRefs(); buildRefsEditor(); },
       rpc: 'save_refs_config', params: { p_token: TK(), p_refs: custom },
       libelles: { ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
                   refus: 'Valeurs de référence non enregistrées',
