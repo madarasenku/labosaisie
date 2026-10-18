@@ -130,7 +130,8 @@ function recordForOutput(id) {
   let r = getDB().find(x => x.id === id);
   if (r) return r;
   const uid = _currentUser?.username;
-  const admin = (typeof isAdmin === 'function') && isAdmin();
+  const admin = (typeof isAdmin === 'function') && isAdmin()
+    || (typeof isResponsable === 'function' && isResponsable()); // ✅ v13.248 — fiches masquées de son équipe
   return _dbCache.find(x => x.id === id && !x.deletedAt && !x._hardDeleted && x.restrictedBy
                             && (admin || x.createdBy === uid || x.restrictedBy === uid)) || null;
 }
@@ -269,7 +270,11 @@ function getCalcDB() {
   //   Les dossiers nadia/admin restent cachés dans l'historique (getDB) mais comptent
   //   dans les calculs financiers pour cohérence du « point du mois ».
   if (isSpectateur()) return _dbCache.filter(vivante);
-  if (isAdmin() || isCaissier()) return _dbCache.filter(vivante);
+  // ✅ v13.248 — Le responsable tient la caisse de son équipe : il compte toutes
+  //   les fiches reçues (le serveur ne lui envoie déjà que celles de son équipe).
+  //   Sans cela, sa caisse, ses statistiques et ses ristournes ne comptaient
+  //   que ses propres saisies.
+  if (isAdmin() || isCaissier() || isResponsable()) return _dbCache.filter(vivante);
   const uid = _currentUser?.username;
   if (!uid) return [];
   return _dbCache.filter(r => vivante(r) && r.createdBy === uid);
