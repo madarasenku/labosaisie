@@ -1000,42 +1000,73 @@ async function chargerTarifsDepuisBase() {
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
-// ✅ v13.246/248 — Enregistrement commun d'une configuration partagée
+// ✅ v13.246/248/249 — Enregistrement commun d'une configuration partagée
 //   (tarifs, catalogue, valeurs de référence).
 //   • Le poste est écrit d'abord, puis le serveur.
 //   • Refus du serveur OU erreur du serveur (statut ≥ 400 : fonction absente,
 //     session expirée, exception SQL…) → le poste revient exactement à l'état
 //     d'avant, message rouge. Sinon ce poste facturerait un prix que les
 //     autres n'ont pas (v13.75).
-//   • Serveur injoignable (statut 0, délai dépassé, pas de client) → la valeur
-//     reste sur ce poste (cache hors-ligne), message neutre explicite.
-//   Les appelants passent une COPIE (jamais l'objet rendu par le getter) :
-//   la mémoire du poste ne change qu'ici.
+//   • Serveur injoignable (statut 0, passerelle 502/503/504, délai dépassé,
+//     pas de client) → la valeur reste sur ce poste (cache hors-ligne),
+//     message neutre explicite. La connexion suivante recharge la base.
+//   ✅ v13.249 —
+//   • File d'attente PAR DONNÉE : deux enregistrements des tarifs (prix, puis
+//     ajout d'un examen…) ne se chevauchent plus. `valeur` peut être une
+//     fonction : elle est calculée au moment où vient son tour, donc à partir
+//     de l'état RÉEL (confirmé ou restauré), jamais d'un état non confirmé.
+//   • Au bout de 20 s la requête est ANNULÉE (pas seulement ignorée) : aucune
+//     réponse tardive ne peut plus arriver après coup, et la file avance.
+//   • Le retour en arrière part de la MÉMOIRE du poste (et non du stockage
+//     local, absent en navigation privée ou si la mémoire est pleine).
 //   Renvoie 'ok' | 'local' | 'refus'. `muet` : n'affiche que les refus.
-const _DELAI_CONFIG_MS = 20000;
-async function _enregistrerConfig({ cle, valeur, setCache, rpc, params, libelles, apresLocal, muet }) {
-  let avant = null;
-  try { avant = localStorage.getItem(cle); } catch (e) {}
-  setCache(valeur);
-  try { localStorage.setItem(cle, JSON.stringify(valeur)); } catch (e) {}
+let _DELAI_CONFIG_MS = 20000;            // let : réglable par les tests
+
+/** Appel RPC borné dans le temps : au-delà du délai, la requête est annulée et
+ *  { delai: true } est rendu. Les exceptions du client remontent à l'appelant. */
+async function _rpcAvecDelai(rpc, params, ms = _DELAI_CONFIG_MS) {
+  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+  let minuteur = null;
+  try {
+    let req = _sb.rpc(rpc, params);
+    if (ctrl && req && typeof req.abortSignal === 'function') req = req.abortSignal(ctrl.signal);
+    return await Promise.race([req, new Promise(res => {
+      minuteur = setTimeout(() => { res({ delai: true }); if (ctrl) ctrl.abort(); }, ms);
+    })]);
+  } finally { clearTimeout(minuteur); }
+}
+
+/** Le serveur n'a pas pu répondre (≠ il a refusé). */
+function _serveurInjoignable(rep) {
+  if (!rep || rep.delai) return true;
+  const st = rep.status;
+  return !!rep.error && (!st || st === 502 || st === 503 || st === 504);
+}
+
+const _filesConfig = {};
+function _enregistrerConfig(opts) {
+  const tour = (_filesConfig[opts.cle] || Promise.resolve()).then(() => _enregistrerConfigMaintenant(opts));
+  _filesConfig[opts.cle] = tour.catch(() => {});
+  return tour;
+}
+async function _enregistrerConfigMaintenant({ cle, valeur, lireCache, setCache, rpc, params, libelles, apresLocal, muet }) {
+  const v = (typeof valeur === 'function') ? valeur() : valeur;
+  const avantMem = lireCache();
+  let avantLocal = null;
+  try { avantLocal = localStorage.getItem(cle); } catch (e) {}
+  setCache(v);
+  try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) {}
   if (apresLocal) { try { apresLocal(); } catch (e) {} }
   const local = (msg) => { if (!muet) toast(msg, ''); return 'local'; };
   if (typeof _sb === 'undefined' || !_sb) return local(libelles.horsLigne);
   let rep;
-  try {
-    rep = await Promise.race([
-      _sb.rpc(rpc, params),
-      new Promise(res => setTimeout(() => res({ delai: true }), _DELAI_CONFIG_MS)),
-    ]);
-  } catch (e) { return local(libelles.horsLigne); }
-  if (rep.delai) return local(libelles.injoignable);
+  try { rep = await _rpcAvecDelai(rpc, params(v)); }
+  catch (e) { return local(libelles.horsLigne); }
+  if (_serveurInjoignable(rep)) return local(libelles.injoignable);
   const { data, error, status } = rep;
-  if (error && !status) return local(libelles.injoignable);       // réseau coupé
   if (!error && data === 'ok') { if (!muet && libelles.ok) toast(libelles.ok, 'ok'); return 'ok'; }
-  try {
-    if (avant === null) localStorage.removeItem(cle); else localStorage.setItem(cle, avant);
-    setCache(avant === null ? null : JSON.parse(avant));
-  } catch (e) { setCache(null); }
+  setCache(avantMem);
+  try { if (avantLocal === null) localStorage.removeItem(cle); else localStorage.setItem(cle, avantLocal); } catch (e) {}
   const raison = error ? 'erreur du serveur (' + (error.message || status) + ')'
                : data === 'forbidden' ? 'modification non autorisée pour ce compte' : String(data);
   toast(libelles.refus + ' : ' + raison, 'err');
@@ -1055,11 +1086,13 @@ async function _uneSeuleFois(nom, fn) {
   finally { _actionsEnCours[nom] = false; boutons.forEach(b => { b.disabled = false; }); }
 }
 
-/** Enregistre la grille en base ; le cache local suit. Renvoie 'ok' | 'local' | 'refus'. */
+/** Enregistre la grille en base ; le cache local suit. Renvoie 'ok' | 'local' | 'refus'.
+ *  `t` : la grille, ou une fonction qui la calcule quand vient son tour. */
 function saveTarifsRef(t, { muet = false } = {}) {
   return _enregistrerConfig({
-    cle: 'tarifs_ref', valeur: { ...t }, setCache: v => { _tarifsRefCache = v; }, muet,
-    rpc: 'save_tarifs', params: { p_token: TK(), p_grille: t },
+    cle: 'tarifs_ref', valeur: () => ({ ...(typeof t === 'function' ? t() : t) }), muet,
+    lireCache: () => _tarifsRefCache, setCache: v => { _tarifsRefCache = v; },
+    rpc: 'save_tarifs', params: v => ({ p_token: TK(), p_grille: v }),
     libelles: { ok: 'Tarifs enregistrés pour tous les postes', refus: 'Tarifs non enregistrés',
                 injoignable: 'Tarifs enregistrés sur ce poste seulement (serveur injoignable)',
                 horsLigne: 'Tarifs enregistrés sur ce poste seulement (hors-ligne)' },
@@ -1103,10 +1136,12 @@ async function chargerExamensCustomDepuisBase() {
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
+/** `list` : la liste, ou une fonction qui la calcule quand vient son tour. */
 function saveExamensCustom(list, { muet = false } = {}) {
   return _enregistrerConfig({
-    cle: 'examens_custom', valeur: [...list], setCache: v => { _examensCustomCache = v; }, muet,
-    rpc: 'save_examens_custom', params: { p_token: TK(), p_liste: list },
+    cle: 'examens_custom', valeur: () => [...(typeof list === 'function' ? list() : list)], muet,
+    lireCache: () => _examensCustomCache, setCache: v => { _examensCustomCache = v; },
+    rpc: 'save_examens_custom', params: v => ({ p_token: TK(), p_liste: v }),
     libelles: { ok: 'Catalogue mis à jour pour tous les postes', refus: 'Catalogue non enregistré',
                 injoignable: 'Examen enregistré sur ce poste seulement (serveur injoignable)',
                 horsLigne: 'Examen enregistré sur ce poste seulement (hors-ligne)' },
@@ -1144,9 +1179,11 @@ async function _addExamenPersonnalise() {
   const groupe = tabToGroupe[tabVal] || '🔬 Autres';
   const tab    = tabVal === 'other' ? 'hema' : tabVal;
 
-  // ✅ v13.248 — COPIES : la mémoire du poste ne change que si l'enregistrement aboutit.
-  const custom = [...getExamensCustom(), { id, label, groupe, prix, tab, custom: true }];
-  const ref = { ...getTarifsRef(), [id]: prix };
+  // ✅ v13.248/249 — COPIES, calculées quand vient leur tour dans la file :
+  //   la mémoire du poste ne change que dans _enregistrerConfig.
+  const nouvel = { id, label, groupe, prix, tab, custom: true };
+  const custom = () => [...getExamensCustom(), nouvel];
+  const ref = () => ({ ...getTarifsRef(), [id]: prix });
 
   // Catalogue d'abord. Refusé : rien n'est écrit, la fenêtre reste ouverte
   //   avec la saisie. Accepté : on écrit les tarifs sans second message (le
@@ -1161,8 +1198,9 @@ async function _addExamenPersonnalise() {
   buildFicheExamens();
 }
 
-function removeExamenCustom(id) { return _uneSeuleFois('removeExamenCustom', () => _removeExamenCustom(id)); }
-async function _removeExamenCustom(id) {
+// ✅ v13.249 — La confirmation est demandée AVANT de prendre le verrou : une
+//   fenêtre de confirmation remplacée ne peut plus bloquer les boutons ✕.
+async function removeExamenCustom(id) {
   const ex = getExamensCustom().find(x => x.id === id);
   const ok = (typeof showConfirmModal === 'function')
     ? await showConfirmModal({ icon:'🗑', title:'Supprimer cet examen',
@@ -1171,9 +1209,11 @@ async function _removeExamenCustom(id) {
         confirmText:'Supprimer', confirmClass:'btn-danger' })
     : confirm('Supprimer cet examen personnalisé ?');
   if (!ok) return;
-  const custom = getExamensCustom().filter(x => x.id !== id);
-  const ref = { ...getTarifsRef() };
-  delete ref[id];
+  return _uneSeuleFois('removeExamenCustom', () => _removeExamenCustom(id));
+}
+async function _removeExamenCustom(id) {
+  const custom = () => getExamensCustom().filter(x => x.id !== id);
+  const ref = () => { const t = { ...getTarifsRef() }; delete t[id]; return t; };
   // Catalogue d'abord ; s'il est accepté et les tarifs refusés, il reste un
   //   prix orphelin, sans effet puisque plus aucun examen ne le lit.
   if (await saveExamensCustom(custom) !== 'refus') await saveTarifsRef(ref, { muet: true });
@@ -1230,14 +1270,16 @@ function buildAdminExamensGrid() {
 
 function saveAdminTarifs() { return _uneSeuleFois('saveAdminTarifs', _saveAdminTarifs); }
 async function _saveAdminTarifs() {
-  const ref = { ...getTarifsRef() };                // ✅ v13.248 — copie
+  const saisis = {};
   getCatalogueComplet().forEach(ex => {
     const el = document.getElementById('adm_px_' + ex.id);
-    if (el) ref[ex.id] = parseInt(el.value) || 0;
+    if (el) saisis[ex.id] = parseInt(el.value) || 0;
   });
   // ✅ v13.76 — on attend la réponse du serveur avant de rafraîchir la fiche.
-  // ✅ v13.246 — Sur refus, la grille réaffiche les prix réellement en vigueur.
-  if (await saveTarifsRef(ref) === 'refus') buildAdminExamensGrid();
+  // ✅ v13.249 — Sur refus, les prix tapés RESTENT dans la grille (message
+  //   rouge « non enregistrés ») pour réessayer sans tout retaper ; la fiche
+  //   d'accueil, elle, facture les prix réellement en vigueur.
+  await saveTarifsRef(() => ({ ...getTarifsRef(), ...saisis }));
   rechargeFichePrix();
 }
 
@@ -1269,19 +1311,21 @@ async function resetAdminTarifs() {
     : confirm(message);
   if (!ok) return;
 
-  // Prix d'usine du catalogue…
-  const grille = buildTarifsRefDefault();
-  // …auxquels on rattache les examens personnalisés, absents du catalogue.
-  const actuelle = getTarifsRef();
-  getExamensCustom().forEach(ex => {
-    grille[ex.id] = (actuelle && actuelle[ex.id] !== undefined)
-      ? actuelle[ex.id] : (Number(ex.prix) || 0);
+  return _uneSeuleFois('resetAdminTarifs', async () => {
+    // Prix d'usine du catalogue… auxquels on rattache les examens
+    //   personnalisés, absents du catalogue (calculé quand vient son tour).
+    const grille = () => {
+      const g = buildTarifsRefDefault();
+      const actuelle = getTarifsRef();
+      getExamensCustom().forEach(ex => {
+        g[ex.id] = (actuelle && actuelle[ex.id] !== undefined) ? actuelle[ex.id] : (Number(ex.prix) || 0);
+      });
+      return g;
+    };
+    await saveTarifsRef(grille);          // écrit en base ET dans le cache local
+    buildAdminExamensGrid();
+    rechargeFichePrix();
   });
-
-  _tarifsRefCache = null;                 // sinon l'écran garde les anciens prix
-  await saveTarifsRef(grille);            // écrit en base ET dans le cache local
-  buildAdminExamensGrid();
-  rechargeFichePrix();
 }
 
 // Compatibilité

@@ -129,11 +129,9 @@ function getDB() {
 function recordForOutput(id) {
   let r = getDB().find(x => x.id === id);
   if (r) return r;
-  const uid = _currentUser?.username;
-  const admin = (typeof isAdmin === 'function') && isAdmin()
-    || (typeof isResponsable === 'function' && isResponsable()); // ✅ v13.248 — fiches masquées de son équipe
+  // ✅ v13.249 — règle unique, partagée avec la grille (ui-auth.js).
   return _dbCache.find(x => x.id === id && !x.deletedAt && !x._hardDeleted && x.restrictedBy
-                            && (admin || x.createdBy === uid || x.restrictedBy === uid)) || null;
+                            && peutOuvrirFicheMasquee(x)) || null;
 }
 
 /**

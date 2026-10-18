@@ -1819,16 +1819,17 @@ async function _saveRistourneTaux() {
   const echecs = [];
   // ✅ v13.248 — Envois en parallèle (indépendants) ; l'écran de chargement se
   //   referme quoi qu'il arrive.
+  // ✅ v13.249 — Chaque envoi est annulé au bout de 20 s (comme les tarifs) :
+  //   une requête bloquée ne laisse plus l'écran de chargement affiché.
   try {
     await Promise.all(changes.map(async ({ p, taux }) => {
-      let data = null, error = null, status = 0;
+      let rep;
       try {
-        ({ data, error, status } = await _sb.rpc('set_taux_ristourne', {
-          p_token: TK(), p_prescr_id: p.id, p_taux: taux }));
-      } catch (e) { error = e; status = 0; }
-      if (!error && data === 'ok') { p.taux_ristourne = taux; return; }
-      // Statut 0 / exception = réseau ; erreur ≥ 400 ou réponse ≠ « ok » = refus du serveur.
-      if (error && !status) injoignables++; else refus++;
+        rep = await _rpcAvecDelai('set_taux_ristourne', { p_token: TK(), p_prescr_id: p.id, p_taux: taux });
+      } catch (e) { rep = { error: e, status: 0 }; }
+      if (!rep.delai && !rep.error && rep.data === 'ok') { p.taux_ristourne = taux; return; }
+      // Statut 0, 502/503/504, délai, exception = réseau ; le reste = refus du serveur.
+      if (_serveurInjoignable(rep)) injoignables++; else refus++;
       echecs.push({ id: p.id, taux });
     }));
   } finally {

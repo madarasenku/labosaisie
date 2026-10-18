@@ -133,6 +133,16 @@ function peutMasquerFiche(r) {
   const moi = _currentUser.username;
   return r.createdBy === moi && (!r.restrictedBy || r.restrictedBy === moi);
 }
+// ✅ v13.249 — RÈGLE UNIQUE « peut ouvrir une fiche MASQUÉE » (impression,
+//   export, saisie des résultats) : son créateur, celui qui l'a masquée,
+//   l'admin, et le Responsable pour celles qu'il peut lui-même masquer
+//   (jamais celles de la direction). Le serveur reste le vrai garde-fou.
+function peutOuvrirFicheMasquee(r) {
+  if (!r || !_currentUser) return false;
+  const moi = _currentUser.username;
+  if (r.createdBy === moi || r.restrictedBy === moi) return true;
+  return isAdmin() || (isResponsable() && peutMasquerFiche(r));
+}
 // ✅ v13.211 — La CAISSE NOIRE est réservée au seul compte « nadia » (identifié
 // par son nom d'utilisateur, pas par un rôle). Aucun autre agent, caissier,
 // spectateur ni même l'administrateur n'y a accès.
@@ -967,19 +977,22 @@ async function _saveRefsConfig() {
     toast('✓ Valeurs de référence enregistrées sur ce poste', 'ok');
     return;
   }
-  // ✅ v13.246/248 — Même mécanique que les tarifs. L'éditeur est redessiné
-  //   UNE fois, tout de suite (marqueurs ✎ à jour) ; il ne l'est de nouveau
-  //   qu'après un refus, pour afficher les valeurs restaurées.
+  // ✅ v13.246/248/249 — Même mécanique que les tarifs. L'éditeur est redessiné
+  //   UNE fois, tout de suite (marqueurs ✎ à jour), puis plus jamais pendant
+  //   cet enregistrement : sur refus, la mémoire revient aux valeurs en
+  //   vigueur (les comptes rendus les utilisent) mais ce qui est affiché et
+  //   tapé dans l'éditeur reste, pour réessayer sans rien perdre.
   const res = await _enregistrerConfig({
-    cle: LABO_REFS_KEY, valeur: custom, setCache: v => { _customRefsCache = v; },
+    cle: LABO_REFS_KEY, valeur: custom,
+    lireCache: () => _customRefsCache, setCache: v => { _customRefsCache = v; },
     apresLocal: () => { updateAllRefs(); buildRefsEditor(); },
-    rpc: 'save_refs_config', params: { p_token: TK(), p_refs: custom },
+    rpc: 'save_refs_config', params: v => ({ p_token: TK(), p_refs: v }),
     libelles: { ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
                 refus: 'Valeurs de référence non enregistrées',
                 injoignable: 'Valeurs enregistrées sur ce poste seulement (serveur injoignable)',
                 horsLigne: 'Valeurs enregistrées sur ce poste seulement (hors-ligne)' },
   });
-  if (res === 'refus') { updateAllRefs(); buildRefsEditor(); }
+  if (res === 'refus') updateAllRefs();
 }
 
 function resetSectionRefs(sectionId) {
