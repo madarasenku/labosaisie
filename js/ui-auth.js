@@ -120,6 +120,9 @@ function isResponsable() {
 //   Admin : toutes. Responsable : toute fiche de son équipe, jamais celles
 //   créées ou masquées par la direction. Les autres : leurs propres fiches,
 //   et seulement si c'est eux qui les ont masquées. Le serveur reste juge.
+//   Garde-fou d'affichage seulement : le serveur reconnaît la direction par le
+//   RÔLE admin (et le marquage « caché au resp. ») et n'envoie jamais leurs
+//   fiches au responsable (v13.246, _username_hors_resp).
 function _estCompteDirection(nom) {
   return ['admin', 'nadia'].includes(String(nom || '').trim().toLowerCase());
 }
@@ -942,12 +945,7 @@ const _SECTION_PARAMS = {
   bpn_sero:['bpnsero_hbsac','bpnsero_toxog','bpnsero_rubg'],
 };
 
-function saveRefsConfig() {
-  // ✅ v13.245 — Copie d'avant (getCustomRefs rend le cache par référence) :
-  //   un refus du serveur remet ce poste à l'état précédent, au lieu de garder
-  //   des valeurs de référence que les autres postes n'ont pas.
-  let avantLocal = null;
-  try { avantLocal = localStorage.getItem(LABO_REFS_KEY); } catch (e) {}
+async function saveRefsConfig() {
   const custom = getCustomRefs();
   _ALL_REF_IDS.forEach(id => {
     const refEl  = document.getElementById('rref_'  + id);
@@ -962,30 +960,23 @@ function saveRefsConfig() {
       unit: unitEl?.value.trim()      || '',
     };
   });
-  saveCustomRefs(custom);
+  if (!_currentUser?.id) {
+    saveCustomRefs(custom);
+    toast('✓ Valeurs de référence enregistrées sur ce poste', 'ok');
+  } else {
+    // ✅ v13.246 — Même mécanique que les tarifs (_enregistrerConfig) : un refus
+    //   du serveur remet ce poste à l'identique.
+    await _enregistrerConfig({
+      cle: LABO_REFS_KEY, valeur: custom, setCache: v => { _customRefsCache = v; },
+      rpc: 'save_refs_config', params: { p_token: TK(), p_refs: custom },
+      libelles: { ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
+                  refus: 'Valeurs de référence non enregistrées',
+                  injoignable: 'Valeurs enregistrées sur ce poste seulement (serveur injoignable)',
+                  horsLigne: 'Valeurs enregistrées sur ce poste seulement (hors-ligne)' },
+    });
+  }
   updateAllRefs();
   buildRefsEditor();
-  // Persister en Supabase pour sync tous les postes
-  if (_currentUser?.id) {
-    _sb.rpc('save_refs_config', { p_token: TK(), p_refs: custom })
-      .then(({ data, error }) => {
-        if (error) { toast('✓ Valeurs enregistrées localement (sync Supabase indisponible)', 'ok'); return; }
-        if (data !== 'ok') {
-          try {
-            if (avantLocal === null) localStorage.removeItem(LABO_REFS_KEY);
-            else localStorage.setItem(LABO_REFS_KEY, avantLocal);
-          } catch (e) {}
-          _customRefsCache = null;
-          updateAllRefs();
-          buildRefsEditor();
-          toast('Valeurs de référence non enregistrées' + (data === 'forbidden' ? ' : modification non autorisée' : ' : ' + data), 'err');
-          return;
-        }
-        toast('✓ Valeurs de référence synchronisées sur tous les postes du labo', 'ok');
-      }).catch(() => toast('✓ Valeurs enregistrées localement', 'ok'));
-  } else {
-    toast('✓ Valeurs de référence enregistrées sur ce poste', 'ok');
-  }
 }
 
 function resetSectionRefs(sectionId) {

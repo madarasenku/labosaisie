@@ -1817,7 +1817,8 @@ async function saveRistourneTaux() {
     const { data, error } = await _sb.rpc('set_taux_ristourne', {
       p_token: TK(), p_prescr_id: p.id, p_taux: nouveauTaux,
     });
-    if (error || (data && data !== 'ok')) { errCount++; }
+    // ✅ v13.246 — Seul « ok » vaut succès (une réponse vide n'est pas une preuve).
+    if (error || data !== 'ok') { errCount++; }
     else { p.taux_ristourne = nouveauTaux; } // mise à jour locale immédiate
   }
   // Supprimer les surcharges localStorage obsolètes (source de divergence)

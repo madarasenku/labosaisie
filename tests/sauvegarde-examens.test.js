@@ -61,7 +61,7 @@ const EXAMENS_BASE = [
       window.toast = vrai;
       return capté;
     });
-    r.check('refus signalé', /administrateur|non autorisée/i.test(message), true);
+    r.check('refus signalé', /non autorisée/i.test(message), true);
     r.check('aucune erreur JS', errors.length, 0);
     await ctx.close();
   }
