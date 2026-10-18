@@ -1805,30 +1805,33 @@ function _previewRistourne(id, brut) {
 async function saveRistourneTaux() {
   if (!isAdmin() && !isResponsable()) { toast('Action non autorisée pour ce compte', 'err'); return; }
   showLoading('Enregistrement des taux…');
-  let errCount = 0;
-  for (const p of (_prescripteurs || [])) {
-    const inp = document.getElementById('rist_taux_' + p.id);
-    if (!inp) continue;
-    const nouveauTaux = Number(inp.value) || 0;
-    if (nouveauTaux === (p.taux_ristourne || 0)) continue; // pas de changement
-    // ✅ v13.29 — persister en base via RPC (synchronise Statistiques + Caisse)
-    // ✅ v13.245 — RPC dédiée au taux seul (admin et responsable). L'ancien
-    //   appel passait « p_id » au lieu de « p_prescr_id » : il échouait toujours.
-    const { data, error } = await _sb.rpc('set_taux_ristourne', {
-      p_token: TK(), p_prescr_id: p.id, p_taux: nouveauTaux,
-    });
-    // ✅ v13.246 — Seul « ok » vaut succès (une réponse vide n'est pas une preuve).
-    if (error || data !== 'ok') { errCount++; }
-    else { p.taux_ristourne = nouveauTaux; } // mise à jour locale immédiate
+  let refus = 0, injoignable = 0;
+  // ✅ v13.247 — L'écran de chargement se referme quoi qu'il arrive (try/finally).
+  try {
+    for (const p of (_prescripteurs || [])) {
+      const inp = document.getElementById('rist_taux_' + p.id);
+      if (!inp) continue;
+      const nouveauTaux = Number(inp.value) || 0;
+      if (nouveauTaux === (p.taux_ristourne || 0)) continue; // pas de changement
+      // ✅ v13.245 — RPC dédiée au taux seul (admin et responsable).
+      let data = null, error = null;
+      try { ({ data, error } = await _sb.rpc('set_taux_ristourne', {
+        p_token: TK(), p_prescr_id: p.id, p_taux: nouveauTaux,
+      })); } catch (e) { error = e; }
+      // ✅ v13.246 — Seul « ok » vaut succès (une réponse vide n'est pas une preuve).
+      if (error) injoignable++;
+      else if (data !== 'ok') refus++;
+      else p.taux_ristourne = nouveauTaux; // mise à jour locale immédiate
+    }
+    // ✅ v13.247 — Les surcharges locales ne sont effacées que si TOUT est en base :
+    //   en cas d'échec, les taux saisis restent sur ce poste.
+    if (!refus && !injoignable) localStorage.removeItem(RISTOURNE_TAUX_KEY);
+  } finally {
+    hideLoading();
   }
-  // Supprimer les surcharges localStorage obsolètes (source de divergence)
-  localStorage.removeItem(RISTOURNE_TAUX_KEY);
-  hideLoading();
-  if (errCount) {
-    toast('⚠ ' + errCount + ' taux non enregistré(s) — vérifiez la connexion', 'err');
-  } else {
-    toast('Taux de ristourne enregistrés en base ✓', 'ok');
-  }
+  if (refus) toast(refus + ' taux refusé(s) par le serveur', 'err');
+  else if (injoignable) toast(injoignable + ' taux non enregistré(s) — vérifiez la connexion', 'err');
+  else toast('Taux de ristourne enregistrés en base ✓', 'ok');
   renderRistournesMois();
 }
 // ✅ v13.35 — Code ristournes PDF/Excel déplacé dans print.js
