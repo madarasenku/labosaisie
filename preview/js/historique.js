@@ -185,7 +185,10 @@ function toggleFiltresAvances() {
   const chev  = document.getElementById('filtres-avances-chevron');
   const btn   = document.getElementById('btn-filtres-avances');
   if (!panel) return;
-  const open = panel.style.display === 'none' || !panel.style.display;
+  // ✅ v13.250 — L'état se lit sur l'affichage RÉEL : l'ancien test prenait
+  //   le panneau ouvert (style vide) pour fermé, et le second clic le
+  //   rouvrait au lieu de le replier.
+  const open = getComputedStyle(panel).display === 'none';
   panel.style.display = open ? '' : 'none';
   if (chev) chev.textContent = open ? '▴' : '▾';
   if (btn) btn.classList.toggle('active', open);
