@@ -194,6 +194,29 @@ function toggleFiltresAvances() {
   if (btn) btn.classList.toggle('active', open);
 }
 
+// ✅ v13.250 — HEURE D'ENREGISTREMENT du dossier (sa création), sous la date.
+//   Si le dossier a été saisi un autre jour que sa date (date corrigée à la
+//   main, saisie rattrapée), le jour de saisie est précisé pour ne pas tromper.
+function _jourLocal(t) {
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+}
+function heureEnregistrement(r) {
+  const t = r && r.savedAt ? new Date(r.savedAt) : null;
+  if (!t || isNaN(t.getTime())) return '';
+  const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+  const jour = _jourLocal(t), date = (r.patient && r.patient.date) || '';
+  return (date && jour !== date) ? 'saisi le ' + jour.split('-').reverse().join('/') + ' à ' + hh : hh;
+}
+function celluleDateHeure(r) {
+  const h = heureEnregistrement(r);
+  return esc((r.patient && r.patient.date) || '—')
+    + (h ? '<div class="hist-heure" title="Heure d\'enregistrement" style="font-size:10.5px;color:var(--text-muted);margin-top:1px;white-space:nowrap">🕒 ' + esc(h) + '</div>' : '');
+}
+function _cleDateHeure(r) {
+  const p = r.patient || {};
+  return (p.date || String(r.savedAt || '').slice(0, 10)) + ' ' + (r.savedAt || '');
+}
+
 // ✅ v13.72 — NAVIGATION DANS LE TEMPS
 //   Décalage par rapport à la période courante : 0 = aujourd'hui / cette
 //   semaine / ce mois, -1 = la précédente, +1 = la suivante. Auparavant,
@@ -388,7 +411,8 @@ async function renderHistory(forceRefresh) {
     let va, vb;
     if (_sortCol === 'nom')     { va=(a.patient.nom||'').toLowerCase(); vb=(b.patient.nom||'').toLowerCase(); }
     else if (_sortCol==='montant') { va=a.montant||0; vb=b.montant||0; }
-    else { va=a.patient.date||a.savedAt||''; vb=b.patient.date||b.savedAt||''; }
+    // ✅ v13.250 — à date égale, l'ordre suit l'heure d'enregistrement.
+    else { va=_cleDateHeure(a); vb=_cleDateHeure(b); }
     if (va < vb) return sortDir === 'asc' ? -1 : 1;
     if (va > vb) return sortDir === 'asc' ?  1 : -1;
     return 0;
@@ -562,7 +586,7 @@ async function renderHistory(forceRefresh) {
         + '<td style="text-align:center;padding:4px"><input type="checkbox" class="bulk-chk" data-id="' + r.id + '" '
           + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
           + ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)"></td>'
-        + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+        + '<td data-label="Date">' + celluleDateHeure(r) + '</td>'
         + '<td data-label="N° Dossier">' + celluleNumDossier(r, esc) + '</td>'
         + '<td data-label="Patient">' + esc(r.patient.nom)
             + '<div style="font-size:10px;color:#d97706;margin-top:2px">Verrouillé par <strong>' + esc(lockedBy) + '</strong></div>'
@@ -594,7 +618,7 @@ async function renderHistory(forceRefresh) {
         const hdBy   = r.deletedBy || r.createdBy || '?';
         return '<tr style="opacity:.45;background:#f1f5f9;text-decoration:line-through">'
           + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.2"></td>'
-          + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+          + '<td data-label="Date">' + celluleDateHeure(r) + '</td>'
           + '<td data-label="N° Dossier">' + celluleNumDossier(r, esc) + '</td>'
           + '<td data-label="Patient">' + esc(r.patient.nom)
               + '<div style="font-size:10px;color:#64748b;margin-top:2px;text-decoration:none">Supprimé déf. le ' + hdDate + ' · par <strong>' + esc(hdBy) + '</strong></div>'
@@ -612,7 +636,7 @@ async function renderHistory(forceRefresh) {
       const deletedBy   = r.deletedBy || '?';
       return '<tr style="opacity:.85;background:#fff5f5">'
         + '<td style="text-align:center;padding:4px"><input type="checkbox" disabled style="width:16px;height:16px;opacity:.3"></td>'
-        + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+        + '<td data-label="Date">' + celluleDateHeure(r) + '</td>'
         + '<td data-label="N° Dossier">' + celluleNumDossier(r, esc) + '</td>'
         + '<td data-label="Patient">' + esc(r.patient.nom)
             + '<div style="font-size:10px;color:#dc2626;margin-top:2px">Supprimé le ' + deletedDate + ' par <strong>' + esc(deletedBy) + '</strong></div>'
@@ -650,7 +674,7 @@ async function renderHistory(forceRefresh) {
       + '<td style="text-align:center;padding:4px;vertical-align:middle"><input type="checkbox" class="bulk-chk" data-id="' + r.id + '" '
         + (_selectedIds.has(r.id) ? 'checked' : '') + ' onchange="toggleRowSelect(' + r.id + ',this.checked)"'
         + ' style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)"></td>'
-      + '<td data-label="Date">' + esc(r.patient.date || '—') + '</td>'
+      + '<td data-label="Date">' + celluleDateHeure(r) + '</td>'
       + '<td data-label="N° Dossier">' + celluleNumDossier(r, hl)
         + (r._pending ? ' <span title="En attente de synchronisation" style="font-size:10px;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">⏳ à synchroniser</span>' : '')
       + '</td>'
