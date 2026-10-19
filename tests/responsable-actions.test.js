@@ -6,8 +6,7 @@
 // ════════════════════════════════════════════════════════════════════
 const { serve, openApp, createReporter } = require('./helpers');
 const PORT = 8331;
-// Contrôles v13.248/249 : sur le lien de test d'abord, la racine suit à la mise en production.
-const CIBLE = process.env.CIBLE || '/preview/index.html';
+const CIBLE = process.env.CIBLE || '/index.html';
 const AUJ = new Date().toISOString().slice(0, 10);
 
 const fiche = (id, par, masquePar) => ({

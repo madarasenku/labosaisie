@@ -133,6 +133,16 @@ function peutMasquerFiche(r) {
   const moi = _currentUser.username;
   return r.createdBy === moi && (!r.restrictedBy || r.restrictedBy === moi);
 }
+// ✅ v13.249 — RÈGLE UNIQUE « peut ouvrir une fiche MASQUÉE » (impression,
+//   export, saisie des résultats) : son créateur, celui qui l'a masquée,
+//   l'admin, et le Responsable pour celles qu'il peut lui-même masquer
+//   (jamais celles de la direction). Le serveur reste le vrai garde-fou.
+function peutOuvrirFicheMasquee(r) {
+  if (!r || !_currentUser) return false;
+  const moi = _currentUser.username;
+  if (r.createdBy === moi || r.restrictedBy === moi) return true;
+  return isAdmin() || (isResponsable() && peutMasquerFiche(r));
+}
 // ✅ v13.211 — La CAISSE NOIRE est réservée au seul compte « nadia » (identifié
 // par son nom d'utilisateur, pas par un rôle). Aucun autre agent, caissier,
 // spectateur ni même l'administrateur n'y a accès.
@@ -242,10 +252,19 @@ function enterApp() {
   // Charger les valeurs de référence depuis Supabase au login
   (async () => {
     try {
-      const { data: remoteRefs } = await _sb.rpc('get_refs_config', { p_token: TK() });
-      if (remoteRefs && Object.keys(remoteRefs).length > 0) {
+      const { data: remoteRefs, error } = await _sb.rpc('get_refs_config', { p_token: TK() });
+      // ✅ v13.249 — Une base VIDE (« tout remis par défaut ») s'applique aussi,
+      //   mais seulement sur un poste déjà aligné sur la base : un poste qui
+      //   n'a jamais synchronisé garde ses valeurs locales, comme avant.
+      const objet = !error && remoteRefs && typeof remoteRefs === 'object' && !Array.isArray(remoteRefs);
+      let dejaAligne = false;
+      try { dejaAligne = localStorage.getItem(LABO_REFS_SYNC_KEY) === '1'; } catch (e) {}
+      if (objet && (Object.keys(remoteRefs).length > 0 || dejaAligne)) {
         _customRefsCache = remoteRefs;
-        localStorage.setItem(LABO_REFS_KEY, JSON.stringify(remoteRefs));
+        try {
+          localStorage.setItem(LABO_REFS_KEY, JSON.stringify(remoteRefs));
+          localStorage.setItem(LABO_REFS_SYNC_KEY, '1');
+        } catch (e) {}
       }
     } catch(e) { /* RPC non disponible → utiliser localStorage */ }
     updateAllRefs();
@@ -945,69 +964,84 @@ const _SECTION_PARAMS = {
   bpn_sero:['bpnsero_hbsac','bpnsero_toxog','bpnsero_rubg'],
 };
 
-async function saveRefsConfig() {
-  const custom = getCustomRefs();
+function saveRefsConfig() { return _uneSeuleFois('saveRefsConfig', _saveRefsConfig); }
+async function _saveRefsConfig() {
+  const saisis = {};                                // ✅ v13.249 — les seuls champs de l'éditeur
   _ALL_REF_IDS.forEach(id => {
     const refEl  = document.getElementById('rref_'  + id);
     const loEl   = document.getElementById('rlo_'   + id);
     const hiEl   = document.getElementById('rhi_'   + id);
     const unitEl = document.getElementById('runit_' + id);
     if (!refEl) return; // section non rendue
-    custom[id] = {
+    saisis[id] = {
       ref:  refEl.value.trim(),
       lo:   parseFloat(loEl?.value)   || 0,
       hi:   parseFloat(hiEl?.value)   || 999,
       unit: unitEl?.value.trim()      || '',
     };
   });
+  // ✅ v13.246/248/249 — Même mécanique que les tarifs. L'éditeur est redessiné
+  //   UNE fois, tout de suite (marqueurs ✎ à jour), puis plus jamais pendant
+  //   cet enregistrement : sur refus, la mémoire revient aux valeurs en
+  //   vigueur (les comptes rendus les utilisent) mais ce qui est affiché et
+  //   tapé dans l'éditeur reste, pour réessayer sans rien perdre.
+  //   Calculé à son tour dans la file : une remise à zéro en cours n'est pas écrasée.
+  await _enregistrerRefs(() => ({ ...getCustomRefs(), ...saisis }), {
+    ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
+    refus: 'Valeurs de référence non enregistrées',
+    local: 'Valeurs enregistrées sur ce poste seulement',
+  });
+}
+
+// ✅ v13.249 — TOUTE écriture des valeurs de référence (enregistrement ET
+//   remises à zéro) passe par la file commune et par le serveur. Avant, les
+//   remises à zéro ne touchaient que ce poste : les autres gardaient les
+//   anciennes valeurs, et la connexion suivante les rétablissait ici aussi.
+//   Renvoie 'ok' | 'local' | 'refus'.
+const LABO_REFS_SYNC_KEY = 'labosaisie_refs_v1_serveur';
+async function _enregistrerRefs(construire, msgs, { redessinerSurRefus = false } = {}) {
   if (!_currentUser?.id) {
-    saveCustomRefs(custom);
-    toast('✓ Valeurs de référence enregistrées sur ce poste', 'ok');
-  } else {
-    // ✅ v13.246 — Même mécanique que les tarifs (_enregistrerConfig) : un refus
-    //   du serveur remet ce poste à l'identique.
-    await _enregistrerConfig({
-      cle: LABO_REFS_KEY, valeur: custom, setCache: v => { _customRefsCache = v; },
-      apresLocal: () => { updateAllRefs(); buildRefsEditor(); },
-      rpc: 'save_refs_config', params: { p_token: TK(), p_refs: custom },
-      libelles: { ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
-                  refus: 'Valeurs de référence non enregistrées',
-                  injoignable: 'Valeurs enregistrées sur ce poste seulement (serveur injoignable)',
-                  horsLigne: 'Valeurs enregistrées sur ce poste seulement (hors-ligne)' },
-    });
+    saveCustomRefs(construire());
+    updateAllRefs(); buildRefsEditor();
+    toast(msgs.local + ' (hors connexion)', '');
+    return 'local';
   }
-  updateAllRefs();
-  buildRefsEditor();
+  const res = await _enregistrerConfig({
+    cle: LABO_REFS_KEY, valeur: construire,
+    lireCache: () => _customRefsCache, setCache: v => { _customRefsCache = v; },
+    apresLocal: () => { updateAllRefs(); buildRefsEditor(); },
+    rpc: 'save_refs_config', params: v => ({ p_token: TK(), p_refs: v }),
+    libelles: { ok: msgs.ok, refus: msgs.refus,
+                injoignable: msgs.local + ' (serveur injoignable)',
+                horsLigne: msgs.local + ' (hors-ligne)' },
+  });
+  if (res === 'ok') { try { localStorage.setItem(LABO_REFS_SYNC_KEY, '1'); } catch (e) {} }
+  if (res === 'refus') { updateAllRefs(); if (redessinerSurRefus) buildRefsEditor(); }
+  return res;
 }
 
 function resetSectionRefs(sectionId) {
   if (!confirm('Remettre les valeurs par défaut pour cette section ?')) return;
-  const custom = getCustomRefs();
-  (_SECTION_PARAMS[sectionId] || []).forEach(id => delete custom[id]);
-  _customRefsCache = null;  // invalider le cache
-  saveCustomRefs(custom);
-  updateAllRefs();
-  buildRefsEditor();
-  toast('Section réinitialisée', 'ok');
+  const ids = _SECTION_PARAMS[sectionId] || [];
+  return _enregistrerRefs(() => { const c = { ...getCustomRefs() }; ids.forEach(id => delete c[id]); return c; }, {
+    ok: 'Section réinitialisée sur tous les postes', refus: 'Réinitialisation non enregistrée',
+    local: 'Section réinitialisée sur ce poste seulement',
+  }, { redessinerSurRefus: true });
 }
 
 function resetRefsConfig() {
   if (!confirm('Remettre TOUTES les valeurs de référence et unités aux défauts du système ?')) return;
-  _customRefsCache = null;           // invalider le cache
-  localStorage.removeItem(LABO_REFS_KEY);
-  updateAllRefs();
-  buildRefsEditor();
-  toast('Toutes les valeurs de référence réinitialisées', 'ok');
+  return _enregistrerRefs(() => ({}), {
+    ok: 'Toutes les valeurs de référence réinitialisées sur tous les postes', refus: 'Réinitialisation non enregistrée',
+    local: 'Valeurs de référence réinitialisées sur ce poste seulement',
+  }, { redessinerSurRefus: true });
 }
 
 function resetOneRef(id) {
-  const custom = getCustomRefs();
-  delete custom[id];
-  _customRefsCache = null;  // invalider le cache
-  saveCustomRefs(custom);
-  updateAllRefs();
-  buildRefsEditor();
-  toast('Valeur réinitialisée', 'ok');
+  return _enregistrerRefs(() => { const c = { ...getCustomRefs() }; delete c[id]; return c; }, {
+    ok: 'Valeur réinitialisée sur tous les postes', refus: 'Réinitialisation non enregistrée',
+    local: 'Valeur réinitialisée sur ce poste seulement',
+  }, { redessinerSurRefus: true });
 }
 
 // ── Auto-logout après 4 h d'inactivité ──────────────────────────

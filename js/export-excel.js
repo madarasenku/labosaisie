@@ -1000,50 +1000,16 @@ async function chargerTarifsDepuisBase() {
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
-// ✅ v13.246 — Enregistrement commun d'une configuration partagée (tarifs,
-//   catalogue, valeurs de référence). Le poste est écrit d'abord, puis le
-//   serveur. Un REFUS explicite remet le poste exactement à l'état d'avant
-//   (copie texte prise AVANT : les getters rendent le cache par référence et
-//   les appelants le modifient avant d'appeler). Un serveur injoignable garde
-//   la valeur locale (cache hors-ligne). Renvoie false seulement sur refus.
-// ✅ v13.247 — Une file par clé : deux enregistrements rapprochés (double
-//   clic) passent l'un après l'autre. Sinon le second prenait pour « état
-//   d'avant » la valeur encore non confirmée du premier, et un double refus
-//   laissait sur le poste des valeurs jamais acceptées par le serveur.
-const _fileConfig = {};
-function _enregistrerConfig(opts) {
-  const precedent = _fileConfig[opts.cle] || Promise.resolve();
-  const suivant = precedent.catch(() => {}).then(() => _enregistrerConfigUnique(opts));
-  _fileConfig[opts.cle] = suivant;
-  return suivant;
-}
-async function _enregistrerConfigUnique({ cle, valeur, setCache, rpc, params, libelles, apresLocal }) {
-  let avant = null;
-  try { avant = localStorage.getItem(cle); } catch (e) {}
-  setCache(valeur);
-  try { localStorage.setItem(cle, JSON.stringify(valeur)); } catch (e) {}
-  // ✅ v13.247 — L'écran suit tout de suite la valeur locale, sans attendre le serveur.
-  if (apresLocal) { try { apresLocal(); } catch (e) {} }
-  // Enregistrement local seulement : message neutre (ni succès ni erreur).
-  if (typeof _sb === 'undefined' || !_sb) { toast(libelles.horsLigne, ''); return true; }
-  let data, error;
-  try { ({ data, error } = await _sb.rpc(rpc, params)); }
-  catch (e) { toast(libelles.horsLigne, ''); return true; }
-  if (error) { toast(libelles.injoignable, ''); return true; }
-  if (data === 'ok') { if (libelles.ok) toast(libelles.ok, 'ok'); return true; }
-  try {
-    if (avant === null) localStorage.removeItem(cle); else localStorage.setItem(cle, avant);
-    setCache(avant === null ? null : JSON.parse(avant));
-  } catch (e) { setCache(null); }
-  toast(libelles.refus + (data === 'forbidden' ? ' : modification non autorisée pour ce compte' : ' : ' + data), 'err');
-  return false;
-}
+// ✅ v13.249 — Mécanique d'enregistrement commune (_enregistrerConfig,
+//   _uneSeuleFois, _rpcAvecDelai) : dans supabase-db.js, chargé avant.
 
-/** Enregistre la grille en base ; le cache local suit. Renvoie false si refusé. */
-function saveTarifsRef(t) {
+/** Enregistre la grille en base ; le cache local suit. Renvoie 'ok' | 'local' | 'refus'.
+ *  `t` : la grille, ou une fonction qui la calcule quand vient son tour. */
+function saveTarifsRef(t, { muet = false } = {}) {
   return _enregistrerConfig({
-    cle: 'tarifs_ref', valeur: t, setCache: v => { _tarifsRefCache = v; },
-    rpc: 'save_tarifs', params: { p_token: TK(), p_grille: t },
+    cle: 'tarifs_ref', valeur: () => ({ ...(typeof t === 'function' ? t() : t) }), muet,
+    lireCache: () => _tarifsRefCache, setCache: v => { _tarifsRefCache = v; },
+    rpc: 'save_tarifs', params: v => ({ p_token: TK(), p_grille: v }),
     libelles: { ok: 'Tarifs enregistrés pour tous les postes', refus: 'Tarifs non enregistrés',
                 injoignable: 'Tarifs enregistrés sur ce poste seulement (serveur injoignable)',
                 horsLigne: 'Tarifs enregistrés sur ce poste seulement (hors-ligne)' },
@@ -1087,10 +1053,12 @@ async function chargerExamensCustomDepuisBase() {
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
-function saveExamensCustom(list) {
+/** `list` : la liste, ou une fonction qui la calcule quand vient son tour. */
+function saveExamensCustom(list, { muet = false } = {}) {
   return _enregistrerConfig({
-    cle: 'examens_custom', valeur: list, setCache: v => { _examensCustomCache = v; },
-    rpc: 'save_examens_custom', params: { p_token: TK(), p_liste: list },
+    cle: 'examens_custom', valeur: () => [...(typeof list === 'function' ? list() : list)], muet,
+    lireCache: () => _examensCustomCache, setCache: v => { _examensCustomCache = v; },
+    rpc: 'save_examens_custom', params: v => ({ p_token: TK(), p_liste: v }),
     libelles: { ok: 'Catalogue mis à jour pour tous les postes', refus: 'Catalogue non enregistré',
                 injoignable: 'Examen enregistré sur ce poste seulement (serveur injoignable)',
                 horsLigne: 'Examen enregistré sur ce poste seulement (hors-ligne)' },
@@ -1111,7 +1079,8 @@ function showAddExamenModal() {
   }
 }
 
-async function addExamenPersonnalise() {
+function addExamenPersonnalise() { return _uneSeuleFois('addExamenPersonnalise', _addExamenPersonnalise); }
+async function _addExamenPersonnalise() {
   const label = document.getElementById('new_ex_label')?.value?.trim();
   if (!label) { toast('Le nom de l\'examen est obligatoire', 'err'); return; }
 
@@ -1127,22 +1096,17 @@ async function addExamenPersonnalise() {
   const groupe = tabToGroupe[tabVal] || '🔬 Autres';
   const tab    = tabVal === 'other' ? 'hema' : tabVal;
 
-  const custom = getExamensCustom();
-  custom.push({ id, label, groupe, prix, tab, custom: true });
+  // ✅ v13.248/249 — COPIES, calculées quand vient leur tour dans la file :
+  //   la mémoire du poste ne change que dans _enregistrerConfig.
+  const nouvel = { id, label, groupe, prix, tab, custom: true };
+  const custom = () => [...getExamensCustom(), nouvel];
+  const ref = () => ({ ...getTarifsRef(), [id]: prix });
 
-  const ref = getTarifsRef();
-  ref[id] = prix;
-
-  // ✅ v13.77 — les deux écritures partent en base ; saveExamensCustom et
-  // saveTarifsRef signalent eux-mêmes le succès ou l'échec.
-  // ✅ v13.246 — Catalogue d'abord : s'il est refusé, on n'écrit pas les
-  //   tarifs (le prix d'un examen absent du catalogue n'a pas de sens) et on
-  //   relit la grille du poste, que getTarifsRef() a déjà modifiée en mémoire.
-  //   Si le catalogue passe et que les tarifs sont refusés (mêmes droits :
-  //   cas théorique), l'examen garde le prix saisi, qu'il porte lui-même.
-  // ✅ v13.247 — Refusé : la fenêtre reste ouverte avec la saisie intacte.
-  if (!await saveExamensCustom(custom)) { _tarifsRefCache = null; return; }
-  await saveTarifsRef(ref);
+  // Catalogue d'abord. Refusé : rien n'est écrit, la fenêtre reste ouverte
+  //   avec la saisie. Accepté : on écrit les tarifs sans second message (le
+  //   prix est aussi porté par l'examen lui-même, cas d'un refus théorique).
+  if (await saveExamensCustom(custom) === 'refus') return;
+  await saveTarifsRef(ref, { muet: true });
 
   document.getElementById('add-examen-modal').style.display = 'none';
   document.getElementById('new_ex_label').value = '';
@@ -1151,6 +1115,8 @@ async function addExamenPersonnalise() {
   buildFicheExamens();
 }
 
+// ✅ v13.249 — La confirmation est demandée AVANT de prendre le verrou : une
+//   fenêtre de confirmation remplacée ne peut plus bloquer les boutons ✕.
 async function removeExamenCustom(id) {
   const ex = getExamensCustom().find(x => x.id === id);
   const ok = (typeof showConfirmModal === 'function')
@@ -1160,14 +1126,17 @@ async function removeExamenCustom(id) {
         confirmText:'Supprimer', confirmClass:'btn-danger' })
     : confirm('Supprimer cet examen personnalisé ?');
   if (!ok) return;
-  const custom = getExamensCustom().filter(x => x.id !== id);
-  const ref = getTarifsRef();
-  delete ref[id];
-  // ✅ v13.246 — Même ordre qu'à l'ajout : tarifs seulement si le catalogue passe.
-  //   (Catalogue accepté mais tarifs refusés : il reste un prix orphelin,
-  //   sans effet puisque plus aucun examen ne le lit.)
-  if (await saveExamensCustom(custom)) await saveTarifsRef(ref);
-  else _tarifsRefCache = null;
+  // Un verrou PAR examen : supprimer B pendant l'envoi de A n'est pas perdu
+  //   (la file d'attente les enchaîne, chacun calculé à son tour).
+  return _uneSeuleFois('removeExamenCustom', () => _removeExamenCustom(id),
+                       { cle: 'removeExamenCustom:' + id, motif: "removeExamenCustom('" + id + "')" });
+}
+async function _removeExamenCustom(id) {
+  const custom = () => getExamensCustom().filter(x => x.id !== id);
+  const ref = () => { const t = { ...getTarifsRef() }; delete t[id]; return t; };
+  // Catalogue d'abord ; s'il est accepté et les tarifs refusés, il reste un
+  //   prix orphelin, sans effet puisque plus aucun examen ne le lit.
+  if (await saveExamensCustom(custom) !== 'refus') await saveTarifsRef(ref, { muet: true });
   buildAdminExamensGrid();
   buildFicheExamens();
 }
@@ -1210,7 +1179,7 @@ function buildAdminExamensGrid() {
             ${ex.label}${isCustom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
             ${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
           </label>
-          <input type="number" id="adm_px_${ex.id}" value="${prix}" min="0" step="100"
+          <input type="number" id="adm_px_${ex.id}" value="${prix}" data-affiche="${prix}" min="0" step="100"
             style="width:80px;text-align:right;font-weight:700;color:var(--cpmi-deep);font-size:12.5px;padding:4px 6px">
           <span style="font-size:10.5px;color:var(--text-muted);flex-shrink:0">F</span>
           ${removeBtn}
@@ -1219,17 +1188,31 @@ function buildAdminExamensGrid() {
     </div>`).join('');
 }
 
-async function saveAdminTarifs() {
-  const ref = getTarifsRef();
+function saveAdminTarifs() { return _uneSeuleFois('saveAdminTarifs', _saveAdminTarifs); }
+async function _saveAdminTarifs() {
+  // ✅ v13.249 — Seuls les prix MODIFIÉS à l'écran sont envoyés (comparés à
+  //   ceux affichés quand la grille a été dessinée) : un enregistrement ne
+  //   réécrit plus les autres prix avec d'anciennes valeurs, par exemple
+  //   juste après « Remettre les prix par défaut ».
+  const saisis = {};
   getCatalogueComplet().forEach(ex => {
     const el = document.getElementById('adm_px_' + ex.id);
-    if (el) ref[ex.id] = parseInt(el.value) || 0;
+    if (!el) return;
+    const prix = parseInt(el.value) || 0;
+    if (String(prix) !== el.dataset.affiche) saisis[ex.id] = prix;
   });
-  // ✅ v13.76 — on attend la confirmation du serveur avant de rafraîchir la
-  // fiche : saveTarifsRef signale lui-même le succès ou l'échec, inutile
-  // d'annoncer « enregistré » avant d'en être sûr.
-  // ✅ v13.246 — Sur refus, la grille réaffiche les prix réellement en vigueur.
-  if (!await saveTarifsRef(ref)) buildAdminExamensGrid();
+  if (!Object.keys(saisis).length) { toast('Aucun prix modifié', ''); return; }
+  // ✅ v13.76 — on attend la réponse du serveur avant de rafraîchir la fiche.
+  // ✅ v13.249 — Sur refus, les prix tapés RESTENT dans la grille (message
+  //   rouge « non enregistrés ») pour réessayer sans tout retaper ; la fiche
+  //   d'accueil, elle, facture les prix réellement en vigueur.
+  const res = await saveTarifsRef(() => ({ ...getTarifsRef(), ...saisis }));
+  if (res !== 'refus') {
+    Object.entries(saisis).forEach(([id, prix]) => {
+      const el = document.getElementById('adm_px_' + id);
+      if (el) el.dataset.affiche = String(prix);
+    });
+  }
   rechargeFichePrix();
 }
 
@@ -1261,19 +1244,21 @@ async function resetAdminTarifs() {
     : confirm(message);
   if (!ok) return;
 
-  // Prix d'usine du catalogue…
-  const grille = buildTarifsRefDefault();
-  // …auxquels on rattache les examens personnalisés, absents du catalogue.
-  const actuelle = getTarifsRef();
-  getExamensCustom().forEach(ex => {
-    grille[ex.id] = (actuelle && actuelle[ex.id] !== undefined)
-      ? actuelle[ex.id] : (Number(ex.prix) || 0);
+  return _uneSeuleFois('resetAdminTarifs', async () => {
+    // Prix d'usine du catalogue… auxquels on rattache les examens
+    //   personnalisés, absents du catalogue (calculé quand vient son tour).
+    const grille = () => {
+      const g = buildTarifsRefDefault();
+      const actuelle = getTarifsRef();
+      getExamensCustom().forEach(ex => {
+        g[ex.id] = (actuelle && actuelle[ex.id] !== undefined) ? actuelle[ex.id] : (Number(ex.prix) || 0);
+      });
+      return g;
+    };
+    await saveTarifsRef(grille);          // écrit en base ET dans le cache local
+    buildAdminExamensGrid();
+    rechargeFichePrix();
   });
-
-  _tarifsRefCache = null;                 // sinon l'écran garde les anciens prix
-  await saveTarifsRef(grille);            // écrit en base ET dans le cache local
-  buildAdminExamensGrid();
-  rechargeFichePrix();
 }
 
 // Compatibilité
