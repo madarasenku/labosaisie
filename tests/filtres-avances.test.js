@@ -2,8 +2,7 @@
 //   Le second clic rouvrait le panneau au lieu de le replier.
 const { serve, openApp, createReporter } = require('./helpers');
 const PORT = 8332;
-// Lien de test d'abord ; la racine suit à la mise en production.
-const CIBLE = process.env.CIBLE || '/preview/index.html';
+const CIBLE = process.env.CIBLE || '/index.html';
 
 (async () => {
   const srv = await serve(PORT);

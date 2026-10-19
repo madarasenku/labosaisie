@@ -4,8 +4,7 @@
 //   • À date égale, le tri suit l'heure d'enregistrement.
 const { serve, openApp, createReporter } = require('./helpers');
 const PORT = 8333;
-// Lien de test d'abord ; la racine suit à la mise en production.
-const CIBLE = process.env.CIBLE || '/preview/index.html';
+const CIBLE = process.env.CIBLE || '/index.html';
 const AUJ = new Date().toISOString().slice(0, 10);
 const HIER = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
