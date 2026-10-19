@@ -333,9 +333,17 @@ function getStatut(id) {
  * envoyait un second appel par fiche (mesuré : 966 appels pour 483 fiches)
  * et redessinait tout l'historique à chaque itération.
  */
+// ✅ v13.250 — Reflet local de l'heure de livraison (le serveur fait foi au
+//   rechargement) : posée au premier passage à « Terminé », effacée sinon.
+function _patientAvecStatut(p, statut) {
+  const q = { ...(p || {}), statut };
+  if (statut === 'rendu') { if ((p || {}).statut !== 'rendu' && !q.rendu_at) q.rendu_at = new Date().toISOString(); }
+  else delete q.rendu_at;
+  return q;
+}
 function setStatutLocal(id, statut) {
   const r = (_dbCache || []).find(r => r.id === id);
-  if (r) r.patient = {...(r.patient || {}), statut};
+  if (r) r.patient = _patientAvecStatut(r.patient, statut);
   const s = getStatuts(); s[id] = statut; localStorage.setItem(STATUTS_KEY, JSON.stringify(s));
   if (statut === 'rendu' && r && typeof notifyResultatPret === 'function') notifyResultatPret(r);
   return r;
@@ -814,7 +822,7 @@ async function _autoStatutApresSave(id) {
     }
     // Reflet immédiat dans le cache (le refreshDB appelant le confirmera).
     const r = (typeof _dbCache !== 'undefined' ? _dbCache : []).find(x => x.id === id);
-    if (r) r.patient = Object.assign({}, r.patient || {}, { statut: 'rendu' });
+    if (r) r.patient = _patientAvecStatut(r.patient, 'rendu');
     try { const s = getStatuts(); s[id] = 'rendu'; localStorage.setItem(STATUTS_KEY, JSON.stringify(s)); } catch (e) {}
   } catch (e) {}
 }
