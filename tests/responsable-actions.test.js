@@ -164,6 +164,7 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
     }
     r.check('tarifs : double clic → un seul envoi', await page.evaluate(async (ok) => {
       __grille(); __appels.length = 0; __rep.save_tarifs = __lent(ok);
+      document.getElementById('adm_px_ex_nfs').value = '3200';
       const b = document.querySelector('[onclick="saveAdminTarifs()"]');
       b.click(); const desactive = b.disabled; b.click();
       await __fin('saveAdminTarifs');
@@ -239,6 +240,15 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
       __clic('[onclick="saveRistourneTaux()"]'); await __fin('saveRistourneTaux');
       return document.getElementById('loading-overlay').classList.contains('active') + '|' + document.getElementById('rist_taux_5').value;
     }), 'false|16');
+    r.check('ristournes : le total suit les taux affichés', await page.evaluate(() => {
+      const total = () => document.getElementById('rist-total-cell').textContent;
+      const avant = total();
+      const inp = document.getElementById('rist_taux_5'), initial = inp.value;
+      inp.value = '90'; inp.dispatchEvent(new Event('change'));
+      const apres = total();
+      inp.value = initial; inp.dispatchEvent(new Event('change'));
+      return (avant !== apres) + '|' + (total() === avant);
+    }), 'true|true');
     r.check('ristournes : accepté → taux en vigueur', await page.evaluate(async (ok) => {
       __rep.set_taux_ristourne = () => Promise.resolve(ok);
       document.getElementById('rist_taux_5').value = '17';
@@ -302,6 +312,48 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
       window.showConfirmModal = async () => true;
       return getExamensCustom().length + '|' + !!_actionsEnCours.removeExamenCustom;
     }, OK), '0|false');
+    r.check('tarifs : seuls les prix modifiés partent (une remise à zéro en cours n\'est pas écrasée)', await page.evaluate(async (ok) => {
+      localStorage.setItem('tarifs_ref', JSON.stringify({ ...buildTarifsRefDefault(), ex_nfs: 9000, ex_crp: 9100 }));
+      _tarifsRefCache = null; showView('comptes'); buildAdminExamensGrid();
+      const envois = []; __rep.save_tarifs = (p) => { envois.push(p.p_grille); return __lent(ok, 200)(); };
+      window.showConfirmModal = async () => true;
+      resetAdminTarifs();                                   // ex_nfs / ex_crp → prix d'usine
+      await new Promise(r => setTimeout(r, 30));
+      // La grille affiche encore 9000 / 9100 si elle n'a pas été redessinée : on simule ce cas.
+      document.getElementById('adm_px_ex_nfs').dataset.affiche = '9000';
+      document.getElementById('adm_px_ex_nfs').value = '9000';
+      document.getElementById('adm_px_ex_crp').dataset.affiche = '9100';
+      document.getElementById('adm_px_ex_crp').value = '7777';
+      saveAdminTarifs();
+      await __fin('resetAdminTarifs'); await __fin('saveAdminTarifs');
+      const d = buildTarifsRefDefault(), g = getTarifsRef();
+      return [envois.length, g.ex_nfs === d.ex_nfs, g.ex_crp].join('|');
+    }, OK), '2|true|7777');
+    r.check('suppression de B pendant l\'envoi de A : les deux partent', await page.evaluate(async (ok) => {
+      localStorage.setItem('examens_custom', JSON.stringify([
+        { id: 'custom_c', label: 'C', groupe: '🔬 Autres', prix: 1, tab: 'hema', custom: true },
+        { id: 'custom_d', label: 'D', groupe: '🔬 Autres', prix: 1, tab: 'hema', custom: true }]));
+      _examensCustomCache = null; __grille(); __msgs.length = 0;
+      __rep.save_examens_custom = __lent(ok, 200); __rep.save_tarifs = () => Promise.resolve(ok);
+      window.showConfirmModal = async () => true;
+      const a = removeExamenCustom('custom_c');
+      await new Promise(r => setTimeout(r, 30));
+      await Promise.all([a, removeExamenCustom('custom_d')]);
+      return getExamensCustom().length + '|' + __msgs.some(m => /en cours/.test(m[1]));
+    }, OK), '0|false');
+    // — Remises à zéro des normes : elles partent au serveur —
+    await prepNormes();
+    r.check('normes : remise à zéro d\'une valeur envoyée au serveur', await page.evaluate(async (ok) => {
+      let envoye = null; __rep.save_refs_config = (p) => { envoye = p.p_refs; return Promise.resolve(ok); };
+      await resetOneRef('hb');
+      return [envoye && !('hb' in envoye), !('hb' in getCustomRefs()), __dernier()[0], /tous les postes/.test(__dernier()[1])].join('|');
+    }, OK), 'true|true|ok|true');
+    await prepNormes();
+    r.check('normes : remise à zéro refusée → valeur rétablie', await page.evaluate(async (refus) => {
+      __rep.save_refs_config = () => Promise.resolve(refus);
+      await resetOneRef('hb');
+      return getCustomRefs().hb.ref + '|' + document.getElementById('rref_hb').value + '|' + __dernier()[0];
+    }, REFUS), '12-17|12-17|err');
     r.check('ristournes : requête bloquée → chargement refermé au délai, saisie gardée', await page.evaluate(async () => {
       showView('caisse'); await new Promise(r => setTimeout(r, 300));
       _DELAI_CONFIG_MS = 200;
@@ -331,6 +383,21 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
         peutMasquerFiche(_dbCache.find(f => f.id === id))].join('/')).join(' ');
     });
     r.check('équipe : ouverte ; direction (créée ou masquée) : fermée — partout pareil', res, 'true/true/true false/false/false false/false/false');
+    erreurs = erreurs.concat(errors); await ctx.close();
+  }
+  {
+    r.section('v13.249 — Normes à la connexion : une base remise à zéro s\'applique aux postes alignés');
+    const { ctx, page, errors } = await openApp({ ...RESP, rpc: { get_refs_config: {} } });
+    const lire = async (alignes) => {
+      await page.evaluate((al) => {
+        localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { ref: '1-2', lo: 1, hi: 2, unit: 'g/dL' } }));
+        if (al) localStorage.setItem('labosaisie_refs_v1_serveur', '1'); else localStorage.removeItem('labosaisie_refs_v1_serveur');
+      }, alignes);
+      await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(1500);
+      return page.evaluate(() => 'hb' in getCustomRefs());
+    };
+    r.check('poste jamais aligné : valeurs locales gardées', await lire(false), true);
+    r.check('poste aligné : remise à zéro appliquée', await lire(true), false);
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {

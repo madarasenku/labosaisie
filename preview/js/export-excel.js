@@ -1000,91 +1000,8 @@ async function chargerTarifsDepuisBase() {
   } catch (e) { /* hors-ligne : le cache local prend le relais */ }
 }
 
-// ✅ v13.246/248/249 — Enregistrement commun d'une configuration partagée
-//   (tarifs, catalogue, valeurs de référence).
-//   • Le poste est écrit d'abord, puis le serveur.
-//   • Refus du serveur OU erreur du serveur (statut ≥ 400 : fonction absente,
-//     session expirée, exception SQL…) → le poste revient exactement à l'état
-//     d'avant, message rouge. Sinon ce poste facturerait un prix que les
-//     autres n'ont pas (v13.75).
-//   • Serveur injoignable (statut 0, passerelle 502/503/504, délai dépassé,
-//     pas de client) → la valeur reste sur ce poste (cache hors-ligne),
-//     message neutre explicite. La connexion suivante recharge la base.
-//   ✅ v13.249 —
-//   • File d'attente PAR DONNÉE : deux enregistrements des tarifs (prix, puis
-//     ajout d'un examen…) ne se chevauchent plus. `valeur` peut être une
-//     fonction : elle est calculée au moment où vient son tour, donc à partir
-//     de l'état RÉEL (confirmé ou restauré), jamais d'un état non confirmé.
-//   • Au bout de 20 s la requête est ANNULÉE (pas seulement ignorée) : aucune
-//     réponse tardive ne peut plus arriver après coup, et la file avance.
-//   • Le retour en arrière part de la MÉMOIRE du poste (et non du stockage
-//     local, absent en navigation privée ou si la mémoire est pleine).
-//   Renvoie 'ok' | 'local' | 'refus'. `muet` : n'affiche que les refus.
-let _DELAI_CONFIG_MS = 20000;            // let : réglable par les tests
-
-/** Appel RPC borné dans le temps : au-delà du délai, la requête est annulée et
- *  { delai: true } est rendu. Les exceptions du client remontent à l'appelant. */
-async function _rpcAvecDelai(rpc, params, ms = _DELAI_CONFIG_MS) {
-  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
-  let minuteur = null;
-  try {
-    let req = _sb.rpc(rpc, params);
-    if (ctrl && req && typeof req.abortSignal === 'function') req = req.abortSignal(ctrl.signal);
-    return await Promise.race([req, new Promise(res => {
-      minuteur = setTimeout(() => { res({ delai: true }); if (ctrl) ctrl.abort(); }, ms);
-    })]);
-  } finally { clearTimeout(minuteur); }
-}
-
-/** Le serveur n'a pas pu répondre (≠ il a refusé). */
-function _serveurInjoignable(rep) {
-  if (!rep || rep.delai) return true;
-  const st = rep.status;
-  return !!rep.error && (!st || st === 502 || st === 503 || st === 504);
-}
-
-const _filesConfig = {};
-function _enregistrerConfig(opts) {
-  const tour = (_filesConfig[opts.cle] || Promise.resolve()).then(() => _enregistrerConfigMaintenant(opts));
-  _filesConfig[opts.cle] = tour.catch(() => {});
-  return tour;
-}
-async function _enregistrerConfigMaintenant({ cle, valeur, lireCache, setCache, rpc, params, libelles, apresLocal, muet }) {
-  const v = (typeof valeur === 'function') ? valeur() : valeur;
-  const avantMem = lireCache();
-  let avantLocal = null;
-  try { avantLocal = localStorage.getItem(cle); } catch (e) {}
-  setCache(v);
-  try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) {}
-  if (apresLocal) { try { apresLocal(); } catch (e) {} }
-  const local = (msg) => { if (!muet) toast(msg, ''); return 'local'; };
-  if (typeof _sb === 'undefined' || !_sb) return local(libelles.horsLigne);
-  let rep;
-  try { rep = await _rpcAvecDelai(rpc, params(v)); }
-  catch (e) { return local(libelles.horsLigne); }
-  if (_serveurInjoignable(rep)) return local(libelles.injoignable);
-  const { data, error, status } = rep;
-  if (!error && data === 'ok') { if (!muet && libelles.ok) toast(libelles.ok, 'ok'); return 'ok'; }
-  setCache(avantMem);
-  try { if (avantLocal === null) localStorage.removeItem(cle); else localStorage.setItem(cle, avantLocal); } catch (e) {}
-  const raison = error ? 'erreur du serveur (' + (error.message || status) + ')'
-               : data === 'forbidden' ? 'modification non autorisée pour ce compte' : String(data);
-  toast(libelles.refus + ' : ' + raison, 'err');
-  return 'refus';
-}
-
-// ✅ v13.248 — Une action à la fois : le bouton qui l'a lancée (et ses
-//   jumeaux) est désactivé jusqu'à la fin. Un double clic ne crée plus de
-//   doublon et n'envoie plus deux requêtes.
-const _actionsEnCours = {};
-async function _uneSeuleFois(nom, fn) {
-  if (_actionsEnCours[nom]) return;
-  _actionsEnCours[nom] = true;
-  const boutons = [...document.querySelectorAll('[onclick*="' + nom + '("]')];
-  boutons.forEach(b => { b.disabled = true; });
-  try { return await fn(); }
-  finally { _actionsEnCours[nom] = false; boutons.forEach(b => { b.disabled = false; }); }
-}
+// ✅ v13.249 — Mécanique d'enregistrement commune (_enregistrerConfig,
+//   _uneSeuleFois, _rpcAvecDelai) : dans supabase-db.js, chargé avant.
 
 /** Enregistre la grille en base ; le cache local suit. Renvoie 'ok' | 'local' | 'refus'.
  *  `t` : la grille, ou une fonction qui la calcule quand vient son tour. */
@@ -1209,7 +1126,10 @@ async function removeExamenCustom(id) {
         confirmText:'Supprimer', confirmClass:'btn-danger' })
     : confirm('Supprimer cet examen personnalisé ?');
   if (!ok) return;
-  return _uneSeuleFois('removeExamenCustom', () => _removeExamenCustom(id));
+  // Un verrou PAR examen : supprimer B pendant l'envoi de A n'est pas perdu
+  //   (la file d'attente les enchaîne, chacun calculé à son tour).
+  return _uneSeuleFois('removeExamenCustom', () => _removeExamenCustom(id),
+                       { cle: 'removeExamenCustom:' + id, motif: "removeExamenCustom('" + id + "')" });
 }
 async function _removeExamenCustom(id) {
   const custom = () => getExamensCustom().filter(x => x.id !== id);
@@ -1259,7 +1179,7 @@ function buildAdminExamensGrid() {
             ${ex.label}${isCustom ? '<span style="font-size:9px;background:var(--accent-light);color:var(--cpmi-mid);border-radius:4px;padding:1px 5px;margin-left:4px">+</span>' : ''}
             ${ex.note ? `<span style="font-size:10px;color:var(--text-muted);font-style:italic"> (${ex.note})</span>` : ''}
           </label>
-          <input type="number" id="adm_px_${ex.id}" value="${prix}" min="0" step="100"
+          <input type="number" id="adm_px_${ex.id}" value="${prix}" data-affiche="${prix}" min="0" step="100"
             style="width:80px;text-align:right;font-weight:700;color:var(--cpmi-deep);font-size:12.5px;padding:4px 6px">
           <span style="font-size:10.5px;color:var(--text-muted);flex-shrink:0">F</span>
           ${removeBtn}
@@ -1270,16 +1190,29 @@ function buildAdminExamensGrid() {
 
 function saveAdminTarifs() { return _uneSeuleFois('saveAdminTarifs', _saveAdminTarifs); }
 async function _saveAdminTarifs() {
+  // ✅ v13.249 — Seuls les prix MODIFIÉS à l'écran sont envoyés (comparés à
+  //   ceux affichés quand la grille a été dessinée) : un enregistrement ne
+  //   réécrit plus les autres prix avec d'anciennes valeurs, par exemple
+  //   juste après « Remettre les prix par défaut ».
   const saisis = {};
   getCatalogueComplet().forEach(ex => {
     const el = document.getElementById('adm_px_' + ex.id);
-    if (el) saisis[ex.id] = parseInt(el.value) || 0;
+    if (!el) return;
+    const prix = parseInt(el.value) || 0;
+    if (String(prix) !== el.dataset.affiche) saisis[ex.id] = prix;
   });
+  if (!Object.keys(saisis).length) { toast('Aucun prix modifié', ''); return; }
   // ✅ v13.76 — on attend la réponse du serveur avant de rafraîchir la fiche.
   // ✅ v13.249 — Sur refus, les prix tapés RESTENT dans la grille (message
   //   rouge « non enregistrés ») pour réessayer sans tout retaper ; la fiche
   //   d'accueil, elle, facture les prix réellement en vigueur.
-  await saveTarifsRef(() => ({ ...getTarifsRef(), ...saisis }));
+  const res = await saveTarifsRef(() => ({ ...getTarifsRef(), ...saisis }));
+  if (res !== 'refus') {
+    Object.entries(saisis).forEach(([id, prix]) => {
+      const el = document.getElementById('adm_px_' + id);
+      if (el) el.dataset.affiche = String(prix);
+    });
+  }
   rechargeFichePrix();
 }
 
