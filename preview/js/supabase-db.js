@@ -49,6 +49,103 @@ function initSupabase() {
 }
 initSupabase();
 
+// ✅ v13.246/248/249 — Enregistrement commun d'une configuration partagée
+//   (tarifs, catalogue, valeurs de référence).
+//   • Le poste est écrit d'abord, puis le serveur.
+//   • Refus du serveur OU erreur du serveur (statut ≥ 400 : fonction absente,
+//     session expirée, exception SQL…) → le poste revient exactement à l'état
+//     d'avant, message rouge. Sinon ce poste facturerait un prix que les
+//     autres n'ont pas (v13.75).
+//   • Serveur injoignable (statut 0, passerelle 502/503/504, délai dépassé,
+//     pas de client) → la valeur reste sur ce poste (cache hors-ligne),
+//     message neutre explicite. La connexion suivante recharge la base.
+//   ✅ v13.249 —
+//   • File d'attente PAR DONNÉE : deux enregistrements des tarifs (prix, puis
+//     ajout d'un examen…) ne se chevauchent plus. `valeur` peut être une
+//     fonction : elle est calculée au moment où vient son tour, donc à partir
+//     de l'état RÉEL (confirmé ou restauré), jamais d'un état non confirmé.
+//   • Au bout de 20 s la requête est ANNULÉE (pas seulement ignorée) : aucune
+//     réponse tardive ne peut plus arriver après coup, et la file avance.
+//   • Le retour en arrière part de la MÉMOIRE du poste (et non du stockage
+//     local, absent en navigation privée ou si la mémoire est pleine), et
+//     n'efface jamais une écriture plus récente.
+//   Toute écriture d'une configuration partagée passe par ici (remises à
+//   zéro comprises) : rien ne l'écrit en dehors de la file.
+//   Renvoie 'ok' | 'local' | 'refus'. `muet` : n'affiche que les refus.
+let _DELAI_CONFIG_MS = 20000;            // let : réglable par les tests
+
+/** Appel RPC borné dans le temps : au-delà du délai, la requête est annulée et
+ *  { delai: true } est rendu. Les exceptions du client remontent à l'appelant. */
+async function _rpcAvecDelai(rpc, params, ms = _DELAI_CONFIG_MS) {
+  const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+  let minuteur = null;
+  try {
+    let req = _sb.rpc(rpc, params);
+    if (ctrl && req && typeof req.abortSignal === 'function') req = req.abortSignal(ctrl.signal);
+    return await Promise.race([req, new Promise(res => {
+      minuteur = setTimeout(() => { res({ delai: true }); if (ctrl) ctrl.abort(); }, ms);
+    })]);
+  } finally { clearTimeout(minuteur); }
+}
+
+/** Le serveur n'a pas pu répondre (≠ il a refusé). */
+function _serveurInjoignable(rep) {
+  if (!rep || rep.delai) return true;
+  const st = rep.status;
+  return !!rep.error && (!st || st === 502 || st === 503 || st === 504);
+}
+
+const _filesConfig = {};
+function _enregistrerConfig(opts) {
+  const tour = (_filesConfig[opts.cle] || Promise.resolve()).then(() => _enregistrerConfigMaintenant(opts));
+  _filesConfig[opts.cle] = tour.catch(() => {});
+  return tour;
+}
+async function _enregistrerConfigMaintenant({ cle, valeur, lireCache, setCache, rpc, params, libelles, apresLocal, muet }) {
+  const v = (typeof valeur === 'function') ? valeur() : valeur;
+  const avantMem = lireCache();
+  let avantLocal = null;
+  try { avantLocal = localStorage.getItem(cle); } catch (e) {}
+  setCache(v);
+  try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) {}
+  if (apresLocal) { try { apresLocal(); } catch (e) {} }
+  const local = (msg) => { if (!muet) toast(msg, ''); return 'local'; };
+  if (typeof _sb === 'undefined' || !_sb) return local(libelles.horsLigne);
+  let rep;
+  try { rep = await _rpcAvecDelai(rpc, params(v)); }
+  catch (e) { return local(libelles.horsLigne); }
+  if (_serveurInjoignable(rep)) return local(libelles.injoignable);
+  const { data, error, status } = rep;
+  if (!error && data === 'ok') { if (!muet && libelles.ok) toast(libelles.ok, 'ok'); return 'ok'; }
+  // Retour en arrière, sauf si la mémoire a été réécrite pendant l'envoi
+  //   (rechargement depuis la base) : l'écriture la plus récente l'emporte.
+  if (lireCache() === v) {
+    setCache(avantMem);
+    try { if (avantLocal === null) localStorage.removeItem(cle); else localStorage.setItem(cle, avantLocal); } catch (e) {}
+  }
+  const raison = error ? 'erreur du serveur (' + (error.message || status) + ')'
+               : data === 'forbidden' ? 'modification non autorisée pour ce compte' : String(data);
+  toast(libelles.refus + ' : ' + raison, 'err');
+  return 'refus';
+}
+
+// ✅ v13.248 — Une action à la fois : le bouton qui l'a lancée (et ses
+//   jumeaux) est désactivé jusqu'à la fin. Un double clic ne crée plus de
+//   doublon et n'envoie plus deux requêtes.
+//   Une demande arrivée pendant ce temps (bouton redessiné entre-temps,
+//   confirmation donnée pendant l'envoi) est signalée, jamais ignorée en silence.
+//   ✅ v13.249 — `cle` / `motif` : un verrou plus fin que le nom de l'action
+//   (ex. un par examen supprimé), et les seuls boutons correspondants.
+const _actionsEnCours = {};
+async function _uneSeuleFois(nom, fn, { cle = nom, motif = nom + '(' } = {}) {
+  if (_actionsEnCours[cle]) { toast('Enregistrement en cours, réessayez dans un instant', ''); return; }
+  _actionsEnCours[cle] = true;
+  const boutons = [...document.querySelectorAll('[onclick*="' + motif + '"]')];
+  boutons.forEach(b => { b.disabled = true; });
+  try { return await fn(); }
+  finally { _actionsEnCours[cle] = false; boutons.forEach(b => { b.disabled = false; }); }
+}
+
 // Cache local pour affichage instantané ; toujours resynchronisé avec Supabase
 let _dbCache = [];
 
@@ -129,11 +226,9 @@ function getDB() {
 function recordForOutput(id) {
   let r = getDB().find(x => x.id === id);
   if (r) return r;
-  const uid = _currentUser?.username;
-  const admin = (typeof isAdmin === 'function') && isAdmin()
-    || (typeof isResponsable === 'function' && isResponsable()); // ✅ v13.248 — fiches masquées de son équipe
+  // ✅ v13.249 — règle unique, partagée avec la grille (ui-auth.js).
   return _dbCache.find(x => x.id === id && !x.deletedAt && !x._hardDeleted && x.restrictedBy
-                            && (admin || x.createdBy === uid || x.restrictedBy === uid)) || null;
+                            && peutOuvrirFicheMasquee(x)) || null;
 }
 
 /**

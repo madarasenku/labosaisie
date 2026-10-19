@@ -1790,7 +1790,7 @@ function renderRistournesMois() {
         <td style="padding:7px 8px;border-bottom:1px solid var(--border);font-weight:600">${esc(r.presc.nom)}</td>
         <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)">${r.nb}</td>
         <td style="padding:7px 8px;text-align:right;border-bottom:1px solid var(--border)">${_fmtF(r.montantBrut)} F</td>
-        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)"><input type="number" id="rist_taux_${r.presc.id}" value="${r.taux}" min="0" max="100" step="0.5" style="width:70px;padding:3px 6px;font-size:12px" onchange="_previewRistourne(${r.presc.id},${r.montantBrut})"></td>
+        <td style="padding:7px 8px;text-align:center;border-bottom:1px solid var(--border)"><input type="number" id="rist_taux_${r.presc.id}" value="${r.taux}" min="0" max="100" step="0.5" style="width:70px;padding:3px 6px;font-size:12px" data-brut="${r.montantBrut}" onchange="_previewRistourne(${r.presc.id},${r.montantBrut})"></td>
         <td id="rist_val_${r.presc.id}" style="padding:7px 8px;text-align:right;border-bottom:1px solid var(--border);font-weight:700;color:#15803d">${_fmtF(r.ristourne)} F</td>
       </tr>`).join('')}
       <tr style="background:var(--bg)"><td colspan="4" style="padding:8px;font-weight:700;text-align:right">Total ristournes :</td>
@@ -1801,6 +1801,10 @@ function _previewRistourne(id, brut) {
   const taux = Number(document.getElementById('rist_taux_' + id)?.value) || 0;
   const cell = document.getElementById('rist_val_' + id);
   if (cell) cell.textContent = _fmtF(Math.round(brut * taux / 100)) + ' F';
+  // ✅ v13.249 — Le total suit les taux affichés (même calcul que les lignes).
+  const total = document.getElementById('rist-total-cell');
+  if (total) total.textContent = _fmtF([...document.querySelectorAll('#rist-mois-table input[id^="rist_taux_"]')]
+    .reduce((s, inp) => s + Math.round((Number(inp.dataset.brut) || 0) * (Number(inp.value) || 0) / 100), 0)) + ' FCFA';
 }
 function saveRistourneTaux() { return _uneSeuleFois('saveRistourneTaux', _saveRistourneTaux); }
 async function _saveRistourneTaux() {
@@ -1811,7 +1815,7 @@ async function _saveRistourneTaux() {
     const inp = document.getElementById('rist_taux_' + p.id);
     if (!inp) continue;
     const taux = Number(inp.value) || 0;
-    if (taux !== (p.taux_ristourne || 0)) changes.push({ p, taux });
+    if (taux !== (Number(p.taux_ristourne) || 0)) changes.push({ p, taux });   // même lecture que tauxFor
   }
   if (!changes.length) { toast('Aucun taux modifié', ''); return; }
   showLoading('Enregistrement des taux…');
@@ -1819,16 +1823,17 @@ async function _saveRistourneTaux() {
   const echecs = [];
   // ✅ v13.248 — Envois en parallèle (indépendants) ; l'écran de chargement se
   //   referme quoi qu'il arrive.
+  // ✅ v13.249 — Chaque envoi est annulé au bout de 20 s (comme les tarifs) :
+  //   une requête bloquée ne laisse plus l'écran de chargement affiché.
   try {
     await Promise.all(changes.map(async ({ p, taux }) => {
-      let data = null, error = null, status = 0;
+      let rep;
       try {
-        ({ data, error, status } = await _sb.rpc('set_taux_ristourne', {
-          p_token: TK(), p_prescr_id: p.id, p_taux: taux }));
-      } catch (e) { error = e; status = 0; }
-      if (!error && data === 'ok') { p.taux_ristourne = taux; return; }
-      // Statut 0 / exception = réseau ; erreur ≥ 400 ou réponse ≠ « ok » = refus du serveur.
-      if (error && !status) injoignables++; else refus++;
+        rep = await _rpcAvecDelai('set_taux_ristourne', { p_token: TK(), p_prescr_id: p.id, p_taux: taux });
+      } catch (e) { rep = { error: e, status: 0 }; }
+      if (!rep.error && rep.data === 'ok') { p.taux_ristourne = taux; return; }
+      // Statut 0, 502/503/504, délai, exception = réseau ; le reste = refus du serveur.
+      if (_serveurInjoignable(rep)) injoignables++; else refus++;
       echecs.push({ id: p.id, taux });
     }));
   } finally {

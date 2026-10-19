@@ -544,12 +544,10 @@ function grilleSourceDB() {
   let base; try { base = getDB(); } catch (e) { base = []; }
   if (!_grilleInclureMasquees) return base;
   let cache; try { cache = (typeof _dbCache !== 'undefined' && _dbCache) ? _dbCache : []; } catch (e) { cache = []; }
-  const uid = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.username : null;
-  const admin = (typeof isAdmin === 'function') && isAdmin()
-    || (typeof isResponsable === 'function' && isResponsable()); // ✅ v13.248 — fiches masquées de son équipe
   const seen = new Set(base.map(r => r.id));
+  // ✅ v13.249 — règle unique, partagée avec l'impression (ui-auth.js).
   const extra = cache.filter(r => r && r.restrictedBy && !r.deletedAt && !r._hardDeleted
-    && !seen.has(r.id) && (admin || r.createdBy === uid || r.restrictedBy === uid));
+    && !seen.has(r.id) && peutOuvrirFicheMasquee(r));
   return base.concat(extra);
 }
 
