@@ -194,23 +194,46 @@ function toggleFiltresAvances() {
   if (btn) btn.classList.toggle('active', open);
 }
 
-// ✅ v13.250 — HEURE D'ENREGISTREMENT du dossier (sa création), sous la date.
-//   Si le dossier a été saisi un autre jour que sa date (date corrigée à la
-//   main, saisie rattrapée), le jour de saisie est précisé pour ne pas tromper.
+// ✅ v13.250 — HEURES D'ENREGISTREMENT et de LIVRAISON du résultat, sous la date.
+//   • Enregistrement : création du dossier (heure du serveur).
+//   • Livraison : premier passage à « Terminé » (patient.rendu_at, posé par le
+//     serveur et figé : une correction ultérieure ne le déplace pas), avec le
+//     délai écoulé depuis l'enregistrement.
+//   Un jour différent de celui de la ligne au-dessus est précisé, pour ne pas tromper.
 function _jourLocal(t) {
   return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
 }
+function _instant(v) { const t = v ? new Date(v) : null; return (t && !isNaN(t.getTime())) ? t : null; }
+function _hm(t) { return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0'); }
+function _quand(t, jourRef) {
+  const jour = _jourLocal(t);
+  return (jourRef && jour !== jourRef) ? 'le ' + jour.split('-').reverse().join('/') + ' à ' + _hm(t) : _hm(t);
+}
+function _duree(ms) {
+  const min = Math.round(ms / 60000);
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h < 48) return h + ' h ' + String(m).padStart(2, '0');
+  return Math.floor(h / 24) + ' j ' + (h % 24) + ' h';
+}
 function heureEnregistrement(r) {
-  const t = r && r.savedAt ? new Date(r.savedAt) : null;
-  if (!t || isNaN(t.getTime())) return '';
-  const hh = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-  const jour = _jourLocal(t), date = (r.patient && r.patient.date) || '';
-  return (date && jour !== date) ? 'saisi le ' + jour.split('-').reverse().join('/') + ' à ' + hh : hh;
+  const t = _instant(r && r.savedAt);
+  return t ? _quand(t, (r.patient && r.patient.date) || '') : '';
+}
+function heureLivraison(r) {
+  const p = (r && r.patient) || {};
+  const t = p.statut === 'rendu' ? _instant(p.rendu_at) : null;
+  if (!t) return '';
+  const cree = _instant(r.savedAt);
+  const ecart = cree ? t - cree : -1;
+  return _quand(t, cree ? _jourLocal(cree) : (p.date || '')) + (ecart >= 0 ? ' · ' + _duree(ecart) : '');
 }
 function celluleDateHeure(r) {
-  const h = heureEnregistrement(r);
+  const style = 'font-size:10.5px;color:var(--text-muted);margin-top:1px;white-space:nowrap';
+  const e = heureEnregistrement(r), l = heureLivraison(r);
   return esc((r.patient && r.patient.date) || '—')
-    + (h ? '<div class="hist-heure" title="Heure d\'enregistrement" style="font-size:10.5px;color:var(--text-muted);margin-top:1px;white-space:nowrap">🕒 ' + esc(h) + '</div>' : '');
+    + (e ? '<div class="hist-heure" title="Heure d\'enregistrement du dossier" style="' + style + '">🕒 Enreg. ' + esc(e) + '</div>' : '')
+    + (l ? '<div class="hist-heure-rendu" title="Livraison du résultat (passage à « Terminé ») et délai depuis l\'enregistrement" style="' + style + ';color:#15803d">✅ Rendu ' + esc(l) + '</div>' : '');
 }
 function _cleDateHeure(r) {
   const p = r.patient || {};
