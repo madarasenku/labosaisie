@@ -18,7 +18,101 @@ function toast(msg, type='') {
     el.classList.add('hiding');
     el.addEventListener('animationend', () => { el.className = ''; }, { once: true });
   }, 2700);
+  // ✅ v13.251 — Tout message d'erreur vu par un utilisateur est consigné au
+  //   journal des anomalies (heure, compte, écran) pour que l'admin le voie.
+  if (type === 'err') signalerAnomalie(msg);
 }
+
+// ════════ ✅ v13.251 — JOURNAL DES ANOMALIES ════════
+//   Ce qui sort de l'ordinaire chez un utilisateur : message d'erreur rouge,
+//   enregistrement refusé, erreur technique de la page. Chaque anomalie part au
+//   serveur avec l'heure, le compte, l'écran, le dossier ouvert et les examens
+//   cochés ; l'admin les lit dans Comptes → ⚠️ Anomalies (et est prévenu).
+//   Jamais bloquant : un échec d'envoi ne fait rien d'autre que patienter dans
+//   une petite file locale, renvoyée au prochain envoi réussi.
+const _ANO_FILE_KEY = 'labo_anomalies_attente';
+const _anoRecents = new Map();          // anti-doublon : même message, même écran
+let _anoEnvoi = false;
+const _ANO_VUES = { 'view-accueil': 'Accueil', 'view-saisie': 'Nouvelle saisie', 'view-historique': 'Historique',
+  'view-stats': 'Statistiques', 'view-comptes': 'Comptes', 'view-caisse': 'Caisse', 'view-caisse-user': 'Caisse',
+  'view-cahier': 'Cahier' };
+function _contexteAnomalie() {
+  const c = {};
+  try {
+    const vue = [...document.querySelectorAll('[id^="view-"]')].find(e => e.offsetParent !== null);
+    const serie = document.getElementById('grille-serie');
+    c.vue = (serie && serie.offsetParent !== null) ? 'Saisie en série' : (vue ? (_ANO_VUES[vue.id] || vue.id) : '');
+    const modale = [...document.querySelectorAll('.modal-title, .modal-box h3')].find(e => e.offsetParent !== null);
+    if (modale) c.vue += ' › ' + modale.textContent.trim().slice(0, 60);
+  } catch (e) {}
+  try {
+    const id = (typeof _editingRecordId !== 'undefined' && _editingRecordId)
+      || (typeof _grilleFocusId !== 'undefined' && _grilleFocusId) || null;
+    const r = id != null && typeof _dbCache !== 'undefined' ? _dbCache.find(x => x.id === id) : null;
+    if (id != null) c.id = Number(id);
+    if (r && r.patient && r.patient.dossier) c.dossier = r.patient.dossier;
+  } catch (e) {}
+  try {
+    if (document.getElementById('view-saisie')?.offsetParent !== null && typeof getCatalogueComplet === 'function') {
+      const ex = getCatalogueComplet().filter(x => document.getElementById(x.id)?.checked).map(x => x.label);
+      if (ex.length) c.examens = ex.slice(0, 12).join(', ') + (ex.length > 12 ? '…' : '');
+    }
+  } catch (e) {}
+  c.version = window.APP_VERSION_UI || '';
+  c.role = (_currentUser && _currentUser.role) || '';
+  c.appareil = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '') ? 'mobile' : 'ordinateur';
+  c.heure_poste = new Date().toISOString();
+  return c;
+}
+function signalerAnomalie(message, extra) {
+  try {
+    if (typeof _currentUser === 'undefined' || !_currentUser) return;
+    const msg = String(message || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    if (!msg) return;
+    const c = Object.assign(_contexteAnomalie(), extra || {});
+    const cle = msg + '|' + (c.vue || '') + '|' + (c.id || '');
+    const t = Date.now();
+    if (_anoRecents.get(cle) > t - 120000) return;      // déjà signalé il y a moins de 2 min
+    _anoRecents.set(cle, t);
+    let file = [];
+    try { file = JSON.parse(localStorage.getItem(_ANO_FILE_KEY) || '[]'); } catch (e) {}
+    file.push({ m: msg, c });
+    try { localStorage.setItem(_ANO_FILE_KEY, JSON.stringify(file.slice(-30))); } catch (e) {}
+    _envoyerAnomalies();
+  } catch (e) {}
+}
+async function _envoyerAnomalies() {
+  if (_anoEnvoi || typeof _sb === 'undefined' || !_sb || typeof TK !== 'function' || !TK()) return;
+  _anoEnvoi = true;
+  try {
+    for (let i = 0; i < 30; i++) {
+      let file = [];
+      try { file = JSON.parse(localStorage.getItem(_ANO_FILE_KEY) || '[]'); } catch (e) {}
+      if (!file.length) break;
+      const { m, c } = file[0];
+      let rep;
+      try { rep = await _sb.rpc('log_anomalie', { p_token: TK(), p_message: m, p_contexte: c }); }
+      catch (e) { break; }                                  // hors ligne : on réessaiera
+      if (rep && rep.error && !rep.status) break;           // réseau coupé
+      // Envoyé (ou refusé pour de bon : jeton expiré, limite) : on le retire.
+      try {
+        const reste = JSON.parse(localStorage.getItem(_ANO_FILE_KEY) || '[]');
+        localStorage.setItem(_ANO_FILE_KEY, JSON.stringify(reste.slice(1)));
+      } catch (e) { break; }
+    }
+  } finally { _anoEnvoi = false; }
+}
+// Erreurs techniques de la page (bug d'affichage, script interrompu…).
+window.addEventListener('error', (e) => {
+  if (!e || !e.message) return;
+  const ou = e.filename ? String(e.filename).split('/').pop().split('?')[0] + ':' + (e.lineno || '?') : '';
+  signalerAnomalie('Erreur technique : ' + e.message, { detail: ou });
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const r = e && e.reason;
+  const m = r && (r.message || (typeof r === 'string' ? r : ''));
+  if (m) signalerAnomalie('Erreur technique : ' + m, { detail: 'promesse' });
+});
 
 // ============================================================
 // MODAL DE CONFIRMATION — remplace confirm() natif  ✅ v13.30
@@ -286,7 +380,8 @@ function enterApp() {
   // badge initial + notification en direct toutes les 90 s tant que l'app est ouverte.
   if (isAdmin()) {
     setTimeout(() => checkNewConnexions(false), 1500);
-    if (!_connPoll) _connPoll = setInterval(() => checkNewConnexions(true), 90000);
+    setTimeout(() => checkNewAnomalies(false), 2500);      // ✅ v13.251
+    if (!_connPoll) _connPoll = setInterval(() => { checkNewConnexions(true); checkNewAnomalies(true); }, 90000);
   }
 }
 
@@ -421,10 +516,12 @@ const AUDIT_ACTION_LABELS = {
   insert_resultat:'Création fiche', update_resultat:'Modification fiche', delete_resultat:'Suppression fiche',
   clear_resultats:'Vidage historique', create_user:'Création compte', update_user:'Modification compte',
   delete_user:'Suppression compte', insert_prescripteur:'Ajout prescripteur',
-  update_prescripteur:'Modif prescripteur', deactivate_prescripteur:'Désactivation prescripteur'
+  update_prescripteur:'Modif prescripteur', deactivate_prescripteur:'Désactivation prescripteur',
+  anomalie:'⚠️ Anomalie'
 };
 function auditDetails(action, d) {
   if (!d) return '';
+  if (action === 'anomalie') return [d.message || '', d.vue || '', d.dossier ? 'N°' + d.dossier : ''].filter(Boolean).join(' · ');
   if (action.endsWith('_resultat') || action === 'delete_resultat')
     return [d.dossier ? 'N°'+d.dossier : '', d.patient||'', d.montant!=null ? d.montant.toLocaleString('fr-FR')+' FCFA' : ''].filter(Boolean).join(' · ');
   if (action === 'clear_resultats') return (d.supprimes||0) + ' fiche(s) supprimée(s)';
@@ -509,6 +606,86 @@ async function checkNewConnexions(allowNotify) {
       } catch(e) {}
     }
   } catch(e) {}
+}
+
+// ✅ v13.251 — Écran « ⚠️ Anomalies » (admin) et alerte en direct.
+function _heureAnomalie(e) {
+  const t = new Date((e.details && e.details.heure_poste) || e.ts);
+  return isNaN(t.getTime()) ? '' : t.toLocaleString('fr-FR');
+}
+async function renderAnomalies() {
+  if (!isAdmin()) return;
+  const body = document.getElementById('anomalies-body');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:14px">⏳ Chargement…</td></tr>';
+  let data = null, error = null;
+  try { ({ data, error } = await _sb.rpc('get_anomalies', { p_token: TK(), p_limit: 500 })); } catch (e) { error = e; }
+  if (error) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#b91c1c;padding:14px">Journal indisponible (connexion ?)</td></tr>'; return; }
+  const q = (document.getElementById('anomalies-filtre')?.value || '').trim().toLowerCase();
+  let rows = Array.isArray(data) ? data : [];
+  if (q) rows = rows.filter(e => [e.username, (e.details || {}).message, (e.details || {}).vue, (e.details || {}).dossier,
+                                  (e.details || {}).examens].join(' ').toLowerCase().includes(q));
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:14px">'
+      + (q ? 'Aucune anomalie ne correspond à la recherche.' : 'Aucune anomalie enregistrée. 👍') + '</td></tr>';
+  } else {
+    body.innerHTML = rows.map(e => {
+      const d = e.details || {};
+      const ctx = [d.dossier ? 'Dossier N° ' + d.dossier : '', d.examens ? 'Examens : ' + d.examens : '',
+                   d.detail || '', [d.role, d.appareil, d.version ? 'v' + d.version : ''].filter(Boolean).join(' · ')].filter(Boolean);
+      return '<tr>'
+        + '<td style="white-space:nowrap;font-size:12px">' + esc(_heureAnomalie(e)) + '</td>'
+        + '<td style="font-weight:600">' + esc(e.username || '—') + '</td>'
+        + '<td style="font-size:12px">' + esc(d.vue || '—') + '</td>'
+        + '<td style="font-size:12.5px;color:#b91c1c;font-weight:600">' + esc(d.message || '') + '</td>'
+        + '<td style="font-size:11.5px;color:var(--text-muted)">' + ctx.map(esc).join('<br>') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+  if (Array.isArray(data) && data[0] && data[0].ts) { try { localStorage.setItem('labo_last_seen_ano', data[0].ts); } catch (e) {} }
+  majBadgeAnomalies(0);
+}
+function majBadgeAnomalies(n) {
+  [['btn-nav-users', 'ano-badge'], ['btn-sub-anomalies', 'ano-badge-sub']].forEach(([hote, id]) => {
+    const btn = document.getElementById(hote);
+    if (!btn) return;
+    let b = document.getElementById(id);
+    if (n > 0) {
+      if (!b) {
+        b = document.createElement('span'); b.id = id;
+        b.style.cssText = 'background:#ea580c;color:#fff;border-radius:999px;padding:1px 6px;font-size:10px;margin-left:4px;font-weight:700';
+        btn.appendChild(b);
+      }
+      b.textContent = n; b.style.display = '';
+      b.title = n + ' anomalie(s) depuis votre dernière consultation';
+    } else if (b) b.style.display = 'none';
+  });
+}
+let _lastNotifiedAnoTs = null;
+async function checkNewAnomalies(allowNotify) {
+  if (!isAdmin() || typeof _sb === 'undefined' || !_sb || !TK()) return;
+  try {
+    const { data } = await _sb.rpc('get_anomalies', { p_token: TK(), p_limit: 100 });
+    if (!Array.isArray(data)) return;
+    // Celles des AUTRES comptes : les siennes, l'admin les a vues à l'écran.
+    const autres = data.filter(e => e.username !== _currentUser?.username);
+    let vu = null; try { vu = localStorage.getItem('labo_last_seen_ano'); } catch (e) {}
+    majBadgeAnomalies(vu ? autres.filter(e => e.ts > vu).length : autres.length);
+    const recent = autres[0]?.ts || null;
+    if (_lastNotifiedAnoTs === null) { _lastNotifiedAnoTs = recent || ''; return; }
+    if (allowNotify && recent && recent > _lastNotifiedAnoTs) {
+      const neuves = autres.filter(e => e.ts > _lastNotifiedAnoTs);
+      _lastNotifiedAnoTs = recent;
+      const d = neuves[0], det = d.details || {};
+      const msg = (d.username || '?') + ' à ' + new Date(det.heure_poste || d.ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        + ' — ' + (det.message || '') + (neuves.length > 1 ? ' (+' + (neuves.length - 1) + ')' : '');
+      toast('⚠️ Anomalie : ' + msg, '');
+      try {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted')
+          new Notification('CPMI Labo — Anomalie', { body: msg });
+      } catch (e) {}
+    }
+  } catch (e) {}
 }
 
 async function renderAuditLog() {
