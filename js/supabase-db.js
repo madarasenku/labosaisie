@@ -2096,6 +2096,8 @@ async function saveRecordAll() {
     try { await refreshDB(true); } catch (e) {}
   }
   if (_editingRecordId && !isDossierPaye(_editingRecordId)) {
+    // ✅ v13.251 — Refus consigné au journal des anomalies (fenêtre, pas un message rouge).
+    if (typeof signalerAnomalie === 'function') signalerAnomalie('Paiement requis : enregistrement des résultats refusé (dossier non encaissé)');
     let allerCaisse = false;
     if (typeof showConfirmModal === 'function') {
       allerCaisse = await showConfirmModal({
