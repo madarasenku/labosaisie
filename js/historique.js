@@ -192,6 +192,18 @@ function toggleFiltresAvances() {
   panel.style.display = open ? '' : 'none';
   if (chev) chev.textContent = open ? '▴' : '▾';
   if (btn) btn.classList.toggle('active', open);
+  if (open) rafraichirListesFiltres();
+}
+
+// ✅ v13.252 — « Électrophorèses à faire » et « TDR paludisme » sont rangées dans
+//   le panneau « ⚙ Filtres » : chargées à son ouverture (et au retour sur
+//   l'Historique s'il est resté ouvert), jamais en arrière-plan.
+function rafraichirListesFiltres() {
+  const panel = document.getElementById('hist-filtres-avances');
+  if (!panel || getComputedStyle(panel).display === 'none') return;
+  const visible = id => { const e = document.getElementById(id); return !!e && e.style.display !== 'none'; };
+  if (visible('electro-card') && typeof renderElectro === 'function') renderElectro();
+  if (visible('tdr-card') && typeof renderTdr === 'function') renderTdr();
 }
 
 // ✅ v13.250 — HEURES D'ENREGISTREMENT et de LIVRAISON du résultat, sous la date.
