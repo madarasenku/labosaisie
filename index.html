@@ -1377,40 +1377,6 @@
     <div class="k k-res" id="hist-res-carte"><span class="pp-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6.5L4.8 18.2A2 2 0 0 0 6.5 21h11a2 2 0 0 0 1.7-2.8L14 9.5V3"/><path d="M7.5 15h9"/></svg></span><div class="kl">Résultats attendus</div><div class="kn pp-kn-res" id="hist-res-attendus">—</div><div class="kd">BPN, électrophorèses, sous-traités</div></div>
   </div>
 
-  <!-- ✅ v13.171 — Liste hebdomadaire des électrophorèses à faire (accessible
-       aux techniciens : la vue Historique est ouverte à tous les rôles de saisie). -->
-  <div class="card" id="electro-card" style="margin-bottom:14px">
-    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span>🧬 Électrophorèses à faire</span>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-outline" onclick="decalerElectro(-1)" title="Semaine précédente" aria-label="Semaine précédente" style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
-        <span id="electro-week-label" style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:210px;text-align:center;white-space:nowrap"></span>
-        <button class="btn btn-outline" onclick="decalerElectro(1)" title="Semaine suivante" aria-label="Semaine suivante" style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
-        <button class="btn btn-outline" onclick="retourElectroSemaine()" style="padding:5px 10px;font-size:12px">↻ Cette semaine</button>
-        <button class="btn btn-primary" onclick="imprimerElectro()" style="padding:5px 14px;font-size:12px">🖨 Imprimer</button>
-      </div>
-    </div>
-    <div id="electro-apercu"></div>
-  </div>
-
-  <!-- ✅ v13.252 — TDR paludisme de la semaine / du mois : relevé imprimable
-       (cases « Imprimer »), résultat saisissable depuis la liste. -->
-  <div class="card" id="tdr-card" style="margin-bottom:14px;display:none">
-    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span>🦟 TDR paludisme</span>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-primary" data-tdr-mode="semaine" onclick="setTdrMode('semaine')" style="padding:5px 10px;font-size:12px">Semaine</button>
-        <button class="btn btn-outline" data-tdr-mode="mois" onclick="setTdrMode('mois')" style="padding:5px 10px;font-size:12px">Mois</button>
-        <button class="btn btn-outline" onclick="decalerTdr(-1)" title="Période précédente" aria-label="Période précédente" style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
-        <span id="tdr-periode-label" style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:180px;text-align:center;white-space:nowrap"></span>
-        <button class="btn btn-outline" onclick="decalerTdr(1)" title="Période suivante" aria-label="Période suivante" style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
-        <button class="btn btn-outline" onclick="retourTdrPeriode()" style="padding:5px 10px;font-size:12px">↻ Actuelle</button>
-        <button class="btn btn-primary" onclick="imprimerTdr()" style="padding:5px 14px;font-size:12px">🖨 Imprimer</button>
-      </div>
-    </div>
-    <div id="tdr-apercu"></div>
-  </div>
-
   <div class="card" style="margin-bottom:14px">
     <div class="card-title">🔍 Recherche & Filtres</div>
 
@@ -1522,6 +1488,40 @@
           style="padding:8px 14px;font-size:12.5px;display:flex;align-items:center;gap:6px">
           ↺ Réinitialiser
         </button>
+      </div>
+
+      <!-- ✅ v13.171 — Liste hebdomadaire des électrophorèses à faire.
+           ✅ v13.252 — Rangée dans le panneau « ⚙ Filtres » (chargée à son ouverture). -->
+      <div class="hist-sous-liste" id="electro-card" style="margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);padding:12px">
+        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span>🧬 Électrophorèses à faire</span>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="decalerElectro(-1)" title="Semaine précédente" aria-label="Semaine précédente" style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+            <span id="electro-week-label" style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:210px;text-align:center;white-space:nowrap"></span>
+            <button class="btn btn-outline" onclick="decalerElectro(1)" title="Semaine suivante" aria-label="Semaine suivante" style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+            <button class="btn btn-outline" onclick="retourElectroSemaine()" style="padding:5px 10px;font-size:12px">↻ Cette semaine</button>
+            <button class="btn btn-primary" onclick="imprimerElectro()" style="padding:5px 14px;font-size:12px">🖨 Imprimer</button>
+          </div>
+        </div>
+        <div id="electro-apercu"></div>
+      </div>
+
+      <!-- ✅ v13.252 — TDR paludisme de la semaine / du mois : relevé imprimable
+           (cases « Imprimer »), résultat saisissable depuis la liste. Dans « ⚙ Filtres ». -->
+      <div class="hist-sous-liste" id="tdr-card" style="margin-top:14px;border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:none">
+        <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span>🦟 TDR paludisme</span>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" data-tdr-mode="semaine" onclick="setTdrMode('semaine')" style="padding:5px 10px;font-size:12px">Semaine</button>
+            <button class="btn btn-outline" data-tdr-mode="mois" onclick="setTdrMode('mois')" style="padding:5px 10px;font-size:12px">Mois</button>
+            <button class="btn btn-outline" onclick="decalerTdr(-1)" title="Période précédente" aria-label="Période précédente" style="padding:5px 10px;font-size:13px;line-height:1">◀</button>
+            <span id="tdr-periode-label" style="font-size:12px;font-weight:700;color:var(--cpmi-mid,#0891b2);min-width:180px;text-align:center;white-space:nowrap"></span>
+            <button class="btn btn-outline" onclick="decalerTdr(1)" title="Période suivante" aria-label="Période suivante" style="padding:5px 10px;font-size:13px;line-height:1">▶</button>
+            <button class="btn btn-outline" onclick="retourTdrPeriode()" style="padding:5px 10px;font-size:12px">↻ Actuelle</button>
+            <button class="btn btn-primary" onclick="imprimerTdr()" style="padding:5px 14px;font-size:12px">🖨 Imprimer</button>
+          </div>
+        </div>
+        <div id="tdr-apercu"></div>
       </div>
     </div>
 

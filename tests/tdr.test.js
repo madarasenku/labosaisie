@@ -40,6 +40,15 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
       window.print = () => { window.__imprime = true; }; showView('historique');
     }, ROWS);
     await page.waitForTimeout(1200);
+    r.section('Rangées dans « ⚙ Filtres »');
+    r.check('électrophorèse et TDR dans le panneau Filtres', await page.evaluate(() =>
+      ['electro-card', 'tdr-card'].map(id => !!document.getElementById(id).closest('#hist-filtres-avances')).join('|')), 'true|true');
+    r.check('panneau replié : rien de visible ni de chargé', await page.evaluate(() =>
+      (document.getElementById('tdr-card').offsetParent === null) + '|' + document.getElementById('tdr-apercu').innerHTML.trim().length), 'true|0');
+    await page.click('#btn-filtres-avances');
+    await page.waitForTimeout(900);
+    r.check('« ⚙ Filtres » ouvert : listes visibles', await page.evaluate(() =>
+      ['electro-card', 'tdr-card'].map(id => document.getElementById(id).offsetParent !== null).join('|')), 'true|true');
     r.section('Liste de la semaine');
     r.check('carte visible (admin)', await page.evaluate(() => getComputedStyle(document.getElementById('tdr-card')).display !== 'none'), true);
     const lignes = () => page.evaluate(() => [...document.querySelectorAll('#tdr-apercu tbody tr')].map(t => t.innerText.replace(/\s+/g, ' ').trim()));
