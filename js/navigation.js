@@ -89,16 +89,9 @@ function showView(v) {
     const _hrd = document.getElementById('hist-registre-date');
     if (_hrd && !_hrd.value && typeof _jourServiceCourant === 'function') _hrd.value = _jourServiceCourant();
     renderHistory(true);
-    // ✅ v13.171 — Liste des électrophorèses de la semaine : réservée à l'ADMIN.
-    const _ec = document.getElementById('electro-card');
-    const _ecAdmin = (typeof isAdmin === 'function') && isAdmin();
-    if (_ec) _ec.style.display = _ecAdmin ? '' : 'none';
-    // ✅ v13.252 — Relevé des TDR paludisme : admin et responsable.
-    const _tc = document.getElementById('tdr-card');
-    const _tcOk = _ecAdmin || ((typeof isResponsable === 'function') && isResponsable());
-    if (_tc) _tc.style.display = _tcOk ? '' : 'none';
-    // Rangées dans « ⚙ Filtres » : chargées seulement si le panneau est ouvert.
-    if (typeof rafraichirListesFiltres === 'function') rafraichirListesFiltres();
+    // ✅ v13.171/252/253 — Listes « Électrophorèses à faire » (admin) et « TDR
+    //   paludisme » (admin, responsable) : menu déroulant « 📋 Listes » en haut.
+    if (typeof majListesHistorique === 'function') majListesHistorique();
   }
   if (v === 'comptes') { _comptesSelonProfil(); renderUsersList(); populateMoisAnneeSelectors();
     if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde();

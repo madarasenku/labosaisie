@@ -56,15 +56,15 @@ const { serve, openApp, createReporter } = require('./helpers');
   r.check('groupe vide', grp.vide, '');
 
   // Gating ADMIN : la carte est visible dans l'Historique pour l'admin.
-  // ✅ v13.252 — Rangée dans le panneau « ⚙ Filtres » : visible une fois celui-ci ouvert.
-  const vuAdmin = await page.evaluate(() => { showView('historique'); toggleFiltresAvances(); const c = document.getElementById('electro-card'); return !!(c && c.offsetParent !== null); });
+  // ✅ v13.253 — Affichée quand on la choisit dans le menu « 📋 Listes ».
+  const vuAdmin = await page.evaluate(() => { showView('historique'); choisirListeHistorique('electro'); const c = document.getElementById('electro-card'); return !!(c && c.offsetParent !== null); });
   r.check('carte visible pour l\'admin', vuAdmin, true);
   r.check('aucune erreur page (admin)', errors.join(' | ') || 'aucune', 'aucune');
   await ctx.close();
 
   // Gating AGENT : la carte est masquée pour un technicien (non-admin).
   const a = await openApp({ role: 'agent', username: 'agent1', userId: 2 });
-  const vuAgent = await a.page.evaluate(() => { showView('historique'); toggleFiltresAvances(); const c = document.getElementById('electro-card'); return !!(c && c.offsetParent !== null); });
+  const vuAgent = await a.page.evaluate(() => { showView('historique'); choisirListeHistorique('electro'); const c = document.getElementById('electro-card'); return !!(c && c.offsetParent !== null); });
   r.check('carte masquée pour l\'agent', vuAgent, false);
   r.check('aucune erreur page (agent)', a.errors.join(' | ') || 'aucune', 'aucune');
   await a.ctx.close();

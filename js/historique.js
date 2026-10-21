@@ -192,18 +192,36 @@ function toggleFiltresAvances() {
   panel.style.display = open ? '' : 'none';
   if (chev) chev.textContent = open ? '▴' : '▾';
   if (btn) btn.classList.toggle('active', open);
-  if (open) rafraichirListesFiltres();
 }
 
-// ✅ v13.252 — « Électrophorèses à faire » et « TDR paludisme » sont rangées dans
-//   le panneau « ⚙ Filtres » : chargées à son ouverture (et au retour sur
-//   l'Historique s'il est resté ouvert), jamais en arrière-plan.
-function rafraichirListesFiltres() {
-  const panel = document.getElementById('hist-filtres-avances');
-  if (!panel || getComputedStyle(panel).display === 'none') return;
-  const visible = id => { const e = document.getElementById(id); return !!e && e.style.display !== 'none'; };
-  if (visible('electro-card') && typeof renderElectro === 'function') renderElectro();
-  if (visible('tdr-card') && typeof renderTdr === 'function') renderTdr();
+// ✅ v13.253 — Listes de travail de l'Historique (« Électrophorèses à faire »,
+//   « TDR paludisme ») : une seule à la fois, choisie dans le menu déroulant
+//   « 📋 Listes » en haut de l'écran ; rien ne s'affiche ni ne se charge sans choix.
+let _histListe = '';
+function _listesPermises() {
+  const admin = (typeof isAdmin === 'function') && isAdmin();
+  const resp = (typeof isResponsable === 'function') && isResponsable();
+  return { electro: admin, tdr: admin || resp };
+}
+function choisirListeHistorique(v) {
+  _histListe = _listesPermises()[v] ? v : '';
+  const sel = document.getElementById('hist-liste-choix');
+  if (sel) sel.value = _histListe;
+  const ec = document.getElementById('electro-card'), tc = document.getElementById('tdr-card');
+  if (ec) ec.style.display = _histListe === 'electro' ? '' : 'none';
+  if (tc) tc.style.display = _histListe === 'tdr' ? '' : 'none';
+  if (_histListe === 'electro' && typeof renderElectro === 'function') renderElectro();
+  if (_histListe === 'tdr' && typeof renderTdr === 'function') renderTdr();
+}
+// À l'ouverture de l'Historique : menu selon le profil, liste choisie rechargée.
+function majListesHistorique() {
+  const ok = _listesPermises();
+  const sel = document.getElementById('hist-liste-choix');
+  if (sel) {
+    [...sel.options].forEach(o => { if (o.value) { o.hidden = !ok[o.value]; o.disabled = !ok[o.value]; } });
+    sel.style.display = (ok.electro || ok.tdr) ? '' : 'none';
+  }
+  choisirListeHistorique(_histListe);
 }
 
 // ✅ v13.250 — HEURES D'ENREGISTREMENT et de LIVRAISON du résultat, sous la date.
