@@ -94,6 +94,11 @@ function showView(v) {
     const _ecAdmin = (typeof isAdmin === 'function') && isAdmin();
     if (_ec) _ec.style.display = _ecAdmin ? '' : 'none';
     if (_ecAdmin && typeof renderElectro === 'function') renderElectro();
+    // ✅ v13.252 — Relevé des TDR paludisme : admin et responsable.
+    const _tc = document.getElementById('tdr-card');
+    const _tcOk = _ecAdmin || ((typeof isResponsable === 'function') && isResponsable());
+    if (_tc) _tc.style.display = _tcOk ? '' : 'none';
+    if (_tcOk && typeof renderTdr === 'function') renderTdr();
   }
   if (v === 'comptes') { _comptesSelonProfil(); renderUsersList(); populateMoisAnneeSelectors();
     if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde();
