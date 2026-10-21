@@ -42,15 +42,17 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
       window.print = () => { window.__imprime = true; }; showView('historique');
     }, ROWS);
     await page.waitForTimeout(1200);
-    r.section('Rangées dans « ⚙ Filtres »');
-    r.check('électrophorèse et TDR dans le panneau Filtres', await page.evaluate(() =>
-      ['electro-card', 'tdr-card'].map(id => !!document.getElementById(id).closest('#hist-filtres-avances')).join('|')), 'true|true');
-    r.check('panneau replié : rien de visible ni de chargé', await page.evaluate(() =>
-      (document.getElementById('tdr-card').offsetParent === null) + '|' + document.getElementById('tdr-apercu').innerHTML.trim().length), 'true|0');
-    await page.click('#btn-filtres-avances');
+    r.section('Menu déroulant « 📋 Listes »');
+    r.check('menu visible, aucune liste affichée ni chargée sans choix', await page.evaluate(() =>
+      [getComputedStyle(document.getElementById('hist-liste-choix')).display !== 'none',
+       document.getElementById('tdr-card').offsetParent === null, document.getElementById('electro-card').offsetParent === null,
+       document.getElementById('tdr-apercu').innerHTML.trim().length].join('|')), 'true|true|true|0');
+    r.check('hors du panneau « ⚙ Filtres »', await page.evaluate(() =>
+      ['electro-card', 'tdr-card'].some(id => !!document.getElementById(id).closest('#hist-filtres-avances'))), false);
+    await page.selectOption('#hist-liste-choix', 'tdr');
     await page.waitForTimeout(900);
-    r.check('« ⚙ Filtres » ouvert : listes visibles', await page.evaluate(() =>
-      ['electro-card', 'tdr-card'].map(id => document.getElementById(id).offsetParent !== null).join('|')), 'true|true');
+    r.check('« TDR paludisme » choisi : seule cette liste s\'affiche', await page.evaluate(() =>
+      [document.getElementById('tdr-card').offsetParent !== null, document.getElementById('electro-card').offsetParent === null].join('|')), 'true|true');
     r.section('Liste de la semaine');
     r.check('carte visible (admin)', await page.evaluate(() => getComputedStyle(document.getElementById('tdr-card')).display !== 'none'), true);
     const lignes = () => page.evaluate(() => [...document.querySelectorAll('#tdr-apercu tbody tr')].map(t => t.innerText.replace(/\s+/g, ' ').trim()));
@@ -93,6 +95,18 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
       tdrToutCocher(false); window.__imprime = false; const t = window.toast; let m = ''; window.toast = (x) => { m = x; };
       await imprimerTdr(); window.toast = t; return window.__imprime + '|' + m; }), 'false|Aucun TDR coché à imprimer');
 
+    r.section('Changer de liste, fermer, revenir');
+    r.check('« Électrophorèses » : remplace la liste TDR', await page.evaluate(async () => {
+      const sel = document.getElementById('hist-liste-choix'); sel.value = 'electro'; sel.dispatchEvent(new Event('change'));
+      return [document.getElementById('electro-card').offsetParent !== null, document.getElementById('tdr-card').offsetParent === null].join('|'); }), 'true|true');
+    r.check('✕ ferme la liste et remet le menu à « Listes… »', await page.evaluate(() => {
+      document.querySelector('#electro-card button[title="Fermer la liste"]').click();
+      return [document.getElementById('electro-card').offsetParent === null, document.getElementById('hist-liste-choix').value].join('|'); }), 'true|');
+    r.check('la liste choisie reste ouverte en revenant sur l\'Historique', await page.evaluate(async () => {
+      choisirListeHistorique('tdr'); showView('accueil'); showView('historique');
+      await new Promise(r => setTimeout(r, 600));
+      return [document.getElementById('hist-liste-choix').value, document.getElementById('tdr-card').offsetParent !== null].join('|'); }), 'tdr|true');
+
     r.section('Vue par mois et navigation');
     const memeMois = AUJ.slice(0, 7) === IL_Y_A_8J.slice(0, 7);
     await page.evaluate(() => { tdrToutCocher(true); setTdrMode('mois'); });
@@ -107,12 +121,19 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {
-    r.section('Qui voit la carte');
-    for (const [role, attendu] of [['responsable', true], ['agent', false]]) {
+    r.section('Qui voit quoi dans le menu');
+    for (const [role, attendu] of [['responsable', 'menu:true|electro:false|tdr:true|tdr ouvert:true'],
+                                   ['agent', 'menu:false|electro:false|tdr:false|tdr ouvert:false']]) {
       const { ctx, page, errors } = await openApp({ role, username: role === 'agent' ? 'agent1' : 'Responsable', port: PORT, cible: CIBLE,
         rpc: { get_resultats_light: ROWS, list_users_admin: [] } });
       await page.evaluate(() => showView('historique')); await page.waitForTimeout(700);
-      r.check(role, await page.evaluate(() => getComputedStyle(document.getElementById('tdr-card')).display !== 'none'), attendu);
+      r.check(role, await page.evaluate(() => {
+        const sel = document.getElementById('hist-liste-choix');
+        const opt = v => !sel.querySelector('option[value="' + v + '"]').hidden;
+        choisirListeHistorique('tdr');                     // même forcé, refusé si non permis
+        return 'menu:' + (getComputedStyle(sel).display !== 'none') + '|electro:' + opt('electro') + '|tdr:' + opt('tdr')
+          + '|tdr ouvert:' + (getComputedStyle(document.getElementById('tdr-card')).display !== 'none');
+      }), attendu);
       erreurs = erreurs.concat(errors); await ctx.close();
     }
   }
