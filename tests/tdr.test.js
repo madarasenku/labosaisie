@@ -15,13 +15,15 @@ const fiche = (id, nom, date, coches, hema, patient = {}) => ({
   restricted_by: null, deleted_at: null,
 });
 const ROWS = [
-  fiche(801, 'ENFANT POSITIF', AUJ, ['TDR Paludisme'], { 'GE - TDR': 'Positif' }, { age: '3', sexe: 'M', service: 'Pédiatrie', telephone: '0700000001' }),
+  fiche(801, 'ENFANT POSITIF', AUJ, ['TDR Paludisme'], { 'GE - TDR': 'Positif' }, { age: '3', sexe: 'M', service: 'Pédiatrie', telephone: '0700000001', medecin: 'DR KONE' }),
   fiche(802, 'ADULTE NEGATIF', AUJ, ['TDR Paludisme', 'Goutte épaisse (GE)'], { 'GE - TDR': 'Négatif', 'GE - Résultat': 'Négatif' }, { age: '34', sexe: 'F' }),
   fiche(803, 'TDR A SAISIR', AUJ, ['TDR Paludisme'], null, { age: '18 mois', sexe: 'F' }),
   fiche(804, 'ANCIEN LIBELLE SANS TDR', AUJ, ['Goutte épaisse / TDR Paludisme'], { 'GE - Résultat': 'Négatif' }),
   fiche(805, 'NFS SEULE', AUJ, ['NFS — Numération Formule Sanguine'], null),
   fiche(806, 'TDR SEMAINE PASSEE', IL_Y_A_8J, ['TDR Paludisme'], { 'GE - TDR': 'Positif' }, { age: '40' }),
 ];
+ROWS[1].prescripteur_id = 3;            // prescripteur de la liste officielle
+const PRESC = [{ id: 3, nom: 'Dr DIALLO Awa', specialite: '', structure: '', taux_ristourne: 0, actif: true }];
 const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie': { 'GE - TDR': 'Négatif' } } };
 
 (async () => {
@@ -31,7 +33,7 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
   {
     const appels = [];
     const { ctx, page, errors } = await openApp({ role: 'admin', port: PORT, cible: CIBLE, appels,
-      rpc: { get_resultats_light: ROWS, update_resultat: FAIT_803 } });
+      rpc: { get_resultats_light: ROWS, update_resultat: FAIT_803, get_prescripteurs: PRESC } });
     // Détail complet d'un dossier : le serveur renvoie la ligne demandée.
     await page.evaluate((rows) => {
       const vrai = _sb.rpc.bind(_sb);
@@ -58,9 +60,11 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
       l1.some(t => /ANCIEN LIBELLE|NFS SEULE|SEMAINE PASSEE/.test(t)), false);
     r.check('récapitulatif', await page.evaluate(() => document.querySelector('#tdr-apercu').innerText.split('\n')[0].replace(/\s+/g, ' ')),
       '2 TDR fait(s) · 1 positif(s) · 1 négatif(s) · moins de 5 ans : 1 (dont 1 positif(s)) · 1 à saisir (surlignés)');
-    r.check('ligne complète (âge, sexe, service, résultat)', l1.find(t => /ENFANT POSITIF/.test(t)) || '',
-      l1.find(t => /ENFANT POSITIF/.test(t)) && /3 ans M Pédiatrie Positif/.test(l1.find(t => /ENFANT POSITIF/.test(t))) ? l1.find(t => /ENFANT POSITIF/.test(t)) : 'attendu : 3 ans M Pédiatrie Positif');
-    r.check('GE affichée quand faite', /ADULTE NEGATIF.*Négatif Négatif/.test(l1.join(' | ')), true);
+    r.check('ligne : date, dossier, nom, âge, sexe, prescripteur, TDR', (l1.find(t => /ENFANT POSITIF/.test(t)) || '').replace(/^\S+ /, ''),
+      '0801-1026 ENFANT POSITIF 3 ans M DR KONE Positif');
+    r.check('prescripteur de la liste officielle', /ADULTE NEGATIF 34 ans F Dr DIALLO Awa Négatif/.test(l1.join(' | ')), true);
+    r.check('colonnes à l\'écran', await page.evaluate(() => [...document.querySelectorAll('#tdr-apercu thead th')].map(t => t.textContent.trim()).join(' | ')),
+      'Imprimer | Date | N° dossier | Nom | Âge | Sexe | Prescripteur | TDR');
     r.check('à saisir : liste Positif/Négatif, pas de case Imprimer', await page.evaluate(() =>
       !!document.getElementById('tdr-res-803') + '|' + !document.querySelector('input[data-tdr-imp="803"]')), 'true|true');
 
@@ -76,13 +80,15 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
     const html = await page.evaluate(async () => {
       const cb = document.querySelector('input[data-tdr-imp="802"]'); cb.checked = false; cb.dispatchEvent(new Event('change'));
       window.__imprime = false; await imprimerTdr();
-      return { imprime: window.__imprime, html: document.getElementById('print-render').innerHTML, txt: document.getElementById('print-render').innerText };
+      return { imprime: window.__imprime, html: document.getElementById('print-render').innerHTML, txt: document.getElementById('print-render').innerText,
+               cols: [...document.querySelectorAll('#print-render thead th')].map(t => t.textContent.trim()).join(' | ') };
     });
     r.check('impression lancée', html.imprime, true);
     r.check('lignes cochées seulement', [/ENFANT POSITIF/.test(html.txt), /TDR A SAISIR/.test(html.txt), /ADULTE NEGATIF/.test(html.txt)].join('|'), 'true|true|false');
-    r.check('infos patient (téléphone, service)', /0700000001/.test(html.txt) && /Pédiatrie/.test(html.txt), true);
+    r.check('colonnes imprimées', html.cols, 'N° | Date | N° dossier | Nom et prénoms | Âge | Sexe | Prescripteur | Résultat TDR');
+    r.check('prescripteur imprimé ; ni téléphone, ni service, ni GE', [/DR KONE/.test(html.txt), /0700000001|Pédiatrie|Goutte/.test(html.txt)].join('|'), 'true|false');
     r.check('récapitulatif imprimé', /Total : 2 · Positifs : 1 · Négatifs : 1 · Moins de 5 ans : 2 \(dont 1 positif\(s\)\)/.test(html.txt), true);
-    r.check('A4 paysage', /size:A4 landscape/.test(html.html), true);
+    r.check('A4 portrait', /size:A4;/.test(html.html) && !/landscape/.test(html.html), true);
     r.check('tout décoché : rien à imprimer, message clair', await page.evaluate(async () => {
       tdrToutCocher(false); window.__imprime = false; const t = window.toast; let m = ''; window.toast = (x) => { m = x; };
       await imprimerTdr(); window.toast = t; return window.__imprime + '|' + m; }), 'false|Aucun TDR coché à imprimer');

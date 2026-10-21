@@ -10,7 +10,8 @@
      peut entrer Positif / Négatif directement depuis la liste, ce qui remplit
      le dossier (comme le profil d'électrophorèse).
    • On coche les lignes à imprimer (toutes les faites le sont par défaut) ;
-     la feuille A4 reprend les informations du patient et un récapitulatif.
+     la feuille A4 reprend, pour chaque patient : n°, date, n° de dossier,
+     nom, âge, sexe, prescripteur, résultat du TDR — et un récapitulatif.
 
    Chargé en script classique après electrophorese.js, dont il réutilise les
    bornes de semaine (_elecBornes, _elecLibelleSemaine). Réutilise aussi :
@@ -58,13 +59,6 @@ function _tdrResultat(res) {
   const h = (res && res['Hématologie']) || {}, p = (res && res['Parasitologie']) || {};
   return String(h['GE - TDR'] || p['TDR paludisme'] || '').trim();
 }
-function _tdrGE(res) {
-  const h = (res && res['Hématologie']) || {};
-  const r = String(h['GE - Résultat'] || '').trim();
-  const d = String(h['GE - Densité parasitaire (/µL)'] || '').trim();
-  if (!r && !d) return '';
-  return r + (d && d !== '0' ? (r ? ' · ' : '') + d + ' /µL' : '');
-}
 // Âge en années (« 18 mois » → 1,5 ; « 10 jours » → 0,03), null si inconnu.
 function _tdrAgeAns(age) {
   const s = String(age == null ? '' : age).trim().toLowerCase();
@@ -103,10 +97,8 @@ function _tdrLigne(r) {
     age: typeof formatAge === 'function' ? formatAge(p.age) : String(p.age || ''),
     ageAns: _tdrAgeAns(p.age),
     sexe: p.sexe || '',
-    telephone: p.telephone || '',
-    provenance: [p.service, p.medecin || presc].filter(Boolean).join(' · '),
+    prescripteur: presc || p.medecin || '',
     tdr: _tdrResultat(r.resultats),
-    ge: _tdrGE(r.resultats),
     masque: !!r.restrictedBy,
   };
 }
@@ -189,13 +181,12 @@ async function renderTdr() {
       + '<td><strong>' + esc(l.nom) + '</strong>' + (l.masque ? ' <span title="Fiche masquée" style="font-size:11px">🔒</span>' : '') + '</td>'
       + '<td style="white-space:nowrap">' + esc(l.age || '—') + '</td>'
       + '<td style="text-align:center">' + esc(l.sexe || '—') + '</td>'
-      + '<td style="font-size:12px">' + esc(l.provenance || '—') + '</td>'
+      + '<td style="font-size:12px">' + esc(l.prescripteur || '—') + '</td>'
       + '<td style="white-space:nowrap">' + (fait ? _tdrBadge(l.tdr)
           : '<select id="tdr-res-' + l.id + '" style="font-size:12px;padding:3px 6px"><option value="">— À saisir —</option>'
             + '<option>Positif</option><option>Négatif</option></select> '
             + '<button class="btn btn-success" style="padding:3px 9px;font-size:11px" onclick="enregistrerTdrResultat(' + l.id + ')" '
             + 'title="Enregistrer le résultat dans le dossier">✓ Enregistrer</button>') + '</td>'
-      + '<td style="font-size:12px">' + esc(l.ge || '—') + '</td>'
       + '</tr>';
   }).join('');
   zone.innerHTML =
@@ -210,11 +201,11 @@ async function renderTdr() {
     + '<a href="#" onclick="tdrToutCocher(false);return false">Tout décocher</a></div>'
     + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12.5px">'
     + '<thead><tr><th style="text-align:center">Imprimer</th><th>Date</th><th>N° dossier</th><th>Nom</th>'
-    + '<th>Âge</th><th style="text-align:center">Sexe</th><th>Service · prescripteur</th><th>TDR</th><th>GE</th></tr></thead>'
+    + '<th>Âge</th><th style="text-align:center">Sexe</th><th>Prescripteur</th><th>TDR</th></tr></thead>'
     + '<tbody>' + corps + '</tbody></table></div>';
 }
 
-/** Feuille A4 (paysage) des TDR cochés, avec récapitulatif, puis impression. */
+/** Feuille A4 des TDR cochés, avec récapitulatif, puis impression. */
 async function imprimerTdr() {
   const b = _tdrBornes(_tdrRef);
   showLoading('Préparation de la liste des TDR…');
@@ -230,27 +221,25 @@ async function imprimerTdr() {
     + '<td class="td-nom">' + esc(l.nom) + '</td>'
     + '<td class="td-age">' + esc(l.age) + '</td>'
     + '<td class="td-sx">' + esc(l.sexe) + '</td>'
-    + '<td class="td-tel">' + esc(l.telephone) + '</td>'
-    + '<td class="td-pr">' + esc(l.provenance) + '</td>'
-    + '<td class="td-res">' + esc(l.tdr) + '</td>'
-    + '<td class="td-ge">' + esc(l.ge) + '</td></tr>').join('');
+    + '<td class="td-pr">' + esc(l.prescripteur) + '</td>'
+    + '<td class="td-res">' + esc(l.tdr) + '</td></tr>').join('');
 
   const html =
     '<style>'
-    + '@page{size:A4 landscape;margin:10mm;}'
+    + '@page{size:A4;margin:12mm 10mm;}'
     + '#print-render::after,#print-render::before,body::after,body::before{content:none!important;display:none!important;}'
     + "#print-render{font-family:'Segoe UI',Arial,sans-serif;color:#000;background:#fff;}"
     + '.td-h1{font-size:13.5pt;font-weight:800;text-align:center;letter-spacing:.3px;margin:0;}'
     + '.td-h2{font-size:7pt;color:#333;text-align:center;margin:1px 0 0;}'
     + '.td-title{font-size:11pt;font-weight:800;text-align:center;letter-spacing:.4px;margin-top:8px;padding-bottom:5px;border-bottom:1.3pt solid #111;}'
     + '.td-band{border:1px solid #444;background:#eee;font-weight:700;font-size:9.5pt;padding:4px 10px;margin:10px 0 6px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}'
-    + '.td-t{width:100%;border-collapse:collapse;font-size:8.5pt;}'
+    + '.td-t{width:100%;border-collapse:collapse;font-size:9pt;}'
     + '.td-t th,.td-t td{border:1px solid #999;padding:4px 6px;vertical-align:middle;}'
     + '.td-t th{background:#eee;font-weight:700;text-align:left;}'
     + '.td-t tr{page-break-inside:avoid;}'
-    + '.td-n{width:3%;text-align:center;}.td-d{width:6%;white-space:nowrap;}.td-no{width:9%;white-space:nowrap;}'
-    + '.td-nom{width:22%;font-weight:600;}.td-age{width:6%;white-space:nowrap;}.td-sx{width:4%;text-align:center;}'
-    + '.td-tel{width:10%;white-space:nowrap;}.td-pr{width:18%;}.td-res{width:8%;font-weight:800;}.td-ge{width:14%;}'
+    + '.td-n{width:5%;text-align:center;}.td-d{width:8%;white-space:nowrap;}.td-no{width:12%;white-space:nowrap;}'
+    + '.td-nom{width:30%;font-weight:600;}.td-age{width:9%;white-space:nowrap;}.td-sx{width:6%;text-align:center;}'
+    + '.td-pr{width:19%;}.td-res{width:11%;font-weight:800;}'
     + '.td-foot{margin-top:14px;padding-top:4px;border-top:1.4px solid #333;display:flex;gap:14px;}'
     + '.td-foot>div{flex:1;}.td-sig-lab{font-size:8pt;font-weight:700;}.td-sigbox{border:1px solid #666;height:12mm;margin-top:2px;}'
     + '</style>'
@@ -262,8 +251,8 @@ async function imprimerTdr() {
     + ' · Moins de 5 ans : ' + rc.moins5 + ' (dont ' + rc.moins5Pos + ' positif(s))</span></div>'
     + '<table class="td-t"><thead><tr>'
     + '<th class="td-n">N°</th><th class="td-d">Date</th><th class="td-no">N° dossier</th><th class="td-nom">Nom et prénoms</th>'
-    + '<th class="td-age">Âge</th><th class="td-sx">Sexe</th><th class="td-tel">Téléphone</th><th class="td-pr">Service · prescripteur</th>'
-    + '<th class="td-res">TDR</th><th class="td-ge">Goutte épaisse</th>'
+    + '<th class="td-age">Âge</th><th class="td-sx">Sexe</th><th class="td-pr">Prescripteur</th>'
+    + '<th class="td-res">Résultat TDR</th>'
     + '</tr></thead><tbody>' + corps + '</tbody></table>'
     + '<div class="td-foot">'
     + '<div><div class="td-sig-lab">Le technicien</div><div class="td-sigbox"></div></div>'
