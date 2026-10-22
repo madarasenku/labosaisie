@@ -412,6 +412,9 @@ async function refreshDB(force) {
   //   de date que setHistPeriode alimente.
   if (!force && _dbCache.length) return _dbCache;
   if (!navigator.onLine) return _dbCache;
+  // ✅ v13.254 — Repère de synchronisation pris AVANT le chargement : ce qui
+  //   change pendant le chargement sera rattrapé par synchroniserPostes().
+  if (_syncDepuis === null) await _syncRepere();
   let data, error;
   try {
     ({ data, error } = await _sb.rpc('get_resultats_light', { p_token: TK(), p_limit: 20000 }));
@@ -476,6 +479,116 @@ async function refreshDB(force) {
   try { if (typeof chargerClotures === 'function') await chargerClotures(); } catch (e) {}
 
   return _dbCache;
+}
+
+// ════════ ✅ v13.254 — SYNCHRONISATION ENTRE POSTES ════════
+//   Avant : chaque poste chargeait la liste des dossiers UNE fois, au démarrage.
+//   Un patient enregistré sur un autre poste n'apparaissait qu'après avoir
+//   rechargé la page. Désormais, toutes les 30 s (et au retour sur l'onglet),
+//   le poste demande au serveur ce qui a changé depuis sa dernière visite
+//   (get_resultats_depuis) et ne recharge QUE ces dossiers (get_resultats_ids,
+//   mêmes droits que la liste complète). Coût : une très petite requête quand
+//   rien ne change. L'écran ouvert est rafraîchi, sauf pendant une saisie
+//   (fenêtre ouverte, saisie en série, enregistrement en cours) : il le sera
+//   juste après.
+let _syncDepuis = null;                 // dernier numéro de modification connu
+const _syncVus = new Map();             // id → numéro déjà appliqué
+let _syncEnCours = false, _syncRerenduEnAttente = false, _syncTimer = null;
+const _SYNC_INTERVALLE_MS = 30000;
+
+async function _syncRepere() {
+  try {
+    const { data } = await _sb.rpc('get_resultats_depuis', { p_token: TK(), p_depuis: null });
+    if (data && data.maj != null && !data.erreur) _syncDepuis = Number(data.maj);
+  } catch (e) { /* réessayé au prochain passage */ }
+}
+
+function _syncAppliquer(ids, d) {
+  const lignes = new Map((d.lignes || []).map(row => [Number(row.id), row]));
+  const restr = new Map((d.restreintes || []).map(x => [Number(x.id), x.restricted_by || null]));
+  const supp = new Map((d.supprimees || []).map(x => [Number(x.id), x]));
+  const moi = _currentUser?.username;
+  let nouveaux = 0;
+  ids.forEach(id => {
+    const idx = _dbCache.findIndex(r => r.id === id && !r._pending);
+    const row = lignes.get(id);
+    if (!row) { if (idx >= 0) _dbCache.splice(idx, 1); return; }      // plus visible pour ce compte
+    const s = supp.get(id);
+    const rec = {
+      id: row.id, type: row.type, patient: row.patient,
+      resultats: row.resultats || {}, savedAt: row.created_at,
+      createdBy: row.created_by, montant: row.montant || 0,
+      prescripteur_id: row.prescripteur_id, est_bpn: row.est_bpn || false,
+      restrictedBy: restr.has(id) ? restr.get(id) : null,
+      deletedAt: s ? s.deleted_at : null, deletedBy: s ? s.deleted_by : null,
+      _light: true,                       // le détail sera rechargé à l'ouverture (ensureFull)
+    };
+    if (idx >= 0) _dbCache[idx] = rec;
+    else { _dbCache.push(rec); if (!rec.deletedAt && rec.createdBy !== moi) nouveaux++; }
+  });
+  if (typeof buildPatientCache === 'function') buildPatientCache();
+  if (typeof refreshMedecinDatalist === 'function') refreshMedecinDatalist();
+  if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+  return nouveaux;
+}
+
+function _syncPosteOccupe() {
+  const vis = e => !!e && e.isConnected && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
+  if (document.getElementById('loading-overlay')?.classList.contains('active')) return true;
+  if (vis(document.getElementById('grille-serie'))) return true;
+  return [...document.querySelectorAll('.modal-backdrop,[id$="-modal"],[id$="-modal-bd"],[id^="modal-"]')].some(vis);
+}
+
+function _syncRerendre(nouveaux) {
+  if (_syncPosteOccupe()) { _syncRerenduEnAttente = true; return; }
+  _syncRerenduEnAttente = false;
+  const vis = id => { const e = document.getElementById(id); return !!e && e.style.display !== 'none' && e.getClientRects().length > 0; };
+  try {
+    if (vis('view-historique') && typeof renderHistory === 'function') renderHistory();
+    else if ((vis('view-caisse') || vis('view-caisse-user')) && typeof renderCaisse === 'function') renderCaisse();
+    else if (vis('view-accueil') && typeof renderAccueil === 'function') renderAccueil();
+  } catch (e) { /* l'écran sera à jour au prochain affichage */ }
+  if (nouveaux > 0) toast('↻ ' + nouveaux + (nouveaux > 1 ? ' nouveaux dossiers reçus' : ' nouveau dossier reçu') + ' d\'un autre poste', '');
+}
+
+async function synchroniserPostes() {
+  if (_syncEnCours || !navigator.onLine || document.hidden) return;
+  if (typeof _currentUser === 'undefined' || !_currentUser || !TK() || typeof _sb === 'undefined' || !_sb) return;
+  if (_syncDepuis === null) { await _syncRepere(); return; }
+  _syncEnCours = true;
+  try {
+    const { data, error } = await _sb.rpc('get_resultats_depuis', { p_token: TK(), p_depuis: _syncDepuis });
+    if (error || !data || data.erreur || data.maj == null) return;
+    if (data.complet) {                   // trop de changements : liste complète
+      await refreshDB(true);
+      _syncDepuis = Number(data.maj); _syncVus.clear();
+      _syncRerendre(0);
+      return;
+    }
+    const aCharger = (Array.isArray(data.changements) ? data.changements : [])
+      .map(c => [Number(c[0]), Number(c[1])])
+      .filter(([id, maj]) => !(_syncVus.get(id) >= maj));
+    if (aCharger.length) {
+      const ids = aCharger.map(c => c[0]);
+      const r2 = await _sb.rpc('get_resultats_ids', { p_token: TK(), p_ids: ids });
+      if (r2.error || !r2.data || r2.data.erreur) return;       // réessayé au prochain passage
+      const nouveaux = _syncAppliquer(ids, r2.data);
+      aCharger.forEach(([id, maj]) => _syncVus.set(id, maj));
+      _syncDepuis = Math.max(_syncDepuis, Number(data.maj));
+      _syncRerendre(nouveaux);
+      return;
+    }
+    _syncDepuis = Math.max(_syncDepuis, Number(data.maj));
+    if (_syncRerenduEnAttente) _syncRerendre(0);
+  } catch (e) { /* réseau : réessayé au prochain passage */ }
+  finally { _syncEnCours = false; }
+}
+
+function demarrerSynchronisation() {
+  if (_syncTimer) return;
+  _syncTimer = setInterval(synchroniserPostes, _SYNC_INTERVALLE_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) synchroniserPostes(); });
+  window.addEventListener('online', () => synchroniserPostes());
 }
 
 // ✅ v13.5 — Charge le détail complet d'UNE fiche à la demande (ouverture,
