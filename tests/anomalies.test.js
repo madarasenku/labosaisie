@@ -48,6 +48,11 @@ const banc = () => {
       const reste = JSON.parse(localStorage.getItem('labo_anomalies_attente') || '[]').length;
       return [garde, reste, __envois.slice(-2).map(e => e.p_message).join(' / ')].join('|');
     }), '1|0|Échec de la mise à jour / Journée verrouillée — modification impossible');
+    r.check('file d\'un autre compte (déconnecté) : auteur gardé dans le message', await page.evaluate(async () => {
+      localStorage.setItem('labo_anomalies_attente', JSON.stringify([{ m: 'Échec ancien', c: { vue: 'Caisse' }, u: 'caisse1' }]));
+      await _envoyerAnomalies();
+      return __envois[__envois.length - 1].p_message;
+    }), '[compte caisse1] Échec ancien');
     r.check('erreur technique de la page consignée', await page.evaluate(async () => {
       window.dispatchEvent(new ErrorEvent('error', { message: 'x is not defined', filename: 'http://h/js/saisie.js?v=1', lineno: 42 }));
       await new Promise(r => setTimeout(r, 200));
@@ -74,9 +79,12 @@ const banc = () => {
     r.check('contexte : dossier, examens, appareil', /Dossier N° 0501-1026/.test(lignes[0]) && /Goutte épaisse/.test(lignes[0]) && /mobile/.test(lignes[0]), true);
     r.check('badge effacé après consultation', await page.evaluate(() => {
       const b = document.getElementById('ano-badge'); return !b || b.style.display === 'none'; }), true);
-    r.check('recherche', await page.evaluate(() => {
-      const f = document.getElementById('anomalies-filtre'); f.value = 'caisse1'; f.dispatchEvent(new Event('input'));
-      return new Promise(res => setTimeout(() => res(document.querySelectorAll('#anomalies-body tr').length), 300)); }), 1);
+    r.check('recherche (filtrée sur place, sans rappeler le serveur)', await page.evaluate(() => {
+      let appels = 0; const vrai = _sb.rpc; _sb.rpc = (n, p) => { if (n === 'get_anomalies') appels++; return vrai(n, p); };
+      const f = document.getElementById('anomalies-filtre');
+      ['c', 'ca', 'caisse1'].forEach(v => { f.value = v; f.dispatchEvent(new Event('input')); });
+      return new Promise(res => setTimeout(() => { _sb.rpc = vrai;
+        res(document.querySelectorAll('#anomalies-body tr').length + '|' + appels); }, 300)); }), '1|0');
     r.check('nouvelle anomalie : alerte en direct', await page.evaluate(async (a) => {
       window.__msgs = []; const t = window.toast; window.toast = (m, k) => { window.__msgs.push(m); };
       _lastNotifiedAnoTs = a[1].ts;          // la plus ancienne était déjà connue

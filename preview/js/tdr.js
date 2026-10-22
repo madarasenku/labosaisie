@@ -22,6 +22,7 @@
 let _tdrRef = null;                 // date quelconque dans la période voulue (null = courante)
 let _tdrMode = 'semaine';           // 'semaine' | 'mois'
 let _tdrHorsImpression = new Set(); // lignes DÉcochées pour l'impression (le temps de la session)
+let _tdrRendu = 0;                  // n° du dernier affichage demandé (réponses tardives ignorées)
 
 function toggleTdrImprimer(id, val) {
   if (val) _tdrHorsImpression.delete(String(id)); else _tdrHorsImpression.add(String(id));
@@ -127,9 +128,13 @@ async function enregistrerTdrResultat(id) {
   showLoading('Enregistrement du TDR…');
   try { if (typeof ensureFull === 'function') await ensureFull(rec); } catch (e) {}
   if (rec._light) { hideLoading(); toast('Impossible hors-ligne — réessayez connecté', 'err'); return; }
-  rec.resultats = rec.resultats || {};
-  rec.resultats['Hématologie'] = Object.assign({}, rec.resultats['Hématologie'] || {}, { 'GE - TDR': val });
-  const updated = await updateRecordRemote(id, rec, { onlyResultats: true });
+  // Copie : le cache n'est modifié qu'une fois le serveur d'accord (updateRecordRemote
+  //   le remplace alors) — un refus (journée verrouillée…) ne laisse pas un faux
+  //   « fait » dans la liste ni sur la feuille imprimée.
+  const res = rec.resultats || {};
+  const copie = Object.assign({}, rec, { resultats: Object.assign({}, res, {
+    'Hématologie': Object.assign({}, res['Hématologie'] || {}, { 'GE - TDR': val }) }) });
+  const updated = await updateRecordRemote(id, copie, { onlyResultats: true });
   hideLoading();
   if (updated) { toast('TDR enregistré ✓ (' + val + ')', 'ok'); renderTdr(); }
 }
@@ -159,8 +164,11 @@ async function renderTdr() {
   const b = _tdrBornes(_tdrRef);
   if (lbl) lbl.textContent = b.libelle;
   zone.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:8px">Chargement…</p>';
+  const jeton = ++_tdrRendu;
   const recs = await _tdrDossiers(_tdrRef);
-  if (_tdrBornes(_tdrRef).du !== b.du) return;       // période changée pendant le chargement
+  // Période OU mode changé pendant le chargement (une semaine et un mois peuvent
+  //   commencer le même jour) : seul le dernier affichage demandé s'écrit.
+  if (jeton !== _tdrRendu) return;
 
   const lignes = recs.map(_tdrLigne);
   if (!lignes.length) {

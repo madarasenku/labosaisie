@@ -55,6 +55,19 @@ const { serve, openApp, createReporter } = require('./helpers');
   r.check('groupe O Rh+', grp.o, 'O Rh+');
   r.check('groupe vide', grp.vide, '');
 
+  // ✅ v13.255 — Profil refusé par le serveur : rien n'est écrit dans le dossier.
+  r.check('profil refusé : dossier inchangé', await page.evaluate(async () => {
+    _dbCache.push({ id: 7001, type: 'Dossier', patient: { nom: 'ELEC', date: new Date().toISOString().slice(0, 10) },
+      resultats: { 'Hématologie': {} }, montant: 0, _light: false });
+    const sel = document.createElement('select'); sel.id = 'elec-prof-7001';
+    sel.innerHTML = '<option>Profil AA (Normal)</option>'; document.body.appendChild(sel);
+    const vrai = _sb.rpc; _sb.rpc = (n, p) => n === 'update_resultat'
+      ? Promise.resolve({ data: null, error: { message: 'refusé' }, status: 400 }) : vrai(n, p);
+    try { await enregistrerElectroResultat(7001); } finally { _sb.rpc = vrai; sel.remove(); }
+    const r = _dbCache.find(x => x.id === 7001); _dbCache = _dbCache.filter(x => x.id !== 7001);
+    return (r.resultats['Hématologie'] || {})['Profil Hb'] || '';
+  }), '');
+
   // Gating ADMIN : la carte est visible dans l'Historique pour l'admin.
   // ✅ v13.253 — Affichée quand on la choisit dans le menu « 📋 Listes ».
   const vuAdmin = await page.evaluate(() => { showView('historique'); choisirListeHistorique('electro'); const c = document.getElementById('electro-card'); return !!(c && c.offsetParent !== null); });

@@ -156,9 +156,9 @@ document.addEventListener('keydown', e => {
     const a = document.activeElement;
     if (a && (a.tagName === 'TEXTAREA'
         || (a.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|range|color|file)$/i.test(a.type)))) return false;
-    if (document.getElementById('loading-overlay')?.classList.contains('active')) return false;
     if (['view-saisie', 'view-comptes'].some(id => _visible(document.getElementById(id)))) return false;
-    if ([...document.querySelectorAll('.modal-backdrop,[id$="-modal"],[id$="-modal-bd"],[id^="modal-"]')].some(_visible)) return false;
+    // ✅ v13.255 — Fenêtres, saisie en série, enregistrement : règle partagée (supabase-db.js).
+    if (typeof saisieEnCoursAEcran === 'function' && saisieEnCoursAEcran()) return false;
     return true;
   }
   function _tenterMajAuto() {

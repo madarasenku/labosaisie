@@ -415,6 +415,7 @@ async function refreshDB(force) {
   // ✅ v13.254 — Repère de synchronisation pris AVANT le chargement : ce qui
   //   change pendant le chargement sera rattrapé par synchroniserPostes().
   if (_syncDepuis === null) await _syncRepere();
+  const repereAvant = _syncDepuis;
   let data, error;
   try {
     ({ data, error } = await _sb.rpc('get_resultats_light', { p_token: TK(), p_limit: 20000 }));
@@ -439,6 +440,13 @@ async function refreshDB(force) {
     restrictedBy: row.restricted_by || null, // présent si le RPC retourne la colonne
     _light: true,
   })).concat(pendings);
+  // Une synchronisation appliquée PENDANT ce chargement vient d'être écrasée par
+  // un instantané plus ancien : on revient au repère pris avant le chargement
+  // pour que synchroniserPostes() la rejoue (sinon _syncVus la croirait appliquée).
+  if (repereAvant !== null) {
+    if (_syncDepuis !== null && _syncDepuis > repereAvant) _syncDepuis = repereAvant;
+    _syncVus.forEach((maj, id) => { if (maj > repereAvant) _syncVus.delete(id); });
+  }
   if (typeof buildPatientCache === 'function') buildPatientCache();
   if (typeof refreshMedecinDatalist === 'function') refreshMedecinDatalist();
   if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
@@ -510,7 +518,10 @@ function _syncAppliquer(ids, d) {
   const moi = _currentUser?.username;
   let nouveaux = 0;
   ids.forEach(id => {
-    const idx = _dbCache.findIndex(r => r.id === id && !r._pending);
+    // Modification locale en attente (file hors-ligne) : elle prime et sera
+    // rejouée par flushSyncQueue ; ajouter la version serveur ferait un doublon.
+    if (_dbCache.some(r => r.id === id && r._pending)) return;
+    const idx = _dbCache.findIndex(r => r.id === id);
     const row = lignes.get(id);
     if (!row) { if (idx >= 0) _dbCache.splice(idx, 1); return; }      // plus visible pour ce compte
     const s = supp.get(id);
@@ -532,12 +543,19 @@ function _syncAppliquer(ids, d) {
   return nouveaux;
 }
 
-function _syncPosteOccupe() {
-  const vis = e => !!e && e.isConnected && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
-  if (document.getElementById('loading-overlay')?.classList.contains('active')) return true;
-  if (vis(document.getElementById('grille-serie'))) return true;
-  return [...document.querySelectorAll('.modal-backdrop,[id$="-modal"],[id$="-modal-bd"],[id^="modal-"]')].some(vis);
+// ✅ v13.255 — Règle UNIQUE « une saisie est en cours à l'écran » : fenêtre
+//   ouverte, saisie en série, enregistrement en cours. Partagée par la
+//   synchronisation (ne pas redessiner) et la mise à jour automatique (ne pas
+//   recharger) : un nouveau type de fenêtre n'est à déclarer qu'ici.
+function elementVisible(e) {
+  return !!e && e.isConnected && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
 }
+function saisieEnCoursAEcran() {
+  if (document.getElementById('loading-overlay')?.classList.contains('active')) return true;
+  if (elementVisible(document.getElementById('grille-serie'))) return true;
+  return [...document.querySelectorAll('.modal-backdrop,[id$="-modal"],[id$="-modal-bd"],[id^="modal-"]')].some(elementVisible);
+}
+function _syncPosteOccupe() { return saisieEnCoursAEcran(); }
 
 function _syncRerendre(nouveaux) {
   if (_syncPosteOccupe()) { _syncRerenduEnAttente = true; return; }
@@ -552,7 +570,9 @@ function _syncRerendre(nouveaux) {
 }
 
 async function synchroniserPostes() {
-  if (_syncEnCours || !navigator.onLine || document.hidden) return;
+  // Pas pendant le rejeu de la file hors-ligne : ses insertions remplacent
+  //   l'id temporaire après coup, la synchro les ajouterait en double.
+  if (_syncEnCours || _syncing || !navigator.onLine || document.hidden) return;
   if (typeof _currentUser === 'undefined' || !_currentUser || !TK() || typeof _sb === 'undefined' || !_sb) return;
   if (_syncDepuis === null) { await _syncRepere(); return; }
   _syncEnCours = true;
@@ -560,7 +580,9 @@ async function synchroniserPostes() {
     const { data, error } = await _sb.rpc('get_resultats_depuis', { p_token: TK(), p_depuis: _syncDepuis });
     if (error || !data || data.erreur || data.maj == null) return;
     if (data.complet) {                   // trop de changements : liste complète
+      const avant = _dbCache;
       await refreshDB(true);
+      if (_dbCache === avant) return;     // chargement échoué : repère inchangé, réessayé au prochain passage
       _syncDepuis = Number(data.maj); _syncVus.clear();
       _syncRerendre(0);
       return;
@@ -754,6 +776,7 @@ async function flushSyncQueue(silent) {
           resultats: item.record.resultats, savedAt: new Date().toISOString(),
           createdBy: item.record.createdBy || '', montant: item.record.montant || 0,
           prescripteur_id: item.record.prescripteur_id, est_bpn: item.est_bpn };
+        _dbCache = _dbCache.filter(r => r.id !== newId);   // déjà reçue par la synchro entre postes
         const idx = _dbCache.findIndex(r => r.id === item.tempId);
         if (idx >= 0) _dbCache[idx] = saved; else _dbCache.push(saved);
         removeFromQueue(item.qid); ok++;
@@ -839,7 +862,8 @@ async function insertRecordRemote(record) {
       resultats: record.resultats, savedAt: new Date().toISOString(),
       createdBy: record.createdBy || '', montant: record.montant || 0,
       prescripteur_id: record.prescripteur_id, est_bpn: est_bpn };
-    _dbCache.push(saved);
+    const dejaLa = _dbCache.findIndex(r => r.id === newId);   // déjà reçue par la synchro entre postes
+    if (dejaLa >= 0) _dbCache[dejaLa] = saved; else _dbCache.push(saved);
     return saved;
   } catch (e) {
     if (isNetworkError(e)) return enqueueInsert(record, est_bpn); // ✅ v13.4 — bascule en file
