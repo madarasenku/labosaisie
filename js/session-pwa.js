@@ -133,10 +133,44 @@ document.addEventListener('keydown', e => {
   //    dernière version. Mais un poste qui laisse l'app ouverte toute la
   //    journée garde en mémoire le JS du démarrage. On surveille donc le
   //    déploiement et on propose un rechargement explicite.
+  // ✅ v13.254 — MISE À JOUR AUTOMATIQUE, sans jamais perdre une saisie.
+  //    Dès qu'une nouvelle version est détectée, l'application se recharge
+  //    d'elle-même au premier moment SÛR : personne n'a touché le poste depuis
+  //    2 minutes, aucun champ texte n'a le curseur, aucune fenêtre n'est
+  //    ouverte, on n'est ni sur « Nouvelle saisie » (saisie en série comprise)
+  //    ni sur « Comptes » (formulaires), rien n'est en cours d'enregistrement.
+  //    Le dernier écran est rouvert après le rechargement (restaurerDerniereVue).
+  //    « Recharger maintenant » reste possible ; « ✕ » reporte de 30 minutes.
 
   let _updateBannerShown = false;
+  const _MAJ_INACTIVITE_MS = 2 * 60 * 1000;
+  let _derniereActivite = Date.now();
+  ['pointerdown', 'keydown', 'input', 'wheel', 'touchstart'].forEach(t =>
+    window.addEventListener(t, () => { _derniereActivite = Date.now(); }, { capture: true, passive: true }));
+  let _majEnAttente = false, _majReporteeJusqua = 0, _majTimer = null;
+  window._rechargerPage = window._rechargerPage || (() => location.reload());
+  const _visible = e => !!e && e.isConnected && e.getClientRects().length > 0
+    && getComputedStyle(e).visibility !== 'hidden';
+  function _posteLibre() {
+    if (Date.now() - _derniereActivite < _MAJ_INACTIVITE_MS) return false;
+    const a = document.activeElement;
+    if (a && (a.tagName === 'TEXTAREA'
+        || (a.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|range|color|file)$/i.test(a.type)))) return false;
+    if (document.getElementById('loading-overlay')?.classList.contains('active')) return false;
+    if (['view-saisie', 'view-comptes'].some(id => _visible(document.getElementById(id)))) return false;
+    if ([...document.querySelectorAll('.modal-backdrop,[id$="-modal"],[id$="-modal-bd"],[id^="modal-"]')].some(_visible)) return false;
+    return true;
+  }
+  function _tenterMajAuto() {
+    if (!_majEnAttente || Date.now() < _majReporteeJusqua || !_posteLibre()) return false;
+    clearInterval(_majTimer); _majTimer = null;
+    window._rechargerPage();
+    return true;
+  }
 
   function showUpdateBanner() {
+    _majEnAttente = true;
+    if (!_majTimer) _majTimer = setInterval(_tenterMajAuto, 15000);
     if (_updateBannerShown || !document.body) return;
     _updateBannerShown = true;
 
@@ -150,16 +184,16 @@ document.addEventListener('keydown', e => {
       'box-shadow:0 8px 28px rgba(0,0,0,.35);max-width:92vw';
 
     const txt = document.createElement('span');
-    txt.textContent = '🔄 Nouvelle version disponible';
+    txt.textContent = '🔄 Nouvelle version — mise à jour automatique dès que le poste est libre';
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = 'Recharger';
+    btn.textContent = 'Recharger maintenant';
     btn.style.cssText =
       'cursor:pointer;border:0;border-radius:8px;padding:7px 14px;' +
       'background:#38bdf8;color:#0f172a;font-weight:700;font-size:14px';
 
-    // Jamais de rechargement automatique : une saisie en cours serait perdue.
+    // Rechargement immédiat à la demande : on prévient pour une saisie en cours.
     btn.addEventListener('click', async () => {
       if (typeof showConfirmModal === 'function') {
         const ok = await showConfirmModal({
@@ -170,18 +204,20 @@ document.addEventListener('keydown', e => {
         });
         if (!ok) return;
       }
-      location.reload();
+      window._rechargerPage();
     });
 
     const close = document.createElement('button');
     close.type = 'button';
     close.textContent = '✕';
     close.setAttribute('aria-label', 'Plus tard');
+    close.title = 'Reporter la mise à jour automatique de 30 minutes';
     close.style.cssText =
       'cursor:pointer;border:0;background:transparent;color:#94a3b8;font-size:16px;line-height:1';
     close.addEventListener('click', () => {
       bar.remove();
       _updateBannerShown = false; // réapparaîtra à la prochaine vérification
+      _majReporteeJusqua = Date.now() + 30 * 60 * 1000;
     });
 
     bar.append(txt, btn, close);
@@ -215,8 +251,12 @@ document.addEventListener('keydown', e => {
         const nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', () => {
-          // 'installed' + contrôleur déjà actif = mise à jour, pas 1re installation
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          // 'installed' + contrôleur déjà actif = mise à jour, pas 1re installation.
+          // ✅ v13.254 — …du MÊME service worker : un poste qui passe du site au
+          //   lien de test (ou l'inverse) installe un autre sw.js alors que celui
+          //   de l'autre site contrôle encore la page — ce n'est pas une mise à jour.
+          const ctl = navigator.serviceWorker.controller;
+          if (nw.state === 'installed' && ctl && ctl.scriptURL === nw.scriptURL) {
             showUpdateBanner();
           }
         });
@@ -225,10 +265,13 @@ document.addEventListener('keydown', e => {
       const poll = () => { reg.update().catch(() => {}); checkForUpdate(); };
       document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
       window.addEventListener('online', poll);
-      setInterval(poll, 30 * 60 * 1000);   // filet de sécurité toutes les 30 min
+      setInterval(poll, 10 * 60 * 1000);   // ✅ v13.254 — vérification toutes les 10 min
       checkForUpdate();                     // établit la référence au démarrage
     }).catch(err => console.warn('[PWA] SW:', err.message));
   }
+  // Points d'accès pour les tests (aucun effet en usage normal).
+  window.__majAuto = { signaler: showUpdateBanner, posteLibre: _posteLibre, tenter: _tenterMajAuto,
+                       activite: (t) => { _derniereActivite = t; }, enAttente: () => _majEnAttente };
 })();
 
 document.addEventListener('DOMContentLoaded', () => {

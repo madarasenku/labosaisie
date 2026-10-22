@@ -372,6 +372,8 @@ function enterApp() {
   initApp();
   updateSyncBanner();          // ✅ v13.4
   flushSyncQueue(true);        // ✅ v13.4 — tenter la synchro silencieuse au démarrage
+  // ✅ v13.254 — Les dossiers enregistrés sur les autres postes arrivent seuls.
+  if (typeof demarrerSynchronisation === 'function') demarrerSynchronisation();
   // ✅ v13.28 — heartbeat jeton (F9), 1re connexion (F8), permission notifications (F10)
   if (typeof startTokenRefresh === 'function') startTokenRefresh();
   if (typeof checkFirstLogin === 'function') checkFirstLogin();
