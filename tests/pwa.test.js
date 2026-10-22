@@ -90,7 +90,8 @@ const CACHE = /const CACHE = '([^']+)'/.exec(
   if (await page.locator('#update-banner').count()) {
     await page.locator('#update-banner button', { hasText: 'Recharger' }).click();
     await page.waitForTimeout(1200);
-    // Jamais de rechargement automatique : une saisie en cours serait perdue.
+    // « Recharger maintenant » prévient d'abord (une saisie en cours serait perdue) ;
+    // le rechargement AUTOMATIQUE, lui, n'a lieu que poste libre (maj-auto.test.js).
     r.check('demande confirmation avant de recharger',
             await page.locator('#confirm-modal-backdrop').count(), 1);
     await page.locator('#cm-cancel').click();
