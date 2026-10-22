@@ -76,7 +76,7 @@ function signalerAnomalie(message, extra) {
     _anoRecents.set(cle, t);
     let file = [];
     try { file = JSON.parse(localStorage.getItem(_ANO_FILE_KEY) || '[]'); } catch (e) {}
-    file.push({ m: msg, c });
+    file.push({ m: msg, c, u: _currentUser.username || '' });
     try { localStorage.setItem(_ANO_FILE_KEY, JSON.stringify(file.slice(-30))); } catch (e) {}
     _envoyerAnomalies();
   } catch (e) {}
@@ -89,9 +89,14 @@ async function _envoyerAnomalies() {
       let file = [];
       try { file = JSON.parse(localStorage.getItem(_ANO_FILE_KEY) || '[]'); } catch (e) {}
       if (!file.length) break;
-      const { m, c } = file[0];
+      const { m, c, u } = file[0];
+      // File locale partagée par le poste : une anomalie restée en attente d'un
+      //   AUTRE compte (déconnecté depuis) part sous le jeton courant ; on garde
+      //   la trace de son vrai auteur dans le message.
+      const moi = (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.username) || '';
+      const texte = (u && u !== moi) ? '[compte ' + u + '] ' + m : m;
       let rep;
-      try { rep = await _sb.rpc('log_anomalie', { p_token: TK(), p_message: m, p_contexte: c }); }
+      try { rep = await _sb.rpc('log_anomalie', { p_token: TK(), p_message: texte, p_contexte: c }); }
       catch (e) { break; }                                  // hors ligne : on réessaiera
       if (rep && rep.error && !rep.status) break;           // réseau coupé
       // Envoyé (ou refusé pour de bon : jeton expiré, limite) : on le retire.
@@ -374,6 +379,7 @@ function enterApp() {
   flushSyncQueue(true);        // ✅ v13.4 — tenter la synchro silencieuse au démarrage
   // ✅ v13.254 — Les dossiers enregistrés sur les autres postes arrivent seuls.
   if (typeof demarrerSynchronisation === 'function') demarrerSynchronisation();
+  _envoyerAnomalies();         // anomalies restées en file (hors ligne) : envoyées sans attendre la suivante
   // ✅ v13.28 — heartbeat jeton (F9), 1re connexion (F8), permission notifications (F10)
   if (typeof startTokenRefresh === 'function') startTokenRefresh();
   if (typeof checkFirstLogin === 'function') checkFirstLogin();
@@ -615,6 +621,7 @@ function _heureAnomalie(e) {
   const t = new Date((e.details && e.details.heure_poste) || e.ts);
   return isNaN(t.getTime()) ? '' : t.toLocaleString('fr-FR');
 }
+let _anomaliesDonnees = [];
 async function renderAnomalies() {
   if (!isAdmin()) return;
   const body = document.getElementById('anomalies-body');
@@ -623,8 +630,17 @@ async function renderAnomalies() {
   let data = null, error = null;
   try { ({ data, error } = await _sb.rpc('get_anomalies', { p_token: TK(), p_limit: 500 })); } catch (e) { error = e; }
   if (error) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#b91c1c;padding:14px">Journal indisponible (connexion ?)</td></tr>'; return; }
+  _anomaliesDonnees = Array.isArray(data) ? data : [];
+  filtrerAnomalies();
+  if (_anomaliesDonnees[0] && _anomaliesDonnees[0].ts) { try { localStorage.setItem('labo_last_seen_ano', _anomaliesDonnees[0].ts); } catch (e) {} }
+  majBadgeAnomalies(0);
+}
+// ✅ v13.255 — La recherche filtre la liste déjà chargée (plus d'appel serveur par frappe).
+function filtrerAnomalies() {
+  const body = document.getElementById('anomalies-body');
+  if (!body) return;
   const q = (document.getElementById('anomalies-filtre')?.value || '').trim().toLowerCase();
-  let rows = Array.isArray(data) ? data : [];
+  let rows = _anomaliesDonnees;
   if (q) rows = rows.filter(e => [e.username, (e.details || {}).message, (e.details || {}).vue, (e.details || {}).dossier,
                                   (e.details || {}).examens].join(' ').toLowerCase().includes(q));
   if (!rows.length) {
@@ -644,8 +660,6 @@ async function renderAnomalies() {
         + '</tr>';
     }).join('');
   }
-  if (Array.isArray(data) && data[0] && data[0].ts) { try { localStorage.setItem('labo_last_seen_ano', data[0].ts); } catch (e) {} }
-  majBadgeAnomalies(0);
 }
 function majBadgeAnomalies(n) {
   [['btn-nav-users', 'ano-badge'], ['btn-sub-anomalies', 'ano-badge-sub']].forEach(([hote, id]) => {

@@ -130,9 +130,13 @@ async function enregistrerElectroResultat(id) {
   showLoading('Enregistrement de l\'électrophorèse…');
   try { if (typeof ensureFull === 'function') await ensureFull(rec); } catch (e) {}
   if (rec._light) { hideLoading(); toast('Impossible hors-ligne — réessayez connecté', 'err'); return; }
-  rec.resultats = rec.resultats || {};
-  rec.resultats['Hématologie'] = Object.assign({}, rec.resultats['Hématologie'] || {}, { 'Profil Hb': val });
-  const updated = await updateRecordRemote(id, rec, { onlyResultats: true });
+  // ✅ v13.255 — Copie : le cache n'est modifié qu'une fois le serveur d'accord
+  //   (updateRecordRemote le remplace alors). Un refus (journée verrouillée…) ne
+  //   laisse plus un faux profil dans le dossier ni dans la liste.
+  const res = rec.resultats || {};
+  const copie = Object.assign({}, rec, { resultats: Object.assign({}, res, {
+    'Hématologie': Object.assign({}, res['Hématologie'] || {}, { 'Profil Hb': val }) }) });
+  const updated = await updateRecordRemote(id, copie, { onlyResultats: true });
   hideLoading();
   if (updated) {
     toggleElectroEnvoye(id, false);           // c'est fait : on retire le marqueur « envoyé »

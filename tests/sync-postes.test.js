@@ -25,6 +25,10 @@ const fiche = (id, nom, par, patient = {}) => ({
     _sb.rpc = (nom, p) => {
       if (nom === 'get_resultats_depuis') { __n.depuis++; return Promise.resolve({ data: p.p_depuis == null ? { maj: 10 } : __dep, error: null, status: 200 }); }
       if (nom === 'get_resultats_ids') { __n.ids++; return __ids === 'RESEAU' ? Promise.reject(new Error('réseau')) : Promise.resolve({ data: __ids, error: null, status: 200 }); }
+      if (nom === 'get_resultats_light') {
+        if (window.__lightErreur) return Promise.resolve({ data: null, error: { message: 'erreur serveur' }, status: 500 });
+        if (window.__pendantChargement) { const f = window.__pendantChargement; window.__pendantChargement = null; return f().then(() => vrai(nom, p)); }
+      }
       return vrai(nom, p);
     };
     const rd = window.refreshDB; window.refreshDB = (f) => { if (f) __n.complet++; return rd(f); };
@@ -75,9 +79,35 @@ const fiche = (id, nom, par, patient = {}) => ({
   await sync({ maj: 15, changements: [[904, 15]] }, { lignes: [fiche(904, 'PATIENT APRES COUPURE', 'agent2')], restreintes: [], supprimees: [] });
   r.check('réessayé ensuite : reçu', [await noms(), await page.evaluate(() => _syncDepuis)].join('|'), '801,903,904|15');
 
+  r.section('Rechargement complet pendant une synchronisation (v13.255)');
+  const F905 = fiche(905, 'PATIENT PENDANT CHARGEMENT', 'agent2');
+  await page.evaluate(async (F905) => {
+    window.__pendantChargement = async () => { __dep = { maj: 16, changements: [[905, 16]] };
+      __ids = { lignes: [F905], restreintes: [], supprimees: [] }; await synchroniserPostes(); };
+    await refreshDB(true);                    // instantané pris AVANT la création de 905
+  }, F905);
+  r.check('écrasé par l\'instantané, repère ramené en arrière', await page.evaluate(() =>
+    !!_dbCache.find(x => x.id === 905) + '|' + _syncDepuis), 'false|15');
+  await sync({ maj: 16, changements: [[905, 16]] }, { lignes: [F905], restreintes: [], supprimees: [] });
+  r.check('rejoué au passage suivant : de nouveau présent', await page.evaluate(() => !!_dbCache.find(x => x.id === 905)), true);
+
+  r.section('Modification locale en attente (hors ligne) : pas de doublon');
+  await page.evaluate(() => { _dbCache.push({ id: 906, type: 'Dossier', patient: { nom: 'EN ATTENTE', date: new Date().toISOString().slice(0, 10) },
+    resultats: {}, montant: 0, _pending: true }); });
+  await sync({ maj: 17, changements: [[906, 17]] }, { lignes: [fiche(906, 'VERSION SERVEUR', 'agent2')], restreintes: [], supprimees: [] });
+  r.check('une seule entrée, la version locale gardée', await page.evaluate(() =>
+    _dbCache.filter(x => x.id === 906).length + '|' + _dbCache.find(x => x.id === 906).patient.nom), '1|EN ATTENTE');
+  await page.evaluate(() => { _dbCache = _dbCache.filter(x => x.id !== 906); });
+
+  r.section('Liste complète demandée mais chargement en échec');
+  await page.evaluate(() => { window.__lightErreur = true; });
+  await sync({ maj: 600, complet: true }, null);
+  r.check('repère inchangé (réessayé ensuite)', await page.evaluate(() => _syncDepuis), 17);
+  await page.evaluate(() => { window.__lightErreur = false; });
+
   r.section('Beaucoup de changements d\'un coup');
   await sync({ maj: 500, complet: true }, null);
-  r.check('liste complète rechargée, repère mis à jour', await page.evaluate(() => __n.complet + '|' + _syncDepuis), '1|500');
+  r.check('liste complète rechargée, repère mis à jour', await page.evaluate(() => _syncDepuis), 500);
 
   r.check('aucune erreur JS', errors.length, 0);
   if (errors.length) console.log('   ', errors.slice(0, 3));

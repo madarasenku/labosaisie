@@ -70,6 +70,16 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
     r.check('à saisir : liste Positif/Négatif, pas de case Imprimer', await page.evaluate(() =>
       !!document.getElementById('tdr-res-803') + '|' + !document.querySelector('input[data-tdr-imp="803"]')), 'true|true');
 
+    r.section('Résultat refusé par le serveur (v13.255)');
+    r.check('refus : rien d\'écrit dans le dossier, toujours « à saisir »', await page.evaluate(async () => {
+      const vrai = _sb.rpc; _sb.rpc = (n, p) => n === 'update_resultat'
+        ? Promise.resolve({ data: null, error: { message: 'refusé' }, status: 400 }) : vrai(n, p);
+      document.getElementById('tdr-res-803').value = 'Positif';
+      try { await enregistrerTdrResultat(803); } finally { _sb.rpc = vrai; }
+      await new Promise(r => setTimeout(r, 300));
+      return [(_dbCache.find(x => x.id === 803).resultats['Hématologie'] || {})['GE - TDR'] || '', !!document.getElementById('tdr-res-803')].join('|');
+    }), '|true');
+
     r.section('Résultat saisi depuis la liste');
     await page.evaluate(async () => { document.getElementById('tdr-res-803').value = 'Négatif'; await enregistrerTdrResultat(803); });
     await page.waitForTimeout(600);
