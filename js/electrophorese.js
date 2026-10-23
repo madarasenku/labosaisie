@@ -29,14 +29,48 @@ const _ELEC_PROFILS = [
   'β-Thalassémie mineure', 'β-Thalassémie majeure', 'Profil AF (Hb fœtale élevée)',
 ];
 
-// « Envoyé au labo externe » : mémorisé localement par dossier (persistant).
-const _ELEC_ENVOYE_KEY = 'labosaisie_electro_envoye_v1';
-function _elecEnvoyes() { try { return JSON.parse(localStorage.getItem(_ELEC_ENVOYE_KEY) || '{}'); } catch (e) { return {}; } }
-function _elecEstEnvoye(id) { return !!_elecEnvoyes()[id]; }
-function toggleElectroEnvoye(id, val) {
-  const e = _elecEnvoyes();
-  if (val) e[id] = true; else delete e[id];
-  try { localStorage.setItem(_ELEC_ENVOYE_KEY, JSON.stringify(e)); } catch (ex) {}
+// ✅ v13.256 — « Envoyé au labo externe » : enregistré sur la base, commun à
+//   tous les postes (il n'était mémorisé que sur l'appareil qui l'avait coché).
+//   _elecEnvoyesBase = dernière lecture : { "<id>": { par, le } }.
+let _elecEnvoyesBase = {};
+// Ancien stockage local : repris une fois sur la base, puis effacé.
+const _ELEC_ENVOYE_KEY = 'labosaisie_electro_envoye_v1' + LABO_SUFFIXE_SITE;
+function _elecEstEnvoye(id) { return !!_elecEnvoyesBase[id]; }
+
+async function _elecMarquer(ids, val) {
+  const rep = await _rpcAvecDelai('marquer_electro_envoye', { p_token: TK(), p_ids: ids, p_envoye: !!val });
+  if (rep && !rep.delai && !rep.error && rep.data === 'ok') return 'ok';
+  return _serveurInjoignable(rep) ? 'injoignable' : 'refus';
+}
+async function _elecReprendreLocaux() {
+  let loc = {};
+  try { loc = JSON.parse(localStorage.getItem(_ELEC_ENVOYE_KEY) || '{}') || {}; } catch (e) {}
+  const ids = Object.keys(loc).filter(k => loc[k]).map(Number).filter(Boolean);
+  if (ids.length && await _elecMarquer(ids, true) !== 'ok') return;
+  try { localStorage.removeItem(_ELEC_ENVOYE_KEY); } catch (e) {}
+}
+// Relit les marqueurs des dossiers affichés (réseau absent : dernière lecture gardée).
+async function _elecChargerEnvoyes(ids) {
+  try {
+    await _elecReprendreLocaux();
+    if (!ids.length) return;
+    const rep = await _rpcAvecDelai('get_electro_envoyes', { p_token: TK(), p_ids: ids });
+    const d = rep && rep.data;
+    if (!rep.delai && !rep.error && d && typeof d === 'object' && !Array.isArray(d) && !d.erreur) _elecEnvoyesBase = d;
+  } catch (e) {}
+}
+async function toggleElectroEnvoye(id, val, caseEl) {
+  const avant = _elecEnvoyesBase[id];
+  if (val) _elecEnvoyesBase[id] = avant || { par: (_currentUser && _currentUser.username) || '' };
+  else delete _elecEnvoyesBase[id];
+  let res = 'refus';
+  try { res = await _elecMarquer([id], val); } catch (e) {}
+  if (res === 'ok') return;
+  // Non enregistré : on remet la case comme avant, pour ne pas faire croire le contraire.
+  if (avant) _elecEnvoyesBase[id] = avant; else delete _elecEnvoyesBase[id];
+  if (caseEl) caseEl.checked = !!avant;
+  toast(res === 'injoignable' ? 'Serveur injoignable — « Envoyé » non enregistré, réessayez'
+                              : '« Envoyé » non enregistré (refusé par le serveur)', 'err');
 }
 
 // Sélection pour l'impression : par défaut TOUT est coché ; on mémorise les
@@ -139,7 +173,9 @@ async function enregistrerElectroResultat(id) {
   const updated = await updateRecordRemote(id, copie, { onlyResultats: true });
   hideLoading();
   if (updated) {
-    toggleElectroEnvoye(id, false);           // c'est fait : on retire le marqueur « envoyé »
+    // C'est fait : on retire le marqueur « envoyé » (sans bruit si le réseau manque).
+    delete _elecEnvoyesBase[id];
+    _elecMarquer([id], false).catch(() => {});
     toast('Électrophorèse enregistrée ✓ (' + val + ')', 'ok');
     renderElectro();
   }
@@ -163,6 +199,7 @@ async function renderElectro() {
 
   zone.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:8px">Chargement…</p>';
   const recs = await _elecDossiers(_electroRef);
+  await _elecChargerEnvoyes(recs.map(r => r.id));
   // La semaine a pu changer pendant le chargement (clic rapide).
   const b2 = _elecBornes(_electroRef);
   if (b2.du !== b.du) return;
@@ -180,7 +217,7 @@ async function renderElectro() {
     return '<tr>'
       // Envoyé au labo externe
       + '<td style="text-align:center"><input type="checkbox" ' + (envoye ? 'checked' : '')
-        + ' onchange="toggleElectroEnvoye(' + l.id + ',this.checked)" title="Marquer comme envoyé au labo externe" '
+        + ' onchange="toggleElectroEnvoye(' + l.id + ',this.checked,this)" title="Marquer comme envoyé au labo externe (commun à tous les postes)" '
         + 'style="width:16px;height:16px;cursor:pointer"></td>'
       + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
       + '<td><strong>' + esc(l.nom) + '</strong>'
@@ -216,6 +253,7 @@ async function imprimerElectro() {
   const b = _elecBornes(_electroRef);
   showLoading('Préparation de la liste…');
   const recs = await _elecDossiers(_electroRef);
+  await _elecChargerEnvoyes(recs.map(r => r.id));
   hideLoading();
   // ✅ v13.210 — On n'imprime que les lignes cochées « Imprimer ».
   const lignes = recs.map(_elecLigne).filter(l => !_elecHorsImpression.has(String(l.id)));

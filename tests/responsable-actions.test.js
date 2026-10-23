@@ -390,11 +390,13 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
     const lire = async (alignes) => {
       await page.evaluate((al) => {
         localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { ref: '1-2', lo: 1, hi: 2, unit: 'g/dL' } }));
-        if (al) localStorage.setItem('labosaisie_refs_v1_serveur', '1'); else localStorage.removeItem('labosaisie_refs_v1_serveur');
+        if (al) localStorage.setItem(LABO_REFS_SYNC_KEY, '1'); else localStorage.removeItem(LABO_REFS_SYNC_KEY);
       }, alignes);
       await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(1500);
       return page.evaluate(() => 'hb' in getCustomRefs());
     };
+    // (v13.256 : le poste sonde alors la base pour proposer de les y
+    //  enregistrer — sans réponse ici, il les garde ; voir base-partagee.test.js.)
     r.check('poste jamais aligné : valeurs locales gardées', await lire(false), true);
     r.check('poste aligné : remise à zéro appliquée', await lire(true), false);
     erreurs = erreurs.concat(errors); await ctx.close();

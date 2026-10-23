@@ -437,7 +437,12 @@ function buildRefObj(entry, profile) {
 // Stockées dans localStorage 'labosaisie_refs_v1'
 // Format : { paramId: { lo, hi, ref, unit } }
 // ──────────────────────────────────────────────────────────────────────
-const LABO_REFS_KEY = 'labosaisie_refs_v1';
+// ✅ v13.256 — Le lien de test (/preview/) partage le domaine, donc le stockage
+//   de l'appareil, avec la production. Ce qui dépend de la base (valeurs de
+//   référence, anciens marqueurs « envoyé ») y est rangé sous des clés à part :
+//   le lien de test ne lit ni n'efface jamais ce que la production a gardé.
+const LABO_SUFFIXE_SITE = /\/preview\//.test(location.pathname) ? '_test' : '';
+const LABO_REFS_KEY = 'labosaisie_refs_v1' + LABO_SUFFIXE_SITE;
 
 // Cache en mémoire pour éviter de parser localStorage à chaque frappe
 let _customRefsCache = null;

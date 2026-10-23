@@ -350,22 +350,7 @@ function enterApp() {
   document.getElementById('app-root').style.display = 'block';
   // Charger les valeurs de référence depuis Supabase au login
   (async () => {
-    try {
-      const { data: remoteRefs, error } = await _sb.rpc('get_refs_config', { p_token: TK() });
-      // ✅ v13.249 — Une base VIDE (« tout remis par défaut ») s'applique aussi,
-      //   mais seulement sur un poste déjà aligné sur la base : un poste qui
-      //   n'a jamais synchronisé garde ses valeurs locales, comme avant.
-      const objet = !error && remoteRefs && typeof remoteRefs === 'object' && !Array.isArray(remoteRefs);
-      let dejaAligne = false;
-      try { dejaAligne = localStorage.getItem(LABO_REFS_SYNC_KEY) === '1'; } catch (e) {}
-      if (objet && (Object.keys(remoteRefs).length > 0 || dejaAligne)) {
-        _customRefsCache = remoteRefs;
-        try {
-          localStorage.setItem(LABO_REFS_KEY, JSON.stringify(remoteRefs));
-          localStorage.setItem(LABO_REFS_SYNC_KEY, '1');
-        } catch (e) {}
-      }
-    } catch(e) { /* RPC non disponible → utiliser localStorage */ }
+    try { await _chargerRefsDepuisBase(); } catch(e) { /* RPC non disponible → utiliser localStorage */ }
     updateAllRefs();
   })();
   // ✅ v13.75 — grille tarifaire partagée : rechargée depuis la base à chaque
@@ -1191,7 +1176,106 @@ async function _saveRefsConfig() {
 //   remises à zéro ne touchaient que ce poste : les autres gardaient les
 //   anciennes valeurs, et la connexion suivante les rétablissait ici aussi.
 //   Renvoie 'ok' | 'local' | 'refus'.
-const LABO_REFS_SYNC_KEY = 'labosaisie_refs_v1_serveur';
+const LABO_REFS_SYNC_KEY = 'labosaisie_refs_v1_serveur' + LABO_SUFFIXE_SITE;
+
+// ✅ v13.256 — La base est LA référence des valeurs de référence. À la connexion :
+//   • base remplie, ou poste déjà aligné sur elle → le poste prend la base ;
+//   • base jamais remplie et poste avec de vraies modifications à lui →
+//     l'administrateur (ou le responsable) voit la liste et confirme : elles
+//     sont enregistrées sur la base, une seule fois, pour tous les postes ;
+//   • base déjà choisie par quelqu'un (même vide, « tout par défaut ») → le
+//     poste s'aligne sur elle ;
+//   • compte sans ce droit → le poste garde ses valeurs, et l'administrateur
+//     en est averti dans le journal des anomalies (une fois par poste).
+//   Des valeurs propres au poste, remplacées par la base, sont gardées de côté
+//   (LABO_REFS_AVANT_BASE_KEY) : rien n'est perdu.
+const LABO_REFS_AVANT_BASE_KEY = 'labosaisie_refs_v1_avant_base' + LABO_SUFFIXE_SITE;
+const LABO_REFS_SIGNALE_KEY = 'labosaisie_refs_v1_signale' + LABO_SUFFIXE_SITE;
+function _refsLocales() {
+  try {
+    const o = JSON.parse(localStorage.getItem(LABO_REFS_KEY) || '{}');
+    return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+  } catch (e) { return {}; }
+}
+function _refsAlignees() {
+  try { return localStorage.getItem(LABO_REFS_SYNC_KEY) === '1'; } catch (e) { return false; }
+}
+function _estRefsObjet(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+function _appliquerRefsBase(refs) {
+  const loc = _refsLocales();
+  try {
+    if (!_refsAlignees() && Object.keys(loc).length && JSON.stringify(loc) !== JSON.stringify(refs)
+        && !localStorage.getItem(LABO_REFS_AVANT_BASE_KEY))
+      localStorage.setItem(LABO_REFS_AVANT_BASE_KEY, JSON.stringify({ le: new Date().toISOString(), refs: loc }));
+  } catch (e) {}
+  _customRefsCache = refs;
+  try {
+    localStorage.setItem(LABO_REFS_KEY, JSON.stringify(refs));
+    localStorage.setItem(LABO_REFS_SYNC_KEY, '1');
+  } catch (e) {}
+}
+// Valeurs du poste qui diffèrent VRAIMENT des valeurs par défaut : l'éditeur
+// enregistre toutes ses lignes, même celles qu'on n'a pas touchées.
+function _refsModifiees(loc) {
+  const defs = {};
+  try { refsSections().forEach(s => (s.params || []).forEach(p => { defs[p.id] = p; })); } catch (e) {}
+  const txt = x => String(x == null ? '' : x).trim();
+  const num = (x, parDefaut) => parseFloat(String(x)) || parDefaut;   // comme l'éditeur
+  return Object.keys(loc).filter(id => {
+    const v = loc[id] || {}, d = defs[id];
+    if (!d) return true;                         // paramètre absent de l'éditeur : gardé
+    return (v.ref  !== undefined && txt(v.ref)  !== txt(d.ref))
+        || (v.unit !== undefined && txt(v.unit) !== txt(d.unit))
+        || (v.lo   !== undefined && num(v.lo, 0)   !== num(d.lo, 0))
+        || (v.hi   !== undefined && num(v.hi, 999) !== num(d.hi, 999));
+  }).map(id => ({ id, nom: txt((defs[id] && defs[id].name) || id).replace(/<[^>]*>/g, ''), v: loc[id] || {} }));
+}
+function _texteRefsLocales(modifs) {
+  const ligne = m => '• ' + m.nom + ' : ' + (String(m.v.ref || '').trim()
+    || ((m.v.lo ?? '') + '–' + (m.v.hi ?? ''))) + (m.v.unit ? ' ' + m.v.unit : '');
+  return 'Valeurs de référence\n\n'
+    + 'Ce poste utilise ' + modifs.length + ' valeur(s) de référence modifiée(s) qui ne sont pas sur la base :\n'
+    + modifs.slice(0, 8).map(ligne).join('\n')
+    + (modifs.length > 8 ? '\n… et ' + (modifs.length - 8) + ' autre(s)' : '')
+    + '\n\nOK : les enregistrer sur la base — elles s\'appliqueront à tous les postes.'
+    + '\nAnnuler : ne rien changer pour l\'instant (la question reviendra à la prochaine connexion).';
+}
+async function _realignerSurBase() {
+  const { data, error } = await _sb.rpc('get_refs_config', { p_token: TK() });
+  if (!error && _estRefsObjet(data)) _appliquerRefsBase(data);
+}
+function _signalerRefsLocales(n) {
+  let deja = false;
+  try { deja = localStorage.getItem(LABO_REFS_SIGNALE_KEY) === '1'; } catch (e) {}
+  if (deja || typeof signalerAnomalie !== 'function') return;
+  signalerAnomalie('Valeurs de référence modifiées présentes seulement sur ce poste (' + n
+    + ') : connectez-vous une fois sur ce poste avec un compte administrateur ou responsable '
+    + 'pour les enregistrer pour tous les postes');
+  try { localStorage.setItem(LABO_REFS_SIGNALE_KEY, '1'); } catch (e) {}
+}
+async function _chargerRefsDepuisBase() {
+  const { data: base, error } = await _sb.rpc('get_refs_config', { p_token: TK() });
+  if (error || !_estRefsObjet(base)) return;                 // pas de réponse : on garde le local
+  const modifs = _refsModifiees(_refsLocales());
+  if (Object.keys(base).length || _refsAlignees() || !modifs.length) { _appliquerRefsBase(base); return; }
+  // Base vide, poste jamais aligné, avec de vraies modifications. Sonde (envoi
+  // vide, sans effet) : la base a-t-elle déjà été choisie ? ce compte peut-il
+  // l'alimenter (réponse « vide ») ?
+  const { data: etat, error: e2 } = await _sb.rpc('init_refs_config', { p_token: TK(), p_refs: {} });
+  if (e2) return;
+  if (etat === 'deja_defini') return _realignerSurBase();
+  if (etat === 'forbidden') return _signalerRefsLocales(modifs.length);
+  if (etat !== 'vide' || !confirm(_texteRefsLocales(modifs))) return;
+  const refs = {};
+  modifs.forEach(m => { refs[m.id] = m.v; });
+  const { data: rep, error: e3 } = await _sb.rpc('init_refs_config', { p_token: TK(), p_refs: refs });
+  if (e3) return;
+  if (rep === 'ok') {
+    _appliquerRefsBase(refs);
+    toast('Valeurs de référence enregistrées sur la base : elles valent maintenant pour tous les postes', 'ok');
+  } else if (rep === 'deja_defini') await _realignerSurBase();
+}
+
 async function _enregistrerRefs(construire, msgs, { redessinerSurRefus = false } = {}) {
   if (!_currentUser?.id) {
     saveCustomRefs(construire());
