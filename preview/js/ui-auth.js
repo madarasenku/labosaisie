@@ -1027,6 +1027,117 @@ function refsSections() {
   ];
 }
 
+// ✅ v13.257 — Éditeur PAR PROFIL (tranche d'âge + sexe). Avant, une seule
+//   colonne par paramètre : une valeur réglée remplaçait celle de tous les âges
+//   et des deux sexes, et un seul clic sur « Enregistrer » figeait ainsi ~70
+//   paramètres (Hb femme 13–17 au lieu de 12–16, Hb nouveau-né 13–17…).
+//   Désormais on choisit le profil ; seules les lignes réellement changées
+//   sont enregistrées, pour ce profil ; les autres gardent le référentiel.
+//   Les paramètres identiques pour tous (« tous profils ») se règlent une fois.
+let _refsProfil = { tranche: 'ADULTE', sexe: 'F' };
+const _LIBELLES_TRANCHES = {
+  NN: 'Nouveau-né (< 1 mois)', NOURR: 'Nourrisson (1 mois – 2 ans)', ENFANT: 'Enfant (2 – 12 ans)',
+  ADO: 'Adolescent (12 – 18 ans)', ADULTE: 'Adulte (18 – 60 ans)', SENIOR: 'Senior (60 ans et plus)',
+};
+function _libelleProfilRefs(cle) {
+  if (!cle || cle === '*') return 'tous profils';
+  const [t, s] = cle.split('_');
+  return ((TRANCHES[t] && TRANCHES[t].label) || t) + ', ' + (s === 'M' ? 'homme' : 'femme');
+}
+function _profilDeCle(cle) {
+  if (!cle || cle === '*') return {};
+  const [tranche, sexe] = cle.split('_');
+  return { tranche, sexe };
+}
+// Paramètres de l'éditeur, par id (dérivés des listes canoniques).
+function _refsParamsParId() {
+  const m = {};
+  refsSections().forEach(sec => sec.params.forEach(p => { if (p.id && !m[p.id]) m[p.id] = p; }));
+  return m;
+}
+// Valeur par défaut d'un paramètre pour un profil : le référentiel (NORM)
+// quand il existe — c'est lui qu'appliquent les comptes rendus —, sinon les
+// valeurs de la liste canonique.
+function _refDefaut(p, profil) {
+  if (typeof NORM !== 'undefined' && NORM[p.id]) {
+    const b = _getRefBase(p.id, refVarieSelonProfil(p.id) ? (profil || {}) : {});
+    if (b) return { ref: b.ref, lo: b.lo, hi: b.hi };
+  }
+  return { ref: p.ref == null ? '' : p.ref, lo: p.lo, hi: p.hi };
+}
+function _refEgal(a, b) {
+  const t = x => String(x == null ? '' : x).trim();
+  return t(a.ref) === t(b.ref) && _refNombre(a.lo, 0) === _refNombre(b.lo, 0)
+      && _refNombre(a.hi, 999) === _refNombre(b.hi, 999);
+}
+// Saisies de l'éditeur appliquées à la configuration (copie) pour un profil.
+function _refsAvecSaisies(base, saisies, profil) {
+  const c = {};
+  Object.keys(base || {}).forEach(id => {
+    const e = refPersoNormalisee(id, base[id]);
+    if (e && (e.unit !== undefined || (e.p && Object.keys(e.p).length))) c[id] = e;
+  });
+  saisies.forEach(s => {
+    const cle = refVarieSelonProfil(s.id) ? cleProfilRef(profil.tranche, profil.sexe) : '*';
+    const e = c[s.id] || {};
+    const p = { ...(e.p || {}) };
+    const v = { ref: s.ref, lo: _refNombre(s.lo, 0), hi: _refNombre(s.hi, 999) };
+    if (_refEgal(v, _refDefaut(s.p, profil))) delete p[cle]; else p[cle] = v;
+    if (s.unit === String(s.p.unit || '').trim()) delete e.unit; else e.unit = s.unit;
+    if (Object.keys(p).length) e.p = p; else delete e.p;
+    if (e.p || e.unit !== undefined) c[s.id] = e; else delete c[s.id];
+  });
+  return c;
+}
+
+// Anciennes valeurs « sans âge ni sexe » de paramètres qui varient : plus
+// appliquées, montrées dans l'éditeur pour être ressaisies sur le bon profil.
+const LABO_REFS_ANCIENNES_KEY = 'labosaisie_refs_v1_anciennes' + LABO_SUFFIXE_SITE;
+function _refsAnciennes() {
+  const out = {};
+  const prendre = o => Object.keys(o || {}).forEach(id => {
+    if (refVarieSelonProfil(id) && refPersoAncienne(o[id])) out[id] = o[id];
+  });
+  try { prendre(JSON.parse(localStorage.getItem(LABO_REFS_ANCIENNES_KEY) || '{}')); } catch (e) {}
+  try { const b = JSON.parse(localStorage.getItem(LABO_REFS_AVANT_BASE_KEY) || 'null'); prendre(b && b.refs); } catch (e) {}
+  prendre(getCustomRefs());
+  return out;
+}
+function _memoriserRefsAnciennes() {
+  try { localStorage.setItem(LABO_REFS_ANCIENNES_KEY, JSON.stringify(_refsAnciennes())); } catch (e) {}
+}
+function oublierRefsAnciennes() {
+  if (!confirm('Ne plus afficher ces anciennes valeurs ? Elles ne sont déjà plus appliquées.')) return;
+  const sans = o => { const c = {}; Object.keys(o || {}).forEach(id => {
+    if (!(refVarieSelonProfil(id) && refPersoAncienne(o[id]))) c[id] = o[id]; }); return c; };
+  try {
+    localStorage.setItem(LABO_REFS_ANCIENNES_KEY, '{}');
+    const b = JSON.parse(localStorage.getItem(LABO_REFS_AVANT_BASE_KEY) || 'null');
+    if (b && b.refs) localStorage.setItem(LABO_REFS_AVANT_BASE_KEY, JSON.stringify({ ...b, refs: sans(b.refs) }));
+  } catch (e) {}
+  // Sur ce poste seulement : elles n'étaient plus appliquées ni envoyées.
+  try { saveCustomRefs(sans(getCustomRefs())); } catch (e) {}
+  buildRefsEditor();
+}
+
+// Saisie en cours dans l'éditeur (valeur différente de celle affichée au départ) ?
+function _refsSaisieEnCours() {
+  return [...document.querySelectorAll('#refs-editor-grid input[data-init]')]
+    .some(i => i.value !== i.getAttribute('data-init'));
+}
+function choisirProfilRefs() {
+  const t = document.getElementById('refs-profil-tranche'), s = document.getElementById('refs-profil-sexe');
+  const voulu = { tranche: t ? t.value : _refsProfil.tranche, sexe: s ? s.value : _refsProfil.sexe };
+  if (!TRANCHES_REFS.includes(voulu.tranche) || !['M', 'F'].includes(voulu.sexe)) return;
+  if (_refsSaisieEnCours() && !confirm('Des modifications de ce profil ne sont pas enregistrées. Changer de profil et les abandonner ?')) {
+    if (t) t.value = _refsProfil.tranche;
+    if (s) s.value = _refsProfil.sexe;
+    return;
+  }
+  _refsProfil = voulu;
+  buildRefsEditor();
+}
+
 function buildRefsEditor() {
   const card = document.getElementById('ac-refs');  // ✅ v13.33 — le sous-onglet remplace l'ancienne carte cachée
   if (!card) return;
@@ -1037,45 +1148,81 @@ function buildRefsEditor() {
   if (!peutConfigurer) return;
 
   const custom = getCustomRefs();
-
-  // ── Définition exhaustive : 90 paramètres, toutes sections ──
+  const profil = _refsProfil;
+  const cleVue = cleProfilRef(profil.tranche, profil.sexe);
   const SECTIONS = refsSections();
+  const val = x => (x == null ? '' : String(x));
+  const cell = 'padding:5px 8px;border-bottom:1px solid var(--border)';
+  const champ = (type, id, v, largeur, extra) =>
+    `<input type="${type}" id="${id}" value="${esc(val(v))}" data-init="${esc(val(v))}" ${extra || ''}
+      style="width:${largeur}px;font-size:12px;text-align:center">`;
 
-  function rowHTML(p, custom) {
-    const cur    = custom[p.id] || {};
-    const curRef = cur.ref  !== undefined ? cur.ref  : p.ref;
-    const curLo  = cur.lo   !== undefined ? cur.lo   : p.lo;
-    const curHi  = cur.hi   !== undefined ? cur.hi   : p.hi;
-    const curUnit= cur.unit !== undefined ? cur.unit : p.unit;
-    const mod    = !!custom[p.id];
+  function rowHTML(p) {
+    const varie = refVarieSelonProfil(p.id);
+    const cle = varie ? cleVue : '*';
+    const e = refPersoNormalisee(p.id, custom[p.id]) || {};
+    const perso = e.p && e.p[cle];
+    const def = _refDefaut(p, profil);
+    const cur = perso ? { ref: perso.ref, lo: perso.lo, hi: perso.hi } : def;
+    const unitPerso = e.unit !== undefined && String(e.unit).trim() !== String(p.unit || '').trim();
+    const curUnit = e.unit !== undefined ? e.unit : p.unit;
+    const mod = !!perso || unitPerso;
+    const autres = varie ? Object.keys(e.p || {}).filter(k => k !== cle) : [];
     return `<tr style="${mod ? 'background:#fffbeb' : ''}">
       <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12.5px">
         ${p.name}${mod ? ' <span style="color:var(--warning);font-size:10px;font-weight:700">✎</span>' : ''}
+        ${varie ? '' : '<span style="font-size:10.5px;color:var(--text-muted)"> · tous profils</span>'}
+        ${autres.length ? `<div style="font-size:10.5px;color:var(--text-muted)" title="${esc(autres.map(_libelleProfilRefs).join(' ; '))}">✎ aussi réglé pour ${autres.length} autre(s) profil(s)</div>` : ''}
+        ${mod ? `<div style="font-size:10.5px;color:var(--text-muted)">Référentiel : ${esc(val(def.ref))}</div>` : ''}
       </td>
-      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
-        <input type="text" id="runit_${p.id}" value="${curUnit}"
-          style="width:90px;font-size:12px;text-align:center" placeholder="ex: g/dL">
-      </td>
-      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
-        <input type="text" id="rref_${p.id}" value="${curRef}"
-          style="width:110px;font-size:12px;text-align:center" placeholder="ex: 12–17">
-      </td>
-      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
-        <input type="number" id="rlo_${p.id}" value="${curLo}" step="any"
-          style="width:80px;font-size:12px;text-align:center">
-      </td>
-      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
-        <input type="number" id="rhi_${p.id}" value="${curHi}" step="any"
-          style="width:80px;font-size:12px;text-align:center">
-      </td>
-      <td style="padding:5px 8px;border-bottom:1px solid var(--border)">
+      <td style="${cell}">${champ('text', 'runit_' + p.id, curUnit, 90, 'placeholder="ex: g/dL"')}</td>
+      <td style="${cell}">${champ('text', 'rref_' + p.id, cur.ref, 110, 'placeholder="ex: 12–17"')}</td>
+      <td style="${cell}">${champ('number', 'rlo_' + p.id, cur.lo, 80, 'step="any"')}</td>
+      <td style="${cell}">${champ('number', 'rhi_' + p.id, cur.hi, 80, 'step="any"')}</td>
+      <td style="${cell}">
         ${mod ? `<button onclick="resetOneRef('${p.id}')" class="btn btn-outline"
-          style="padding:2px 7px;font-size:11px" title="Remettre défaut">↺</button>` : ''}
+          style="padding:2px 7px;font-size:11px" title="Remettre le référentiel pour ce profil">↺</button>` : ''}
       </td>
     </tr>`;
   }
 
-  let html = '';
+  // Choix du profil édité.
+  let html = `
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin-bottom:14px;
+                background:var(--accent-light);border:1px solid var(--border);border-radius:var(--radius)">
+      <strong style="font-size:12.5px">Profil modifié :</strong>
+      <select id="refs-profil-tranche" onchange="choisirProfilRefs()" style="font-size:12.5px;padding:4px 8px">
+        ${TRANCHES_REFS.map(t => `<option value="${t}"${t === profil.tranche ? ' selected' : ''}>${_LIBELLES_TRANCHES[t]}</option>`).join('')}
+      </select>
+      <select id="refs-profil-sexe" onchange="choisirProfilRefs()" style="font-size:12.5px;padding:4px 8px">
+        <option value="F"${profil.sexe === 'F' ? ' selected' : ''}>Femme</option>
+        <option value="M"${profil.sexe === 'M' ? ' selected' : ''}>Homme</option>
+      </select>
+      <span style="font-size:11.5px;color:var(--text-muted);flex-basis:100%">
+        Les valeurs affichées et enregistrées sont celles de ce profil ; les autres profils gardent les leurs.
+        Les lignes « tous profils » valent pour tous les âges et les deux sexes.
+      </span>
+    </div>`;
+
+  // Anciennes valeurs sans âge ni sexe (plus appliquées).
+  const anciennes = _refsAnciennes();
+  const idsAnciens = Object.keys(anciennes);
+  if (idsAnciens.length) {
+    const params = _refsParamsParId();
+    html += `
+    <div style="padding:10px 12px;margin-bottom:14px;background:#fff7ed;border:1px solid #fdba74;border-radius:var(--radius);font-size:12.5px">
+      <strong>Anciennes valeurs de ce poste, saisies sans âge ni sexe : elles ne sont plus appliquées.</strong>
+      <div style="color:var(--text-muted);margin:3px 0 6px">Elles remplaçaient les valeurs de tous les âges et des deux sexes.
+        Si l'une d'elles est juste, ressaisissez-la sur le bon profil.</div>
+      <ul style="margin:0 0 8px 18px;padding:0">
+        ${idsAnciens.map(id => { const a = anciennes[id] || {}; const nom = params[id] ? params[id].name : id;
+          return `<li>${nom} : ${esc(val(a.ref))}${a.unit ? ' ' + esc(val(a.unit)) : ''}
+            <span style="color:var(--text-muted)">(bornes ${esc(val(a.lo))} – ${esc(val(a.hi))})</span></li>`; }).join('')}
+      </ul>
+      <button class="btn btn-outline" onclick="oublierRefsAnciennes()" style="padding:3px 10px;font-size:11.5px">Ne plus afficher</button>
+    </div>`;
+  }
+
   SECTIONS.forEach(sec => {
     html += `
     <div style="margin-bottom:22px">
@@ -1097,7 +1244,7 @@ function buildRefsEditor() {
           <th style="padding:6px 10px;border-bottom:2px solid var(--border);min-width:55px"></th>
         </tr></thead>
         <tbody>
-          ${sec.params.map(p => rowHTML(p, custom)).join('')}
+          ${sec.params.map(rowHTML).join('')}
         </tbody>
       </table>
       </div>
@@ -1107,65 +1254,37 @@ function buildRefsEditor() {
   document.getElementById('refs-editor-grid').innerHTML = html;
 }
 
-// IDs de tous les paramètres éditables (90)
-const _ALL_REF_IDS = [
-  'gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret','vs',
-  'pnn','pne','pnb','lymp','mono',
-  'ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e',
-  'widal_to','widal_th','widal_ao','widal_bo',
-  'gly','hba','crea','uree','ua',
-  'asat','alat','ggt','pal','bili','bilid','prot','alb',
-  'chol','trig','hdl','ldl',
-  'na','k','cl','ca','phos','mg','bic',
-  'sero_hbsac','sero_toxo','sero_rubig','sero_crp','sero_aso','sero_tsh','sero_ft4','sero_psa',
-  'bpn_gb','bpn_gr','bpn_hb','bpn_ht','bpn_vgm','bpn_tcmh','bpn_ccmh','bpn_plt',
-  'bpn_pnn','bpn_pne','bpn_pnb','bpn_lymp','bpn_mono',
-  'bpn_gly','bpn_crea','bpn_uree',
-  'bpnsero_hbsac','bpnsero_toxog','bpnsero_rubg',
-];
-
-// Mapping section id → liste des param ids
-const _SECTION_PARAMS = {
-  nfs:     ['gbc','gr','hb','ht','vgm','tcmh','ccmh','plt','ret','vs'],
-  fl:      ['pnn','pne','pnb','lymp','mono'],
-  ephb:    ['ephb_a','ephb_a2','ephb_f','ephb_s','ephb_c','ephb_d','ephb_e'],
-  widal:   ['widal_to','widal_th','widal_ao','widal_bo'],
-  bio_glu: ['gly','hba'],
-  bio_rein:['crea','uree','ua'],
-  bio_foie:['asat','alat','ggt','pal','bili','bilid','prot','alb'],
-  bio_lip: ['chol','trig','hdl','ldl'],
-  bio_iono:['na','k','cl','ca','phos','mg','bic'],
-  sero:    ['sero_hbsac','sero_toxo','sero_rubig','sero_crp','sero_aso','sero_tsh','sero_ft4','sero_psa'],
-  bpn_nfs: ['bpn_gb','bpn_gr','bpn_hb','bpn_ht','bpn_vgm','bpn_tcmh','bpn_ccmh','bpn_plt'],
-  bpn_fl:  ['bpn_pnn','bpn_pne','bpn_pnb','bpn_lymp','bpn_mono'],
-  bpn_bio: ['bpn_gly','bpn_crea','bpn_uree'],
-  bpn_sero:['bpnsero_hbsac','bpnsero_toxog','bpnsero_rubg'],
-};
+// Paramètres d'une section (ou de toutes), tels que l'éditeur les affiche.
+// ✅ v13.257 — Dérivés de refsSections() : l'ancienne liste figée oubliait les
+//   sections Fer & hémostase, cardiaque, hormones et autres (42 paramètres
+//   affichés mais jamais enregistrés).
+function _refsIdsSection(sectionId) {
+  const ids = [];
+  refsSections().forEach(sec => { if (!sectionId || sec.id === sectionId) sec.params.forEach(p => ids.push(p.id)); });
+  return ids;
+}
 
 function saveRefsConfig() { return _uneSeuleFois('saveRefsConfig', _saveRefsConfig); }
 async function _saveRefsConfig() {
-  const saisis = {};                                // ✅ v13.249 — les seuls champs de l'éditeur
-  _ALL_REF_IDS.forEach(id => {
-    const refEl  = document.getElementById('rref_'  + id);
-    const loEl   = document.getElementById('rlo_'   + id);
-    const hiEl   = document.getElementById('rhi_'   + id);
-    const unitEl = document.getElementById('runit_' + id);
-    if (!refEl) return; // section non rendue
-    saisis[id] = {
-      ref:  refEl.value.trim(),
-      lo:   parseFloat(loEl?.value)   || 0,
-      hi:   parseFloat(hiEl?.value)   || 999,
-      unit: unitEl?.value.trim()      || '',
-    };
+  const params = _refsParamsParId();
+  const profil = { ..._refsProfil };
+  const saisies = [];
+  _refsIdsSection().forEach(id => {
+    const refEl = document.getElementById('rref_' + id);
+    if (!refEl || !params[id]) return;            // section non rendue
+    saisies.push({ id, p: params[id], ref: refEl.value.trim(),
+      lo: document.getElementById('rlo_' + id)?.value, hi: document.getElementById('rhi_' + id)?.value,
+      unit: (document.getElementById('runit_' + id)?.value || '').trim() });
   });
+  _memoriserRefsAnciennes();
   // ✅ v13.246/248/249 — Même mécanique que les tarifs. L'éditeur est redessiné
   //   UNE fois, tout de suite (marqueurs ✎ à jour), puis plus jamais pendant
   //   cet enregistrement : sur refus, la mémoire revient aux valeurs en
   //   vigueur (les comptes rendus les utilisent) mais ce qui est affiché et
   //   tapé dans l'éditeur reste, pour réessayer sans rien perdre.
   //   Calculé à son tour dans la file : une remise à zéro en cours n'est pas écrasée.
-  await _enregistrerRefs(() => ({ ...getCustomRefs(), ...saisis }), {
-    ok: '✓ Valeurs de référence synchronisées sur tous les postes du labo',
+  await _enregistrerRefs(() => _refsAvecSaisies(getCustomRefs(), saisies, profil), {
+    ok: '✓ Valeurs de référence (' + _libelleProfilRefs(cleProfilRef(profil.tranche, profil.sexe)) + ') synchronisées sur tous les postes du labo',
     refus: 'Valeurs de référence non enregistrées',
     local: 'Valeurs enregistrées sur ce poste seulement',
   });
@@ -1214,34 +1333,48 @@ function _appliquerRefsBase(refs) {
     localStorage.setItem(LABO_REFS_SYNC_KEY, '1');
   } catch (e) {}
 }
-// Valeurs du poste qui diffèrent VRAIMENT des valeurs par défaut : l'éditeur
-// enregistre toutes ses lignes, même celles qu'on n'a pas touchées.
+// Vraies modifications du poste, au format par profil (v13.257) : chaque
+// valeur réglée qui diffère du référentiel de SON profil, et les unités
+// changées. L'ancien format sans âge ni sexe n'est pas repris pour un
+// paramètre qui varie selon l'âge ou le sexe : il n'est plus appliqué.
 function _refsModifiees(loc) {
-  const defs = {};
-  try { refsSections().forEach(s => (s.params || []).forEach(p => { defs[p.id] = p; })); } catch (e) {}
-  const txt = x => String(x == null ? '' : x).trim();
-  const num = (x, parDefaut) => parseFloat(String(x)) || parDefaut;   // comme l'éditeur
-  return Object.keys(loc).filter(id => {
-    const v = loc[id] || {}, d = defs[id];
-    if (!d) return true;                         // paramètre absent de l'éditeur : gardé
-    return (v.ref  !== undefined && txt(v.ref)  !== txt(d.ref))
-        || (v.unit !== undefined && txt(v.unit) !== txt(d.unit))
-        || (v.lo   !== undefined && num(v.lo, 0)   !== num(d.lo, 0))
-        || (v.hi   !== undefined && num(v.hi, 999) !== num(d.hi, 999));
-  }).map(id => ({ id, nom: txt((defs[id] && defs[id].name) || id).replace(/<[^>]*>/g, ''), v: loc[id] || {} }));
+  const params = _refsParamsParId();
+  const out = [];
+  Object.keys(loc || {}).forEach(id => {
+    const e = refPersoNormalisee(id, loc[id]);
+    if (!e) return;
+    const p = params[id];
+    const garde = {}, lignes = [];
+    Object.keys(e.p || {}).forEach(cle => {
+      const v = e.p[cle];
+      if (p && _refEgal(v, _refDefaut(p, _profilDeCle(cle)))) return;
+      (garde.p = garde.p || {})[cle] = v;
+      lignes.push({ cle, v });
+    });
+    if (e.unit !== undefined && (!p || String(e.unit).trim() !== String(p.unit || '').trim())) garde.unit = e.unit;
+    if (!garde.p && garde.unit === undefined) return;
+    const nom = String((p && p.name) || id).replace(/<[^>]*>/g, '').trim();
+    out.push({ id, nom, e: garde, lignes, unit: (p && p.unit) || '' });
+  });
+  return out;
 }
 function _texteRefsLocales(modifs) {
-  const ligne = m => '• ' + m.nom + ' : ' + (String(m.v.ref || '').trim()
-    || ((m.v.lo ?? '') + '–' + (m.v.hi ?? ''))) + (m.v.unit ? ' ' + m.v.unit : '');
+  const textes = [];
+  modifs.forEach(m => {
+    const unite = m.e.unit !== undefined ? m.e.unit : m.unit;
+    m.lignes.forEach(l => textes.push('• ' + m.nom + (l.cle === '*' ? '' : ' (' + _libelleProfilRefs(l.cle) + ')')
+      + ' : ' + (String(l.v.ref || '').trim() || ((l.v.lo ?? '') + '–' + (l.v.hi ?? ''))) + (unite ? ' ' + unite : '')));
+    if (m.e.unit !== undefined) textes.push('• ' + m.nom + ' : unité « ' + m.e.unit + ' »');
+  });
   return 'Valeurs de référence\n\n'
-    + 'Ce poste utilise ' + modifs.length + ' valeur(s) de référence modifiée(s) qui ne sont pas sur la base :\n'
-    + modifs.slice(0, 8).map(ligne).join('\n')
-    + (modifs.length > 8 ? '\n… et ' + (modifs.length - 8) + ' autre(s)' : '')
+    + 'Ce poste utilise ' + textes.length + ' valeur(s) de référence modifiée(s) qui ne sont pas sur la base :\n'
+    + textes.slice(0, 8).join('\n')
+    + (textes.length > 8 ? '\n… et ' + (textes.length - 8) + ' autre(s)' : '')
     + '\n\nOK : les enregistrer sur la base — elles s\'appliqueront à tous les postes.'
     + '\nAnnuler : ne rien changer pour l\'instant (la question reviendra à la prochaine connexion).';
 }
 async function _realignerSurBase() {
-  const { data, error } = await _sb.rpc('get_refs_config', { p_token: TK() });
+  const { data, error } = await _sb.rpc('get_refs_config_v2', { p_token: TK() });
   if (!error && _estRefsObjet(data)) _appliquerRefsBase(data);
 }
 function _signalerRefsLocales(n) {
@@ -1253,8 +1386,11 @@ function _signalerRefsLocales(n) {
     + 'pour les enregistrer pour tous les postes');
   try { localStorage.setItem(LABO_REFS_SIGNALE_KEY, '1'); } catch (e) {}
 }
+// ✅ v13.257 — get_refs_config_v2 renvoie tout, valeurs par profil comprises ;
+//   get_refs_config (anciennes versions) ne renvoie plus que l'ancien format :
+//   un poste pas encore mis à jour n'affiche jamais une référence vide.
 async function _chargerRefsDepuisBase() {
-  const { data: base, error } = await _sb.rpc('get_refs_config', { p_token: TK() });
+  const { data: base, error } = await _sb.rpc('get_refs_config_v2', { p_token: TK() });
   if (error || !_estRefsObjet(base)) return;                 // pas de réponse : on garde le local
   const modifs = _refsModifiees(_refsLocales());
   if (Object.keys(base).length || _refsAlignees() || !modifs.length) { _appliquerRefsBase(base); return; }
@@ -1267,7 +1403,7 @@ async function _chargerRefsDepuisBase() {
   if (etat === 'forbidden') return _signalerRefsLocales(modifs.length);
   if (etat !== 'vide' || !confirm(_texteRefsLocales(modifs))) return;
   const refs = {};
-  modifs.forEach(m => { refs[m.id] = m.v; });
+  modifs.forEach(m => { refs[m.id] = m.e; });
   const { data: rep, error: e3 } = await _sb.rpc('init_refs_config', { p_token: TK(), p_refs: refs });
   if (e3) return;
   if (rep === 'ok') {
@@ -1297,17 +1433,36 @@ async function _enregistrerRefs(construire, msgs, { redessinerSurRefus = false }
   return res;
 }
 
+// ✅ v13.257 — Remises à zéro : pour le profil affiché (les lignes « tous
+//   profils » de la section valent pour tous). « Remettre défauts » : tout.
+function _refsSansProfil(base, ids, profil) {
+  const c = {};
+  Object.keys(base || {}).forEach(id => { const e = refPersoNormalisee(id, base[id]); if (e) c[id] = e; });
+  ids.forEach(id => {
+    const e = c[id]; if (!e) return;
+    const cle = refVarieSelonProfil(id) ? cleProfilRef(profil.tranche, profil.sexe) : '*';
+    if (e.p) { delete e.p[cle]; if (!Object.keys(e.p).length) delete e.p; }
+    delete e.unit;
+    if (!e.p) delete c[id];
+  });
+  return c;
+}
+
 function resetSectionRefs(sectionId) {
-  if (!confirm('Remettre les valeurs par défaut pour cette section ?')) return;
-  const ids = _SECTION_PARAMS[sectionId] || [];
-  return _enregistrerRefs(() => { const c = { ...getCustomRefs() }; ids.forEach(id => delete c[id]); return c; }, {
+  const profil = { ..._refsProfil };
+  if (!confirm('Remettre les valeurs par défaut de cette section pour le profil « '
+      + _libelleProfilRefs(cleProfilRef(profil.tranche, profil.sexe)) + ' » ?')) return;
+  const ids = _refsIdsSection(sectionId);
+  _memoriserRefsAnciennes();
+  return _enregistrerRefs(() => _refsSansProfil(getCustomRefs(), ids, profil), {
     ok: 'Section réinitialisée sur tous les postes', refus: 'Réinitialisation non enregistrée',
     local: 'Section réinitialisée sur ce poste seulement',
   }, { redessinerSurRefus: true });
 }
 
 function resetRefsConfig() {
-  if (!confirm('Remettre TOUTES les valeurs de référence et unités aux défauts du système ?')) return;
+  if (!confirm('Remettre TOUTES les valeurs de référence et unités aux défauts du système, pour TOUS les profils ?')) return;
+  _memoriserRefsAnciennes();
   return _enregistrerRefs(() => ({}), {
     ok: 'Toutes les valeurs de référence réinitialisées sur tous les postes', refus: 'Réinitialisation non enregistrée',
     local: 'Valeurs de référence réinitialisées sur ce poste seulement',
@@ -1315,7 +1470,9 @@ function resetRefsConfig() {
 }
 
 function resetOneRef(id) {
-  return _enregistrerRefs(() => { const c = { ...getCustomRefs() }; delete c[id]; return c; }, {
+  const profil = { ..._refsProfil };
+  _memoriserRefsAnciennes();
+  return _enregistrerRefs(() => _refsSansProfil(getCustomRefs(), [id], profil), {
     ok: 'Valeur réinitialisée sur tous les postes', refus: 'Réinitialisation non enregistrée',
     local: 'Valeur réinitialisée sur ce poste seulement',
   }, { redessinerSurRefus: true });

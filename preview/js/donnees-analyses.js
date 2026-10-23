@@ -468,13 +468,54 @@ function getUnit(paramId, defaultUnit) {
   return defaultUnit || '';
 }
 
+// ✅ v13.257 — Valeurs personnalisées PAR PROFIL (âge + sexe).
+//   Format : { paramId: { unit?, p: { 'ADULTE_F': { ref, lo, hi }, …, '*': {…} } } }
+//   • paramètre dont le référentiel varie selon l'âge ou le sexe (NORM par
+//     tranche) : réglé profil par profil (« TRANCHE_SEXE ») ; les autres
+//     profils gardent le référentiel ;
+//   • paramètre identique pour tous (sérologies, Widal, bilan prénatal…) :
+//     réglé une fois pour tous ('*').
+//   Ancien format (avant v13.257) : { ref, lo, hi, unit }, sans âge ni sexe.
+//   Il remplaçait les valeurs de TOUS les âges et des deux sexes : il n'est
+//   plus appliqué aux paramètres qui varient (l'éditeur le montre pour qu'on
+//   le ressaisisse sur le bon profil). Son unité, elle, reste valable.
+const TRANCHES_REFS = ['NN', 'NOURR', 'ENFANT', 'ADO', 'ADULTE', 'SENIOR'];
+function refVarieSelonProfil(paramId) { const t = NORM[paramId]; return !!t && !t._all; }
+function cleProfilRef(tranche, sexe) { return (tranche || 'ADULTE') + '_' + sexe; }
+function refPersoAncienne(cc) {
+  return !!cc && typeof cc === 'object' && !cc.p && (cc.ref !== undefined || cc.lo !== undefined || cc.hi !== undefined);
+}
+// Copie au format par profil (l'ancien format n'y garde que ce qui reste valable).
+function refPersoNormalisee(paramId, cc) {
+  if (!cc || typeof cc !== 'object') return null;
+  const e = {};
+  if (cc.unit !== undefined) e.unit = cc.unit;
+  if (cc.p && typeof cc.p === 'object') e.p = { ...cc.p };
+  else if (refPersoAncienne(cc) && !refVarieSelonProfil(paramId)) e.p = { '*': { ref: cc.ref, lo: cc.lo, hi: cc.hi } };
+  return e;
+}
+function _refNombre(x, parDefaut) { const n = parseFloat(x); return isNaN(n) ? parDefaut : n; }
+function _refPersoObj(e) { return e ? { ref: e.ref || '', lo: _refNombre(e.lo, 0), hi: _refNombre(e.hi, 999) } : null; }
+// Valeur personnalisée applicable à ce profil, ou null (référentiel).
+function refPersoPour(paramId, profile) {
+  const e = refPersoNormalisee(paramId, getCustomRefs()[paramId]);
+  const p = e && e.p;
+  if (!p) return null;
+  if (!refVarieSelonProfil(paramId)) return _refPersoObj(p['*']);
+  const t = (profile && profile.tranche) || 'ADULTE';
+  const s = profile && profile.sexe;
+  if (s === 'M' || s === 'F') return _refPersoObj(p[cleProfilRef(t, s)]);
+  // Sexe inconnu : comme le référentiel — les deux valeurs (« H / F »), bornes féminines.
+  const m = p[cleProfilRef(t, 'M')], f = p[cleProfilRef(t, 'F')];
+  if (!m && !f) return null;
+  const rm = _refPersoObj(m) || _getRefBase(paramId, { tranche: t, sexe: 'M' });
+  const rf = _refPersoObj(f) || _getRefBase(paramId, { tranche: t, sexe: 'F' });
+  if (!rm || !rf) return _refPersoObj(m || f);
+  return { ref: rm.ref === rf.ref ? rm.ref : rm.ref + ' / ' + rf.ref, lo: rf.lo, hi: rf.hi };
+}
+
 function getRef(paramId, profile) {
-  const custom = getCustomRefs();
-  if (custom[paramId]) {
-    const cc = custom[paramId];
-    return { ref: cc.ref || '', lo: parseFloat(cc.lo) || 0, hi: parseFloat(cc.hi) || 999 };
-  }
-  return _getRefBase(paramId, profile);
+  return refPersoPour(paramId, profile) || _getRefBase(paramId, profile);
 }
 
 function interprete(val, lo, hi) {
@@ -1553,7 +1594,7 @@ function buildWidal() {
     const opts = WIDAL_DILUTIONS.map(d => `<option value="${d}">${d}</option>`).join('');
     const cinetOpts = '<option value="">—</option><option value="montant">↗ Montant</option><option value="stable">→ Stable</option><option value="descendant">↘ Descendant</option>';
     tr.innerHTML = `
-      <td style="font-size:12.5px;white-space:nowrap">${ag.name}<br><span style="font-size:10.5px;color:var(--text-muted)" id="widal_seuil_lbl_${ag.id}">Seuil significatif : 1/${(getCustomRefs()['widal_'+ag.id]?.lo)||ag.seuil}</span></td>
+      <td style="font-size:12.5px;white-space:nowrap">${ag.name}<br><span style="font-size:10.5px;color:var(--text-muted)" id="widal_seuil_lbl_${ag.id}">Seuil significatif : 1/${(refPersoPour('widal_'+ag.id)?.lo)||ag.seuil}</span></td>
       <td><select id="widal_${ag.id}" onchange="interpretWidal()" style="width:100px">${opts}</select></td>
       <td><select id="widal_cin_${ag.id}" onchange="interpretWidal()" style="width:130px">${cinetOpts}</select></td>
       <td><span id="widal_i_${ag.id}" style="font-size:12px;font-weight:600">—</span></td>`;
@@ -1602,9 +1643,8 @@ function interpretWidal() {
   }
 
   // Lire les seuils depuis la config si modifiés par l'admin
-  const custom = getCustomRefs();
-  const seuilTO = custom['widal_to']?.lo || 80;
-  const seuilTH = custom['widal_th']?.lo || 80;
+  const seuilTO = refPersoPour('widal_to')?.lo || 80;
+  const seuilTH = refPersoPour('widal_th')?.lo || 80;
   const toSignif = to >= seuilTO;
   const thSignif = th >= seuilTH;
 

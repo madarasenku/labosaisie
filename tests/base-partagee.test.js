@@ -8,22 +8,24 @@
 const { serve, openApp, createReporter } = require('./helpers');
 const PORT = 8361;
 const CIBLE = process.env.CIBLE || '/index.html';
-const HB = { hb: { ref: '1-2', lo: 1, hi: 2, unit: 'g/dL' } };
+// Format par profil (v13.257) : Hb réglée pour la femme adulte.
+const HB = { hb: { p: { ADULTE_F: { ref: '1-2', lo: 1, hi: 2 } } } };
 const GLU = { glu: { ref: '0,7-1,1', lo: 0.7, hi: 1.1, unit: 'g/L' } };
 
 // Rejoue _chargerRefsDepuisBase avec un serveur scripté. `rep` : nom → réponse
 // (ou liste de réponses successives). `confirmer` : réponse à la question.
 // Renvoie l'état du poste après coup.
 const scenario = (page, { local, aligne, rep, confirmer = false }) => page.evaluate(async ({ local, aligne, rep, confirmer }) => {
-  if (local === 'DEFAUTS') {                   // ligne de l'éditeur enregistrée sans modification
-    const d = refsSections().flatMap(s => s.params).find(p => p.id === 'hb');
-    local = { hb: { ref: d.ref, lo: parseFloat(d.lo) || 0, hi: parseFloat(d.hi) || 999, unit: d.unit } };
+  if (local === 'DEFAUTS') {                   // valeur réglée identique au référentiel du profil
+    const d = _getRefBase('hb', { tranche: 'ADULTE', sexe: 'F' });
+    local = { hb: { unit: 'g/dL', p: { ADULTE_F: { ref: d.ref, lo: d.lo, hi: d.hi } } } };
   }
+  if (local === 'ANCIEN') local = { hb: { ref: '13-18', lo: 13, hi: 18, unit: 'g/dL' } };   // avant v13.257
   [LABO_REFS_AVANT_BASE_KEY, LABO_REFS_SIGNALE_KEY, 'labo_anomalies_attente'].forEach(k => localStorage.removeItem(k));
   localStorage.setItem(LABO_REFS_KEY, JSON.stringify(local));
   if (aligne) localStorage.setItem(LABO_REFS_SYNC_KEY, '1'); else localStorage.removeItem(LABO_REFS_SYNC_KEY);
   _customRefsCache = null;
-  const appels = []; const vrai = _sb.rpc; const vraiConfirm = window.confirm;
+  const appels = []; const vrai = _sb.rpc.bind(_sb); const vraiConfirm = window.confirm;
   let question = '';
   window.confirm = (t) => { question = t; return confirmer; };
   const vus = {};
@@ -63,61 +65,65 @@ const ficheElectro = (id, nom) => ({
     r.section('Valeurs de référence à la connexion');
     const { ctx, page, errors } = await openApp({ role: 'responsable', username: 'Responsable', userId: 5, port: PORT, cible: CIBLE });
     let s = await scenario(page, { local: { ...HB, ...GLU }, aligne: false, confirmer: true,
-      rep: { get_refs_config: {}, init_refs_config: ['vide', 'ok'] } });
-    r.check('base jamais remplie : sonde puis envoi après accord', s.appels, 'get_refs_config init_refs_config:{} init_refs_config:hb,glu');
-    r.check('  la question liste les valeurs modifiées', /Hémoglobine|hb/.test(s.question) && /1-2 g\/dL/.test(s.question) && /0,7-1,1/.test(s.question), true);
+      rep: { get_refs_config_v2: {}, init_refs_config: ['vide', 'ok'] } });
+    r.check('base jamais remplie : sonde puis envoi après accord', s.appels, 'get_refs_config_v2 init_refs_config:{} init_refs_config:hb,glu');
+    r.check('  la question liste les valeurs modifiées, avec le profil', /Adulte, femme\) : 1-2 g\/dL/.test(s.question) && /0,7-1,1/.test(s.question), true);
     r.check('  valeurs du poste gardées', s.cles, 'hb,glu');
     r.check('  poste désormais aligné sur la base', s.aligne, true);
 
     s = await scenario(page, { local: HB, aligne: false, confirmer: false,
-      rep: { get_refs_config: {}, init_refs_config: 'vide' } });
-    r.check('« Annuler » : rien envoyé, rien changé', s.appels + ' / ' + s.cles + ' ' + s.aligne, 'get_refs_config init_refs_config:{} / hb false');
+      rep: { get_refs_config_v2: {}, init_refs_config: 'vide' } });
+    r.check('« Annuler » : rien envoyé, rien changé', s.appels + ' / ' + s.cles + ' ' + s.aligne, 'get_refs_config_v2 init_refs_config:{} / hb false');
 
-    s = await scenario(page, { local: 'DEFAUTS', aligne: false, rep: { get_refs_config: {} } });
-    r.check('lignes non modifiées : pas de question, aligné', s.appels + ' ' + s.aligne + ' ' + (s.question ? 'question' : '-'), 'get_refs_config true -');
+    s = await scenario(page, { local: 'DEFAUTS', aligne: false, rep: { get_refs_config_v2: {} } });
+    r.check('lignes non modifiées : pas de question, aligné', s.appels + ' ' + s.aligne + ' ' + (s.question ? 'question' : '-'), 'get_refs_config_v2 true -');
 
-    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config: [{}, GLU], init_refs_config: 'deja_defini' } });
+    s = await scenario(page, { local: 'ANCIEN', aligne: false, rep: { get_refs_config_v2: {} } });
+    r.check('ancienne valeur sans âge ni sexe : jamais envoyée', s.appels + ' ' + (s.question ? 'question' : '-'), 'get_refs_config_v2 -');
+    r.check('  gardée de côté (affichée dans l\'éditeur)', s.sauve, 'hb');
+
+    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config_v2: [{}, GLU], init_refs_config: 'deja_defini' } });
     r.check('base déjà choisie : pas de question, on s\'aligne', s.cles + '/' + s.stocke + ' ' + (s.question ? 'question' : '-'), 'glu/glu -');
     r.check('  anciennes valeurs du poste gardées de côté', s.sauve, 'hb');
     r.check('  aligné', s.aligne, true);
 
     s = await scenario(page, { local: HB, aligne: false, confirmer: true,
-      rep: { get_refs_config: [{}, GLU], init_refs_config: ['vide', 'deja_defini'] } });
+      rep: { get_refs_config_v2: [{}, GLU], init_refs_config: ['vide', 'deja_defini'] } });
     r.check('course (un autre poste a rempli entre-temps) : aligné', s.cles + ' ' + s.aligne, 'glu true');
 
-    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config: [{}, {}], init_refs_config: 'deja_defini' } });
+    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config_v2: [{}, {}], init_refs_config: 'deja_defini' } });
     r.check('base remise « par défaut » par quelqu\'un : appliquée', s.cles, '∅');
     r.check('  valeurs du poste gardées de côté', s.sauve, 'hb');
 
-    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config: GLU } });
-    r.check('base remplie : prise telle quelle, sans sonde', s.cles + ' ' + s.appels, 'glu get_refs_config');
+    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config_v2: GLU } });
+    r.check('base remplie : prise telle quelle, sans sonde', s.cles + ' ' + s.appels, 'glu get_refs_config_v2');
     r.check('  valeurs du poste gardées de côté', s.sauve, 'hb');
 
-    s = await scenario(page, { local: GLU, aligne: false, rep: { get_refs_config: GLU } });
+    s = await scenario(page, { local: GLU, aligne: false, rep: { get_refs_config_v2: GLU } });
     r.check('valeurs du poste = base : rien à garder de côté', s.sauve, '∅');
 
-    s = await scenario(page, { local: {}, aligne: false, rep: { get_refs_config: {} } });
-    r.check('poste sans valeurs : aligné, sans sonde', s.aligne + ' ' + s.appels, 'true get_refs_config');
+    s = await scenario(page, { local: {}, aligne: false, rep: { get_refs_config_v2: {} } });
+    r.check('poste sans valeurs : aligné, sans sonde', s.aligne + ' ' + s.appels, 'true get_refs_config_v2');
 
-    s = await scenario(page, { local: HB, aligne: true, rep: { get_refs_config: {} } });
-    r.check('poste aligné : la remise à zéro de la base s\'applique', s.cles + ' ' + s.appels, '∅ get_refs_config');
+    s = await scenario(page, { local: HB, aligne: true, rep: { get_refs_config_v2: {} } });
+    r.check('poste aligné : la remise à zéro de la base s\'applique', s.cles + ' ' + s.appels, '∅ get_refs_config_v2');
 
-    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config: 'ERREUR' } });
+    s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config_v2: 'ERREUR' } });
     r.check('serveur injoignable : valeurs du poste intactes', s.cles + ' ' + s.aligne, 'hb false');
 
-    s = await scenario(page, { local: HB, aligne: false, confirmer: true, rep: { get_refs_config: {}, init_refs_config: ['vide', 'ERREUR'] } });
+    s = await scenario(page, { local: HB, aligne: false, confirmer: true, rep: { get_refs_config_v2: {}, init_refs_config: ['vide', 'ERREUR'] } });
     r.check('envoi impossible : on réessaiera (rien changé)', s.cles + ' ' + s.aligne, 'hb false');
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {
     r.section('Compte sans droit sur les normes (agent)');
     const { ctx, page, errors } = await openApp({ role: 'agent', username: 'agent1', userId: 2, port: PORT, cible: CIBLE });
-    let s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config: {}, init_refs_config: 'forbidden' } });
+    let s = await scenario(page, { local: HB, aligne: false, rep: { get_refs_config_v2: {}, init_refs_config: 'forbidden' } });
     r.check('valeurs du poste gardées, pas de question', s.cles + ' ' + s.aligne + ' ' + (s.question ? 'question' : '-'), 'hb false -');
     r.check('administrateur averti (journal des anomalies)', s.appels.includes('log_anomalie') && s.signale, true);
     s = await page.evaluate(async () => {
-      const appels = []; const vrai = _sb.rpc;
-      _sb.rpc = (n) => { appels.push(n); return Promise.resolve({ data: n === 'get_refs_config' ? {} : 'forbidden', error: null }); };
+      const appels = []; const vrai = _sb.rpc.bind(_sb);
+      _sb.rpc = (n) => { appels.push(n); return Promise.resolve({ data: n === 'get_refs_config_v2' ? {} : 'forbidden', error: null }); };
       try { await _chargerRefsDepuisBase(); } finally { _sb.rpc = vrai; }
       await new Promise(r => setTimeout(r, 50));
       return appels.includes('log_anomalie');
@@ -129,15 +135,15 @@ const ficheElectro = (id, nom) => ({
     r.section('Connexion réelle : le poste alimente la base');
     const appels = [];
     const { ctx, page, errors } = await openApp({ role: 'admin', port: PORT, cible: CIBLE, appels,
-      rpc: { get_refs_config: {}, init_refs_config: 'vide' } });
+      rpc: { get_refs_config_v2: {}, init_refs_config: 'vide' } });
     await page.evaluate((hb) => { localStorage.setItem(LABO_REFS_KEY, JSON.stringify(hb)); localStorage.removeItem(LABO_REFS_SYNC_KEY); }, HB);
     let question = '';
     page.on('dialog', d => { question = d.message(); d.accept(); });
     appels.length = 0;
     await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(1800);
-    r.check('question posée au démarrage', /tous les postes/.test(question) && /1-2 g\/dL/.test(question), true);
+    r.check('question posée au démarrage', /tous les postes/.test(question) && /Adulte, femme\) : 1-2 g\/dL/.test(question), true);
     r.check('sonde puis envoi', appels.filter(n => n === 'init_refs_config').length, 2);
-    r.check('valeurs toujours appliquées', await page.evaluate(() => 'hb' in getCustomRefs()), true);
+    r.check('valeurs toujours appliquées (femme adulte)', await page.evaluate(() => getRef('hb', { tranche: 'ADULTE', sexe: 'F' }).ref), '1-2');
     erreurs = erreurs.concat(errors); await ctx.close();
   }
   {
@@ -154,7 +160,7 @@ const ficheElectro = (id, nom) => ({
       _dbCache.push(...fiches);
       window.__envoyes = { '7101': { par: 'admin', le: '2026-10-22T10:00:00Z' } };
       window.__appels = []; window.__refus = false;
-      const vrai = _sb.rpc;
+      const vrai = _sb.rpc.bind(_sb);
       _sb.rpc = (n, p) => {
         if (n === 'get_electro_envoyes') {
           window.__appels.push(n + ':' + p.p_ids.join(','));
@@ -206,7 +212,7 @@ const ficheElectro = (id, nom) => ({
 
     // Profil saisi depuis la liste : le marqueur est retiré sur la base.
     await page.evaluate(async () => {
-      const vrai = _sb.rpc;
+      const vrai = _sb.rpc.bind(_sb);
       const fait = Object.assign({}, _dbCache.find(x => x.id === 7101));
       fait.resultats = { ...fait.resultats, 'Hématologie': { 'Profil Hb': 'Profil AA (Normal)' } };
       _sb.rpc = (n, p) => n === 'update_resultat' ? Promise.resolve({ data: fait, error: null }) : vrai(n, p);
