@@ -195,8 +195,9 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
 
     // — Valeurs de référence —
     const prepNormes = () => page.evaluate(() => {
-      localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { ref: '12-17', lo: 12, hi: 17, unit: 'g/dL' } }));
-      _customRefsCache = null; showView('comptes'); buildRefsEditor(); });
+      // Format par profil (v13.257) ; l'éditeur s'ouvre sur « Adulte, femme ».
+      localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { p: { ADULTE_F: { ref: '12-17', lo: 12, hi: 17 } } } }));
+      _customRefsCache = null; _refsProfil = { tranche: 'ADULTE', sexe: 'F' }; showView('comptes'); buildRefsEditor(); });
     await prepNormes();
     r.check('normes refusées : mémoire restaurée, saisie et frappe pendant l\'envoi gardées', await page.evaluate(async (refus) => {
       __rep.save_refs_config = __lent(refus, 300);
@@ -205,7 +206,7 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
       await new Promise(r => setTimeout(r, 60));
       const autre = [...document.querySelectorAll('#ac-refs input[id^="rref_"]')].find(i => i.id !== 'rref_hb');
       autre.value = 'tapé'; await __fin('saveRefsConfig');
-      return [getCustomRefs().hb.ref, document.getElementById('rref_hb').value,
+      return [getCustomRefs().hb.p.ADULTE_F.ref, document.getElementById('rref_hb').value,
               document.getElementById(autre.id).value, __dernier()[0]].join('|');
     }, REFUS), '12-17|1-2|tapé|err');
     await prepNormes();
@@ -216,7 +217,7 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
       await new Promise(r => setTimeout(r, 60));
       const autre = [...document.querySelectorAll('#ac-refs input[id^="rref_"]')].find(i => i.id !== 'rref_hb');
       autre.value = 'tapé'; await __fin('saveRefsConfig');
-      return getCustomRefs().hb.ref + '|' + document.getElementById(autre.id).value;
+      return getCustomRefs().hb.p.ADULTE_F.ref + '|' + document.getElementById(autre.id).value;
     }, OK), '13-18|tapé');
 
     // — Ristournes (vrai tableau, vrai bouton) —
@@ -351,7 +352,7 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
     r.check('normes : remise à zéro refusée → valeur rétablie', await page.evaluate(async (refus) => {
       __rep.save_refs_config = () => Promise.resolve(refus);
       await resetOneRef('hb');
-      return getCustomRefs().hb.ref + '|' + document.getElementById('rref_hb').value + '|' + __dernier()[0];
+      return getCustomRefs().hb.p.ADULTE_F.ref + '|' + document.getElementById('rref_hb').value + '|' + __dernier()[0];
     }, REFUS), '12-17|12-17|err');
     r.check('ristournes : requête bloquée → chargement refermé au délai, saisie gardée', await page.evaluate(async () => {
       showView('caisse'); await new Promise(r => setTimeout(r, 300));
@@ -386,10 +387,10 @@ const RESP = { role: 'responsable', username: 'Responsable', userId: 49, port: P
   }
   {
     r.section('v13.249 — Normes à la connexion : une base remise à zéro s\'applique aux postes alignés');
-    const { ctx, page, errors } = await openApp({ ...RESP, rpc: { get_refs_config: {} } });
+    const { ctx, page, errors } = await openApp({ ...RESP, rpc: { get_refs_config_v2: {} } });
     const lire = async (alignes) => {
       await page.evaluate((al) => {
-        localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { ref: '1-2', lo: 1, hi: 2, unit: 'g/dL' } }));
+        localStorage.setItem(LABO_REFS_KEY, JSON.stringify({ hb: { p: { ADULTE_F: { ref: '1-2', lo: 1, hi: 2 } } } }));
         if (al) localStorage.setItem(LABO_REFS_SYNC_KEY, '1'); else localStorage.removeItem(LABO_REFS_SYNC_KEY);
       }, alignes);
       await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(1500);

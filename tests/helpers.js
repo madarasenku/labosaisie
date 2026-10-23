@@ -130,7 +130,7 @@ function rpcResponses(extra = {}) {
     get_audit_log:       [],
     get_my_signature:    null,
     check_first_login:   false,
-    get_refs_config:     null,
+    get_refs_config_v2:  null,
     get_next_dossier_num:'0001-0826',
   }, extra);
 }
