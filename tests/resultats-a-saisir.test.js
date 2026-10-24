@@ -86,9 +86,11 @@ const TOUS = [A, B, C, D, E, F, G, H];
 
   // ── Par semaine ─────────────────────────────────────────────────────
   r.section('Par semaine (lundi → dimanche)');
-  const lundiDe = n => { const d = il(n); const j = d.getDay(); d.setDate(d.getDate() - (j === 0 ? 6 : j - 1)); return ymd(d); };
-  const lundiCourant = lundiDe(0);
-  const semaineDe = dos => lundiDe(Math.round((new Date() - new Date(dos.created_at)) / 864e5));
+  const lundiDuJour = d => { d = new Date(d); const j = d.getDay(); d.setDate(d.getDate() - (j === 0 ? 6 : j - 1)); return ymd(d); };
+  const lundiCourant = lundiDuJour(il(0));
+  // Semaine de la DATE du dossier. (Un arrondi de l'écart en jours la décalait
+  // d'un jour après 22 h : un dossier du lundi 10 h tombait la semaine d'avant.)
+  const semaineDe = dos => lundiDuJour(dos.created_at);
   const AFAIRE = [A, B, C, F, H];
   const attendus = (lundi) => AFAIRE.filter(x => semaineDe(x) === lundi).map(x => x.id).sort((a, b) => a - b);
   const avantAttendu = AFAIRE.filter(x => semaineDe(x) < lundiCourant).length;
