@@ -2075,11 +2075,11 @@ async function bulkImprimer() {
 async function bulkEnveloppes() {
   const ids = [..._selectedIds];
   if (!ids.length) return;
-  if (typeof imprimerEnveloppes !== 'function') { toast('Impression indisponible', 'err'); return; }
+  if (typeof ouvrirEnveloppes !== 'function') { toast('Impression indisponible', 'err'); return; }
   const trouver = id => (typeof recordForOutput === 'function' ? recordForOutput(id) : null)
                      || getDB().find(x => x.id === id);
   const ordre = ids.map(trouver).filter(Boolean)
     .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')))
     .map(r => r.id);
-  await imprimerEnveloppes(ordre, trouver);
+  ouvrirEnveloppes(ordre, trouver);              // ✅ v13.260 — réglage du sens avant impression
 }

@@ -29,28 +29,62 @@ const CIBLE = process.env.CIBLE || '/index.html';
   });
   r.check('lien de vérification si partagé, sinon références', qr, 'true true');
 
-  r.section('Impression');
-  const imp = await page.evaluate(async () => {
+  r.section('Fenêtre de réglage puis impression (par défaut : debout)');
+  // Lance l'impression depuis la fenêtre : `bouton` = 'env-essai' | 'env-tout'.
+  const imprimer = (bouton, reglage) => page.evaluate(async ({ bouton, reglage }) => {
     let imprime = 0; const p = window.print; window.print = () => { imprime++; };
-    try { await bulkEnveloppes(); } finally { window.print = p; }
+    try {
+      await bulkEnveloppes();
+      const bd = document.getElementById('env-modal-bd');
+      if (!bd) return { fenetre: false };
+      if (reglage) {
+        bd.querySelector('input[name="env-sens"][value="' + reglage.sens + '"]').checked = true;
+        bd.querySelector('#env-retourne').checked = reglage.retourne;
+      }
+      bd.querySelector('#' + bouton).click();
+      for (let i = 0; i < 40 && !imprime; i++) await new Promise(r => setTimeout(r, 50));
+    } finally { window.print = p; }
     const pr = document.getElementById('print-render');
     const env = [...pr.querySelectorAll('.env')];
     return {
-      imprime, n: env.length,
+      fenetre: true, ferme: !document.getElementById('env-modal-bd'), imprime, n: env.length,
       noms: env.map(e => e.querySelector('.env-patient').textContent).join(' | '),
       dossiers: env.map(e => e.querySelector('.env-dossier b').textContent).join(' | '),
       qr: env.filter(e => /^data:image\/png/.test((e.querySelector('.env-qr img') || {}).src || '')).length,
       tete: env.every(e => /CPMI DE GRAND-BASSAM/.test(e.textContent) && /CONFIDENTIEL/.test(e.textContent)),
-      format: /@page\{size:220mm 110mm;margin:0;\}/.test(pr.innerHTML),
+      page: (pr.innerHTML.match(/@page\{size:([^;]+);/) || [])[1],
+      pivot: (pr.innerHTML.match(/\.env\{[^}]*?(transform:[^;]*;)?\}/) || [])[1] || 'aucun',
+      memo: localStorage.getItem('labosaisie_enveloppes_v1'),
     };
-  });
+  }, { bouton, reglage });
+  await page.evaluate(() => localStorage.removeItem('labosaisie_enveloppes_v1'));
+  let imp = await imprimer('env-tout');
+  r.check('fenêtre de réglage ouverte puis fermée', imp.fenetre && imp.ferme, true);
   r.check('une impression lancée', imp.imprime, 1);
   r.check('une enveloppe par dossier coché', imp.n, 2);
   r.check('noms en majuscules, ordre d\'arrivée', imp.noms, 'TRAORE MOUSSA | DIALLO FATOU');
   r.check('n° de dossier', imp.dossiers, 'D203 | D204');
   r.check('un code QR par enveloppe', imp.qr, 2);
   r.check('en-tête CPMI + « confidentiel »', imp.tete, true);
-  r.check('format DL 220 × 110 mm, une enveloppe par page', imp.format, true);
+  r.check('page DEBOUT 110 × 220 mm (format DL des imprimantes)', imp.page, '110mm 220mm');
+  r.check('enveloppe pivotée d\'un quart de tour', imp.pivot, 'transform:rotate(90deg) translateY(-110mm);');
+
+  r.check('fenêtre au-dessus de la barre de sélection', await page.evaluate(async () => {
+    await bulkEnveloppes(); const bd = document.getElementById('env-modal-bd');
+    const z = Number(getComputedStyle(bd).zIndex), barre = Number(getComputedStyle(document.getElementById('bulk-toolbar')).zIndex);
+    bd.remove(); return z > barre; }), true);
+
+  r.section('Essai, retournement, sens couché — réglage gardé sur le poste');
+  imp = await imprimer('env-essai', { sens: 'debout', retourne: true });
+  r.check('enveloppe d\'essai : une seule', imp.n + ' ' + imp.noms, '1 TRAORE MOUSSA');
+  r.check('texte retourné', imp.pivot, 'transform:rotate(-90deg) translateX(-220mm);');
+  r.check('réglage mémorisé', imp.memo, '{"sens":"debout","retourne":true}');
+  imp = await imprimer('env-tout');                       // la fenêtre reprend le réglage gardé
+  r.check('réglage repris à l\'ouverture suivante', imp.pivot, 'transform:rotate(-90deg) translateX(-220mm);');
+  imp = await imprimer('env-tout', { sens: 'couchee', retourne: false });
+  r.check('couchée : page 220 × 110, sans pivot', imp.page + ' / ' + imp.pivot, '220mm 110mm / aucun');
+  imp = await imprimer('env-tout', { sens: 'couchee', retourne: true });
+  r.check('couchée retournée : demi-tour', imp.pivot, 'transform:rotate(180deg) translate(-220mm,-110mm);');
 
   r.section('Corbeille');
   r.check('bouton masqué dans la corbeille', await page.evaluate(() => {
