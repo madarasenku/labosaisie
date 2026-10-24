@@ -6,7 +6,13 @@
    dans index.html doit être conservé.
    ═══════════════════════════════════════════════════════════════ */
 
+// ✅ v13.259 — Lien d'un code QR (?share=…) : page de vérification PUBLIQUE.
+//   Le patient, un médecin, quiconque scanne sans compte ne doit pas être
+//   renvoyé vers la connexion du laboratoire ; l'application ne démarre pas
+//   (seule la fiche de vérification, sans aucun résultat, s'affiche).
+const MODE_VERIFICATION = /[?&]share=/.test(window.location.search);
 (function checkAuth() {
+  if (MODE_VERIFICATION) return;
   const SESSION_KEY_CHECK = 'labo_session_user';
   const raw = localStorage.getItem(SESSION_KEY_CHECK);
   if (!raw) { window.location.replace('login.html'); return; }

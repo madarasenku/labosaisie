@@ -305,6 +305,8 @@ document.addEventListener('DOMContentLoaded', () => {
   syncOffline();
   updateSyncBanner();
 
+  // ✅ v13.259 — Page de vérification d'un code QR : ni application, ni connexion.
+  if (typeof MODE_VERIFICATION !== 'undefined' && MODE_VERIFICATION) return;
   if (hasValidSession()) {
     enterApp();
   } else {
@@ -1093,10 +1095,19 @@ async function checkShareMode() {
   }
 
   try {
-    const { data, error } = await _sb.rpc('get_public_result', { p_share_token: token });
-    if (error || !data || !data.length) {
+    const { data, error } = await _sb.rpc('get_public_result', { p_share_token: token.trim() });
+    // ✅ v13.259 — Serveur injoignable ≠ dossier inexistant : avant, une simple
+    //   coupure réseau affichait « Dossier introuvable » pour un dossier valide.
+    if (error) {
+      overlay.innerHTML = buildShareCard('Vérification impossible pour le moment',
+        '<p>Le serveur du laboratoire n\'a pas pu être joint. Vérifiez la connexion internet, puis réessayez.</p>'
+        + '<p style="text-align:center;margin-top:14px"><button onclick="location.reload()" '
+        + 'style="padding:9px 20px;border:none;border-radius:10px;background:#0b2545;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Réessayer</button></p>');
+      return true;
+    }
+    if (!data || !data.length) {
       overlay.innerHTML = buildShareCard('Dossier introuvable',
-        '<p style="color:#b91c1c">Ce lien de vérification n\'est pas valide ou a expiré.</p>');
+        '<p style="color:#b91c1c">Ce lien de vérification ne correspond à aucun dossier en cours (lien incomplet, ou dossier supprimé). Contactez le laboratoire.</p>');
       return true;
     }
     const r = data[0];

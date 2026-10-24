@@ -951,8 +951,10 @@ function updateBulkToolbar() {
   if (cahierNoirBtn) cahierNoirBtn.style.display = (accesCaisseNoire() && !_filterCorbeille) ? '' : 'none';
   // ✅ v13.208 — Changer le propriétaire en lot : ADMIN, hors corbeille.
   // ✅ v13.235 — Impression groupée : hors corbeille.
-  const printBtn = document.getElementById('bulk-print-btn');
-  if (printBtn) printBtn.style.display = _filterCorbeille ? 'none' : '';
+  ['bulk-print-btn', 'bulk-env-btn'].forEach(idBtn => {        // ✅ v13.259 — + enveloppes
+    const b = document.getElementById(idBtn);
+    if (b) b.style.display = _filterCorbeille ? 'none' : '';
+  });
   const auteurBtn = document.getElementById('bulk-auteur-btn');
   if (auteurBtn) auteurBtn.style.display = (isAdmin() && !_filterCorbeille) ? '' : 'none';
   // État de la case "tout sélectionner"
@@ -2067,4 +2069,17 @@ async function bulkImprimer() {
     .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')))
     .map(r => r.id);
   await imprimerDossiersEnLot(ordre, trouver);
+}
+
+// ✅ v13.259 — Enveloppes DL des dossiers cochés (même ordre que l'impression groupée).
+async function bulkEnveloppes() {
+  const ids = [..._selectedIds];
+  if (!ids.length) return;
+  if (typeof imprimerEnveloppes !== 'function') { toast('Impression indisponible', 'err'); return; }
+  const trouver = id => (typeof recordForOutput === 'function' ? recordForOutput(id) : null)
+                     || getDB().find(x => x.id === id);
+  const ordre = ids.map(trouver).filter(Boolean)
+    .sort((a, b) => String(a.savedAt || '').localeCompare(String(b.savedAt || '')))
+    .map(r => r.id);
+  await imprimerEnveloppes(ordre, trouver);
 }
