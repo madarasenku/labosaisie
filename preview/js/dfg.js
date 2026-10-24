@@ -146,18 +146,27 @@ function recalcDFG() {
   const g = id => document.getElementById(id);
   const active = document.activeElement;
 
-  // Pré-remplissage confort : remplir une case VIDE de la carte depuis le champ
-  // correspondant du dossier — sans écraser une valeur déjà saisie ni la case
-  // en cours de frappe.
-  const prefill = (cardId, srcId) => {
-    const c = g(cardId), s = g(srcId);
-    if (c && c !== active && (c.value === '' || c.value == null) && s && String(s.value) !== '') c.value = s.value;
+  // ✅ v13.258 — La carte REFLÈTE le dossier dès qu'il a une valeur (hors case
+  //   en cours de frappe). Avant, elle n'était remplie que si elle était vide :
+  //   elle gardait la créatinine, l'âge et le sexe du PREMIER patient (saisie en
+  //   série, dossiers enchaînés sans recharger la page) et calculait le DFG des
+  //   suivants avec. Champ du dossier vide (DFG demandé sans créatinine : case
+  //   verrouillée) → la carte garde ce qu'on y a tapé.
+  const refleter = (cardId, val) => {
+    const c = g(cardId);
+    if (c && c !== active && val !== '' && val != null && c.value !== String(val)) c.value = String(val);
   };
-  prefill('dfg_crea', 'v_crea');
-  prefill('dfg_age', 'p_age');
+  refleter('dfg_crea', g('v_crea') ? g('v_crea').value : '');
+  const pa = g('p_age');
+  if (pa && String(pa.value).trim() !== '') {
+    // Âge du dossier en ANNÉES (il peut être saisi en mois ou en jours).
+    const n = parseFloat(String(pa.value).replace(',', '.'));
+    const u = (g('p_age_unit') || {}).value || 'ans';
+    if (!isNaN(n)) refleter('dfg_age', Math.round((u === 'mois' ? n / 12 : u === 'jours' ? n / 365 : n) * 100) / 100);
+  }
   const sxEl = g('dfg_sexe');
-  if (sxEl && sxEl !== active && !sxEl.value) { const ps = g('p_sexe'); if (ps && ps.value) sxEl.value = ps.value; }
-  prefill('dfg_poids', 'p_poids');
+  if (sxEl && sxEl !== active) { const ps = g('p_sexe'); if (ps && ps.value && sxEl.value !== ps.value) sxEl.value = ps.value; }
+  refleter('dfg_poids', g('p_poids') ? g('p_poids').value : '');
 
   // Source du calcul = les cases de la carte (repli sur le dossier si vide).
   const cardVal = (id, alt) => {

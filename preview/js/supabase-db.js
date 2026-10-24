@@ -1875,6 +1875,8 @@ function resetPanelAfterSave(tabKey) {
   if (!panel) return;
   // Vider uniquement les champs de valeurs (v_* et sv_*), pas les px_*
   panel.querySelectorAll('input[id^="v_"], input[id^="sv_"]').forEach(i => i.value = '');
+  // ✅ v13.258 — Carte DFG aussi : sinon elle gardait le patient précédent.
+  panel.querySelectorAll('input[id^="dfg_"]').forEach(i => i.value = '');
   // Remettre les select internes au panel (interprétations, profils…)
   panel.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
   // Remettre les cellules d'interprétation à l'état neutre
@@ -1905,7 +1907,12 @@ function ensureInterpFresh(type) {
   };
   const panel = document.getElementById('panel-' + (MAP[type] || ''));
   if (!panel) return;
-  panel.querySelectorAll('input, select').forEach(el => {
+  // ✅ v13.258 — JAMAIS les cases de la carte DFG : ce sont des relais qui
+  //   RECOPIENT leur valeur dans le dossier (dfgFromCard). Les « réveiller » ici
+  //   remplaçait, juste avant la collecte, la créatinine (et l'âge) saisis par
+  //   ceux restés dans la carte — ceux d'un patient précédent (saisie en série,
+  //   dossiers enchaînés) ou l'ancienne valeur d'une créatinine corrigée.
+  panel.querySelectorAll('input:not([id^="dfg_"]), select:not([id^="dfg_"])').forEach(el => {
     try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
   });
 }
