@@ -15,6 +15,14 @@
    couchée reste possible. Réglage gardé sur le poste ; une enveloppe
    d'essai permet de le trouver sans en gâcher.
 
+   ✅ v13.262 — Téléphone Android : la fenêtre d'impression ne propose souvent
+   que « A4 » (pas de format enveloppe). Mode « Feuille A4 » : la page est une
+   A4 debout et l'enveloppe y est dessinée à l'endroit exact où l'imprimante la
+   reçoit — glissée par le petit côté, centrée dans le bac (bande de 110 mm au
+   milieu de la largeur, sur les 220 premiers mm). Choisi d'office sur Android.
+   Le code QR sortait blanc : l'impression partait avant que l'image du QR soit
+   prête (même correctif que le compte rendu en v13.159).
+
    Chargé en script classique après impression.js (generateQRDataURL,
    qrTexteDossier, cpmiLogoSVG) — voir index.html.
    ═══════════════════════════════════════════════════════════════ */
@@ -23,7 +31,8 @@ const _ENV_REGLAGE_KEY = 'labosaisie_enveloppes_v1';
 function _envReglage() {
   let r = {};
   try { r = JSON.parse(localStorage.getItem(_ENV_REGLAGE_KEY) || '{}') || {}; } catch (e) {}
-  return { sens: r.sens === 'couchee' ? 'couchee' : 'debout', retourne: !!r.retourne };
+  const parDefaut = /Android/i.test(navigator.userAgent || '') ? 'a4' : 'debout';
+  return { sens: ['debout', 'couchee', 'a4'].includes(r.sens) ? r.sens : parDefaut, retourne: !!r.retourne };
 }
 function _envMemoriser(r) {
   try { localStorage.setItem(_ENV_REGLAGE_KEY, JSON.stringify({ sens: r.sens, retourne: !!r.retourne })); } catch (e) {}
@@ -50,6 +59,16 @@ function _enveloppeHtml(r, qrPng) {
 
 // Page + placement de l'enveloppe (220 × 110) selon le sens choisi.
 function _envMiseEnPage(reglage) {
+  if (reglage.sens === 'a4') {
+    // A4 debout (210 × 297) : enveloppe centrée sur la largeur (x 50 → 160 mm),
+    // sur les 220 premiers mm ; même quart de tour que le mode debout.
+    return {
+      page: '@page{size:210mm 297mm;margin:0;}',
+      cadre: '.env-page{position:relative;width:210mm;height:297mm;overflow:hidden;}',
+      pivot: reglage.retourne ? 'transform:translateX(50mm) rotate(-90deg) translateX(-220mm);'
+                              : 'transform:translateX(50mm) rotate(90deg) translateY(-110mm);',
+    };
+  }
   if (reglage.sens === 'couchee') {
     return {
       page: '@page{size:220mm 110mm;margin:0;}',
@@ -108,6 +127,13 @@ async function imprimerEnveloppes(ids, trouver, reglage) {
   let printDiv = document.getElementById('print-render');
   if (!printDiv) { printDiv = document.createElement('div'); printDiv.id = 'print-render'; document.body.appendChild(printDiv); }
   printDiv.innerHTML = html;
+  // Attendre que les QR (images data:) soient décodés, sinon ils sortent blancs.
+  await Promise.all(Array.from(printDiv.querySelectorAll('img')).map(img => {
+    if (img.complete && img.naturalWidth) return Promise.resolve();
+    if (img.decode) return img.decode().catch(() => {});
+    return new Promise(res => { img.onload = img.onerror = res; });
+  }));
+  await new Promise(res => setTimeout(res, 60));
   window.print();
 }
 
@@ -126,14 +152,15 @@ function ouvrirEnveloppes(ids, trouver) {
   bd.style.zIndex = '10000';          // au-dessus de la barre de sélection (z-index 9999)
   bd.innerHTML = '<div class="modal-box" style="max-width:440px">'
     + '<div class="modal-title">✉ Enveloppes DL (11 × 22 cm) — ' + ids.length + ' patient(s)</div>'
-    + '<div style="font-size:13px;font-weight:700;margin:4px 0 8px">Sens de l\'enveloppe dans l\'imprimante</div>'
-    + radio('debout', 'Debout — entrée par le petit côté', 'Le plus courant (format « Enveloppe DL » de l\'imprimante).')
-    + radio('couchee', 'Couchée — entrée par le grand côté', 'Si l\'imprimante prend l\'enveloppe par sa longueur.')
+    + '<div style="font-size:13px;font-weight:700;margin:4px 0 8px">Format de papier dans la fenêtre d\'impression</div>'
+    + radio('a4', 'Feuille A4 — si seul « A4 » est proposé', 'Souvent le cas sur téléphone. Laissez « A4 » ; glissez l\'enveloppe par le petit côté, centrée entre les guides du bac.')
+    + radio('debout', 'Enveloppe DL — entrée par le petit côté', 'Si la fenêtre propose « Enveloppe DL », « DL » ou « 110 × 220 mm » : choisissez-le.')
+    + radio('couchee', 'Enveloppe DL couchée — entrée par le grand côté', 'Si l\'imprimante prend l\'enveloppe par sa longueur.')
     + '<label style="display:flex;gap:9px;align-items:center;margin:10px 2px;cursor:pointer;font-size:13px">'
     + '<input type="checkbox" id="env-retourne"' + (reg.retourne ? ' checked' : '') + '> Retourner le texte (si l\'essai sort à l\'envers)</label>'
     + '<div style="font-size:12px;color:var(--text-muted);background:var(--bg);border-radius:8px;padding:8px 10px;line-height:1.5">'
-    + 'Dans la fenêtre d\'impression : papier <b>« Enveloppe DL »</b>, marges <b>« Aucune »</b>, échelle <b>100 %</b>. '
-    + 'Imprimez d\'abord une enveloppe d\'essai : le réglage est gardé sur ce poste.</div>'
+    + 'Sur téléphone, touchez <b>⌄</b> sous l\'imprimante pour voir « Taille du papier ». Sur ordinateur : marges <b>« Aucune »</b>, échelle <b>100 %</b>. '
+    + 'Imprimez d\'abord une enveloppe d\'essai : le réglage est gardé sur cet appareil.</div>'
     + '<div class="modal-actions" style="margin-top:14px;flex-wrap:wrap">'
     + '<button class="btn" id="env-annuler" style="padding:8px 14px;font-size:13px">Annuler</button>'
     + '<button class="btn btn-outline" id="env-essai" style="padding:8px 14px;font-size:13px">🧪 1 enveloppe d\'essai</button>'
@@ -141,7 +168,7 @@ function ouvrirEnveloppes(ids, trouver) {
     + '</div></div>';
   document.body.appendChild(bd);
   const lire = () => ({
-    sens: (bd.querySelector('input[name="env-sens"]:checked') || {}).value === 'couchee' ? 'couchee' : 'debout',
+    sens: (bd.querySelector('input[name="env-sens"]:checked') || {}).value || 'debout',
     retourne: !!(bd.querySelector('#env-retourne') || {}).checked,
   });
   const lancer = async liste => { const r = lire(); _envMemoriser(r); bd.remove(); await imprimerEnveloppes(liste, trouver, r); };
