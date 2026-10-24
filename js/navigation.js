@@ -395,7 +395,9 @@ function switchTab(name) {
 }
 
 function resetPanel(name) {
-  document.querySelectorAll('#panel-' + name + ' input[type=number], #panel-' + name + ' input[type=text]').forEach(i => i.value = '');
+  // ✅ v13.258 — + les cases SANS type déclaré (carte DFG : dfg_crea, dfg_age…) :
+  //   [type=text] ne les attrape pas, elles gardaient le patient précédent.
+  document.querySelectorAll('#panel-' + name + ' input[type=number], #panel-' + name + ' input[type=text], #panel-' + name + ' input:not([type])').forEach(i => i.value = '');
   document.querySelectorAll('#panel-' + name + ' select').forEach(s => s.selectedIndex = 0);
   document.querySelectorAll('#panel-' + name + ' .interp').forEach(sp => { sp.className='interp interp-?'; sp.textContent='—'; });
   document.querySelectorAll('#panel-' + name + ' .abg-row').forEach(r => r.className='abg-row nd');

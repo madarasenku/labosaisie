@@ -383,7 +383,16 @@ function grilleBuildResults(cfg, dossId, sexe, age, examKey) {
   const tab = _TYPE_TO_TAB[cfg.type] || 'hema';
   if (typeof ensurePanelBuilt === 'function') ensurePanelBuilt(tab);
   const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
-  setV('p_sexe', sexe || ''); setV('p_age', age == null ? '' : age);
+  // ✅ v13.258 — Âge AVEC son unité : « 6 mois » posé tel quel dans le champ
+  //   numérique p_age devenait vide → profil adulte pour un nourrisson (normes,
+  //   interprétations). Nombre nu = années, comme ageEnAnnees().
+  const ageM = /^\s*([\d.,]+)\s*(ans?|mois|jours?|j)?/i.exec(age == null ? '' : String(age));
+  setV('p_sexe', sexe || '');
+  setV('p_age', ageM ? ageM[1].replace(',', '.') : '');
+  setV('p_age_unit', !ageM || !ageM[2] ? 'ans' : /mois/i.test(ageM[2]) ? 'mois' : /^j/i.test(ageM[2]) ? 'jours' : 'ans');
+  // ✅ v13.258 — Carte DFG remise à zéro pour CHAQUE patient (et pas de poids
+  //   hérité : il n'existe pas en série) : elle gardait le premier patient du lot.
+  ['dfg_crea', 'dfg_age', 'dfg_sexe', 'dfg_poids', 'p_poids'].forEach(id => setV(id, ''));
   try { getCatalogueComplet().forEach(ex => { const c = document.getElementById(ex.id); if (c) c.checked = (ex.id === cfg.exId); }); } catch (e) {}
   if (typeof updateAllRefs === 'function') updateAllRefs();
   // Vider les champs de cet examen avant de réinjecter la ligne.
