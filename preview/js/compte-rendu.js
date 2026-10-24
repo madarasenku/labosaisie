@@ -650,11 +650,7 @@ async function crBuildHTML(record) {
   const _forceSeroBreak = _seroLabels.length > 1 && blocsHema.length && blocsBio.length && !_estBPN;
 
   const refDoc = (typeof getOrCreateRef === 'function') ? getOrCreateRef(record) : '';
-  const share = p.share_token;
-  const qrTxt = share && typeof APP_PUBLIC_URL !== 'undefined'
-    ? (APP_PUBLIC_URL + '?share=' + share)
-    : ('CPMI Grand-Bassam | Ref: ' + (refDoc || '—') + ' | Dossier: ' + (p.dossier || '—')
-       + ' | Patient: ' + String(p.nom || '').toUpperCase());
+  const qrTxt = qrTexteDossier(record);   // ✅ v13.259 — même QR que les enveloppes
   let qr = '';
   try { const u = await generateQRDataURL(qrTxt, 90); if (u) qr = '<img src="' + u + '" width="62" height="62" alt="">'; } catch (e) {}
 

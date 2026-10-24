@@ -212,6 +212,17 @@ function generateSignatureSVG(name, width=160, height=45) {
 //   poste et une ambiguïté de plus à la lecture.
 //   Rendu en PNG via canvas : l'Excel et le PDF exigent du PNG.
 
+// ✅ v13.259 — Contenu du code QR d'un dossier, COMMUN au compte rendu et aux
+//   enveloppes : lien de vérification du résultat s'il existe, sinon les
+//   références du dossier (lisibles hors ligne).
+function qrTexteDossier(record) {
+  const p = (record && record.patient) || {};
+  if (p.share_token && typeof APP_PUBLIC_URL !== 'undefined') return APP_PUBLIC_URL + '?share=' + p.share_token;
+  const refDoc = (typeof getOrCreateRef === 'function') ? getOrCreateRef(record) : '';
+  return 'CPMI Grand-Bassam | Ref: ' + (refDoc || '—') + ' | Dossier: ' + (p.dossier || '—')
+    + ' | Patient: ' + String(p.nom || '').toUpperCase();
+}
+
 function generateQRDataURL(text, size = 120) {
   return new Promise((resolve) => {
     const txt = String(text ?? '').substring(0, 900);
