@@ -32,7 +32,9 @@ const CIBLE = process.env.CIBLE || '/index.html';
   r.section('Fenêtre de réglage puis impression (par défaut : debout)');
   // Lance l'impression depuis la fenêtre : `bouton` = 'env-essai' | 'env-tout'.
   const imprimer = (bouton, reglage) => page.evaluate(async ({ bouton, reglage }) => {
-    let imprime = 0; const p = window.print; window.print = () => { imprime++; };
+    let imprime = 0, qrPrets = null; const p = window.print;
+    window.print = () => { imprime++;                         // les QR doivent être décodés à cet instant
+      qrPrets = [...document.querySelectorAll('#print-render .env-qr img')].every(i => i.complete && i.naturalWidth > 0); };
     try {
       await bulkEnveloppes();
       const bd = document.getElementById('env-modal-bd');
@@ -47,7 +49,7 @@ const CIBLE = process.env.CIBLE || '/index.html';
     const pr = document.getElementById('print-render');
     const env = [...pr.querySelectorAll('.env')];
     return {
-      fenetre: true, ferme: !document.getElementById('env-modal-bd'), imprime, n: env.length,
+      fenetre: true, ferme: !document.getElementById('env-modal-bd'), imprime, qrPrets, n: env.length,
       noms: env.map(e => e.querySelector('.env-patient').textContent).join(' | '),
       dossiers: env.map(e => e.querySelector('.env-dossier b').textContent).join(' | '),
       qr: env.filter(e => /^data:image\/png/.test((e.querySelector('.env-qr img') || {}).src || '')).length,
@@ -65,6 +67,7 @@ const CIBLE = process.env.CIBLE || '/index.html';
   r.check('noms en majuscules, ordre d\'arrivée', imp.noms, 'TRAORE MOUSSA | DIALLO FATOU');
   r.check('n° de dossier', imp.dossiers, 'D203 | D204');
   r.check('un code QR par enveloppe', imp.qr, 2);
+  r.check('QR décodés avant l\'impression (sinon ils sortent blancs)', imp.qrPrets, true);
   r.check('en-tête CPMI + « confidentiel »', imp.tete, true);
   r.check('page DEBOUT 110 × 220 mm (format DL des imprimantes)', imp.page, '110mm 220mm');
   r.check('enveloppe pivotée d\'un quart de tour', imp.pivot, 'transform:rotate(90deg) translateY(-110mm);');
@@ -85,6 +88,38 @@ const CIBLE = process.env.CIBLE || '/index.html';
   r.check('couchée : page 220 × 110, sans pivot', imp.page + ' / ' + imp.pivot, '220mm 110mm / aucun');
   imp = await imprimer('env-tout', { sens: 'couchee', retourne: true });
   r.check('couchée retournée : demi-tour', imp.pivot, 'transform:rotate(180deg) translate(-220mm,-110mm);');
+
+  r.section('Feuille A4 (téléphone : seul « A4 » proposé)');
+  imp = await imprimer('env-tout', { sens: 'a4', retourne: false });
+  r.check('page A4 debout', imp.page, '210mm 297mm');
+  r.check('enveloppe centrée sur la largeur (x 50 → 160 mm), quart de tour', imp.pivot,
+    'transform:translateX(50mm) rotate(90deg) translateY(-110mm);');
+  await page.emulateMedia({ media: 'print' });              // #print-render n'est rendu qu'à l'impression
+  r.check('position réelle : bande 110 × 220 mm à 50 mm du bord, en haut', await page.evaluate(() => {
+    const pg = document.querySelector('#print-render .env-page').getBoundingClientRect();
+    const e = document.querySelector('#print-render .env').getBoundingClientRect();
+    const mm = pg.width / 210, r = v => Math.round(v / mm);
+    return [r(e.left - pg.left), r(e.top - pg.top), r(e.width), r(e.height)].join(' ');
+  }), '50 0 110 220');
+  await page.emulateMedia({ media: 'screen' });
+  imp = await imprimer('env-tout', { sens: 'a4', retourne: true });
+  r.check('A4 retournée', imp.pivot, 'transform:translateX(50mm) rotate(-90deg) translateX(-220mm);');
+  r.check('QR décodés avant l\'impression (A4)', imp.qrPrets, true);
+  r.check('fenêtre : 3 formats proposés', await page.evaluate(async () => {
+    await bulkEnveloppes(); const bd = document.getElementById('env-modal-bd');
+    const v = [...bd.querySelectorAll('input[name="env-sens"]')].map(i => i.value).join(','); bd.remove(); return v; }),
+    'a4,debout,couchee');
+  r.check('Android sans réglage gardé : « Feuille A4 » coché d\'office', await page.evaluate(async () => {
+    localStorage.removeItem('labosaisie_enveloppes_v1');
+    const ua = Object.getOwnPropertyDescriptor(Navigator.prototype, 'userAgent');
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => 'Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile' });
+    try { await bulkEnveloppes(); } finally { delete navigator.userAgent; }
+    const bd = document.getElementById('env-modal-bd');
+    const v = bd.querySelector('input[name="env-sens"]:checked').value; bd.remove(); return v; }), 'a4');
+  r.check('ordinateur sans réglage gardé : « Enveloppe DL » debout', await page.evaluate(async () => {
+    localStorage.removeItem('labosaisie_enveloppes_v1');
+    await bulkEnveloppes(); const bd = document.getElementById('env-modal-bd');
+    const v = bd.querySelector('input[name="env-sens"]:checked').value; bd.remove(); return v; }), 'debout');
 
   r.section('Corbeille');
   r.check('bouton masqué dans la corbeille', await page.evaluate(() => {
