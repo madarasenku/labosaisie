@@ -884,27 +884,47 @@ function saisieStatutBadge(r) {
 }
 
 // ── Aperçu rapide au survol ──
+// ✅ v13.261 — Sur téléphone, toucher une ligne déclenchait l'aperçu de survol
+// (souris émulée) qui restait affiché par-dessus la liste. Le survol est donc
+// réservé à la souris ; partout, le bouton ⓘ devant le nom du patient ouvre le
+// même aperçu, épinglé sous le bouton (✕, Échap, toucher ailleurs ou défiler
+// pour le fermer).
 let _previewTimer = null;
-function showPreview(e, recordOrId) {
-  clearTimeout(_previewTimer);
+let _apercuEpingle = null;                       // id du dossier épinglé par ⓘ
+let _apercuOuvertA = 0;
+let _dernierToucher = 0;
+document.addEventListener('touchstart', () => { _dernierToucher = Date.now(); }, { capture: true, passive: true });
+function _survolSouris() {
+  if (Date.now() - _dernierToucher < 1500) return false;          // souris émulée après un toucher
+  return !(window.matchMedia && window.matchMedia('(hover: none)').matches);
+}
+function _dossierApercu(recordOrId) {
   // ✅ v13.36 — Accepte un id (nouveau, sûr) ou un objet (compat). L'id est
   // résolu depuis le cache : aucune donnée patient n'est injectée dans le HTML.
-  const record = (typeof recordOrId === 'object' && recordOrId)
+  return (typeof recordOrId === 'object' && recordOrId)
     ? recordOrId
     : getDB().find(x => x.id === recordOrId);
-  if (!record) return;
-  _previewTimer = setTimeout(() => {
-    const p = record.patient||{};
-    const types = getRecordTypes(record).join(', ');
-    const examens = Object.values(record.resultats?._examens_coches||{}).flat().slice(0,5);
-    const div = document.getElementById('record-preview');
-    if (!div) return;
-    div.innerHTML = `
+}
+function _apercuHtml(record) {
+  const p = record.patient||{};
+  const types = getRecordTypes(record).join(', ');
+  const examens = Object.values(record.resultats?._examens_coches||{}).flat().slice(0,5);
+  return `
       <div style="font-weight:800;color:var(--cpmi-deep);margin-bottom:6px">${escHTML((p.nom||'').toUpperCase())}</div>
       <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">📁 ${escHTML(p.dossier||'—')} · ${escHTML(p.date||'—')}</div>
       <div style="font-size:11px;margin-bottom:4px">🔬 ${escHTML(types)}</div>
       ${examens.length?`<div style="font-size:11px;color:var(--text-muted)">${examens.map(e=>escHTML(e)).join('<br>')}</div>`:''}
       <div style="margin-top:6px;font-weight:700;color:var(--success)">${(record.montant||0).toLocaleString('fr-FR')} FCFA</div>`;
+}
+function showPreview(e, recordOrId) {
+  clearTimeout(_previewTimer);
+  if (_apercuEpingle !== null || !_survolSouris()) return;
+  const record = _dossierApercu(recordOrId);
+  if (!record) return;
+  _previewTimer = setTimeout(() => {
+    const div = document.getElementById('record-preview');
+    if (!div) return;
+    div.innerHTML = _apercuHtml(record);
     div.style.left = Math.min(e.clientX+12, window.innerWidth-300)+'px';
     div.style.top  = Math.min(e.clientY+12, window.innerHeight-200)+'px';
     div.classList.add('visible');
@@ -912,9 +932,48 @@ function showPreview(e, recordOrId) {
 }
 function hidePreview() {
   clearTimeout(_previewTimer);
+  if (_apercuEpingle !== null) return;           // l'aperçu épinglé survit à la sortie de la ligne
   const div = document.getElementById('record-preview');
   if (div) div.classList.remove('visible');
 }
+
+/** Bouton ⓘ : ouvre (ou referme) l'aperçu du dossier sous le bouton. */
+function ouvrirApercuDossier(e, id) {
+  if (e) { e.stopPropagation(); e.preventDefault(); }
+  if (_apercuEpingle === id) { fermerApercuDossier(); return; }
+  const record = _dossierApercu(id);
+  const div = document.getElementById('record-preview');
+  if (!record || !div) return;
+  clearTimeout(_previewTimer);
+  _apercuEpingle = id;
+  _apercuOuvertA = Date.now();
+  div.innerHTML = '<button type="button" class="apercu-fermer" aria-label="Fermer" onclick="fermerApercuDossier()">✕</button>'
+    + _apercuHtml(record);
+  div.classList.add('visible', 'epingle');
+  const btn = e && e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget : null;
+  const b = btn ? btn.getBoundingClientRect() : { left: 12, top: 80, bottom: 80 };
+  const w = div.offsetWidth, h = div.offsetHeight;
+  const left = Math.max(8, Math.min(b.left, window.innerWidth - w - 8));
+  let top = b.bottom + 6;
+  if (top + h > window.innerHeight - 8) top = Math.max(8, b.top - h - 6);      // pas la place dessous : au-dessus
+  div.style.left = left + 'px';
+  div.style.top = top + 'px';
+}
+function fermerApercuDossier() {
+  if (_apercuEpingle === null) return;
+  _apercuEpingle = null;
+  const div = document.getElementById('record-preview');
+  if (div) div.classList.remove('visible', 'epingle');
+}
+document.addEventListener('click', e => {
+  if (_apercuEpingle === null) return;
+  if (e.target.closest && (e.target.closest('#record-preview') || e.target.closest('.hist-info'))) return;
+  fermerApercuDossier();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerApercuDossier(); });
+// Défilement : l'aperçu ne suivrait pas sa ligne. (Délai de grâce : le navigateur
+// peut finir d'amener le bouton à l'écran juste après le toucher.)
+window.addEventListener('scroll', () => { if (Date.now() - _apercuOuvertA > 300) fermerApercuDossier(); }, { capture: true, passive: true });
 
 // ── Notification patient déjà vu ce mois ──
 function checkPatientExistant() {

@@ -731,7 +731,9 @@ async function renderHistory(forceRefresh) {
       + '<td data-label="N° Dossier">' + celluleNumDossier(r, hl)
         + (r._pending ? ' <span title="En attente de synchronisation" style="font-size:10px;background:#fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">⏳ à synchroniser</span>' : '')
       + '</td>'
-      + '<td data-label="Patient">' + hl(r.patient.nom)
+      // ✅ v13.261 — ⓘ : l'aperçu du dossier au toucher (le survol n'existe pas sur téléphone).
+      + '<td data-label="Patient"><button type="button" class="hist-info" title="Aperçu du dossier" aria-label="Aperçu du dossier"'
+          + ' onclick="ouvrirApercuDossier(event,' + r.id + ')">i</button>' + hl(r.patient.nom)
           + (hasCriticalValues(r) ? '<span class="badge-critique" title="Valeur critique détectée">🔴 CRITIQUE</span>' : '')
           + (r.patient.medecin ? '<div style="font-size:10.5px;color:var(--text-muted);margin-top:1px">' + hl(r.patient.medecin) + '</div>' : '')
           + (r.patient.note ? '<div style="font-size:10.5px;color:#7c3aed;margin-top:2px;font-style:italic" title="Note interne">📝 ' + esc(r.patient.note) + '</div>' : '')
@@ -902,6 +904,28 @@ function toggleSelectAll(checked) {
   updateBulkToolbar();
 }
 
+// ✅ v13.261 — La barre de sélection flotte en bas de l'écran et recouvrait les
+// derniers patients de la liste, impossibles à faire remonter au-dessus. Tant
+// qu'elle est affichée, une cale de même hauteur en fin d'Historique permet de
+// faire défiler la liste jusqu'au bout au-dessus d'elle.
+function _espaceSousBulk() {
+  const toolbar = document.getElementById('bulk-toolbar');
+  if (!toolbar || !toolbar.parentElement) return;
+  let cale = document.getElementById('bulk-cale');
+  if (!cale) {
+    cale = document.createElement('div');
+    cale.id = 'bulk-cale';
+    cale.setAttribute('aria-hidden', 'true');
+    toolbar.parentElement.appendChild(cale);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => _espaceSousBulk()).observe(toolbar);
+    window.addEventListener('resize', () => _espaceSousBulk());
+  }
+  const visible = toolbar.style.display !== 'none' && toolbar.offsetHeight > 0;
+  // Hauteur recouverte depuis le bas de l'écran (barre + son décalage), plus une marge.
+  const couvre = visible ? (parseFloat(getComputedStyle(toolbar).bottom) || 0) + toolbar.offsetHeight + 12 : 0;
+  cale.style.height = couvre + 'px';
+}
+
 function updateBulkToolbar() {
   const toolbar = document.getElementById('bulk-toolbar');
   const countEl = document.getElementById('bulk-count');
@@ -909,6 +933,7 @@ function updateBulkToolbar() {
   const selectAll = document.getElementById('select-all-chk');
   const n = _selectedIds.size;
   if (toolbar) toolbar.style.display = n > 0 ? 'flex' : 'none';
+  _espaceSousBulk();
   if (countEl) countEl.textContent = n + ' fiche' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '');
   // ✅ v13.122 — Suppression en groupe ouverte à tous (hors spectateur), comme la
   // suppression ligne par ligne : en vue normale c'est une mise en corbeille
