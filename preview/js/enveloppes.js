@@ -23,6 +23,10 @@
    Le code QR sortait blanc : l'impression partait avant que l'image du QR soit
    prête (même correctif que le compte rendu en v13.159).
 
+   ✅ v13.263 — Nom du patient en grand, sur toute la largeur de l'enveloppe
+   (le code QR passe en haut à droite) : taille calculée pour chaque nom, la
+   plus grande qui tient sur une ligne (ou deux pour les noms longs).
+
    Chargé en script classique après impression.js (generateQRDataURL,
    qrTexteDossier, cpmiLogoSVG) — voir index.html.
    ═══════════════════════════════════════════════════════════════ */
@@ -38,9 +42,37 @@ function _envMemoriser(r) {
   try { localStorage.setItem(_ENV_REGLAGE_KEY, JSON.stringify({ sens: r.sens, retourne: !!r.retourne })); } catch (e) {}
 }
 
+// Taille du nom (pt) : la plus grande qui tient dans la largeur utile, sur une
+// ligne si possible, sinon sur deux. Mesure au canevas avec la police imprimée.
+const _ENV_NOM_MAX = 54, _ENV_NOM_MIN = 18;
+let _envCanevas = null;
+function _envTailleNom(nom) {
+  const largeurUtile = 190 * 96 / 25.4;                 // 196 mm disponibles, moins une marge de sûreté
+  if (!_envCanevas) _envCanevas = document.createElement('canvas').getContext('2d');
+  const ctx = _envCanevas;
+  const largeur = (t, pt) => { ctx.font = '800 ' + (pt * 96 / 72) + "px 'Segoe UI',Arial,sans-serif"; return ctx.measureText(t).width; };
+  const mots = nom.split(/\s+/).filter(Boolean);
+  const nbLignes = pt => {
+    let n = 1, cur = '';
+    for (const m of mots) {
+      if (largeur(m, pt) > largeurUtile) return Infinity;            // un mot seul trop long
+      const t = cur ? cur + ' ' + m : m;
+      if (largeur(t, pt) <= largeurUtile) cur = t; else { n++; cur = m; }
+    }
+    return n;
+  };
+  let une = 0, deux = 0;
+  for (let pt = _ENV_NOM_MAX; pt >= _ENV_NOM_MIN && !une; pt--) if (largeur(nom, pt) <= largeurUtile) une = pt;
+  for (let pt = _ENV_NOM_MAX; pt >= _ENV_NOM_MIN && !deux; pt--) if (nbLignes(pt) <= 2) deux = pt;
+  if (une && (une >= 34 || une >= 0.85 * deux)) return { pt: une, uneLigne: true };
+  return { pt: deux || _ENV_NOM_MIN, uneLigne: false };
+}
+
 function _enveloppeHtml(r, qrPng) {
   const p = r.patient || {};
   const dossier = p.dossier || p.ancien_dossier || '—';
+  const nom = String(p.nom || '—').toUpperCase().trim() || '—';
+  const taille = _envTailleNom(nom);
   return '<div class="env">'
     + '<div class="env-tete">'
     +   '<div class="env-logo">' + (typeof cpmiLogoSVG === 'function' ? cpmiLogoSVG() : '') + '</div>'
@@ -50,7 +82,7 @@ function _enveloppeHtml(r, qrPng) {
     + '</div>'
     + '<div class="env-dest">'
     +   '<div class="env-lab">Patient</div>'
-    +   '<div class="env-patient">' + esc(String(p.nom || '—').toUpperCase()) + '</div>'
+    +   '<div class="env-patient" style="font-size:' + taille.pt + 'pt' + (taille.uneLigne ? ';white-space:nowrap' : '') + '">' + esc(nom) + '</div>'
     +   '<div class="env-dossier">N° de dossier : <b>' + esc(dossier) + '</b></div>'
     + '</div>'
     + (qrPng ? '<div class="env-qr"><img src="' + qrPng + '" alt=""><div>Scannez pour vérifier le résultat</div></div>' : '')
@@ -115,12 +147,13 @@ async function imprimerEnveloppes(ids, trouver, reglage) {
     + '.env-cpmi{font-size:12pt;font-weight:800;letter-spacing:.3px;}'
     + '.env-sous{font-size:7pt;color:#333;margin-top:.5mm;}'
     + '.env-conf{font-size:7.5pt;font-weight:700;letter-spacing:.6px;margin-top:1mm;}'
-    + '.env-dest{position:absolute;left:95mm;right:12mm;top:46mm;}'
-    + '.env-lab{font-size:8pt;color:#555;text-transform:uppercase;letter-spacing:.6px;}'
-    + '.env-patient{font-size:17pt;font-weight:800;line-height:1.2;margin-top:1mm;word-wrap:break-word;}'
-    + '.env-dossier{font-size:12pt;margin-top:3mm;}'
-    + '.env-qr{position:absolute;left:12mm;bottom:8mm;width:30mm;text-align:center;font-size:6.5pt;color:#333;}'
-    + '.env-qr img{width:30mm;height:30mm;display:block;margin-bottom:1mm;image-rendering:pixelated;}'
+    // Nom sur toute la largeur, centré dans la moitié basse ; QR en haut à droite.
+    + '.env-dest{position:absolute;left:12mm;right:12mm;top:42mm;bottom:8mm;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;overflow:hidden;}'
+    + '.env-lab{font-size:8.5pt;color:#555;text-transform:uppercase;letter-spacing:.8px;}'
+    + '.env-patient{max-width:100%;font-weight:800;line-height:1.05;margin-top:1mm;overflow-wrap:anywhere;}'
+    + '.env-dossier{font-size:16pt;margin-top:3mm;}'
+    + '.env-qr{position:absolute;right:12mm;top:8mm;width:28mm;text-align:center;font-size:6.5pt;color:#333;}'
+    + '.env-qr img{width:28mm;height:28mm;display:block;margin-bottom:1mm;image-rendering:pixelated;}'
     + '</style>'
     + pages;
 

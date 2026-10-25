@@ -121,6 +121,34 @@ const CIBLE = process.env.CIBLE || '/index.html';
     await bulkEnveloppes(); const bd = document.getElementById('env-modal-bd');
     const v = bd.querySelector('input[name="env-sens"]:checked').value; bd.remove(); return v; }), 'debout');
 
+  r.section('Nom en grand sur toute la largeur (v13.263)');
+  await page.evaluate(() => { getDB().find(x => x.id === 204).patient.nom = "N'GUESSAN AKISSI BERNADETTE EPSE KOFFI YAO"; });
+  await imprimer('env-tout', { sens: 'couchee', retourne: false });
+  await page.emulateMedia({ media: 'print' });
+  const geo = await page.evaluate(() => {
+    const envs = [...document.querySelectorAll('#print-render .env')];
+    const mm = envs[0].getBoundingClientRect().width / 220;
+    const rect = el => el.getBoundingClientRect();
+    const seCroisent = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+    return envs.map(e => {
+      const nom = e.querySelector('.env-patient'), dest = e.querySelector('.env-dest');
+      const q = rect(e.querySelector('.env-qr')), t = rect(e.querySelector('.env-tete')), n = rect(nom), E = rect(e);
+      return {
+        pt: parseFloat(nom.style.fontSize), lignes: Math.round(n.height / (parseFloat(getComputedStyle(nom).lineHeight))),
+        deborde: nom.scrollWidth > nom.clientWidth + 1 || dest.scrollHeight > dest.clientHeight + 1,
+        dansEnveloppe: n.left >= E.left + 10 * mm && n.right <= E.right - 10 * mm,
+        chevauche: seCroisent(n, q) || seCroisent(n, t),
+        qrHautDroite: Math.round((E.right - q.right) / mm) + '/' + Math.round((q.top - E.top) / mm),
+      };
+    });
+  });
+  await page.emulateMedia({ media: 'screen' });
+  r.check('nom court : grand (≥ 40 pt), une ligne', geo[0].pt >= 40 && geo[0].lignes === 1, true);
+  r.check('nom long : deux lignes, encore ≥ 28 pt', geo[1].lignes === 2 && geo[1].pt >= 28, true);
+  r.check('aucun débordement', geo.every(g => !g.deborde && g.dansEnveloppe), true);
+  r.check('le nom ne chevauche ni l\'en-tête ni le QR', geo.every(g => !g.chevauche), true);
+  r.check('QR en haut à droite (marges 12 / 8 mm)', geo.map(g => g.qrHautDroite).join(' '), '12/8 12/8');
+
   r.section('Corbeille');
   r.check('bouton masqué dans la corbeille', await page.evaluate(() => {
     _filterCorbeille = true; updateBulkToolbar(); const v = document.getElementById('bulk-env-btn').style.display;
