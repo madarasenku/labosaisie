@@ -10,9 +10,10 @@
      peut entrer Positif / Négatif directement depuis la liste, ce qui remplit
      le dossier (comme le profil d'électrophorèse).
    • On coche les lignes à imprimer (toutes les faites le sont par défaut) ;
-     la feuille A4 reprend, pour chaque patient : n°, date, n° de dossier,
+     la feuille A4 reprend, pour chaque patient : n°, n° de dossier,
      nom, âge, sexe, résultat du TDR — et un récapitulatif.
-   • ✅ v13.264 — Pas de prescripteur sur la liste des TDR (écran et feuille).
+   • ✅ v13.264 — Ni prescripteur ni date sur la liste des TDR (écran et
+     feuille) ; la période reste indiquée dans le bandeau de la feuille.
 
    Chargé en script classique après electrophorese.js, dont il réutilise les
    bornes de semaine (_elecBornes, _elecLibelleSemaine). Réutilise aussi :
@@ -91,7 +92,6 @@ function _tdrLigne(r) {
   const p = r.patient || {};
   return {
     id: r.id,
-    date: _recDate(r),
     dossier: p.dossier || p.ancien_dossier || '—',
     nom: p.nom || '—',
     age: typeof formatAge === 'function' ? formatAge(p.age) : String(p.age || ''),
@@ -101,7 +101,6 @@ function _tdrLigne(r) {
     masque: !!r.restrictedBy,
   };
 }
-function _tdrDateCourte(j) { return j ? j.split('-').reverse().slice(0, 2).join('/') : ''; }
 function _tdrBadge(v) {
   if (!v) return '<span style="color:var(--text-muted)">—</span>';
   const pos = /posit/i.test(v);
@@ -182,7 +181,6 @@ async function renderTdr() {
           ? '<input type="checkbox" data-tdr-imp="' + l.id + '" ' + (imprimer ? 'checked' : '')
             + ' onchange="toggleTdrImprimer(' + l.id + ',this.checked)" title="Inclure dans l\'impression" style="width:16px;height:16px;cursor:pointer">'
           : '') + '</td>'
-      + '<td style="white-space:nowrap">' + esc(_tdrDateCourte(l.date)) + '</td>'
       + '<td style="font-family:monospace;white-space:nowrap">' + esc(l.dossier) + '</td>'
       + '<td><strong>' + esc(l.nom) + '</strong>' + (l.masque ? ' <span title="Fiche masquée" style="font-size:11px">🔒</span>' : '') + '</td>'
       + '<td style="white-space:nowrap">' + esc(l.age || '—') + '</td>'
@@ -205,7 +203,7 @@ async function renderTdr() {
     + '<a href="#" onclick="tdrToutCocher(true);return false">Tout cocher</a> · '
     + '<a href="#" onclick="tdrToutCocher(false);return false">Tout décocher</a></div>'
     + '<div class="table-wrap"><table class="result-table" style="width:100%;font-size:12.5px">'
-    + '<thead><tr><th style="text-align:center">Imprimer</th><th>Date</th><th>N° dossier</th><th>Nom</th>'
+    + '<thead><tr><th style="text-align:center">Imprimer</th><th>N° dossier</th><th>Nom</th>'
     + '<th>Âge</th><th style="text-align:center">Sexe</th><th>TDR</th></tr></thead>'
     + '<tbody>' + corps + '</tbody></table></div>';
 }
@@ -221,7 +219,6 @@ async function imprimerTdr() {
   const rc = _tdrRecap(lignes);
   const corps = lignes.map((l, i) =>
     '<tr><td class="td-n">' + (i + 1) + '</td>'
-    + '<td class="td-d">' + esc(_tdrDateCourte(l.date)) + '</td>'
     + '<td class="td-no">' + esc(l.dossier) + '</td>'
     + '<td class="td-nom">' + esc(l.nom) + '</td>'
     + '<td class="td-age">' + esc(l.age) + '</td>'
@@ -241,8 +238,8 @@ async function imprimerTdr() {
     + '.td-t th,.td-t td{border:1px solid #999;padding:4px 6px;vertical-align:middle;}'
     + '.td-t th{background:#eee;font-weight:700;text-align:left;}'
     + '.td-t tr{page-break-inside:avoid;}'
-    + '.td-n{width:5%;text-align:center;}.td-d{width:9%;white-space:nowrap;}.td-no{width:13%;white-space:nowrap;}'
-    + '.td-nom{width:40%;font-weight:600;}.td-age{width:11%;white-space:nowrap;}.td-sx{width:7%;text-align:center;}'
+    + '.td-n{width:5%;text-align:center;}.td-no{width:15%;white-space:nowrap;}'
+    + '.td-nom{width:46%;font-weight:600;}.td-age{width:12%;white-space:nowrap;}.td-sx{width:7%;text-align:center;}'
     + '.td-res{width:15%;font-weight:800;}'
     + '.td-foot{margin-top:14px;padding-top:4px;border-top:1.4px solid #333;display:flex;gap:14px;}'
     + '.td-foot>div{flex:1;}.td-sig-lab{font-size:8pt;font-weight:700;}.td-sigbox{border:1px solid #666;height:12mm;margin-top:2px;}'
@@ -254,7 +251,7 @@ async function imprimerTdr() {
     + '<span>Total : ' + rc.total + ' · Positifs : ' + rc.positifs + ' · Négatifs : ' + rc.negatifs
     + ' · Moins de 5 ans : ' + rc.moins5 + ' (dont ' + rc.moins5Pos + ' positif(s))</span></div>'
     + '<table class="td-t"><thead><tr>'
-    + '<th class="td-n">N°</th><th class="td-d">Date</th><th class="td-no">N° dossier</th><th class="td-nom">Nom et prénoms</th>'
+    + '<th class="td-n">N°</th><th class="td-no">N° dossier</th><th class="td-nom">Nom et prénoms</th>'
     + '<th class="td-age">Âge</th><th class="td-sx">Sexe</th>'
     + '<th class="td-res">Résultat TDR</th>'
     + '</tr></thead><tbody>' + corps + '</tbody></table>'

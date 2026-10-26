@@ -62,12 +62,12 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
       l1.some(t => /ANCIEN LIBELLE|NFS SEULE|SEMAINE PASSEE/.test(t)), false);
     r.check('récapitulatif', await page.evaluate(() => document.querySelector('#tdr-apercu').innerText.split('\n')[0].replace(/\s+/g, ' ')),
       '2 TDR fait(s) · 1 positif(s) · 1 négatif(s) · moins de 5 ans : 1 (dont 1 positif(s)) · 1 à saisir (surlignés)');
-    r.check('ligne : date, dossier, nom, âge, sexe, TDR', (l1.find(t => /ENFANT POSITIF/.test(t)) || '').replace(/^\S+ /, ''),
+    r.check('ligne : dossier, nom, âge, sexe, TDR', l1.find(t => /ENFANT POSITIF/.test(t)) || '',
       '0801-1026 ENFANT POSITIF 3 ans M Positif');
-    // v13.264 — pas de prescripteur sur les TDR (ni texte libre, ni liste officielle).
+    // v13.264 — ni prescripteur (texte libre ou liste officielle) ni date sur les TDR.
     r.check('aucun prescripteur à l\'écran', /DR KONE|DIALLO/.test(l1.join(' | ')), false);
     r.check('colonnes à l\'écran', await page.evaluate(() => [...document.querySelectorAll('#tdr-apercu thead th')].map(t => t.textContent.trim()).join(' | ')),
-      'Imprimer | Date | N° dossier | Nom | Âge | Sexe | TDR');
+      'Imprimer | N° dossier | Nom | Âge | Sexe | TDR');
     r.check('à saisir : liste Positif/Négatif, pas de case Imprimer', await page.evaluate(() =>
       !!document.getElementById('tdr-res-803') + '|' + !document.querySelector('input[data-tdr-imp="803"]')), 'true|true');
 
@@ -94,11 +94,13 @@ const FAIT_803 = { ...ROWS[2], resultats: { ...ROWS[2].resultats, 'Hématologie'
       const cb = document.querySelector('input[data-tdr-imp="802"]'); cb.checked = false; cb.dispatchEvent(new Event('change'));
       window.__imprime = false; await imprimerTdr();
       return { imprime: window.__imprime, html: document.getElementById('print-render').innerHTML, txt: document.getElementById('print-render').innerText,
-               cols: [...document.querySelectorAll('#print-render thead th')].map(t => t.textContent.trim()).join(' | ') };
+               cols: [...document.querySelectorAll('#print-render thead th')].map(t => t.textContent.trim()).join(' | '),
+               lignes: [...document.querySelectorAll('#print-render tbody td')].map(t => t.textContent).join(' ') };
     });
     r.check('impression lancée', html.imprime, true);
     r.check('lignes cochées seulement', [/ENFANT POSITIF/.test(html.txt), /TDR A SAISIR/.test(html.txt), /ADULTE NEGATIF/.test(html.txt)].join('|'), 'true|true|false');
-    r.check('colonnes imprimées', html.cols, 'N° | Date | N° dossier | Nom et prénoms | Âge | Sexe | Résultat TDR');
+    r.check('colonnes imprimées', html.cols, 'N° | N° dossier | Nom et prénoms | Âge | Sexe | Résultat TDR');
+    r.check('aucune date sur les lignes imprimées', /\d{2}\/\d{2}/.test(html.lignes), false);
     r.check('ni prescripteur, ni téléphone, ni service, ni GE', /DR KONE|DIALLO|0700000001|Pédiatrie|Goutte/.test(html.txt), false);
     r.check('récapitulatif imprimé', /Total : 2 · Positifs : 1 · Négatifs : 1 · Moins de 5 ans : 2 \(dont 1 positif\(s\)\)/.test(html.txt), true);
     r.check('A4 portrait', /size:A4;/.test(html.html) && !/landscape/.test(html.html), true);
