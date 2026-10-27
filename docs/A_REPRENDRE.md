@@ -21,6 +21,23 @@ Points mis en attente le 27/10/2026, à la demande de l'administrateur.
 - [ ] GitHub Pro puis dépôt privé (le site reste à la même adresse : les QR imprimés continuent
       de fonctionner). Ne PAS passer le dépôt en privé sans abonnement : le site s'arrêterait.
 
+## Protéger l'application (avant toute vente)
+
+L'idée seule ne se protège pas : on protège le logiciel (droit d'auteur, automatique, loi
+n° 2016-555) et le nom (marque). Aucune déclaration n'est obligatoire, mais il faut des preuves.
+
+- [ ] Accord écrit avec la direction du CPMI : le logiciel appartient à son auteur, le CPMI
+      l'utilise sous licence. Le plus important si l'appli a été faite au travail ou avec ses moyens.
+- [ ] Preuve de date et de paternité : constat d'huissier / notaire (code + captures sur clé USB
+      scellée) ou dépôt au BURIDA (demander la procédure pour un logiciel).
+- [ ] Choisir un nom distinctif puis le déposer comme marque à l'OAPI via l'OIPI
+      (couvre les 17 pays OAPI ; vérifier le tarif à l'OIPI). Pas de brevet possible pour un logiciel.
+- [ ] Accord de confidentialité à faire signer aux prospects avant une démonstration poussée.
+- [ ] Vendre des licences d'utilisation, jamais le code ; contrat de licence type.
+- [ ] Structure juridique pour vendre (entreprise individuelle ou SARL, guichet unique CEPICI).
+- [ ] Faire rédiger les contrats (accord CPMI, licence, confidentialité) par un conseil en
+      propriété intellectuelle agréé OAPI ou un avocat.
+
 ## Facultatif
 
 - [ ] Clinique partenaire GDM : si elle fournit le fichier de son logo, refaire plus nets les deux
