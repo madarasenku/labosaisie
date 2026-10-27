@@ -38,6 +38,19 @@ n° 2016-555) et le nom (marque). Aucune déclaration n'est obligatoire, mais il
 - [ ] Faire rédiger les contrats (accord CPMI, licence, confidentialité) par un conseil en
       propriété intellectuelle agréé OAPI ou un avocat.
 
+## Version commerciale (abonnement)
+
+L'abonnement protège le mieux : le client n'a jamais le code, les ~100 fonctions de la base
+restent sur le serveur, et l'accès peut être coupé en cas d'impayé. Limites : le dépôt actuel
+est public, et la partie écran est toujours téléchargée par le navigateur.
+
+- [ ] Dépôt PRIVÉ pour la version commerciale (GitHub Pro ou dépôt séparé).
+- [ ] Partie écran compressée et brouillée (minification) à chaque publication, construite
+      comme le site démo (script dédié).
+- [ ] Une base séparée par laboratoire client : chacun ne voit que ses données.
+- [ ] Contrat d'abonnement / CGU : interdiction de copier, décompiler, revendre ; coupure de
+      l'accès en cas d'impayé.
+
 ## Facultatif
 
 - [ ] Clinique partenaire GDM : si elle fournit le fichier de son logo, refaire plus nets les deux
