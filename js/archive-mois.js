@@ -25,6 +25,14 @@
    est entré par la seconde porte (coffre) : sinon le serveur ne les envoie
    pas, et l'archive le signale (LISEZ-MOI et écran).
 
+   ✅ v13.269 — SUPPRIMER UN MOIS ARCHIVÉ pour libérer de la place sur le
+   serveur. Tout se décide côté serveur (purger_mois) : on garde toujours les
+   3 derniers mois complets ; il faut l'archive du mois (masqués compris,
+   notée par noter_archive_mois) puis une sauvegarde faite après elle, et
+   aucun dossier du mois modifié depuis. Une trace (n°, nom, date) garde les
+   QR imprimés vérifiables. Annulable tant que les copies de nuit (15 jours)
+   contiennent le mois.
+
    Chargé en script classique (après sauvegarde.js, cloture-caisse.js et
    registre-jour.js, dont il réutilise les calculs) — voir index.html.
    ═══════════════════════════════════════════════════════════════ */
@@ -654,6 +662,7 @@ async function construireArchiveMois(mois, avance) {
 function preparerCarteArchive() {
   const champ = document.getElementById('archive-mois');
   if (champ && !champ.value) champ.value = moisArchiveParDefaut();
+  chargerEtatSuppression();
 }
 
 async function telechargerArchiveMois(moisArg) {
@@ -673,6 +682,12 @@ async function telechargerArchiveMois(moisArg) {
     a.href = url; a.download = nom;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
+    // ✅ v13.269 — Le serveur retient l'archive : condition pour supprimer le mois.
+    try {
+      await _sb.rpc('noter_archive_mois', { p_token: TK(), p_mois: mois,
+        p_nb_dossiers: info.nbDossiers, p_masques_inclus: !!info.masquesInclus });
+    } catch (e) { /* fonction absente (script SQL non installé) : sans effet sur l'archive */ }
+    if (typeof chargerEtatSuppression === 'function') chargerEtatSuppression();
     const taille = (blob.size / 1048576).toFixed(1).replace('.', ',') + ' Mo';
     const avert = info.masquesInclus ? '' : ' — ⚠ dossiers masqués non inclus (session ordinaire)';
     if (etat) {
@@ -689,4 +704,167 @@ async function telechargerArchiveMois(moisArg) {
     hideLoading();
     if (btn) btn.disabled = false;
   }
+}
+
+// ── Supprimer un mois archivé (v13.269) ───────────────────────────
+const _MOTIFS_SUPPRESSION = {
+  trop_recent: 'à garder : les 3 derniers mois restent dans l\'application',
+  archive_absente: 'faire d\'abord l\'archive de ce mois',
+  archive_sans_masques: 'archive faite sans les dossiers masqués : la refaire après être entré par la seconde porte',
+  archive_perimee: 'modifié depuis l\'archive : refaire l\'archive',
+  sauvegarde_requise: 'faire une sauvegarde 💾 après l\'archive',
+  coffre_requis: 'se connecter avec le second mot de passe',
+  vide: 'aucun dossier',
+  mois_invalide: 'mois invalide',
+  confirmation: 'confirmation incorrecte',
+  forbidden: 'réservé à l\'administrateur',
+  invalid_token: 'session expirée : reconnectez-vous',
+  non_supprime: 'ce mois n\'est pas supprimé',
+  instantane_absent: 'plus de copie de nuit de ce mois : annulation impossible',
+};
+const _motifSuppression = c => _MOTIFS_SUPPRESSION[c] || String(c || 'refusé');
+let _etatSuppression = null;
+
+/** Tableau des mois en base : archive, sauvegarde, et suppression possible. */
+async function chargerEtatSuppression() {
+  const zone = document.getElementById('suppression-mois-zone');
+  if (!zone || typeof isAdmin !== 'function' || !isAdmin()) return;
+  zone.innerHTML = '<span style="color:var(--text-muted)">Chargement…</span>';
+  let data = null, error = null;
+  try { ({ data, error } = await _sb.rpc('etat_suppression_mois', { p_token: TK() })); } catch (e) { error = e; }
+  if (error || !data || data.erreur) {
+    const absente = error && (error.code === 'PGRST202' || /etat_suppression_mois/.test(error.message || ''));
+    zone.innerHTML = '<span style="color:#92400e">' + (absente
+      ? 'Fonction du serveur pas encore installée (script SQL v13.269).'
+      : 'État indisponible : ' + esc((data && data.erreur) ? _motifSuppression(data.erreur) : ((error && error.message) || 'réponse inattendue')))
+      + '</span>';
+    return;
+  }
+  _etatSuppression = data;
+  const date = d => d ? new Date(d).toLocaleDateString('fr-FR') : '';
+  // Une ligne par mois (lisible sur téléphone : pas de tableau à 5 colonnes).
+  const lignes = (data.mois || []).filter(m => m.dossiers || m.corbeille).map(m => {
+    const pret = m.controle === 'ok';
+    const archive = m.archive_le
+      ? 'archive du ' + date(m.archive_le) + ' (' + m.archive_nb + ' dossier(s)' + (m.archive_masques ? '' : ', <strong>sans masqués</strong>') + ')'
+      : 'pas d\'archive';
+    return '<div style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:8px 2px;border-bottom:1px dotted var(--border)">'
+      + '<div style="flex:1;min-width:190px"><strong>' + esc(_libelleMois(m.mois)) + '</strong> · ' + m.dossiers + ' dossier(s)'
+      + (m.corbeille ? ' <span style="color:var(--text-muted)">+' + m.corbeille + ' en corbeille</span>' : '')
+      + '<div style="font-size:11.5px;color:var(--text-muted)">' + archive + '</div>'
+      + '<div style="font-size:12px;margin-top:2px">' + (pret ? '<span style="color:#15803d;font-weight:700">✓ peut être supprimé</span>'
+                       : '<span style="color:#92400e">' + esc(_motifSuppression(m.controle)) + '</span>') + '</div></div>'
+      + (pret ? '<button class="btn" style="background:#b91c1c;color:#fff;font-size:12px;padding:6px 12px" '
+                + 'onclick="supprimerMoisArchive(\'' + m.mois + '\')">🗑️ Supprimer…</button>' : '')
+      + '</div>';
+  }).join('');
+  const purges = (data.purges || []).map(p =>
+    '<li><strong>' + esc(_libelleMois(p.mois)) + '</strong> — ' + p.dossiers + ' dossier(s) supprimé(s) le '
+    + esc(date(p.purge_le)) + (p.purge_par ? ' par ' + esc(p.purge_par) : '')
+    + (p.annulable
+        ? ' <button class="btn btn-outline" style="font-size:12px;padding:3px 10px" onclick="annulerSuppressionMois(\'' + p.mois + '\')">↩️ Annuler la suppression</button>'
+        : ' <span style="color:var(--text-muted)">(définitif : plus de copie de nuit)</span>')
+    + '</li>').join('');
+  zone.innerHTML =
+    (lignes || '<div style="color:var(--text-muted)">Aucun dossier en base.</div>')
+    + '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">Dernière sauvegarde : '
+    + (data.derniere_sauvegarde ? esc(date(data.derniere_sauvegarde)) : 'jamais')
+    + (data.coffre_ouvert ? '' : ' · <span style="color:#b45309">session ordinaire : entrez par la seconde porte pour pouvoir supprimer</span>')
+    + '</div>'
+    + (purges ? '<div style="margin-top:10px;font-size:12.5px"><strong>Mois déjà supprimés de la base</strong><ul style="margin:4px 0 0 18px;padding:0">' + purges + '</ul></div>' : '');
+}
+
+/** Confirmation tapée : on ne supprime pas des centaines de dossiers sur un simple clic. */
+function _confirmerSuppressionMois(mois, m) {
+  return new Promise(resolve => {
+    const old = document.getElementById('suppr-mois-backdrop');
+    if (old) old.remove();
+    const bd = document.createElement('div');
+    bd.id = 'suppr-mois-backdrop';
+    bd.className = 'modal-backdrop';
+    bd.style.display = 'flex';
+    bd.innerHTML = '<div class="modal-box" style="max-width:420px">'
+      + '<div class="modal-title">🗑️ Supprimer ' + esc(_libelleMois(mois)) + ' de la base ?</div>'
+      + '<p style="font-size:13px;line-height:1.5;margin:0 0 10px">Les <strong>' + ((m && m.dossiers) || 0) + ' dossier(s)</strong>'
+      + ((m && m.corbeille) ? ' (et ' + m.corbeille + ' en corbeille)' : '') + ' de ce mois quittent l\'application : '
+      + 'on ne les retrouve plus que dans l\'<strong>archive</strong> et la <strong>sauvegarde</strong>. '
+      + 'Les QR de leurs comptes rendus confirmeront encore qu\'ils sont authentiques. '
+      + 'Annulable pendant 15 jours.</p>'
+      + '<label class="modal-label" for="suppr-mois-saisie">Tapez <strong>SUPPRIMER</strong> pour confirmer</label>'
+      + '<input class="modal-input" id="suppr-mois-saisie" autocomplete="off" autocapitalize="characters">'
+      + '<div class="modal-actions"><button class="btn btn-outline" id="suppr-mois-annuler">Annuler</button>'
+      + '<button class="btn" id="suppr-mois-ok" disabled style="background:#b91c1c;color:#fff">Supprimer définitivement</button></div></div>';
+    document.body.appendChild(bd);
+    const champ = document.getElementById('suppr-mois-saisie');
+    const ok = document.getElementById('suppr-mois-ok');
+    const fin = v => { bd.remove(); resolve(v); };
+    champ.addEventListener('input', () => { ok.disabled = champ.value.trim().toUpperCase() !== 'SUPPRIMER'; });
+    ok.addEventListener('click', () => fin(champ.value.trim().toUpperCase() === 'SUPPRIMER'));
+    document.getElementById('suppr-mois-annuler').addEventListener('click', () => fin(false));
+    bd.addEventListener('click', e => { if (e.target === bd) fin(false); });
+    setTimeout(() => champ.focus(), 50);
+  });
+}
+
+async function _apresChangementMois() {
+  if (typeof refreshDB === 'function') await refreshDB(true);
+  if (typeof renderHistory === 'function') { try { renderHistory(); } catch (e) {} }
+  await chargerEtatSuppression();
+}
+
+async function supprimerMoisArchive(mois) {
+  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  const m = ((_etatSuppression && _etatSuppression.mois) || []).find(x => x.mois === mois);
+  if (!await _confirmerSuppressionMois(mois, m)) return;
+  showLoading('Suppression de ' + _libelleMois(mois) + '…');
+  try {
+    const { data, error } = await _sb.rpc('purger_mois', { p_token: TK(), p_mois: mois, p_confirmation: 'SUPPRIMER ' + mois });
+    if (error || !data || data.erreur) {
+      toast('Suppression refusée : ' + _motifSuppression((data && data.erreur) || (error && error.message)), 'err');
+    } else {
+      toast('🗑️ ' + _libelleMois(mois) + ' : ' + data.supprimes + ' dossier(s) supprimé(s) de la base', 'ok');
+    }
+  } catch (e) {
+    toast('Suppression impossible : ' + (e.message || e), 'err');
+  } finally {
+    hideLoading();
+    await _apresChangementMois();
+  }
+}
+
+async function annulerSuppressionMois(mois) {
+  if (!isAdmin()) { toast('Réservé à l\'administrateur', 'err'); return; }
+  const ok = await showConfirmModal({
+    icon: '↩️', title: 'Remettre ' + _libelleMois(mois) + ' en base ?',
+    message: 'Les dossiers de ce mois sont remis depuis la plus récente copie de nuit qui les contient. '
+           + 'Pour les supprimer de nouveau, il faudra refaire l\'archive.',
+    confirmText: 'Remettre en base',
+  });
+  if (!ok) return;
+  showLoading('Remise en base de ' + _libelleMois(mois) + '…');
+  try {
+    const { data, error } = await _sb.rpc('annuler_purge_mois', { p_token: TK(), p_mois: mois });
+    if (error || !data || data.erreur) {
+      toast('Annulation refusée : ' + _motifSuppression((data && data.erreur) || (error && error.message)), 'err');
+    } else {
+      toast('↩️ ' + _libelleMois(mois) + ' : ' + data.restaures + ' dossier(s) remis en base', 'ok');
+    }
+  } catch (e) {
+    toast('Annulation impossible : ' + (e.message || e), 'err');
+  } finally {
+    hideLoading();
+    await _apresChangementMois();
+  }
+}
+
+/** Mois de service d'une ligne brute de sauvegarde (même règle que jour_dossier côté serveur). */
+function moisServiceLigne(f) {
+  const p = (f && f.patient) || {};
+  const ts = f && (f.created_at || f.savedAt);
+  const d = ts ? new Date(ts) : null;
+  let jour = p.date || (d && !isNaN(d) ? _jourLocal(d) : '');
+  if (!/^\d{4}-\d{2}-\d{2}/.test(jour)) return '';
+  jour = jour.slice(0, 10);
+  if (d && !isNaN(d) && d.getHours() < 8) jour = _jourPlus(jour, -1);
+  return jour.slice(0, 7);
 }

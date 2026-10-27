@@ -10,6 +10,11 @@ Points mis en attente le 27/10/2026, à la demande de l'administrateur.
       pas 1 000. Copie sur clé USB / Drive. Supprimer le fichier du 19/10 (incomplet : 1 000 fiches).
 - [ ] Tester le site démo `…/demo/` avec le compte `demo`.
 
+## Sites des laboratoires clients
+
+- [ ] Régénérer le SQL d'installation des bases clientes : celui de la v13.266 n'a pas
+      les fonctions de la v13.268–269 (archive notée, suppression d'un mois archivé).
+
 ## Sécurité
 
 - [ ] Double authentification (2FA) sur GitHub, Supabase et Gmail — le plus important.

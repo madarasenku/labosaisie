@@ -1172,6 +1172,29 @@ async function checkShareMode() {
     const r = data[0];
     const p = typeof r.patient === 'string' ? JSON.parse(r.patient) : (r.patient || {});
     const dateF = p.date ? new Date(p.date).toLocaleDateString('fr-FR') : '—';
+    // ✅ v13.269 — Dossier d'un mois supprimé de la base après archivage : le
+    //   serveur n'en garde qu'une trace (n°, nom, date) qui suffit à confirmer
+    //   l'authenticité du compte rendu imprimé.
+    if (p.archive) {
+      const moisF = /^\d{4}-\d{2}$/.test(p.mois || '')
+        ? (MOIS_FR[Number(p.mois.slice(5)) - 1] + ' ' + p.mois.slice(0, 4)).toLowerCase() : '';
+      overlay.innerHTML = buildShareCard(
+        '✅ Compte rendu authentique — CPMI Grand-Bassam',
+        `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px 18px;margin-bottom:14px">
+          <div style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Informations patient</div>
+          <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr><td style="color:#4b5563;padding:3px 8px 3px 0;white-space:nowrap">N° Dossier</td><td><strong style="font-size:15px;color:#0b2545">${escHTML(p.dossier||'—')}</strong></td></tr>
+            <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Patient</td><td><strong style="text-transform:uppercase">${escHTML(p.nom||'—')}</strong></td></tr>
+            <tr><td style="color:#4b5563;padding:3px 8px 3px 0">Date</td><td>${escHTML(dateF)}</td></tr>
+          </table>
+        </div>
+        <div style="font-size:12.5px;color:#374151;text-align:center;line-height:1.5">
+          Ce compte rendu a bien été émis par le laboratoire. Son détail a été archivé${moisF ? ' (' + escHTML(moisF) + ')' : ''} :
+          pour en obtenir une copie, adressez-vous directement au laboratoire.
+        </div>`
+      );
+      return true;
+    }
     const types = Array.isArray(r.types) ? r.types.join(' · ') : (r.type || '—');
     overlay.innerHTML = buildShareCard(
       '✅ Résultat vérifié — CPMI Grand-Bassam',
