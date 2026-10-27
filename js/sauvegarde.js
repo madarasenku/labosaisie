@@ -16,8 +16,28 @@
    Chargé en script classique — voir le commentaire d'index.html.
    ═══════════════════════════════════════════════════════════════ */
 
-/** Nombre de jours au-delà duquel on considère la sauvegarde trop ancienne. */
-const SAUVEGARDE_ALERTE_JOURS = 7;
+// ✅ v13.267 — Sauvegarde MENSUELLE, le 10 de chaque mois : le mois précédent est
+//   alors entièrement saisi. Le rappel est dû à partir du 10 tant qu'aucune
+//   sauvegarde n'a été faite depuis ce 10, puis disparaît jusqu'au 10 suivant.
+//   (Avant : rappel 7 jours après la dernière sauvegarde.)
+const SAUVEGARDE_JOUR_DU_MOIS = 10;
+
+/** Le 10 le plus récent (à 0 h, heure du poste) : début de la période en cours. */
+function echeanceSauvegarde(maintenant) {
+  const d = maintenant ? new Date(maintenant) : new Date();
+  const e = new Date(d.getFullYear(), d.getMonth(), SAUVEGARDE_JOUR_DU_MOIS);
+  if (d < e) e.setMonth(e.getMonth() - 1);
+  return e;
+}
+function _dateDerniereSauvegarde(data) {
+  const t = data && data.le ? new Date(data.le) : null;
+  return (t && !isNaN(t)) ? t : new Date(Date.now() - (Number(data && data.jours) || 0) * 86400000);
+}
+/** Vrai si la sauvegarde du mois reste à faire. */
+function sauvegardeDue(data, maintenant) {
+  if (!data || data.jamais) return true;
+  return _dateDerniereSauvegarde(data) < echeanceSauvegarde(maintenant);
+}
 
 /** Télécharge un contenu sous forme de fichier, sans passer par un serveur. */
 function _telechargerFichier(contenu, nomFichier, type) {
@@ -540,7 +560,7 @@ async function majBandeauSauvegarde() {
     const nouvelles = (Number(data.fiches_actuelles) || 0) - (Number(data.nb_fiches) || 0);
     const detail = nouvelles > 0 ? ' — ' + nouvelles + ' fiche' + (nouvelles > 1 ? 's' : '') + ' depuis' : '';
 
-    if (jours >= SAUVEGARDE_ALERTE_JOURS) {
+    if (sauvegardeDue(data)) {
       zone.innerHTML = '<span style="color:#b45309;font-weight:700">⚠ Dernière sauvegarde ' + quand + '</span>'
         + '<span style="color:var(--text-muted)">' + detail + '</span>';
     } else {
@@ -559,14 +579,14 @@ function _majRappelAccueil(data) {
   const el = document.getElementById('kio-sauvegarde');
   if (!el) return;
   const jours = Number(data.jours) || 0;
-  const due = !!data.jamais || jours >= SAUVEGARDE_ALERTE_JOURS;
+  const due = sauvegardeDue(data);
   el.hidden = !due;
   if (!due) return;
   const nouvelles = (Number(data.fiches_actuelles) || 0) - (Number(data.nb_fiches) || 0);
   const titre = document.getElementById('kio-sauv-titre');
   const detail = document.getElementById('kio-sauv-detail');
   if (titre) titre.textContent = data.jamais ? 'Aucune sauvegarde effectuée'
-                                             : 'Dernière sauvegarde il y a ' + jours + ' jours';
+                                             : 'Sauvegarde du mois à faire (le ' + SAUVEGARDE_JOUR_DU_MOIS + ') — dernière il y a ' + jours + ' jours';
   if (detail) detail.textContent = (data.jamais ? (data.fiches_actuelles || 0) + ' fiches en base'
                                                 : (nouvelles > 0 ? nouvelles + ' fiche' + (nouvelles > 1 ? 's' : '') + ' non sauvegardée' + (nouvelles > 1 ? 's' : '') : ''))
     + ' · Le fichier se télécharge sur ce poste : rangez-le dans votre Google Drive.';
