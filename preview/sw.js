@@ -31,9 +31,10 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.264-t1';
-const CACHE = 'cpmi-labo-PREVIEW-v231';
+const APP_VERSION = '13.265-t1';
+const CACHE = 'cpmi-labo-PREVIEW-v232';
 const v = url => url + '?v=' + APP_VERSION;
+const famille = nom => nom.replace(/[\d.]+$/, '');   // 'cpmi-labo-v222' → 'cpmi-labo-v'
 
 /* Pré-cacher les fichiers essentiels à l'installation.
    ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,
@@ -102,9 +103,13 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    /* Nettoyer les anciens caches */
+    /* Nettoyer les anciens caches DE CE SITE seulement.
+       ✅ v13.265 — Production, lien de test (/preview/) et démo (/demo/) sont
+       sur le même domaine, donc partagent le stockage des caches : chacun
+       effaçait le pré-cache hors-ligne des deux autres. On ne supprime que les
+       caches de la même famille (même nom, numéro de version mis à part). */
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE && famille(k) === famille(CACHE)).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });

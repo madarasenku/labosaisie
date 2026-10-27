@@ -179,13 +179,17 @@ async function openApp(opts = {}) {
   // Le site secondaire préfixe ses clés (« v2_… ») pour ne pas partager le
   // localStorage du site principal, qui vit sur le même domaine. On pose les
   // deux : le même helper sert alors aux deux dépôts sans divergence.
+  // Le site démo (/demo/) préfixe toutes ses clés par « demo: » (v13.265) :
+  // depuis une page hors démo, on pose aussi la clé préfixée.
   await page.evaluate(s => { localStorage.setItem('labo_session_user', s);
-                             localStorage.setItem('v2_labo_session_user', s); },
+                             localStorage.setItem('v2_labo_session_user', s);
+                             localStorage.setItem('demo:labo_session_user', s); },
     JSON.stringify({ id:userId, username, role, token:'jeton-de-test',
                      expiresAt: Date.now() + 86400000 }));
   if (sansSession) {
     await page.evaluate(() => { localStorage.removeItem('labo_session_user');
-                                localStorage.removeItem('v2_labo_session_user'); });
+                                localStorage.removeItem('v2_labo_session_user');
+                                localStorage.removeItem('demo:labo_session_user'); });
   }
   await page.goto(base + cible, { waitUntil: 'load' });
   await page.waitForTimeout(cible.endsWith('/index.html') ? 2500 : 900);

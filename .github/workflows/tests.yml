@@ -34,7 +34,10 @@ jobs:
     # 110 fichiers de tests : la suite dépasse désormais 15 min sur un runner
     # GitHub (dernier passage complet : 15 min 17 s). Avec 15 min, chaque run
     # était coupé (« cancelled ») sans résultat depuis le 4 octobre.
-    timeout-minutes: 35
+    # 130 fichiers (v13.265) : 22 à 29 min par passage, et l'installation de
+    # Playwright (apt) prend parfois 13 min au lieu de 3 — le 27/10 un passage
+    # a été coupé à 35 min en pleine suite. Marge portée à 50 min.
+    timeout-minutes: 50
 
     steps:
       - uses: actions/checkout@v4

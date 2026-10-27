@@ -1,0 +1,2 @@
+Site de démonstration construit depuis la version 13.265 (base de test ftwsxdivwoczsreiohok).
+Ne pas modifier à la main : relancer node scripts/construire-demo.js
