@@ -49,3 +49,9 @@ Administration.
 
 Pour le reste — fonctionnement de l'application, tests, historique des
 versions — voir le dépôt principal.
+
+## Droits
+
+© 2026 madarasenku — **Tous droits réservés.** Aucune licence n'est accordée :
+la consultation de ce code ne donne aucun droit de l'utiliser, le copier ou le
+redistribuer. Voir [LICENSE](LICENSE).
