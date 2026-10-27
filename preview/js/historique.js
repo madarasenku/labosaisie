@@ -1943,6 +1943,7 @@ function adminShowSub(id, btn) {
     if (typeof majBandeauSauvegarde === 'function') majBandeauSauvegarde();
     if (typeof chargerInstantanes   === 'function') chargerInstantanes();
     if (typeof majPanneauCoffre     === 'function') majPanneauCoffre();
+    if (typeof preparerCarteArchive === 'function') preparerCarteArchive();
   }
 }
 

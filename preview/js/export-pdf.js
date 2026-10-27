@@ -946,6 +946,13 @@ async function genererRapportMensuel() {
   await refreshDB();
   const mois = parseInt(document.getElementById('rapport-mois')?.value || (new Date().getMonth() + 1));
   const annee = parseInt(document.getElementById('rapport-annee')?.value || new Date().getFullYear());
+  const doc = await construireRapportMensuel(mois, annee);
+  doc.save('Rapport_activite_' + MOIS_FR[mois - 1] + '_' + annee + '.pdf');
+  toast('Rapport mensuel généré ✓', 'ok');
+}
+// ✅ v13.268 — Construit le rapport sans le télécharger : réutilisé tel quel
+//   par l'archive du mois (archive-mois.js).
+async function construireRapportMensuel(mois, annee) {
   const prefix = annee + '-' + String(mois).padStart(2, '0');
   const db = getCalcDB().filter(r => _recDate(r).startsWith(prefix)); // ✅ v13.30 — exclut les fiches verrouillées du rapport PDF
   const { doc } = _newPDFDoc();
@@ -1019,8 +1026,7 @@ async function genererRapportMensuel() {
     doc.autoTable({ startY: yc + 4, head: [['Patient', 'Dossier', 'Alertes']], body: critiques.slice(0, 40).map(c => [c.p?.nom || '—', c.p?.dossier || '—', c.al.map(a => a.label + '=' + a.valeur + ' ' + a.unite).join('; ') || 'signalé']), styles: { fontSize: 8 }, headStyles: { fillColor: [220, 38, 38] } });
   } else { doc.setFont(undefined, 'normal'); doc.setFontSize(10); doc.text('Aucune alerte critique enregistrée ce mois.', M, yc + 8); }
 
-  doc.save('Rapport_activite_' + MOIS_FR[mois - 1] + '_' + annee + '.pdf');
-  toast('Rapport mensuel généré ✓', 'ok');
+  return doc;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
