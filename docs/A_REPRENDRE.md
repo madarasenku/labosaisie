@@ -14,7 +14,10 @@ Points mis en attente le 27/10/2026, à la demande de l'administrateur.
 
 - [ ] Double authentification (2FA) sur GitHub, Supabase et Gmail — le plus important.
 - [ ] Supprimer les comptes du personnel parti ; code de verrouillage sur les téléphones du labo.
-- [ ] Déclaration ARTCI (données de santé, loi n° 2013-450).
+- [ ] Déclaration ARTCI (données de santé, loi n° 2013-450). Demander aussi si l'hébergement
+      des données en Irlande (Supabase, région eu-west-1) demande une autorisation de transfert.
+      Un serveur au labo n'est PAS conseillé (pannes, vol, sauvegardes) : si un hébergement en
+      Côte d'Ivoire devenait obligatoire, passer par un hébergeur professionnel local.
 - [ ] GitHub Pro puis dépôt privé (le site reste à la même adresse : les QR imprimés continuent
       de fonctionner). Ne PAS passer le dépôt en privé sans abonnement : le site s'arrêterait.
 
