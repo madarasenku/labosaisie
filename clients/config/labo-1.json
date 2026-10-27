@@ -1,0 +1,11 @@
+{
+  "nom": "Laboratoire Client 1",
+  "nom_court": "Labo Client 1",
+  "sigle": "Client 1",
+  "sous_titre": "Laboratoire d’analyses médicales",
+  "lieu": "Côte d’Ivoire",
+  "prefixe_references": "LAB1",
+  "supabase_url": "",
+  "supabase_cle": "",
+  "actif": false
+}

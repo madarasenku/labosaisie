@@ -1,0 +1,2 @@
+Site du laboratoire « Laboratoire Client 1 » construit depuis la version 13.266 — INACTIF (aucune base branchée).
+Ne pas modifier à la main : relancer node scripts/construire-client.js labo-1

@@ -1,0 +1,173 @@
+/* ============================================================
+   LaboSaisie Client 2 — Service Worker v13.67
+   Stratégie : Network-First avec fallback cache
+   (réseau prioritaire → toujours la version à jour ;
+    si hors-ligne → version en cache)
+
+   v13.67 : bump cache v40 → v41 (purge d'office tout résidu
+   d'un déploiement antérieur) + caisse.html pré-caché
+   + handler SKIP_WAITING pour activation à la demande.
+
+   ⚠️  v13.72 — VERSIONNEMENT DES ACTIFS (APP_VERSION)
+   Les modules js/ et css/ portent des noms de fichiers stables. Un
+   navigateur pouvait donc servir un index.html tout neuf ET un
+   js/historique.js périmé issu de son cache HTTP : la nouvelle interface
+   s'affichait, mais ses fonctions n'existaient pas encore
+   (« decalerPeriode is not defined »). Le symptôme était trompeur — des
+   boutons visibles qui ne font rien — et se serait reproduit à CHAQUE
+   déploiement. Les URL portent maintenant ?v=APP_VERSION : après une mise
+   en ligne, le navigateur demande une URL qu'aucun cache ne connaît, donc
+   HTML et JS sont forcément de la même génération.
+   À CHAQUE DÉPLOIEMENT : incrémenter APP_VERSION *et* CACHE, et propager
+   APP_VERSION dans index.html et login.html (tests/deploiement.test.js
+   échoue si les trois divergent).
+
+   ⚠️  RAPPEL DÉPLOIEMENT : bumper CACHE à chaque mise en ligne.
+   Le navigateur ne réinstalle le SW que si ce fichier change
+   octet pour octet ; sans bump, 'activate' ne rejoue jamais et
+   les anciens caches ne sont pas purgés. La détection de
+   nouvelle version côté client ne dépend toutefois PAS de ce
+   bump : index.html surveille l'ETag du déploiement (voir
+   checkForUpdate() dans index.html).
+   ============================================================ */
+
+const APP_VERSION = '13.266-labo-2';
+const CACHE = 'labo-CLIENT-labo-2-13.266';
+const v = url => url + '?v=' + APP_VERSION;
+const famille = nom => nom.replace(/[\d.]+$/, '');   // 'cpmi-labo-v224' → 'cpmi-labo-v'
+
+/* Pré-cacher les fichiers essentiels à l'installation.
+   ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,
+   donc le pré-cache ne peut plus échouer à cause d'un tiers injoignable. */
+const PRECACHE = [
+  './index.html',
+  './login.html',
+  './soignant.html',
+  v('./css/app.css'),
+  v('./css/theme.css'),
+  // ✅ v13.70 — modules extraits de index.html. L'ORDRE n'a pas d'importance
+  // ici (simple mise en cache) mais il est critique dans index.html.
+  v('./js/periode-nav.js'),
+  v('./js/qr-generator.js'),
+  v('./js/pwa-manifest.js'),
+  v('./js/donnees-analyses.js'),
+  v('./js/dfg.js'),
+  v('./js/navigation.js'),
+  v('./js/supabase-db.js'),
+  v('./js/historique.js'),
+  v('./js/ambiance.js'),
+  v('./js/export-excel.js'),
+  v('./js/prescripteurs.js'),
+  v('./js/saisie.js'),
+  v('./js/completude.js'),
+  v('./js/grille.js'),
+  v('./js/ui-auth.js'),
+  v('./js/session-pwa.js'),
+  v('./js/saisie-mobile.js'),
+  v('./js/stats.js'),
+  v('./js/compte-rendu.js'),
+  v('./js/impression.js'),
+  v('./js/export-pdf.js'),
+  v('./js/sauvegarde.js'),
+  v('./js/cloture-caisse.js'),
+  v('./js/registre-jour.js'),
+  v('./js/electrophorese.js'),
+  v('./js/tdr.js'),
+  v('./js/enveloppes.js'),
+  v('./js/coffre.js'),
+  v('./js/cahier-jaune.js'),
+  v('./vendor/exceljs-4.4.0.min.js'),
+  v('./vendor/chart-4.4.1.umd.js'),
+  v('./vendor/supabase-2.39.7.umd.js'),
+  v('./vendor/jspdf-2.5.1.umd.min.js'),
+  v('./vendor/jspdf-autotable-3.8.2.min.js'),
+  v('./vendor/fonts/poppins.css'),
+  v('./vendor/fonts/plus-jakarta-sans-latin-var.woff2'),
+  v('./vendor/fonts/poppins-latin-400-normal.woff2'),
+  v('./vendor/fonts/poppins-latin-500-normal.woff2'),
+  v('./vendor/fonts/poppins-latin-600-normal.woff2'),
+  v('./vendor/fonts/poppins-latin-700-normal.woff2'),
+];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE)
+      /* ✅ v13.67 — mise en cache fichier par fichier.
+         addAll() est tout-ou-rien : un seul CDN injoignable faisait échouer
+         l'ensemble, y compris index.html/login.html/caisse.html, et l'app se
+         retrouvait sans aucun pré-cache hors-ligne. */
+      .then(c => Promise.all(PRECACHE.map(u => c.add(u).catch(() => {}))))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    /* Nettoyer les anciens caches DE CE SITE seulement.
+       ✅ v13.265 — Production, lien de test (/preview/) et démo (/demo/) sont
+       sur le même domaine, donc partagent le stockage des caches : chacun
+       effaçait le pré-cache hors-ligne des deux autres. On ne supprime que les
+       caches de la même famille (même nom, numéro de version mis à part). */
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE && famille(k) === famille(CACHE)).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+/* Permet à la page de demander l'activation immédiate du nouveau SW */
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('fetch', e => {
+  /* Ne pas intercepter les requêtes non-GET (POST Supabase, etc.) */
+  if (e.request.method !== 'GET') return;
+
+  /* Ne pas intercepter les appels API Supabase — toujours réseau */
+  if (e.request.url.includes('supabase.co')) return;
+
+  /* ✅ v13.233 — Pages HTML (sans ?v=) : TOUJOURS revalidées auprès du serveur.
+     Avant, fetch(e.request) laissait le navigateur servir index.html depuis son
+     cache HTTP (GitHub Pages : jusqu'à 10 min). Après un déploiement, la page
+     s'affichait d'abord dans l'ANCIENNE version, puis la bannière proposait de
+     recharger. « no-cache » = une requête conditionnelle (ETag → 304, quelques
+     centaines d'octets) : la page est toujours la dernière, sans retélécharger.
+     Les actifs versionnés (?v=) gardent le cache normal : leur URL change à
+     chaque version, donc ils ne peuvent pas être périmés. */
+  let versionne = false;
+  try {
+    const u = new URL(e.request.url);
+    versionne = u.searchParams.has('v') || u.origin !== self.location.origin;
+  } catch (err) {}
+  const requete = versionne ? e.request
+    : fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' });
+
+  e.respondWith(
+    (versionne ? fetch(requete) : requete)
+      .then(res => {
+        /* Mise en cache de la réponse fraîche */
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        }
+        return res;
+      })
+      /* ✅ v13.138 — CORRECTIF « HTML neuf + JS périmé ».
+         L'ancien repli utilisait ignoreSearch:true : une requête
+         js/grille.js?v=13.138 pouvait être servie par un js/grille.js?v=13.114
+         resté en cache. Sur une connexion instable, l'app tournait donc avec
+         un index.html à jour et des modules d'une version antérieure —
+         symptômes : rien ne s'enregistre, impression vide, examens qui
+         disparaissent. On exige désormais une correspondance EXACTE pour tout
+         actif versionné ; le repli « toutes versions » ne sert plus qu'aux
+         ressources sans ?v= (pages HTML). */
+      .catch(async () => {
+        const exact = await caches.match(e.request);
+        if (exact) return exact;
+        let versionne = false;
+        try { versionne = new URL(e.request.url).searchParams.has('v'); } catch (err) {}
+        if (versionne) return Response.error();
+        return (await caches.match(e.request, { ignoreSearch: true })) || Response.error();
+      })
+  );
+});
