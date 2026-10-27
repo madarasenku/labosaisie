@@ -31,10 +31,10 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.265';
-const CACHE = 'cpmi-labo-v223';
+const APP_VERSION = '13.266';
+const CACHE = 'cpmi-labo-v224';
 const v = url => url + '?v=' + APP_VERSION;
-const famille = nom => nom.replace(/[\d.]+$/, '');   // 'cpmi-labo-v223' → 'cpmi-labo-v'
+const famille = nom => nom.replace(/[\d.]+$/, '');   // 'cpmi-labo-v224' → 'cpmi-labo-v'
 
 /* Pré-cacher les fichiers essentiels à l'installation.
    ✅ v13.69 — tout est désormais same-origin : plus aucune dépendance CDN,

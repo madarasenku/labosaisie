@@ -139,6 +139,8 @@ function rpcResponses(extra = {}) {
  * Ouvre l'application avec une session simulée et les RPC interceptés.
  * @param {object} opts { role, username, userId, rpc, port }
  */
+const MAX_LIGNES_SERVEUR = 1000;   // réglage « Max rows » de l'API Supabase
+
 async function openApp(opts = {}) {
   const { role = 'admin', username = 'admin1', userId = 1, rpc = {}, port = 8099,
           // Le portail du soignant est une page distincte : on doit pouvoir
@@ -168,10 +170,29 @@ async function openApp(opts = {}) {
     status: 200, contentType: 'application/json', body: '[]' }));
   const responses = rpcResponses(rpc);
   await page.route('**/rest/v1/rpc/**', route => {
-    const fn = route.request().url().split('/rpc/')[1].split('?')[0];
+    const req = route.request();
+    const u = new URL(req.url());
+    const fn = u.pathname.split('/rpc/')[1];
     if (appels) appels.push(fn);
-    route.fulfill({ status: 200, contentType: 'application/json',
-                    body: JSON.stringify(fn in responses ? responses[fn] : []) });
+    let body = fn in responses ? responses[fn] : [];
+    const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Content-Range' };
+    // ✅ v13.266 — Comme le vrai serveur Supabase : 1 000 lignes AU PLUS par
+    //   réponse, pages (offset/limit, order=id.asc) et total annoncé
+    //   (Prefer: count=exact → Content-Range « début-fin/total »). Sans ce
+    //   plafond, les tests ne pouvaient pas voir que l'appli perdait des fiches.
+    if (Array.isArray(body)) {
+      let lignes = body;
+      if (/^id\.asc/.test(u.searchParams.get('order') || '')) lignes = lignes.slice().sort((x, y) => (x.id || 0) - (y.id || 0));
+      const total = lignes.length;
+      const debut = parseInt(u.searchParams.get('offset') || '0', 10);
+      const lim = Math.min(parseInt(u.searchParams.get('limit') || String(MAX_LIGNES_SERVEUR), 10), MAX_LIGNES_SERVEUR);
+      lignes = lignes.slice(debut, debut + lim);
+      const avecTotal = /count=exact/.test(req.headers()['prefer'] || '');
+      headers['Content-Range'] = (lignes.length ? debut + '-' + (debut + lignes.length - 1) : '*')
+        + '/' + (avecTotal ? total : '*');
+      body = lignes;
+    }
+    route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(body) });
   });
 
   const base = `http://127.0.0.1:${port}`;

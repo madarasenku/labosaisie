@@ -51,7 +51,8 @@ async function sauvegarderBase() {
 
   try {
     showLoading('Récupération des fiches…');
-    const { data, error } = await _sb.rpc('get_resultats', { p_token: TK() });
+    // ✅ v13.266 — Lecture par pages : sans elle, seules 1 000 fiches partaient.
+    const { data, error } = await rpcToutesLesLignes('get_resultats', { p_token: TK() }, TRI_CREATION);
     hideLoading();
 
     if (error || !Array.isArray(data)) {
@@ -159,7 +160,9 @@ async function restaurerBase(texte) {
   try {
     // ── Aperçu : on annonce ce qui va se passer AVANT de toucher à quoi que ce soit.
     showLoading('Comparaison avec la base…');
-    const { data: actuelles, error } = await _sb.rpc('get_resultats', { p_token: TK() });
+    // ✅ v13.266 — Liste COMPLÈTE : une liste tronquée faisait croire absentes
+    //   les fiches au-delà des 1 000 premières.
+    const { data: actuelles, error } = await rpcToutesLesLignes('get_resultats', { p_token: TK() });
     hideLoading();
     if (error || !Array.isArray(actuelles)) {
       toast('Comparaison impossible : ' + (error?.message || 'réponse inattendue'), 'err');

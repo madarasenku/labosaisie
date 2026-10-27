@@ -424,7 +424,8 @@ async function refreshDB(force) {
   const repereAvant = _syncDepuis;
   let data, error;
   try {
-    ({ data, error } = await _sb.rpc('get_resultats_light', { p_token: TK(), p_limit: 20000 }));
+    // ✅ v13.266 — Par pages : le serveur coupait à 1 000 dossiers (les plus récents).
+    ({ data, error } = await rpcToutesLesLignes('get_resultats_light', { p_token: TK(), p_limit: 20000 }, TRI_JOUR_DESC));
   } catch (e) {
     if (isNetworkError(e)) return _dbCache;
     console.error('Erreur de chargement Supabase:', e);
@@ -462,7 +463,9 @@ async function refreshDB(force) {
   // et ne la retourne pas forcément. On récupère les fiches restreintes séparément
   // et on met à jour le cache, ce qui rend getDB() fonctionnel pour tous les profils.
   try {
-    const { data: rests } = await _sb.rpc('get_restriction_status', { p_token: TK() });
+    // ✅ v13.266 — Liste complète : tronquée, des fiches masquées auraient été
+    //   affichées comme non masquées (et une erreur ne touche plus au cache).
+    const { data: rests } = await rpcToutesLesLignes('get_restriction_status', { p_token: TK() });
     if (rests && Array.isArray(rests)) {
       const restrictMap = {};
       rests.forEach(x => { if (x.id) restrictMap[x.id] = x.restricted_by || null; });
@@ -477,7 +480,7 @@ async function refreshDB(force) {
 
   // ✅ v13.31 — Merger le statut soft-delete depuis get_deleted_status
   try {
-    const { data: delRows } = await _sb.rpc('get_deleted_status', { p_token: TK() });
+    const { data: delRows } = await rpcToutesLesLignes('get_deleted_status', { p_token: TK() });
     if (delRows && Array.isArray(delRows)) {
       const delMap = {};
       delRows.forEach(x => { if (x.id) delMap[x.id] = { deletedAt: x.deleted_at, deletedBy: x.deleted_by }; });
@@ -644,11 +647,48 @@ async function ensureFull(record) {
   return record;
 }
 
+// ✅ v13.266 — Supabase coupe TOUTE réponse à 1 000 lignes (réglage du serveur).
+//   get_resultats renvoyait donc les 1 000 premières fiches sans rien signaler :
+//   depuis le 21/09, l'Historique ne chargeait que les 1 000 dossiers les plus
+//   récents (juillet et début août absents des stats, ristournes, recherches) ;
+//   la sauvegarde du 19/10 ne contenait que 1 000 fiches sur 1 928 ; la
+//   restauration croyait absentes celles qu'elle ne voyait pas. On lit par pages
+//   triées par id (ordre stable d'une page à l'autre) et on contrôle le total
+//   annoncé par le serveur : une lecture incomplète est une ERREUR, jamais un
+//   résultat partiel silencieux. `tri` : ordre final voulu (celui du serveur).
+const RPC_PAGE = 1000;
+const TRI_CREATION = (a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')) || (a.id - b.id);
+const _jourLigne = r => String((r.patient && r.patient.date) || String(r.created_at || '').slice(0, 10));
+const TRI_JOUR_DESC = (a, b) => _jourLigne(b).localeCompare(_jourLigne(a))
+  || String(b.created_at || '').localeCompare(String(a.created_at || ''));
+async function rpcToutesLesLignes(nom, params, tri) {
+  const lignes = [], vus = new Set();
+  let total = null;
+  for (let debut = 0; ; debut += RPC_PAGE) {
+    let req = _sb.rpc(nom, params, { count: 'exact' });
+    const paginable = req && typeof req.range === 'function';
+    if (paginable) req = req.order('id', { ascending: true }).range(debut, debut + RPC_PAGE - 1);
+    const { data, error, count } = await req;
+    if (error) return { data: null, error };
+    if (!Array.isArray(data)) return { data: null, error: { message: 'réponse inattendue' } };
+    if (typeof count === 'number') total = count;
+    let nouvelles = 0;
+    for (const l of data) { const k = l && l.id != null ? String(l.id) : null; if (k === null || !vus.has(k)) { if (k !== null) vus.add(k); lignes.push(l); nouvelles++; } }
+    if (!paginable || data.length < RPC_PAGE || (total != null && lignes.length >= total)) break;
+    if (!nouvelles) return { data: null, error: { message: 'pagination refusée par le serveur' } };
+  }
+  if (total != null && lignes.length !== total) {
+    return { data: null, error: { message: 'lecture incomplète (' + lignes.length + ' fiches sur ' + total + ')' } };
+  }
+  if (tri) lignes.sort(tri);
+  return { data: lignes, error: null };
+}
+
 // ✅ v13.5 — Charge le détail complet de TOUTES les fiches (export global).
 async function refreshDBFull() {
   if (!navigator.onLine) return _dbCache;
   try {
-    const { data, error } = await _sb.rpc('get_resultats', { p_token: TK() });
+    const { data, error } = await rpcToutesLesLignes('get_resultats', { p_token: TK() }, TRI_CREATION);
     if (error || !data) return _dbCache;
     const pendings = _dbCache.filter(r => r._pending);
     _dbCache = data.map(row => ({
