@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.267';
-const CACHE = 'cpmi-labo-v225';
+const APP_VERSION = '13.268';
+const CACHE = 'cpmi-labo-v226';
 const v = url => url + '?v=' + APP_VERSION;
 const famille = nom => nom.replace(/[\d.]+$/, '');   // 'cpmi-labo-v224' → 'cpmi-labo-v'
 
@@ -76,6 +76,7 @@ const PRECACHE = [
   v('./js/enveloppes.js'),
   v('./js/coffre.js'),
   v('./js/cahier-jaune.js'),
+  v('./js/archive-mois.js'),
   v('./vendor/exceljs-4.4.0.min.js'),
   v('./vendor/chart-4.4.1.umd.js'),
   v('./vendor/supabase-2.39.7.umd.js'),
