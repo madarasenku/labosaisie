@@ -438,6 +438,7 @@ async function refreshDB(force) {
     return _dbCache;
   }
   const pendings = _dbCache.filter(r => r._pending); // conserver les fiches en attente
+  const ancienCache = _dbCache;
   _dbCache = (data || []).map(row => ({
     id: row.id, type: row.type, patient: row.patient,
     resultats: row.resultats || {}, savedAt: row.created_at,
@@ -462,34 +463,55 @@ async function refreshDB(force) {
   // Nécessaire car get_resultats_light a été créé avant la colonne restricted_by
   // et ne la retourne pas forcément. On récupère les fiches restreintes séparément
   // et on met à jour le cache, ce qui rend getDB() fonctionnel pour tous les profils.
-  try {
-    // ✅ v13.266 — Liste complète : tronquée, des fiches masquées auraient été
-    //   affichées comme non masquées (et une erreur ne touche plus au cache).
-    const { data: rests } = await rpcToutesLesLignes('get_restriction_status', { p_token: TK() });
-    if (rests && Array.isArray(rests)) {
-      const restrictMap = {};
-      rests.forEach(x => { if (x.id) restrictMap[x.id] = x.restricted_by || null; });
-      _dbCache.forEach(r => {
-        // Si le RPC dédié retourne une info, elle prime sur la valeur éventuelle du cache
-        if (restrictMap[r.id] !== undefined) r.restrictedBy = restrictMap[r.id];
-        // Si l'id n'est pas dans la map → fiche non restreinte
-        else if (!r._pending) r.restrictedBy = null;
-      });
+  // ✅ v13.270 — get_resultats_light ne dit NI le masquage NI la corbeille. Si
+  //   leur lecture échouait, le cache venait d'être reconstruit à neuf : le
+  //   commentaire « on garde la valeur courante » était faux, et les dossiers
+  //   en corbeille repassaient actifs (comptés en caisse et en statistiques)
+  //   sans un mot. On réessaie une fois, puis on reprend les valeurs connues
+  //   avant le rechargement et on prévient.
+  const lireEtat = async nom => {
+    for (let essai = 0; essai < 2; essai++) {
+      try {
+        const { data: lignes, error: err } = await rpcToutesLesLignes(nom, { p_token: TK() });
+        if (!err && Array.isArray(lignes)) return lignes;
+      } catch (e) { /* nouvel essai, puis valeurs connues */ }
     }
-  } catch (e) { /* RPC absent ou réseau — on garde la valeur courante du cache */ }
+    return null;
+  };
+  const anciens = new Map((ancienCache || []).map(r => [r.id, r]));
+  const reprendre = champs => _dbCache.forEach(r => {
+    const a = anciens.get(r.id);
+    if (!r._pending) champs.forEach(c => { r[c] = a ? (a[c] == null ? null : a[c]) : null; });
+  });
+  let etatIncertain = false;
+
+  // ✅ v13.266 — Liste complète : tronquée, des fiches masquées auraient été
+  //   affichées comme non masquées (et une erreur ne touche plus au cache).
+  const rests = await lireEtat('get_restriction_status');
+  if (rests) {
+    const restrictMap = {};
+    rests.forEach(x => { if (x.id) restrictMap[x.id] = x.restricted_by || null; });
+    _dbCache.forEach(r => {
+      // Si le RPC dédié retourne une info, elle prime sur la valeur éventuelle du cache
+      if (restrictMap[r.id] !== undefined) r.restrictedBy = restrictMap[r.id];
+      // Si l'id n'est pas dans la map → fiche non restreinte
+      else if (!r._pending) r.restrictedBy = null;
+    });
+  } else { reprendre(['restrictedBy']); etatIncertain = true; }
 
   // ✅ v13.31 — Merger le statut soft-delete depuis get_deleted_status
-  try {
-    const { data: delRows } = await rpcToutesLesLignes('get_deleted_status', { p_token: TK() });
-    if (delRows && Array.isArray(delRows)) {
-      const delMap = {};
-      delRows.forEach(x => { if (x.id) delMap[x.id] = { deletedAt: x.deleted_at, deletedBy: x.deleted_by }; });
-      _dbCache.forEach(r => {
-        if (delMap[r.id]) { r.deletedAt = delMap[r.id].deletedAt; r.deletedBy = delMap[r.id].deletedBy; }
-        else if (!r._pending) { r.deletedAt = null; r.deletedBy = null; }
-      });
-    }
-  } catch (e) { /* RPC absent — on garde la valeur courante */ }
+  const delRows = await lireEtat('get_deleted_status');
+  if (delRows) {
+    const delMap = {};
+    delRows.forEach(x => { if (x.id) delMap[x.id] = { deletedAt: x.deleted_at, deletedBy: x.deleted_by }; });
+    _dbCache.forEach(r => {
+      if (delMap[r.id]) { r.deletedAt = delMap[r.id].deletedAt; r.deletedBy = delMap[r.id].deletedBy; }
+      else if (!r._pending) { r.deletedAt = null; r.deletedBy = null; }
+    });
+  } else { reprendre(['deletedAt', 'deletedBy']); etatIncertain = true; }
+  if (etatIncertain) {
+    toast('⚠️ Corbeille ou dossiers masqués non relus — les chiffres peuvent être faux pour les dossiers récents. Rechargez la page.', 'err');
+  }
 
   // ✅ v13.128 — Rafraîchir la liste des journées verrouillées (le spectateur
   // ne voit que celles-ci ; les autres profils en ont besoin pour l'affichage).
@@ -739,11 +761,18 @@ function isNetworkError(e) {
 function updateSyncBanner() {
   const bar = document.getElementById('sync-banner');
   if (!bar) return;
-  const n = queueLength();
+  const q = loadSyncQueue();
+  const n = q.length;
+  // ✅ v13.270 — Un élément refusé par le serveur est désormais dit et listé
+  //   (« Voir ») au lieu de rester « en attente » sans explication.
+  const refuses = q.filter(x => x.echec).length;
+  const voir = document.getElementById('sync-banner-voir');
+  if (voir) voir.style.display = refuses ? '' : 'none';
   if (n > 0) {
     bar.style.display = 'block';
     const lbl = document.getElementById('sync-banner-label');
-    if (lbl) lbl.textContent = '⏳ ' + n + ' enregistrement' + (n>1?'s':'') + ' en attente de synchronisation';
+    if (lbl) lbl.textContent = '⏳ ' + n + ' enregistrement' + (n>1?'s':'') + ' en attente de synchronisation'
+      + (refuses ? ' · ⚠ ' + refuses + ' refusé' + (refuses>1?'s':'') + ' par le serveur' : '');
   } else {
     bar.style.display = 'none';
   }
@@ -800,6 +829,34 @@ function enqueueAction(rpc, id) {
   updateSyncBanner();
 }
 
+// ✅ v13.270 — Une fiche créée hors ligne reçoit son vrai n° à la synchro : les
+//   actions mises en file sur son n° temporaire (masquer, corbeille) le
+//   reprennent. Avant, elles étaient jetées sans rien dire — le dossier
+//   arrivait sur le serveur visible et actif.
+function _reporterIdSynchro(items, tempId, newId) {
+  const q = loadSyncQueue();
+  let change = false;
+  for (const x of q) if (x.op !== 'insert' && x.id === tempId) { x.id = newId; change = true; }
+  if (change) saveSyncQueue(q);
+  for (const x of items) if (x.op !== 'insert' && x.id === tempId) x.id = newId;
+}
+
+const _ACTIONS_SYNCHRO = { soft_delete_dossier: ['ok'], toggle_restriction: ['restricted', 'unrestricted'] };
+
+function _libelleSynchro(item) {
+  const r = item.record || (_dbCache || []).find(x => x.id === item.id) || {};
+  const nom = (r.patient && r.patient.nom) || ('dossier ' + item.id);
+  const quoi = item.op === 'insert' ? 'création' : item.op === 'update' ? 'modification'
+    : item.rpc === 'soft_delete_dossier' ? 'mise en corbeille' : item.rpc === 'toggle_restriction' ? 'masquage' : item.rpc;
+  return nom + ' (' + quoi + ')';
+}
+
+function _motifSynchro(e) {
+  const m = String((e && (e.message || e.code)) || '');
+  if (typeof _MOTIFS_REFUS !== 'undefined' && m in _MOTIFS_REFUS) return _MOTIFS_REFUS[m];
+  return typeof motifRefusServeur === 'function' ? motifRefusServeur(e) : m;
+}
+
 // Rejoue la file. Reconstruit les paramètres avec le jeton courant.
 async function flushSyncQueue(silent) {
   if (_syncing || !navigator.onLine || !TK()) return;
@@ -807,7 +864,16 @@ async function flushSyncQueue(silent) {
   if (!q.length) return;
   _syncing = true;
   let ok = 0;
+  // ✅ v13.270 — Un refus du serveur n'arrête plus toute la file (avant :
+  //   console.error puis arrêt, sans un mot à l'écran). L'élément refusé reste
+  //   sur ce poste, marqué et signalé ; seuls ceux du MÊME dossier attendent
+  //   derrière lui pour garder l'ordre des modifications.
+  const refus = [];
+  const bloques = new Set();
+  try {
   for (const item of q) {
+    const cle = String(item.op === 'insert' ? item.tempId : item.id);
+    if (bloques.has(cle)) continue;
     try {
       if (item.op === 'insert') {
         const { data, error } = await _sb.rpc('insert_resultat', {
@@ -817,26 +883,35 @@ async function flushSyncQueue(silent) {
         if (error) throw error;
         // ✅ v13.28 — insert_resultat retourne jsonb {id, dossier}
         const newId = data?.id || (Array.isArray(data) ? data[0]?.id : null);
+        if (newId == null) throw new Error('réponse du serveur sans numéro de fiche');
         const patientSync = _appliquerNumeroServeur(item.record.patient, Array.isArray(data) ? data[0] : data);
         const saved = { id: newId, type: item.record.type, patient: patientSync,
           resultats: item.record.resultats, savedAt: new Date().toISOString(),
           createdBy: item.record.createdBy || '', montant: item.record.montant || 0,
           prescripteur_id: item.record.prescripteur_id, est_bpn: item.est_bpn };
+        // Masquage / corbeille faits hors ligne : on les garde jusqu'à leur rejeu.
+        const tmp = _dbCache.find(r => r.id === item.tempId);
+        if (tmp && tmp.restrictedBy) saved.restrictedBy = tmp.restrictedBy;
+        if (tmp && tmp.deletedAt) { saved.deletedAt = tmp.deletedAt; saved.deletedBy = tmp.deletedBy; }
         _dbCache = _dbCache.filter(r => r.id !== newId);   // déjà reçue par la synchro entre postes
         const idx = _dbCache.findIndex(r => r.id === item.tempId);
         if (idx >= 0) _dbCache[idx] = saved; else _dbCache.push(saved);
+        _reporterIdSynchro(q, item.tempId, newId);
         removeFromQueue(item.qid); ok++;
       } else if (item.op === 'action') {
         // ✅ v13.33 — Rejeu d'une action différée (masquer / corbeille)
-        let realId = item.id;
-        // Si l'id est temporaire, retrouver l'id réel de la fiche synchronisée
+        const realId = item.id;
         if (String(realId).startsWith('tmp_')) {
-          const rec = _dbCache.find(r => r._prevTempId === realId || r.id === realId);
-          if (rec && !String(rec.id).startsWith('tmp_')) realId = rec.id;
-          else { removeFromQueue(item.qid); continue; } // fiche pas encore synchro → on saute
+          // Fiche créée hors ligne pas encore enregistrée : l'action l'attend.
+          if (loadSyncQueue().some(x => x.op === 'insert' && x.tempId === realId)) continue;
+          // Fiche retirée de la file avant d'être envoyée : action sans objet.
+          removeFromQueue(item.qid); continue;
         }
-        const { error } = await _sb.rpc(item.rpc, { p_token: TK(), p_id: realId });
+        const { data, error } = await _sb.rpc(item.rpc, { p_token: TK(), p_id: realId });
         if (error) throw error;
+        // ✅ v13.270 — Ces RPC refusent par un code texte, sans erreur.
+        const attendus = _ACTIONS_SYNCHRO[item.rpc];
+        if (attendus && !attendus.includes(data)) throw { message: String(data), code: data };
         removeFromQueue(item.qid); ok++;
       } else if (item.op === 'update') {
         const { data, error } = await _sb.rpc('update_resultat', {
@@ -852,16 +927,84 @@ async function flushSyncQueue(silent) {
       }
     } catch (e) {
       if (isNetworkError(e)) break;               // toujours hors-ligne → on s'arrête
-      console.error('Synchro : échec non-réseau, élément conservé :', e, item);
-      break;                                       // erreur serveur → stop pour éviter une boucle
+      console.error('Synchro : refus du serveur, élément conservé :', e, item);
+      bloques.add(cle);
+      const motif = _motifSynchro(e);
+      _noterEchecSynchro(item.qid, motif);
+      refus.push(_libelleSynchro(item) + ' : ' + motif);
     }
   }
-  _syncing = false;
+  } finally { _syncing = false; }
   updateSyncBanner();
+  if (refus.length) {
+    toast('⚠️ Refusé par le serveur, gardé sur ce poste — ' + refus[0]
+      + (refus.length > 1 ? ' (et ' + (refus.length - 1) + ' autre' + (refus.length > 2 ? 's' : '') + ')' : ''), 'err');
+  }
   if (ok > 0) {
-    if (!silent) toast('✅ ' + ok + ' enregistrement' + (ok>1?'s':'') + ' synchronisé' + (ok>1?'s':''), 'ok');
+    if (!silent && !refus.length) toast('✅ ' + ok + ' enregistrement' + (ok>1?'s':'') + ' synchronisé' + (ok>1?'s':''), 'ok');
     if (typeof renderHistory === 'function') renderHistory(true);
   }
+}
+
+function _noterEchecSynchro(qid, motif) {
+  const q = loadSyncQueue();
+  const it = q.find(x => x.qid === qid);
+  if (!it) return;
+  if (motif) { it.echec = motif; it.echecLe = new Date().toISOString(); } else { delete it.echec; delete it.echecLe; }
+  saveSyncQueue(q);
+}
+
+// ✅ v13.270 — Liste des éléments refusés, avec de quoi en sortir : réessayer,
+//   ou retirer l'élément après en avoir téléchargé une copie (rien ne se perd).
+function voirFileSynchro() {
+  const refuses = loadSyncQueue().filter(x => x.echec);
+  document.getElementById('sync-file-bd')?.remove();
+  const bd = document.createElement('div');
+  bd.id = 'sync-file-bd';
+  bd.className = 'modal-backdrop';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  bd.innerHTML = '<div class="modal-box" style="max-width:520px">'
+    + '<div class="modal-title">⚠ Refusé par le serveur</div>'
+    + '<p style="font-size:13px;color:var(--text-muted,#64748b);margin:0 0 12px">Ces enregistrements sont gardés sur ce poste. '
+    + 'Corrigez la cause (reconnexion, journée déverrouillée…) puis « Réessayer », ou retirez-les : une copie est téléchargée d\'abord.</p>'
+    + (refuses.length ? refuses.map(x => '<div style="border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:8px 10px;margin-bottom:8px">'
+        + '<div style="font-weight:700;font-size:13px">' + esc(_libelleSynchro(x)) + '</div>'
+        + '<div style="font-size:12px;color:#b91c1c;margin:2px 0 6px">' + esc(x.echec) + '</div>'
+        + '<button class="btn btn-danger" style="padding:4px 10px;font-size:12px" data-qid="' + esc(x.qid) + '">Retirer de la file</button>'
+        + '</div>').join('') : '<p style="font-size:13px">Aucun élément refusé.</p>')
+    + '<div class="modal-actions"><button class="btn" id="sync-file-fermer">Fermer</button>'
+    + '<button class="btn btn-primary" id="sync-file-reessayer">Réessayer</button></div></div>';
+  document.body.appendChild(bd);
+  bd.addEventListener('click', e => { if (e.target === bd) bd.remove(); });
+  bd.querySelector('#sync-file-fermer').onclick = () => bd.remove();
+  bd.querySelector('#sync-file-reessayer').onclick = async () => { bd.remove(); await flushSyncQueue(); };
+  bd.querySelectorAll('button[data-qid]').forEach(b => b.onclick = () => retirerDeLaFile(b.getAttribute('data-qid')));
+}
+
+async function retirerDeLaFile(qid) {
+  const it = loadSyncQueue().find(x => x.qid === qid);
+  if (!it) return;
+  if (!await showConfirmModal({ icon: '🗑', title: 'Retirer de la file ?',
+    message: _libelleSynchro(it) + ' ne sera pas envoyé au serveur. Une copie est téléchargée sur ce poste.',
+    confirmText: 'Télécharger et retirer', cancelText: 'Garder', confirmClass: 'btn-danger' })) return;
+  try {
+    const blob = new Blob([JSON.stringify(it, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'LaboSaisie-non-synchronise-' + String(qid).replace(/[^\w-]/g, '_') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (e) { toast('Copie impossible — élément gardé', 'err'); return; }
+  removeFromQueue(qid);
+  // Une fiche jamais créée emporte les actions qui l'attendaient (masquer, corbeille).
+  if (it.op === 'insert') {
+    saveSyncQueue(loadSyncQueue().filter(x => x.op === 'insert' || x.id !== it.tempId));
+    _dbCache = _dbCache.filter(r => r.id !== it.tempId);
+  }
+  if (it.op === 'update') { const r = _dbCache.find(x => x.id === it.id); if (r) delete r._pending; }
+  toast('Élément retiré de la file — copie téléchargée', 'ok');
+  if (typeof renderHistory === 'function') renderHistory();
+  if (loadSyncQueue().some(x => x.echec)) voirFileSynchro(); else document.getElementById('sync-file-bd')?.remove();
 }
 
 // ✅ v13.236 — Le serveur garantit l'unicité du n° de dossier : s'il était déjà

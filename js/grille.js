@@ -1464,19 +1464,27 @@ async function grilleSaveAll() {
 
   // ✅ v13.227 — Marquage AUTOMATIQUE « Terminé » (rendu) des dossiers complets,
   //   avant le rechargement pour que la liste et la grille le reflètent aussitôt.
+  // ✅ v13.270 — Un refus du serveur (code texte, sans erreur) passait inaperçu :
+  //   on le compte et on le dit, le rechargement ci-dessous remettant l'état réel.
+  let nonTermines = 0, motifTermine = '';
   for (const cid of completeIds) {
     try { if (typeof setStatutLocal === 'function') setStatutLocal(cid, 'rendu'); } catch (e) {}
     try {
       if (typeof _sb !== 'undefined' && _sb && typeof TK === 'function' && TK()) {
-        await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: cid, p_statut: 'rendu' });
+        const res = await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: cid, p_statut: 'rendu' });
+        if (!res || res.error || res.data !== 'ok') {
+          nonTermines++; motifTermine = motifRefusServeur(res && res.error ? res.error : res && res.data);
+        }
       }
-    } catch (e) {}
+    } catch (e) { nonTermines++; motifTermine = 'connexion perdue'; }
   }
 
   hideLoading();
   await refreshDB(true);
   _grilleDernierLot = savedIds.slice();
-  toast('✅ ' + ok + ' patient(s) enregistré(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+  toast('✅ ' + ok + ' patient(s) enregistré(s)' + (err ? ' · ' + err + ' erreur(s)' : '')
+    + (nonTermines ? ' · ' + nonTermines + ' non marqué(s) « Terminé » : ' + motifTermine : ''),
+    (err || nonTermines) ? 'err' : 'ok');
   grilleRender();
   if (window._grilleImprimerApresSave) {
     window._grilleImprimerApresSave = false;

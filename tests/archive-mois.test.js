@@ -107,6 +107,7 @@ async function ouvrir(options) {
       if (n === 'list_clotures') return { data: [{ jour: '2026-09-03' }], error: null };
       if (n === 'get_prescripteurs') return { data: [{ id: 1, nom: 'Dr ALPHA', actif: true, taux_ristourne: 10, structure: 'Clinique Les Palmiers' }], error: null };
       if (n === 'etat_coffre') return { data: { configure: true, ouvert: coffreOuvert }, error: null };
+      if (n === 'noter_archive_mois') return { data: 'ok', error: null };
       return { data: [], error: null };
     };
   }, Object.assign({ dossiers: DOSSIERS, coffreOuvert: true, echecFull: null }, options));

@@ -1743,20 +1743,24 @@ async function bulkAnnulerPaiement() {
 
   showLoading('Annulation des paiements…');
   const p = getPaiements();
-  let ok = 0, err = 0;
+  let ok = 0, err = 0, motif = '';
   for (const id of eligible) {
+    // ✅ v13.270 — Le cache local n'est changé qu'APRÈS l'accord du serveur :
+    //   un refus (code texte, sans erreur) était compté comme réussi et le
+    //   dossier affiché « non payé » alors qu'il restait payé en base.
     try {
       const r = (_dbCache || []).find(x => x.id === id);
-      if (r) r.patient = { ...(r.patient || {}), paiement_status: 'non_paye', paiement_infos: {} };
-      p[id] = 'non_paye';
+      const nouveau = { ...((r && r.patient) || {}), paiement_status: 'non_paye', paiement_infos: {} };
       if (_sb && TK() && r) {
-        const { error } = await _sb.rpc('update_dossier_patient', {
-          p_token: TK(), p_id: id, p_patient: r.patient
+        const { data, error } = await _sb.rpc('update_dossier_patient', {
+          p_token: TK(), p_id: id, p_patient: nouveau
         });
-        if (error) throw error;
+        if (error || data !== 'ok') { err++; motif = motifRefusServeur(error || data); continue; }
       }
+      if (r) r.patient = nouveau;
+      p[id] = 'non_paye';
       ok++;
-    } catch (e) { err++; }
+    } catch (e) { err++; motif = 'connexion perdue'; }
   }
   localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
   hideLoading();
@@ -1764,7 +1768,7 @@ async function bulkAnnulerPaiement() {
   updateBandeauPaiement();
   if (typeof renderCaisse === 'function') renderCaisse();
   renderHistory();
-  toast('↩ ' + ok + ' paiement(s) annulé(s)' + (err ? ' · ' + err + ' erreur(s)' : ''), err ? 'err' : 'ok');
+  toast('↩ ' + ok + ' paiement(s) annulé(s)' + (err ? ' · ' + err + ' non annulé(s) : ' + motif : ''), err ? 'err' : 'ok');
 }
 
 // ✅ v13.33 — clearHistory retiré de l'interface ; stub conservé
