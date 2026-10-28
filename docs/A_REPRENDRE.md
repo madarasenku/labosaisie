@@ -15,6 +15,20 @@ Points mis en attente le 27/10/2026, à la demande de l'administrateur.
 - [ ] Régénérer le SQL d'installation des bases clientes : celui de la v13.266 n'a pas
       les fonctions de la v13.268–269 (archive notée, suppression d'un mois archivé).
 
+- [ ] Reporter aussi les corrections de la v13.270 (refus du serveur lus, file hors ligne)
+      dans les sites clients, restés en v13.266, à leur prochaine mise à jour.
+
+## Refus du serveur (revue du 28/10/2026, corrigé en v13.270)
+
+Corrigé : encaissement, annulation (seule et groupée), monnaie remise, statut et « Terminé »
+automatique, file hors ligne, corbeille et masquage relus, sauvegarde et archive notées.
+Test : `tests/refus-serveur.test.js`. Reste à décider :
+
+- [ ] La file hors ligne (saisies pas encore envoyées) reste dans le navigateur après la
+      déconnexion. Données de santé sur le poste : à revoir avec le contrôle « données de santé ».
+- [ ] Les autres blocs d'erreur vides (plus d'une centaine) concernent l'affichage et ne touchent pas
+      aux données ; à revoir seulement si un écran semble figé.
+
 ## Sécurité
 
 - [ ] Double authentification (2FA) sur GitHub, Supabase et Gmail — le plus important.

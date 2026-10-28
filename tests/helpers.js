@@ -132,6 +132,13 @@ function rpcResponses(extra = {}) {
     check_first_login:   false,
     get_refs_config_v2:  null,
     get_next_dossier_num:'0001-0826',
+    // ✅ v13.270 — Écritures « text » : le serveur dit « ok » quand il accepte.
+    //   L'appli ne prend plus une autre réponse pour un succès.
+    update_dossier_patient: 'ok',
+    set_dossier_statut:     'ok',
+    soft_delete_dossier:    'ok',
+    enregistrer_sauvegarde: 'ok',
+    noter_archive_mois:     'ok',
   }, extra);
 }
 

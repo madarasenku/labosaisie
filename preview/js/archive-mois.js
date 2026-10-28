@@ -683,19 +683,24 @@ async function telechargerArchiveMois(moisArg) {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     // ✅ v13.269 — Le serveur retient l'archive : condition pour supprimer le mois.
+    // ✅ v13.270 — Un refus n'est plus avalé : l'archive est bonne, mais la
+    //   suppression du mois resterait bloquée (« archive absente ») sans raison.
+    let motifNote = null;
     try {
-      await _sb.rpc('noter_archive_mois', { p_token: TK(), p_mois: mois,
+      const res = await _sb.rpc('noter_archive_mois', { p_token: TK(), p_mois: mois,
         p_nb_dossiers: info.nbDossiers, p_masques_inclus: !!info.masquesInclus });
-    } catch (e) { /* fonction absente (script SQL non installé) : sans effet sur l'archive */ }
+      if (!res || res.error || res.data !== 'ok') motifNote = motifRefusServeur(res && res.error ? res.error : res && res.data);
+    } catch (e) { motifNote = 'connexion perdue'; }
     if (typeof chargerEtatSuppression === 'function') chargerEtatSuppression();
     const taille = (blob.size / 1048576).toFixed(1).replace('.', ',') + ' Mo';
-    const avert = info.masquesInclus ? '' : ' — ⚠ dossiers masqués non inclus (session ordinaire)';
+    const avert = (info.masquesInclus ? '' : ' — ⚠ dossiers masqués non inclus (session ordinaire)')
+      + (motifNote ? ' — ⚠ archive non notée sur le serveur (' + motifNote + ') : la suppression du mois restera impossible' : '');
     if (etat) {
       etat.innerHTML = '<span style="color:#15803d;font-weight:700">✓ ' + esc(nom) + '</span> · '
         + info.nbDossiers + ' dossier(s), ' + taille
         + (avert ? '<span style="color:#b45309;font-weight:700">' + esc(avert) + '</span>' : '');
     }
-    toast('📦 Archive de ' + _libelleMois(mois) + ' téléchargée (' + info.nbDossiers + ' dossiers)' + avert, info.masquesInclus ? 'ok' : 'err');
+    toast('📦 Archive de ' + _libelleMois(mois) + ' téléchargée (' + info.nbDossiers + ' dossiers)' + avert, (info.masquesInclus && !motifNote) ? 'ok' : 'err');
   } catch (e) {
     console.error('archive du mois :', e);
     if (etat) etat.innerHTML = '<span style="color:#b91c1c;font-weight:700">✗ ' + esc(e.message || String(e)) + '</span>';

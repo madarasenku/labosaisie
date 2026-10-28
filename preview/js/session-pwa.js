@@ -394,14 +394,52 @@ function setStatutLocal(id, statut) {
   return r;
 }
 
+// ✅ v13.270 — Les RPC d'écriture REFUSENT par un code texte, sans erreur
+//   (« unauthorized », « forbidden »…). Ne regarder que `error` faisait passer
+//   un refus pour un succès : l'écran disait « Payé » ou « Terminé » alors que
+//   le serveur n'avait rien écrit. Libellé lisible d'un refus ou d'une erreur.
+const _MOTIFS_REFUS = {
+  unauthorized: 'session expirée — reconnectez-vous',
+  invalid_token: 'session expirée — reconnectez-vous',
+  forbidden: 'action non autorisée pour votre compte',
+  not_found: 'dossier introuvable sur le serveur',
+  invalid_statut: 'statut inconnu du serveur',
+  forbidden_annulation: 'annulation réservée à l\'administrateur ou au caissier',
+  forbidden_paiement: 'encaissement non autorisé pour votre compte',
+  forbidden_encaisse: 'dossier déjà encaissé — seul l\'administrateur peut le modifier',
+};
+function motifRefusServeur(codeOuErreur) {
+  if (codeOuErreur && typeof codeOuErreur === 'object') {
+    if (typeof estJourVerrouille === 'function' && estJourVerrouille(codeOuErreur)) return 'journée verrouillée';
+    return 'erreur serveur (' + (codeOuErreur.message || 'inconnue') + ')';
+  }
+  if (codeOuErreur == null || codeOuErreur === '') return 'aucune réponse du serveur';
+  return _MOTIFS_REFUS[codeOuErreur] || ('réponse inattendue du serveur : ' + codeOuErreur);
+}
+
 // Écrit le statut d'UNE fiche : mise à jour optimiste + persistance async
 function setStatut(id, statut) {
+  const r0 = (_dbCache || []).find(x => x.id === id);
+  const patientAvant = r0 ? r0.patient : undefined;
+  const localAvant = getStatuts()[id];
   const r = setStatutLocal(id, statut);
+  const envoye = r ? r.patient : undefined;
   // Persistance en base (async, ne bloque pas l'UI)
   if (typeof _sb !== 'undefined' && _sb && TK()) {
-    _sb.rpc('set_dossier_statut', {p_token: TK(), p_id: id, p_statut: statut})
-      .then(({error}) => {
-        if (error) console.warn('[LaboSaisie] set_statut:', error.message);
+    Promise.resolve(_sb.rpc('set_dossier_statut', {p_token: TK(), p_id: id, p_statut: statut}))
+      .then(res => (res && !res.error && res.data === 'ok') ? null : motifRefusServeur(res && res.error ? res.error : res && res.data))
+      .catch(e => 'connexion perdue (' + ((e && e.message) || e) + ')')
+      .then(motif => {
+        if (!motif) return;
+        // ✅ v13.270 — Refusé : on remet l'état d'avant (sauf si la fiche a
+        //   changé entre-temps) au lieu de laisser croire au changement.
+        if (r && r.patient === envoye) r.patient = patientAvant;
+        const s = getStatuts();
+        if (localAvant === undefined) delete s[id]; else s[id] = localAvant;
+        localStorage.setItem(STATUTS_KEY, JSON.stringify(s));
+        toast('⚠️ Statut non enregistré : ' + motif, 'err');
+        if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
+        renderHistory();
       });
   }
   if (typeof updateHistoriqueBadge === 'function') updateHistoriqueBadge();
@@ -426,43 +464,57 @@ function getPaiementStatus(id) {
   return getPaiements()[id] || 'non_paye';
 }
 
+// Renvoie une promesse : true si le serveur a ACCEPTÉ (ou s'il n'y a pas de
+// serveur), false sinon — l'appelant n'annonce le succès qu'après.
 function setPaiementStatus(id, status, infos) {
   // infos = { montant_demande, montant_recu, monnaie_rendue, agent }
   const r = (_dbCache || []).find(r => r.id === id);
+  const patientAvant = r ? r.patient : undefined;
+  const localAvant = getPaiements()[id];
   if (r) r.patient = { ...(r.patient || {}), paiement_status: status, paiement_infos: infos || {} };
+  const envoye = r ? r.patient : undefined;
   const p = getPaiements();
   p[id] = status;
   localStorage.setItem(PAIEMENT_KEY, JSON.stringify(p));
+  const rafraichir = () => {
+    updateBandeauPaiement();
+    if (typeof renderCaisse === 'function') renderCaisse();
+    if (typeof renderHistory === 'function') renderHistory();
+  };
+  let issue = Promise.resolve(true);
   // Persister dans Supabase via p_patient update
   if (_sb && TK() && r) {
     // ✅ v13.127 — Journée verrouillée : le serveur refuse ; on annule l'effet
     // optimiste local et on prévient, au lieu de laisser croire à un paiement.
-    Promise.resolve(_sb.rpc('update_dossier_patient', {
-      p_token: TK(), p_id: id, p_patient: r.patient
+    // ✅ v13.141 — Toute AUTRE erreur était avalée : le paiement restait
+    // « payé » dans le cache local de CE poste mais absent du serveur. Les
+    // autres postes voyaient « non payé » et refusaient d'enregistrer les
+    // résultats (valeurs perdues). On prévient désormais explicitement.
+    // ✅ v13.270 — Le serveur refuse aussi par un CODE (session expirée, droit
+    //   manquant, dossier déjà encaissé…) sans erreur : c'était lu comme un
+    //   succès. Seul « ok » vaut accord. En cas d'échec on remet l'état
+    //   EXACT d'avant (une annulation refusée laisse le dossier payé ; une
+    //   monnaie remise refusée laisse la monnaie « à rendre »).
+    issue = Promise.resolve(_sb.rpc('update_dossier_patient', {
+      p_token: TK(), p_id: id, p_patient: envoye
     })).then(res => {
-      if (res && res.error && typeof estJourVerrouille === 'function' && estJourVerrouille(res.error)) {
-        const prev = getPaiements(); delete prev[id]; localStorage.setItem(PAIEMENT_KEY, JSON.stringify(prev));
-        if (r) r.patient = { ...(r.patient || {}), paiement_status: 'non_paye' };
-        toast('🔒 Journée verrouillée — encaissement impossible', 'err');
-        if (typeof renderCaisse === 'function') renderCaisse();
-        if (typeof renderHistory === 'function') renderHistory();
-        return;
-      }
-      // ✅ v13.141 — Toute AUTRE erreur était avalée : le paiement restait
-      // « payé » dans le cache local de CE poste mais absent du serveur. Les
-      // autres postes voyaient « non payé » et refusaient d'enregistrer les
-      // résultats (valeurs perdues). On prévient désormais explicitement.
-      if (res && res.error) {
-        const prev = getPaiements(); delete prev[id]; localStorage.setItem(PAIEMENT_KEY, JSON.stringify(prev));
-        if (r) r.patient = { ...(r.patient || {}), paiement_status: 'non_paye' };
-        toast('⚠️ Encaissement non enregistré sur le serveur — refaites-le', 'err');
-        if (typeof renderCaisse === 'function') renderCaisse();
-      }
-    }).catch(() => { toast('⚠️ Encaissement non confirmé par le serveur — vérifiez la connexion', 'err'); });
+      if (res && !res.error && res.data === 'ok') return null;
+      if (res && res.error && typeof estJourVerrouille === 'function' && estJourVerrouille(res.error)) return 'verrou';
+      return motifRefusServeur(res && res.error ? res.error : res && res.data);
+    }, e => 'connexion perdue (' + ((e && e.message) || e) + ')').then(motif => {
+      if (!motif) return true;
+      if (r.patient === envoye) r.patient = patientAvant;
+      const prev = getPaiements();
+      if (localAvant === undefined) delete prev[id]; else prev[id] = localAvant;
+      localStorage.setItem(PAIEMENT_KEY, JSON.stringify(prev));
+      toast(motif === 'verrou' ? '🔒 Journée verrouillée — encaissement impossible'
+        : '⚠️ Non enregistré : ' + motif + ' — le dossier est resté comme avant', 'err');
+      rafraichir();
+      return false;
+    });
   }
-  updateBandeauPaiement();
-  if (typeof renderCaisse === 'function') renderCaisse();
-  if (typeof renderHistory === 'function') renderHistory();
+  rafraichir();
+  return issue;
 }
 
 function isDossierPaye(id) {
@@ -625,18 +677,23 @@ function validerPaiement(id) {
     agent: _currentUser?.username || '?',
     date: new Date().toISOString()
   };
-  setPaiementStatus(id, 'paye', infos);
+  const enCours = setPaiementStatus(id, 'paye', infos);
   fermerModalPaiement();
-  if (monnaie > 0 && !monnaieRemise) {
-    toast('✅ Paiement enregistré — ⚠ Monnaie de ' + monnaie.toLocaleString('fr-FR') + ' FCFA À RENDRE', 'ok');
-  } else {
-    toast('✅ Paiement enregistré — ' + demande.toLocaleString('fr-FR') + ' FCFA', 'ok');
-  }
   // Mettre à jour le montant du dossier si différent
   const r = (_dbCache || []).find(r => r.id === id);
   if (r && demande && demande !== r.montant) {
     r.montant = demande;
   }
+  // ✅ v13.270 — « Paiement enregistré » seulement une fois le serveur d'accord.
+  return enCours.then(ok => {
+    if (!ok) return false;
+    if (monnaie > 0 && !monnaieRemise) {
+      toast('✅ Paiement enregistré — ⚠ Monnaie de ' + monnaie.toLocaleString('fr-FR') + ' FCFA À RENDRE', 'ok');
+    } else {
+      toast('✅ Paiement enregistré — ' + demande.toLocaleString('fr-FR') + ' FCFA', 'ok');
+    }
+    return true;
+  });
 }
 
 function annulerPaiement(id) {
@@ -646,8 +703,7 @@ function annulerPaiement(id) {
     toast('Annulation d\'un paiement réservée à l\'administrateur ou au caissier', 'err'); return;
   }
   if (!confirm('Annuler le paiement de ce dossier ?')) return;
-  setPaiementStatus(id, 'non_paye', {});
-  toast('Paiement annulé', 'err');
+  return setPaiementStatus(id, 'non_paye', {}).then(ok => { if (ok) toast('Paiement annulé', 'err'); return ok; });
 }
 
 // ✅ v13.36 — Suivi de la monnaie à rendre
@@ -678,8 +734,8 @@ async function marquerMonnaieRemise(id) {
     monnaie_remise_le: new Date().toISOString(),
     monnaie_remise_par: _currentUser?.username || '?'
   };
-  setPaiementStatus(id, 'paye', infos); // conserve le statut payé, met à jour les infos
-  toast('✅ Monnaie de ' + due.toLocaleString('fr-FR') + ' FCFA remise à ' + nom, 'ok');
+  // conserve le statut payé, met à jour les infos
+  if (await setPaiementStatus(id, 'paye', infos)) toast('✅ Monnaie de ' + due.toLocaleString('fr-FR') + ' FCFA remise à ' + nom, 'ok');
 }
 
 // Liste des dossiers dont la monnaie n'a pas encore été remise
@@ -863,7 +919,14 @@ async function _autoStatutApresSave(id) {
   if (!complete) return;
   try {
     if (typeof _sb !== 'undefined' && _sb && typeof TK === 'function' && TK()) {
-      await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: id, p_statut: 'rendu' });
+      // ✅ v13.270 — Un refus (code texte) laissait croire « Terminé » sur ce
+      //   poste jusqu'au rechargement. Les résultats, eux, sont bien enregistrés.
+      let motif = null;
+      try {
+        const res = await _sb.rpc('set_dossier_statut', { p_token: TK(), p_id: id, p_statut: 'rendu' });
+        if (!res || res.error || res.data !== 'ok') motif = motifRefusServeur(res && res.error ? res.error : res && res.data);
+      } catch (e) { motif = 'connexion perdue'; }
+      if (motif) { toast('Résultats enregistrés, mais dossier non marqué « Terminé » : ' + motif, 'err'); return; }
     }
     // Reflet immédiat dans le cache (le refreshDB appelant le confirmera).
     const r = (typeof _dbCache !== 'undefined' ? _dbCache : []).find(x => x.id === id);

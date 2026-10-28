@@ -31,8 +31,8 @@
    checkForUpdate() dans index.html).
    ============================================================ */
 
-const APP_VERSION = '13.269-t1';
-const CACHE = 'cpmi-labo-PREVIEW-v236';
+const APP_VERSION = '13.270-t1';
+const CACHE = 'cpmi-labo-PREVIEW-v237';
 const v = url => url + '?v=' + APP_VERSION;
 const famille = nom => nom.replace(/[\d.]+$/, '');   // 'cpmi-labo-v222' → 'cpmi-labo-v'
 

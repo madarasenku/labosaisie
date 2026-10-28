@@ -101,13 +101,19 @@ async function sauvegarderBase() {
     _telechargerFichier(JSON.stringify(paquet, null, 2), nom);
 
     // On note la date en base pour que TOUS les postes sachent où on en est.
+    // ✅ v13.270 — Le fichier est déjà téléchargé, c'est l'essentiel ; mais un
+    //   refus passait inaperçu : le rappel restait affiché et la suppression
+    //   d'un mois archivé restait bloquée (« sauvegarde requise ») sans raison.
+    let motifNote = null;
     try {
-      await _sb.rpc('enregistrer_sauvegarde', {
+      const res = await _sb.rpc('enregistrer_sauvegarde', {
         p_token: TK(), p_nb_fiches: data.length, p_format: 'json',
       });
-    } catch (e) { /* le fichier est déjà téléchargé, c'est l'essentiel */ }
+      if (!res || res.error || res.data !== 'ok') motifNote = motifRefusServeur(res && res.error ? res.error : res && res.data);
+    } catch (e) { motifNote = 'connexion perdue'; }
 
-    toast(data.length + ' fiches sauvegardées ✓', 'ok');
+    if (motifNote) toast(data.length + ' fiches sauvegardées dans le fichier, mais la date n\'est pas notée sur le serveur (' + motifNote + ')', 'err');
+    else toast(data.length + ' fiches sauvegardées ✓', 'ok');
     majBandeauSauvegarde();
   } catch (e) {
     hideLoading();

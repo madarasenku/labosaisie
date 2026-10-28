@@ -11,7 +11,7 @@ const { serve, openApp, createReporter } = require('./helpers');
   // ── Dossier complet → rendu automatique ─────────────────────────────
   const complet = await page.evaluate(async () => {
     window.__calls = [];
-    _sb.rpc = async (n, p) => { window.__calls.push({ n, p }); return { data: {}, error: null }; };
+    _sb.rpc = async (n, p) => { window.__calls.push({ n, p }); return { data: n === 'set_dossier_statut' ? 'ok' : {}, error: null }; };
     window._completionActive = () => ({ complete: true, req: 3, ok: 3 });
     _dbCache = [{ id: 1, patient: { nom: 'A', statut: 'attente' }, resultats: { _facture_seule: false } }];
     await _autoStatutApresSave(1);
@@ -30,7 +30,7 @@ const { serve, openApp, createReporter } = require('./helpers');
   // ── Dossier partiel → reste en cours (aucun marquage) ───────────────
   const partiel = await page.evaluate(async () => {
     window.__calls = [];
-    _sb.rpc = async (n, p) => { window.__calls.push({ n, p }); return { data: {}, error: null }; };
+    _sb.rpc = async (n, p) => { window.__calls.push({ n, p }); return { data: n === 'set_dossier_statut' ? 'ok' : {}, error: null }; };
     window._completionActive = () => ({ complete: false, req: 3, ok: 1 });
     _dbCache = [{ id: 2, patient: { nom: 'B', statut: 'attente' }, resultats: { _facture_seule: false } }];
     await _autoStatutApresSave(2);
