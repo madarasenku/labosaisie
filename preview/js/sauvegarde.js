@@ -190,11 +190,24 @@ async function restaurerBase(texte) {
     }
 
     const presents = new Set(actuelles.map(f => String(f.id)));
-    const aRestaurer = paquet.fiches.filter(f => f && f.id != null && !presents.has(String(f.id)));
+    const absentes = paquet.fiches.filter(f => f && f.id != null && !presents.has(String(f.id)));
+    // ✅ v13.269 — Un mois supprimé volontairement après archivage ne revient
+    //   pas (le serveur l'écarte aussi) : seule « Annuler la suppression » le remet.
+    let moisSupprimes = new Set();
+    try {
+      const { data: ep } = await _sb.rpc('etat_suppression_mois', { p_token: TK() });
+      if (ep && Array.isArray(ep.purges)) moisSupprimes = new Set(ep.purges.map(x => x.mois));
+    } catch (e) { /* fonction absente : aucun mois supprimé */ }
+    const ecartees = (moisSupprimes.size && typeof moisServiceLigne === 'function')
+      ? absentes.filter(f => moisSupprimes.has(moisServiceLigne(f))).length : 0;
+    const aRestaurer = ecartees ? absentes.filter(f => !moisSupprimes.has(moisServiceLigne(f))) : absentes;
+    const noteEcartees = ecartees
+      ? ecartees + ' fiche' + (ecartees > 1 ? 's' : '') + ' de mois supprimés après archivage ne seront pas remises. '
+      : '';
 
     if (!aRestaurer.length) {
       toast('Rien à restaurer : les ' + paquet.fiches.length
-            + ' fiches du fichier sont déjà en base ✓', 'ok');
+            + ' fiches du fichier sont déjà en base ✓' + (ecartees ? ' (' + noteEcartees.trim() + ')' : ''), 'ok');
       return;
     }
 
@@ -205,7 +218,8 @@ async function restaurerBase(texte) {
       title: 'Restaurer ' + aRestaurer.length + ' fiche' + (aRestaurer.length > 1 ? 's' : '') + ' ?',
       message: 'Sauvegarde du ' + dateExport + ' (' + paquet.fiches.length + ' fiches). '
              + aRestaurer.length + ' sont absentes de la base et vont être réinsérées ; '
-             + (paquet.fiches.length - aRestaurer.length) + ' sont déjà présentes et seront ignorées. '
+             + (paquet.fiches.length - absentes.length) + ' sont déjà présentes et seront ignorées. '
+             + noteEcartees
              + 'Aucune fiche existante ne sera modifiée ni supprimée. '
              + 'Les tarifs et le catalogue ne sont pas touchés.',
       confirmText: 'Restaurer',
