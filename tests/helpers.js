@@ -102,7 +102,10 @@ const ATTENDU = {
   mois:    compte(premierDuMois, AUJOURDHUI),
   tout:    FICHES.length,
   caisseMois:       agrege(MOIS_COURANT),
-  caisseJour:       (() => { const s = FICHES.filter(f => f[1] === AUJOURDHUI);
+  // ✅ v13.271 — La caisse « Aujourd'hui » suit la journée de service : avant
+  //   8 h, c'est encore la garde de la veille (fiches du jeu enregistrées à 9 h).
+  caisseJour:       (() => { const jour = new Date().getHours() < 8 ? decale(1) : AUJOURDHUI;
+                             const s = FICHES.filter(f => f[1] === jour);
                              return { nb: s.length, total: s.reduce((t, f) => t + f[2], 0) }; })(),
   ristournesCourant:   agrege(MOIS_COURANT),
   ristournesPrecedent: agrege(MOIS_PRECEDENT),

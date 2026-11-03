@@ -90,10 +90,9 @@ function renderReductionsMois() {
      • Permanence = 08h00 → 16h30
      • Garde      = 16h30 → 08h00 le lendemain (nuit incluse, passage de minuit)
    Côte d'Ivoire = UTC+0 sans heure d'été : l'heure locale est fiable.
-   Helper commun, réutilisé par le registre du jour et les cahiers jaune/noire.
-   La clôture financière reste coupée à MINUIT (inchangée) : ici on étiquette le
-   poste et on rattache le dossier à sa JOURNÉE DE SERVICE, on ne redéfinit pas
-   la clôture de caisse.
+   Helper commun, réutilisé par le registre du jour, la clôture, la caisse
+   (v13.271), l'accueil et les cahiers jaune/noire : tous rattachent le dossier
+   à sa JOURNÉE DE SERVICE.
 
    ✅ Une GARDE compte pour UNE journée : celle où elle commence. Un dossier
    enregistré à 02h00 le 13 appartient à la « Garde du 12 au 13 ». */
@@ -129,9 +128,33 @@ function posteInfoDossier(r) {
   let jour = (typeof _recDate === 'function' ? _recDate(r) : '') || '';
   if (!jour) return { poste, jour: '', fin: '' };
   // Garde de nuit, APRÈS minuit et avant 08h00 : rattachée à la garde commencée la veille.
+  // ✅ v13.271 — Seulement si le dossier porte la date du jour d'enregistrement.
+  //   Daté de la veille (formulaire ouvert avant minuit, ancien dossier saisi la
+  //   nuit), il garde sa date : avant, il reculait d'un jour de trop (un dossier
+  //   enregistré le 03 à 00:01 et daté du 02 tombait au 01). Même règle que
+  //   jour_dossier côté serveur.
   const m = ts ? _minutesDuJour(ts) : null;
-  if (poste === 'Garde' && m !== null && m < POSTE_PERM_DEBUT_MIN) jour = _jourPlus(jour, -1);
+  if (poste === 'Garde' && m !== null && m < POSTE_PERM_DEBUT_MIN && jour === _jourLocal(new Date(ts))) jour = _jourPlus(jour, -1);
   return { poste, jour, fin: poste === 'Garde' ? _jourPlus(jour, 1) : jour };
+}
+/** Journée de service d'un dossier (AAAA-MM-JJ) — celle du registre et de la clôture. */
+function jourServiceDossier(r) { return posteInfoDossier(r).jour; }
+/** ✅ v13.271 — Filtre par JOURNÉE DE SERVICE (8 h → 8 h), comme le registre et la
+ *  clôture. La caisse filtrait par date calendaire : les dossiers de la nuit
+ *  (00 h → 8 h) comptaient le lendemain, d'où un point du jour différent du
+ *  registre. */
+function filtrerParJourService(db, from, to) {
+  if (!from && !to) return db;
+  return (db || []).filter(r => {
+    const j = jourServiceDossier(r);
+    return !!j && (!from || j >= from) && (!to || j <= to);
+  });
+}
+/** Plage d'une période de caisse : « Aujourd'hui » = journée de service en cours
+ *  (avant 8 h, c'est encore la garde de la veille). */
+function plagePeriodeService(periode, decalage) {
+  if (periode === 'jour') { const j = _jourPlus(_jourServiceCourant(), decalage || 0); return { from: j, to: j }; }
+  return calcPlagePeriode(periode, decalage);
 }
 function posteDossier(r) { return posteDepuisHeure(r && (r.savedAt || r.created_at || r.createdAt)); }
 // Pastille HTML courte pour un poste (réutilisée par registre & cahiers).
