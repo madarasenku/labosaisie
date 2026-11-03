@@ -776,12 +776,13 @@ function _frDate(d) {
 function _pointJournalierData() {
   const db = getCalcDB();
   const { from, to } = getCaisseRange();
-  const rows = filterByDateRange(db, from, to);
+  // ✅ v13.271 — Journée de service (8 h → 8 h), comme la caisse et le registre.
+  const rows = filtrerParJourService(db, from, to);
 
   // ── Par jour : nb patients, total, payé, non payé ──
   const parJour = {};
   rows.forEach(r => {
-    const d = _recDate(r) || '—';
+    const d = jourServiceDossier(r) || '—';
     const j = (parJour[d] = parJour[d] || { nb: 0, total: 0, paye: 0, nonPaye: 0 });
     const m = r.montant || 0;
     j.nb++; j.total += m;

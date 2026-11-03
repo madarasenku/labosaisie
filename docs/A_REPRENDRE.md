@@ -13,7 +13,8 @@ Points mis en attente le 27/10/2026, à la demande de l'administrateur.
 ## Sites des laboratoires clients
 
 - [ ] Régénérer le SQL d'installation des bases clientes : celui de la v13.266 n'a pas
-      les fonctions de la v13.268–269 (archive notée, suppression d'un mois archivé).
+      les fonctions de la v13.268–269 (archive notée, suppression d'un mois archivé)
+      ni la règle corrigée de la journée de service (jour_dossier, v13.271).
 
 - [ ] Reporter aussi les corrections de la v13.270 (refus du serveur lus, file hors ligne)
       dans les sites clients, restés en v13.266, à leur prochaine mise à jour.

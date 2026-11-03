@@ -1635,7 +1635,8 @@ function getCaisseRange() {
   // ✅ v13.108 — La Caisse peut désormais recevoir « tout » (période commune) :
   // aucune borne de date, on montre l'ensemble.
   if (_caissePeriode === 'tout') return { from: '', to: '' };
-  return calcPlagePeriode(_caissePeriode || 'mois', _caisseDecalage);
+  // ✅ v13.271 — Journée de service (8 h → 8 h), comme le registre et la clôture.
+  return plagePeriodeService(_caissePeriode || 'mois', _caisseDecalage);
 }
 // ✅ v13.210 — Déplace l'unique carte « Registre du jour » dans la vue caisse
 // active (complète ou simplifiée) pour que tous les agents y aient accès, sans
@@ -1684,7 +1685,8 @@ async function renderCaisse() {
   if (typeof renderRegistre === 'function') renderRegistre();
   const db = getCalcDB(); // exclut les fiches verrouillées selon le choix admin
   const { from, to } = getCaisseRange();
-  const rows = filterByDateRange(db, from, to);
+  // ✅ v13.271 — Par journée de service : le point du jour = le registre du jour.
+  const rows = filtrerParJourService(db, from, to);
   const labelEl = document.getElementById('caisse-periode-label');
   if (labelEl) labelEl.textContent = (from || '…') + ' → ' + (to || '…');
 
@@ -1705,7 +1707,7 @@ async function renderCaisse() {
 
   // Recettes par jour
   const parJour = {};
-  rows.forEach(r => { const d = _recDate(r); if (d) parJour[d] = (parJour[d] || 0) + (r.montant || 0); });
+  rows.forEach(r => { const d = jourServiceDossier(r); if (d) parJour[d] = (parJour[d] || 0) + (r.montant || 0); });
   const jours = Object.keys(parJour).sort();
   const canvas = document.getElementById('caisse-chart-jour');
   if (_caisseChart) { try { _caisseChart.destroy(); } catch (e) {} _caisseChart = null; }
@@ -1804,7 +1806,7 @@ function getUCaisseRange() {
       to:   document.getElementById('ucaisse-date-to')?.value || '',
     };
   }
-  return calcPlagePeriode(_uCaissePeriode || 'jour', _uCaisseDecalage);
+  return plagePeriodeService(_uCaissePeriode || 'jour', _uCaisseDecalage);
 }
 
 function populateUCaisseMoisAnnee() {
@@ -1863,7 +1865,7 @@ function renderUCaisseRistournes() {
 function renderUserCaisse() {
   const db = getCalcDB(); // filtre par uid automatiquement pour non-admin
   const { from, to } = getUCaisseRange();
-  const rows = filterByDateRange(db, from, to);
+  const rows = filtrerParJourService(db, from, to);
 
   // Libellé période
   const labelEl = document.getElementById('ucaisse-periode-label');
@@ -1882,7 +1884,7 @@ function renderUserCaisse() {
 
   // Graphique recettes par jour
   const parJour = {};
-  rows.forEach(r => { const d = _recDate(r); if (d) parJour[d] = (parJour[d] || 0) + (r.montant || 0); });
+  rows.forEach(r => { const d = jourServiceDossier(r); if (d) parJour[d] = (parJour[d] || 0) + (r.montant || 0); });
   const jours = Object.keys(parJour).sort();
   const canvas = document.getElementById('ucaisse-chart-jour');
   if (_uCaisseChart) { try { _uCaisseChart.destroy(); } catch (e) {} _uCaisseChart = null; }

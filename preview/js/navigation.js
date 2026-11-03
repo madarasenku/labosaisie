@@ -153,9 +153,14 @@ function _accueilFill() {
   if (subComptes) subComptes.textContent = (isResponsable() && !isAdmin())
     ? 'Utilisateurs, tarifs, valeurs de référence' : 'Utilisateurs, tarifs, prescripteurs';
 
-  const today = (typeof _jourLocal === 'function') ? _jourLocal() : new Date().toISOString().slice(0,10);
+  // ✅ v13.271 — « Du jour » = journée de service (8 h → 8 h), comme la caisse,
+  //   le registre et la clôture : avant, les dossiers de la nuit comptaient le lendemain.
+  const today = (typeof _jourServiceCourant === 'function') ? _jourServiceCourant()
+    : ((typeof _jourLocal === 'function') ? _jourLocal() : new Date().toISOString().slice(0,10));
   const calcDB = (typeof getCalcDB === 'function' ? getCalcDB() : (typeof _dbCache !== 'undefined' ? _dbCache : [])) || [];
-  const dujour = calcDB.filter(r => (r.patient && r.patient.date || (r.savedAt || '').slice(0,10)) === today);
+  const jourDe = (typeof jourServiceDossier === 'function') ? jourServiceDossier
+    : (r => (r.patient && r.patient.date || (r.savedAt || '').slice(0,10)));
+  const dujour = calcDB.filter(r => jourDe(r) === today);
   const nbJour  = dujour.length;
   const recette = dujour.reduce((s, r) => s + (r.montant || 0), 0);
   const attente = calcDB.filter(r => typeof getStatut === 'function' && getStatut(r.id) === 'attente').length;

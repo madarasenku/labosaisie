@@ -870,6 +870,8 @@ function moisServiceLigne(f) {
   let jour = p.date || (d && !isNaN(d) ? _jourLocal(d) : '');
   if (!/^\d{4}-\d{2}-\d{2}/.test(jour)) return '';
   jour = jour.slice(0, 10);
-  if (d && !isNaN(d) && d.getHours() < 8) jour = _jourPlus(jour, -1);
+  // ✅ v13.271 — Recul d'un jour seulement si le dossier porte la date du jour
+  //   d'enregistrement (même règle que posteInfoDossier et jour_dossier).
+  if (d && !isNaN(d) && d.getHours() < 8 && jour === _jourLocal(d)) jour = _jourPlus(jour, -1);
   return jour.slice(0, 7);
 }
