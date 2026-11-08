@@ -1167,6 +1167,9 @@ function animateCount(el, target, duration = 600, isCurrency = false) {
   if (!el) return;
   const isNumber = typeof target === 'number' && !isNaN(target);
   if (!isNumber || target === 0) {
+    // ✅ v13.272 — Une valeur à 0 doit s'afficher : sinon l'ancien chiffre restait
+    //   (ex. caisse « Aujourd'hui » vide après « Ce mois » : 4 fiches affichées à tort).
+    if (isNumber) el.textContent = isCurrency ? _fmtF(0) : 0;
     el.classList.add('kpi-pop');
     el.addEventListener('animationend', () => el.classList.remove('kpi-pop'), { once: true });
     return;
