@@ -266,15 +266,17 @@ const GRILLE_EXAMS = {
       { k: 'trig', lab: 'TG (g/L)', dom: 'v_trig', kind: 'num' },
     ],
   },
-  // ✅ v13.197 — Ionogramme : on ne saisit plus le sodium. Règle du labo : le Na
-  //   est toujours déduit du chlore (Na = Cl / 0.72). On saisit donc K et Cl ; le
-  //   sodium est calculé (postSet), comme l'urée l'est depuis la créatinine.
+  // ✅ v13.197 — Ionogramme : règle du labo, le Na se déduit du chlore
+  //   (Na = Cl / 0.72), comme l'urée de la créatinine.
+  // ✅ v13.272 — Le sodium peut aussi être saisi (colonne Na⁺) : calculé
+  //   seulement si la case est vide, sinon la valeur entrée est acceptée.
   iono: {
-    label: 'Ionogramme (K / Cl → Na auto)', type: 'Biochimie', exId: 'ex_iono', coche: /Ionogramme|Na, K, Cl/i,
-    filled: b => b['Chlore (Cl⁻)'] && b['Chlore (Cl⁻)'].valeur,
+    label: 'Ionogramme (K / Cl / Na — Na auto si vide)', type: 'Biochimie', exId: 'ex_iono', coche: /Ionogramme|Na, K, Cl/i,
+    filled: b => (b['Chlore (Cl⁻)'] && b['Chlore (Cl⁻)'].valeur) || (b['Sodium (Na⁺)'] && b['Sodium (Na⁺)'].valeur),
     cols: [
       { k: 'k',  lab: 'K⁺',  dom: 'v_k',  kind: 'num' },
       { k: 'cl', lab: 'Cl⁻', dom: 'v_cl', kind: 'num' },
+      { k: 'na', lab: 'Na⁺', dom: 'v_na', kind: 'num' },
     ],
     postSet: () => {
       if (typeof deduireSodiumDeChlore === 'function') deduireSodiumDeChlore();
