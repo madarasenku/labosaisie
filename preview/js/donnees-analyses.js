@@ -950,15 +950,33 @@ function deduireUreeDeCrea() {
   u.value = isNaN(c) ? '' : (c / 44).toFixed(2);
 }
 
-// ✅ v13.197 — Sodium (mmol/L) déduit du chlore : Na = Cl / 0.72. Règle du labo :
-// on n'attend pas la valeur du sodium, on la calcule toujours à partir du chlore.
-// Source unique, partagée par le formulaire et la saisie en série. Chlore vidé →
-// sodium vidé (pas de valeur périmée).
+// ✅ v13.197 — Sodium (mmol/L) déduit du chlore : Na = Cl / 0.72. Source unique,
+// partagée par le formulaire et la saisie en série. Chlore vidé → sodium vidé
+// (pas de valeur périmée).
+// ✅ v13.272 — Calculé SEULEMENT si le sodium n'est pas saisi : une valeur
+//   entrée (au clavier, en série, ou rechargée d'un dossier) est acceptée et
+//   n'est jamais écrasée. Est « calculée » la seule valeur que cette fonction a
+//   elle-même posée (mémorisée dans data-auto) ; vider la case réactive le calcul.
+function sodiumEstSaisi() {
+  const n = document.getElementById('v_na');
+  if (!n) return false;
+  const v = String(n.value || '').trim();
+  return v !== '' && v !== n.dataset.auto;
+}
+// Toute frappe (ou valeur posée avec un événement « input », comme la série) dans
+// la case sodium la fait compter comme SAISIE, même si elle égale l'ancienne
+// valeur calculée (d'un autre patient en série).
+document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'v_na' && e.target.dataset) delete e.target.dataset.auto;
+});
 function deduireSodiumDeChlore() {
   const n = document.getElementById('v_na');
   if (!n) return;
+  if (sodiumEstSaisi()) return;               // saisi : on l'accepte tel quel
   const c = parseFloat(document.getElementById('v_cl')?.value);
-  n.value = isNaN(c) ? '' : Math.round(c / 0.72).toString();
+  const calc = isNaN(c) ? '' : Math.round(c / 0.72).toString();
+  n.value = calc;
+  if (calc) n.dataset.auto = calc; else delete n.dataset.auto;
 }
 
 // Variante NFS : colore directement la case input selon l'interprétation,

@@ -1167,6 +1167,8 @@ function animateCount(el, target, duration = 600, isCurrency = false) {
   if (!el) return;
   const isNumber = typeof target === 'number' && !isNaN(target);
   if (!isNumber || target === 0) {
+    // Une valeur 0 doit s'AFFICHER (sinon l'ancien chiffre d'une autre période reste à l'écran).
+    if (isNumber) el.textContent = isCurrency ? _fmtF(0) : 0;
     el.classList.add('kpi-pop');
     el.addEventListener('animationend', () => el.classList.remove('kpi-pop'), { once: true });
     return;
